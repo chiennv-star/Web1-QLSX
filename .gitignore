@@ -1,0 +1,28 @@
+# ── Maven / Spring Boot ───────────────────────────────────────────
+sanluong-backend/target/
+sanluong-backend/.mvn/wrapper/maven-wrapper.jar
+sanluong-backend/*.log
+
+# ── Node / React ──────────────────────────────────────────────────
+sanluong-frontend/node_modules/
+sanluong-frontend/dist/
+sanluong-frontend/.env
+sanluong-frontend/.env.local
+sanluong-frontend/.env.*.local
+
+# ── IDE ───────────────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+*.suo
+*.user
+
+# ── OS ────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Secrets / Config ──────────────────────────────────────────────
+*.env
+application-local.properties
+application-prod.properties
+sanluong-backend/src/main/resources/application.properties

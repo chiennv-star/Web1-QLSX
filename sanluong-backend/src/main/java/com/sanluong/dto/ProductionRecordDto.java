@@ -1,0 +1,101 @@
+package com.sanluong.dto;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+public class ProductionRecordDto {
+    private Long id;
+    private String maTp;
+    private String maBravo;
+    private String tienTrinh;
+    private String lsx;
+    private Integer soLuong;
+    private String pcTrangThai;
+    private String plTrangThai;
+    private String dgTrangThai;
+    private String bbc1TrangThai;
+    private String bbc1_1;
+    private String pcPl;
+    private String dg2;
+    private String bbc1_2;
+    private Integer spTrungGian;
+    private Integer tongBtp;
+    private BigDecimal bbc1_3;
+    private BigDecimal pcChiPhi;
+    private BigDecimal plChiPhi;
+    private BigDecimal dgChiPhi;
+    private BigDecimal sigmaCong;
+    private BigDecimal temDb;
+    private Integer doDangDg;
+    private Integer tpNhapKho;
+    private BigDecimal soSpCong;
+    private BigDecimal slTrungBinh;
+    private String moTa;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private String createdBy;
+    private String updatedBy;
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getMaTp() { return maTp; }
+    public void setMaTp(String maTp) { this.maTp = maTp; }
+    public String getMaBravo() { return maBravo; }
+    public void setMaBravo(String maBravo) { this.maBravo = maBravo; }
+    public String getTienTrinh() { return tienTrinh; }
+    public void setTienTrinh(String tienTrinh) { this.tienTrinh = tienTrinh; }
+    public String getLsx() { return lsx; }
+    public void setLsx(String lsx) { this.lsx = lsx; }
+    public Integer getSoLuong() { return soLuong; }
+    public void setSoLuong(Integer soLuong) { this.soLuong = soLuong; }
+    public String getPcTrangThai() { return pcTrangThai; }
+    public void setPcTrangThai(String pcTrangThai) { this.pcTrangThai = pcTrangThai; }
+    public String getPlTrangThai() { return plTrangThai; }
+    public void setPlTrangThai(String plTrangThai) { this.plTrangThai = plTrangThai; }
+    public String getDgTrangThai() { return dgTrangThai; }
+    public void setDgTrangThai(String dgTrangThai) { this.dgTrangThai = dgTrangThai; }
+    public String getBbc1TrangThai() { return bbc1TrangThai; }
+    public void setBbc1TrangThai(String bbc1TrangThai) { this.bbc1TrangThai = bbc1TrangThai; }
+    public String getBbc1_1() { return bbc1_1; }
+    public void setBbc1_1(String bbc1_1) { this.bbc1_1 = bbc1_1; }
+    public String getPcPl() { return pcPl; }
+    public void setPcPl(String pcPl) { this.pcPl = pcPl; }
+    public String getDg2() { return dg2; }
+    public void setDg2(String dg2) { this.dg2 = dg2; }
+    public String getBbc1_2() { return bbc1_2; }
+    public void setBbc1_2(String bbc1_2) { this.bbc1_2 = bbc1_2; }
+    public Integer getSpTrungGian() { return spTrungGian; }
+    public void setSpTrungGian(Integer spTrungGian) { this.spTrungGian = spTrungGian; }
+    public Integer getTongBtp() { return tongBtp; }
+    public void setTongBtp(Integer tongBtp) { this.tongBtp = tongBtp; }
+    public BigDecimal getBbc1_3() { return bbc1_3; }
+    public void setBbc1_3(BigDecimal bbc1_3) { this.bbc1_3 = bbc1_3; }
+    public BigDecimal getPcChiPhi() { return pcChiPhi; }
+    public void setPcChiPhi(BigDecimal pcChiPhi) { this.pcChiPhi = pcChiPhi; }
+    public BigDecimal getPlChiPhi() { return plChiPhi; }
+    public void setPlChiPhi(BigDecimal plChiPhi) { this.plChiPhi = plChiPhi; }
+    public BigDecimal getDgChiPhi() { return dgChiPhi; }
+    public void setDgChiPhi(BigDecimal dgChiPhi) { this.dgChiPhi = dgChiPhi; }
+    public BigDecimal getSigmaCong() { return sigmaCong; }
+    public void setSigmaCong(BigDecimal sigmaCong) { this.sigmaCong = sigmaCong; }
+    public BigDecimal getTemDb() { return temDb; }
+    public void setTemDb(BigDecimal temDb) { this.temDb = temDb; }
+    public Integer getDoDangDg() { return doDangDg; }
+    public void setDoDangDg(Integer doDangDg) { this.doDangDg = doDangDg; }
+    public Integer getTpNhapKho() { return tpNhapKho; }
+    public void setTpNhapKho(Integer tpNhapKho) { this.tpNhapKho = tpNhapKho; }
+    public BigDecimal getSoSpCong() { return soSpCong; }
+    public void setSoSpCong(BigDecimal soSpCong) { this.soSpCong = soSpCong; }
+    public BigDecimal getSlTrungBinh() { return slTrungBinh; }
+    public void setSlTrungBinh(BigDecimal slTrungBinh) { this.slTrungBinh = slTrungBinh; }
+    public String getMoTa() { return moTa; }
+    public void setMoTa(String moTa) { this.moTa = moTa; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public String getCreatedBy() { return createdBy; }
+    public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
+    public String getUpdatedBy() { return updatedBy; }
+    public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
+}
