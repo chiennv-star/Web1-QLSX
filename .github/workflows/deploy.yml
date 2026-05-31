@@ -65,10 +65,10 @@ jobs:
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin || true
 
             # Pull image mới nhất
-            docker compose pull
+            docker-compose pull
 
             # Khởi động lại với image mới
-            docker compose up -d
+            docker-compose up -d
 
             # Xóa image cũ không dùng
             docker image prune -f
