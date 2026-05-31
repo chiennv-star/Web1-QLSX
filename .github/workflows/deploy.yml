@@ -1,0 +1,35 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: 22
+          script: |
+            set -e
+
+            # ── 1. Đến thư mục dự án ────────────────────────────────────────
+            cd ${{ secrets.PROJECT_PATH }}
+
+            # ── 2. Pull code mới nhất ────────────────────────────────────────
+            git pull origin master
+
+            # ── 3. Build lại image và khởi động lại container ───────────────
+            docker compose up --build -d
+
+            # ── 4. Xóa image cũ không dùng để tiết kiệm dung lượng ──────────
+            docker image prune -f
+
+            echo "✅ Deploy thành công: $(date '+%Y-%m-%d %H:%M:%S')"
