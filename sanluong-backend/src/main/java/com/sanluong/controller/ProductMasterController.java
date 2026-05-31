@@ -6,8 +6,11 @@ import com.sanluong.service.ProductMasterService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.*;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -28,24 +31,33 @@ public class ProductMasterController {
         return ResponseEntity.ok(service.search(keyword, page, size));
     }
 
-    // Endpoint tìm theo Mã TP để auto-fill form
+    private Map<String, Object> buildLookupBody(ProductMaster p) {
+        java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("maTp",         p.getMaTp()         != null ? p.getMaTp()         : "");
+        body.put("maBravo",      p.getMaBravo()      != null ? p.getMaBravo()      : "");
+        body.put("tienTrinh",    p.getTienTrinh()    != null ? p.getTienTrinh()    : "");
+        body.put("slTrungBinh",  p.getSlTrungBinh()  != null ? p.getSlTrungBinh()  : java.math.BigDecimal.ONE);
+        body.put("nangSuatPc",   p.getNangSuatPc()   != null ? p.getNangSuatPc()   : java.math.BigDecimal.ONE);
+        body.put("nangSuatPl",   p.getNangSuatPl()   != null ? p.getNangSuatPl()   : java.math.BigDecimal.ONE);
+        body.put("nangSuatBbc1", p.getNangSuatBbc1() != null ? p.getNangSuatBbc1() : java.math.BigDecimal.ONE);
+        body.put("mayMocPc",     p.getMayMocPc()     != null ? p.getMayMocPc()     : "");
+        body.put("mayMocPl",     p.getMayMocPl()     != null ? p.getMayMocPl()     : "");
+        body.put("mayMocBbc1",   p.getMayMocBbc1()   != null ? p.getMayMocBbc1()   : "");
+        body.put("mayMocDg",     p.getMayMocDg()     != null ? p.getMayMocDg()     : "");
+        return body;
+    }
+
     @GetMapping("/lookup/{maTp}")
     public ResponseEntity<?> lookup(@PathVariable String maTp) {
         return service.findByMaTp(maTp)
-                .map(p -> {
-                    java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
-                    body.put("maBravo",      p.getMaBravo()      != null ? p.getMaBravo()      : "");
-                    body.put("tienTrinh",    p.getTienTrinh()    != null ? p.getTienTrinh()    : "");
-                    body.put("slTrungBinh",  p.getSlTrungBinh()  != null ? p.getSlTrungBinh()  : java.math.BigDecimal.ONE);
-                    body.put("nangSuatPc",   p.getNangSuatPc()   != null ? p.getNangSuatPc()   : java.math.BigDecimal.ONE);
-                    body.put("nangSuatPl",   p.getNangSuatPl()   != null ? p.getNangSuatPl()   : java.math.BigDecimal.ONE);
-                    body.put("nangSuatBbc1", p.getNangSuatBbc1() != null ? p.getNangSuatBbc1() : java.math.BigDecimal.ONE);
-                    body.put("mayMocPc",    p.getMayMocPc()    != null ? p.getMayMocPc()    : "");
-                    body.put("mayMocPl",    p.getMayMocPl()    != null ? p.getMayMocPl()    : "");
-                    body.put("mayMocBbc1",  p.getMayMocBbc1()  != null ? p.getMayMocBbc1()  : "");
-                    body.put("mayMocDg",    p.getMayMocDg()    != null ? p.getMayMocDg()    : "");
-                    return ResponseEntity.ok((Object) body);
-                })
+                .map(p -> ResponseEntity.ok((Object) buildLookupBody(p)))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/lookup-by-bravo/{maBravo}")
+    public ResponseEntity<?> lookupByBravo(@PathVariable String maBravo) {
+        return service.findByMaBravo(maBravo)
+                .map(p -> ResponseEntity.ok((Object) buildLookupBody(p)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -56,13 +68,107 @@ public class ProductMasterController {
 
     @PutMapping("/{id}")
     public ResponseEntity<ProductMaster> update(@PathVariable Long id,
-                                                 @Valid @RequestBody ProductMasterDto dto) {
-        return ResponseEntity.ok(service.update(id, dto));
+                                                 @Valid @RequestBody ProductMasterDto dto,
+                                                 Authentication auth) {
+        String username = auth != null ? auth.getName() : "unknown";
+        return ResponseEntity.ok(service.update(id, dto, username));
+    }
+
+    @GetMapping("/{id}/history")
+    public ResponseEntity<?> getHistory(@PathVariable Long id) {
+        return ResponseEntity.ok(service.getHistory(id));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ── Import 2 bước ──────────────────────────────────────────────────────
+
+    /** Bước 1: Đọc Excel → trả preview, chưa ghi DB */
+    @PostMapping("/import/preview")
+    public ResponseEntity<?> importPreview(@RequestParam("file") MultipartFile file) {
+        try {
+            return ResponseEntity.ok(service.previewImport(file));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** Bước 2: Xác nhận → ghi DB với danh sách dòng đã chọn */
+    @PostMapping("/import/confirm")
+    public ResponseEntity<?> importConfirm(
+            @RequestBody List<Map<String, Object>> selectedRows,
+            Authentication auth) {
+        try {
+            String username = auth != null ? auth.getName() : "unknown";
+            return ResponseEntity.ok(service.confirmImport(selectedRows, username));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // ── Đồng bộ / Khôi phục ───────────────────────────────────────────────
+
+    @PostMapping("/sync-from-song-an")
+    public ResponseEntity<Map<String, Object>> syncFromSongAn() {
+        return ResponseEntity.ok(service.syncFromSongAn());
+    }
+
+    @PostMapping("/reset-sync")
+    public ResponseEntity<Map<String, Object>> resetSync() {
+        return ResponseEntity.ok(service.resetSyncFields());
+    }
+
+    @GetMapping("/count-no-bravo")
+    public ResponseEntity<Map<String, Object>> countNoBravo() {
+        return ResponseEntity.ok(service.countNoBravo());
+    }
+
+    @DeleteMapping("/bulk-no-bravo")
+    public ResponseEntity<Map<String, Object>> deleteNoBravo() {
+        return ResponseEntity.ok(service.deleteNoBravo());
+    }
+
+    // ── Cập nhật NS 2 bước ────────────────────────────────────────────────────
+
+    @PostMapping("/update-ns/preview")
+    public ResponseEntity<?> updateNsPreview(@RequestParam("file") MultipartFile file) {
+        try {
+            return ResponseEntity.ok(service.previewUpdateNs(file));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/update-ns/confirm")
+    public ResponseEntity<?> updateNsConfirm(@RequestBody List<Map<String, Object>> selectedRows) {
+        try {
+            return ResponseEntity.ok(service.confirmUpdateNs(selectedRows));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // ── Cập nhật Loại SP 2 bước ───────────────────────────────────────────────
+
+    @PostMapping("/update-loai-sp/preview")
+    public ResponseEntity<?> updateLoaiSpPreview(@RequestParam("file") MultipartFile file) {
+        try {
+            return ResponseEntity.ok(service.previewUpdateLoaiSp(file));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/update-loai-sp/confirm")
+    public ResponseEntity<?> updateLoaiSpConfirm(@RequestBody List<Map<String, Object>> selectedRows) {
+        try {
+            return ResponseEntity.ok(service.confirmUpdateLoaiSp(selectedRows));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 }

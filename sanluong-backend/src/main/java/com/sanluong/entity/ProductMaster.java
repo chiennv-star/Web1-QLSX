@@ -44,6 +44,12 @@ public class ProductMaster {
     @Column(name = "may_moc_dg", length = 255)
     private String mayMocDg;
 
+    @Column(name = "loai_san_pham", length = 100)
+    private String loaiSanPham;
+
+    @Column(name = "khoi_luong", precision = 12, scale = 4)
+    private java.math.BigDecimal khoiLuong;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -54,7 +60,7 @@ public class ProductMaster {
 
     @PrePersist
     void prePersist() {
-        if (slTrungBinh == null) slTrungBinh = java.math.BigDecimal.ONE;
+        if (slTrungBinh == null) slTrungBinh = java.math.BigDecimal.valueOf(1000);
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
@@ -89,6 +95,10 @@ public class ProductMaster {
     public void setMayMocBbc1(String mayMocBbc1) { this.mayMocBbc1 = mayMocBbc1; }
     public String getMayMocDg() { return mayMocDg; }
     public void setMayMocDg(String mayMocDg) { this.mayMocDg = mayMocDg; }
+    public String getLoaiSanPham() { return loaiSanPham; }
+    public void setLoaiSanPham(String loaiSanPham) { this.loaiSanPham = loaiSanPham; }
+    public java.math.BigDecimal getKhoiLuong() { return khoiLuong; }
+    public void setKhoiLuong(java.math.BigDecimal khoiLuong) { this.khoiLuong = khoiLuong; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 }

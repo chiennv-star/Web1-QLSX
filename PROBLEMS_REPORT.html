@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Báo cáo Problems – sanluong-backend</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #1e293b; background: #f8fafc; padding: 32px; }
+    .page { max-width: 900px; margin: 0 auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 16px #0001; padding: 40px 48px; }
+    h1 { font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
+    .meta { font-size: 12px; color: #64748b; margin-bottom: 32px; }
+    h2 { font-size: 15px; font-weight: 700; margin: 28px 0 12px; padding-bottom: 6px; border-bottom: 2px solid #e2e8f0; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+    th { background: #f1f5f9; text-align: left; padding: 8px 10px; font-size: 12px; font-weight: 700; color: #475569; border: 1px solid #e2e8f0; }
+    td { padding: 8px 10px; border: 1px solid #e2e8f0; vertical-align: top; font-size: 12px; line-height: 1.6; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; }
+    .err  { background: #fee2e2; color: #b91c1c; }
+    .warn { background: #fef9c3; color: #854d0e; }
+    .info { background: #dbeafe; color: #1d4ed8; }
+    .fixed{ background: #dcfce7; color: #15803d; }
+    code { font-family: 'Cascadia Code', 'Consolas', monospace; background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: 11px; color: #0f172a; }
+    .note { font-size: 11px; color: #64748b; font-style: italic; }
+    .summary-box { display: flex; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
+    .stat { flex: 1; min-width: 130px; border-radius: 8px; padding: 14px 18px; text-align: center; }
+    .stat .num { font-size: 28px; font-weight: 800; }
+    .stat .lbl { font-size: 11px; color: #64748b; margin-top: 2px; }
+    .stat-err  { background: #fee2e2; }
+    .stat-warn { background: #fef9c3; }
+    .stat-info { background: #dbeafe; }
+    .stat-fixed{ background: #dcfce7; }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .page { box-shadow: none; padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <h1>Báo cáo Problems – sanluong-backend</h1>
+  <p class="meta">Ngày tạo: 25/05/2026 &nbsp;|&nbsp; Dự án: Quản lý Sản lượng (Spring Boot + React) &nbsp;|&nbsp; Người kiểm tra: Claude Code</p>
+
+  <!-- TỔNG KẾT -->
+  <h2>Tổng kết</h2>
+  <div class="summary-box">
+    <div class="stat stat-err">  <div class="num" style="color:#b91c1c">3</div><div class="lbl">Lỗi IDE (giả)</div></div>
+    <div class="stat stat-warn"> <div class="num" style="color:#854d0e">7</div><div class="lbl">Null type safety</div></div>
+    <div class="stat stat-info"> <div class="num" style="color:#1d4ed8">3</div><div class="lbl">Import thừa (còn)</div></div>
+    <div class="stat stat-fixed"><div class="num" style="color:#15803d">2</div><div class="lbl">Đã sửa</div></div>
+  </div>
+
+  <!-- LỖI IDE -->
+  <h2>1. Lỗi IDE (Java Language Server cache) — <span class="badge err">3 lỗi</span></h2>
+  <p class="note" style="margin-bottom:10px">⚠ Đây là lỗi giả do Java LS chưa re-index sau khi thêm file mới. Backend vẫn build bình thường bằng Maven. Cách fix: Ctrl+Shift+P → "Java: Clean Java Language Server Workspace".</p>
+  <table>
+    <thead><tr><th>File</th><th>Dòng</th><th>Mã lỗi</th><th>Mô tả</th></tr></thead>
+    <tbody>
+      <tr><td><code>controller/NotificationController.java</code></td><td>3</td><td>Java(268435846)</td><td>The import <code>com.sanluong.dto.NotificationDto</code> cannot be resolved — IDE không index được file DTO</td></tr>
+      <tr><td><code>controller/NotificationController.java</code></td><td>23</td><td>Java(16777218)</td><td><code>NotificationDto</code> cannot be resolved to a type — cascade từ lỗi import trên</td></tr>
+      <tr><td><code>controller/NotificationController.java</code></td><td>24</td><td>Java(67108984)</td><td>The method <code>findAll(String)</code> undefined — cascade từ lỗi import trên</td></tr>
+    </tbody>
+  </table>
+
+  <!-- NULL TYPE SAFETY -->
+  <h2>2. Null type safety — <span class="badge warn">7 cảnh báo</span></h2>
+  <p class="note" style="margin-bottom:10px">Cảnh báo của IDE khi dùng pattern <code>.orElseThrow()</code>. Code hoàn toàn an toàn ở runtime. Không cần sửa — đây là pattern chuẩn của Spring Boot.</p>
+  <table>
+    <thead><tr><th>File</th><th>Dòng</th><th>Hàm</th><th>Mô tả</th></tr></thead>
+    <tbody>
+      <tr><td><code>service/DonHangService.java</code></td><td>115</td><td><code>restore()</code></td><td>IDE không chắc <code>orElseThrow()</code> trả non-null</td></tr>
+      <tr><td><code>service/DonHangService.java</code></td><td>124</td><td><code>deletePermanent()</code></td><td>Tương tự</td></tr>
+      <tr><td><code>service/DonHangService.java</code></td><td>129</td><td><code>doiSoLuong()</code></td><td>Tương tự</td></tr>
+      <tr><td><code>service/DonHangService.java</code></td><td>214</td><td><code>doiField()</code></td><td>Tương tự</td></tr>
+      <tr><td><code>service/EmployeeService.java</code></td><td>30</td><td><code>search()</code></td><td>Tương tự</td></tr>
+      <tr><td><code>service/EmployeeService.java</code></td><td>34</td><td><code>getById()</code></td><td>Tương tự</td></tr>
+      <tr><td><code>service/FactoryPlanService.java</code></td><td>33</td><td><code>update()</code></td><td>Tương tự</td></tr>
+    </tbody>
+  </table>
+
+  <!-- IMPORT THỪA CÒN LẠI -->
+  <h2>3. Import thừa (chưa sửa) — <span class="badge info">3 mục</span></h2>
+  <table>
+    <thead><tr><th>File</th><th>Dòng</th><th>Import</th><th>Lý do thừa</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>service/WorkScheduleService.java</code></td>
+        <td>22–24</td>
+        <td><code>import java.util.Comparator;<br>import java.util.Objects;<br>import java.util.stream.Collectors;</code></td>
+        <td>Đã có <code>import java.util.*</code> ở dòng 21 — 3 import riêng lẻ này bị trùng</td>
+      </tr>
+      <tr>
+        <td><code>service/LenhSanXuatService.java</code></td>
+        <td>16</td>
+        <td><code>import org.springframework.transaction.annotation.Propagation;</code></td>
+        <td><code>Propagation</code> không dùng ở đâu trong file</td>
+      </tr>
+      <tr>
+        <td><code>service/DonHangService.java</code></td>
+        <td>13</td>
+        <td><code>import org.apache.poi.ss.usermodel.WorkbookFactory;</code></td>
+        <td>Đã có <code>import org.apache.poi.ss.usermodel.*</code> ở dòng 12 — trùng</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ĐÃ SỬA -->
+  <h2>4. Đã sửa trong phiên này — <span class="badge fixed">2 mục</span></h2>
+  <table>
+    <thead><tr><th>File</th><th>Dòng</th><th>Import đã xóa</th><th>Trạng thái</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>service/EmployeeService.java</code></td>
+        <td>7</td>
+        <td><code>import org.springframework.context.annotation.Lazy;</code></td>
+        <td><span class="badge fixed">✓ Đã xóa</span></td>
+      </tr>
+      <tr>
+        <td><code>service/HangLoiService.java</code></td>
+        <td>19</td>
+        <td><code>import java.util.stream.Collectors;</code></td>
+        <td><span class="badge fixed">✓ Đã xóa</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- HÀNH ĐỘNG ĐỀ XUẤT -->
+  <h2>5. Hành động đề xuất</h2>
+  <table>
+    <thead><tr><th>Ưu tiên</th><th>Hành động</th><th>Cách thực hiện</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="badge err">Cao</span></td>
+        <td>Fix lỗi IDE NotificationController</td>
+        <td><code>Ctrl+Shift+P</code> → <em>Java: Clean Java Language Server Workspace</em> → Restart and delete</td>
+      </tr>
+      <tr>
+        <td><span class="badge info">Thấp</span></td>
+        <td>Xóa 3 import thừa còn lại</td>
+        <td>Xóa các dòng import trong WorkScheduleService, LenhSanXuatService, DonHangService</td>
+      </tr>
+      <tr>
+        <td><span class="badge warn">Bỏ qua</span></td>
+        <td>Null type safety (7 cảnh báo)</td>
+        <td>Không cần làm gì — đây là giới hạn IDE, không phải lỗi code</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p style="margin-top:36px; font-size:11px; color:#94a3b8; text-align:center">
+    Báo cáo tạo tự động bởi Claude Code &nbsp;·&nbsp; sanluong-backend v1.0 &nbsp;·&nbsp; 25/05/2026
+  </p>
+
+</div>
+</body>
+</html>

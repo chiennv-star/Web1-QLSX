@@ -58,6 +58,12 @@ public class HangLoi {
     @Column(name = "sl_huy", precision = 12, scale = 2)
     private BigDecimal slHuy;
 
+    @Column(name = "so_luong_tra_ve", precision = 12, scale = 2)
+    private BigDecimal soLuongTraVe;
+
+    @Column(name = "ly_do_chua_thuc_hien", length = 1000)
+    private String lyDoChuaThucHien;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -104,6 +110,10 @@ public class HangLoi {
     public void setSlDatSauXuLy(BigDecimal v) { this.slDatSauXuLy = v; }
     public BigDecimal getSlHuy() { return slHuy; }
     public void setSlHuy(BigDecimal v) { this.slHuy = v; }
+    public BigDecimal getSoLuongTraVe() { return soLuongTraVe; }
+    public void setSoLuongTraVe(BigDecimal v) { this.soLuongTraVe = v; }
+    public String getLyDoChuaThucHien() { return lyDoChuaThucHien; }
+    public void setLyDoChuaThucHien(String v) { this.lyDoChuaThucHien = v; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 }

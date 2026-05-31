@@ -1,23 +1,59 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Table, Button, Space, Typography, Input, Select, DatePicker,
   Modal, Form, InputNumber, Tag, Popconfirm, message,
-  Row, Col, Card, Tabs, Badge, Tooltip, Divider, Drawer, Spin
+  Row, Col, Card, Tabs, Badge, Tooltip, Divider, Drawer, Spin, Dropdown, AutoComplete
 } from 'antd'
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined,
   ReloadOutlined, WarningOutlined, CalendarOutlined,
   SyncOutlined, CheckCircleOutlined, EyeOutlined, LinkOutlined,
-  CheckOutlined, CloseOutlined, BellOutlined
+  CheckOutlined, CloseOutlined, BellOutlined, EyeInvisibleOutlined,
+  EyeTwoTone, SettingOutlined, DownOutlined
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, useLocation } from 'react-router-dom'
+import WipPage from './WipPage'
+import PhongThucHienSelect from '../components/PhongThucHienSelect'
 
 const { Option } = Select
 const { RangePicker } = DatePicker
 const { TextArea } = Input
+
+// ── Column filter helpers ─────────────────────────────────────────────────────
+const colSearch = (dataIndex) => ({
+  filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+    <div style={{ padding: 8 }}>
+      <Input
+        placeholder="Tìm..."
+        value={selectedKeys[0]}
+        onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+        onPressEnter={confirm}
+        style={{ marginBottom: 8, display: 'block', width: 180 }}
+        autoFocus
+      />
+      <Space>
+        <Button type="primary" size="small" onClick={confirm}>Lọc</Button>
+        <Button size="small" onClick={() => { clearFilters?.(); confirm() }}>Xóa</Button>
+      </Space>
+    </div>
+  ),
+  filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#fff' : 'rgba(255,255,255,0.7)' }} />,
+  onFilter: (value, record) =>
+    record[dataIndex]?.toString().toLowerCase().includes(value.toLowerCase()),
+})
+
+const colStatus = (dataIndex) => ({
+  filters: [
+    { text: 'Done', value: 'done' },
+    { text: 'Doing', value: 'doing' },
+    { text: '—', value: '' },
+  ],
+  filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#fff' : 'rgba(217, 225, 131, 0.7)' }} />,
+  onFilter: (value, record) => (record[dataIndex] ?? '') === value,
+})
 
 const TINH_TRANG_OPTIONS = [
   { value: 'done', label: 'Done', status: 'success' },
@@ -25,9 +61,10 @@ const TINH_TRANG_OPTIONS = [
 ]
 
 const TO_NHOM_OPTIONS = {
-  PC:   ['PCPL1', 'PCPL2', 'PCPL3'],
-  DG:   ['Nhóm 1', 'Nhóm 2'],
-  BBC1: ['PCPL3', 'Nhóm 1', 'Nhóm 2'],
+  PC:   ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
+  PL:   ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
+  DG:   ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
+  BBC1: ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
 }
 
 const tinhTrangTag = (val) => {
@@ -35,20 +72,24 @@ const tinhTrangTag = (val) => {
   return opt ? <Badge status={opt.status} text={opt.label} /> : (val || '-')
 }
 
-const fmtNum = v => (v != null && v !== '') ? Number(v).toLocaleString('vi-VN') : '—'
+const NUM_STYLE  = { color: '#000011', fontWeight: 600, fontSize: 12 }
+const TEXT_STYLE = { color: '#000011', fontSize: 12 }
+const fmtNum = v => (v != null && v !== '')
+  ? <span style={NUM_STYLE}>{Number(v).toLocaleString('vi-VN')}</span>
+  : <span style={{ color: '#d9d9d9' }}>—</span>
 
 const slExceedRender = (v, record) => {
   const sl = Number(v) || 0
   const coLo = Number(record.coLo) || 0
   const exceeds = sl > 0 && coLo > 0 && sl > coLo
-  const txt = fmtNum(v)
-  if (!exceeds) return txt
+  const num = fmtNum(v)
+  if (!exceeds) return num
   return (
     <span>
-      <span style={{ color: '#722ed1', fontWeight: 600 }}>{txt}</span>
+      <span style={{ color: '#722ed1', fontWeight: 600, fontSize: 12 }}>{Number(v).toLocaleString('vi-VN')}</span>
       {' '}
-      <Tooltip title={`Sản lượng vượt cỡ lô (${fmtNum(record.coLo)})`}>
-        <WarningOutlined style={{ color: '#722ed1', fontSize: 11 }} />
+      <Tooltip title={`Sản lượng vượt cỡ lô (${Number(record.coLo).toLocaleString('vi-VN')})`}>
+        <WarningOutlined style={{ color: '#672ed1', fontSize: 11 }} />
       </Tooltip>
     </span>
   )
@@ -116,14 +157,28 @@ const CONG_FIELD_MAP   = { PC: 'congPc', BBC1: 'congBbc1', PL: 'congPl', DG: 'co
 const SL_FIELD_MAP     = { PC: 'slPc',   BBC1: 'slBbc1',   PL: 'slPl',   DG: 'slDg' }
 const NS_LOOKUP_FIELD  = { PC: 'nangSuatPc', PL: 'nangSuatPl', BBC1: 'nangSuatBbc1', DG: 'slTrungBinh', CC: 'slTrungBinh' }
 
-function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
-  const { isAdmin } = useAuth()
+function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
+  const { isAdmin, isAdminKH, isStageAdmin, canEditStage } = useAuth()
+  const canEditDetail = canEditStage(schedule?.congDoan)
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(null)
+  const [maNvErrorKeys, setMaNvErrorKeys] = useState(new Set()) // keys có lỗi maNhanVien
   const [editingKeys, setEditingKeys] = useState(new Set())
+  const [batchEditDays, setBatchEditDays] = useState(new Set())
+  const [batchSaving, setBatchSaving] = useState(new Set())
   const [savedSlKeys, setSavedSlKeys] = useState(new Set())
-  const [pendingDaySet, setPendingDaySet] = useState(new Set()) // ngayKeys with PENDING change request
+  const [slHistory, setSlHistory] = useState({})
+  const [contextMenu, setContextMenu] = useState(null)
+  const [pendingDaySet, setPendingDaySet] = useState(new Set())
+  // ── Inline edit form ──
+  const [infoForm] = Form.useForm()
+  const watchedToNhom = Form.useWatch('toNhom', infoForm)
+  const [infoSaving, setInfoSaving] = useState(false)
+  const [isInfoEditing, setIsInfoEditing] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
+  const [lookupStatus, setLookupStatus] = useState(null)
+  const lookupTimer = useRef(null)
   const [maBravo, setMaBravo] = useState('')
   const [nsTrungBinh, setNsTrungBinh] = useState(null)
   const [openTabs, setOpenTabs] = useState(['list'])
@@ -131,20 +186,47 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
   const [daySlMap, setDaySlMap] = useState({})
   const [savingDay, setSavingDay] = useState(null)
   const [pendingDays, setPendingDays] = useState([])
-  // Ghi nhớ các field đã sync để tránh overwrite khi schedule prop vẫn stale
-  const [scheduleCache, setScheduleCache] = useState({})
+  const [employees, setEmployees] = useState([])
+  const scrollDivRef = useRef(null)  // ref cho div overflowY:auto bên dưới
+  const VAI_TRO_KEY = 'vaitro_options'
+  const DEFAULT_VAI_TRO = ['Trưởng ca', 'Phụ máy']
+  const [vaiTroOptions, setVaiTroOptions] = useState(() => {
+    try { const s = localStorage.getItem(VAI_TRO_KEY); return s ? JSON.parse(s) : DEFAULT_VAI_TRO }
+    catch { return DEFAULT_VAI_TRO }
+  })
+  const [vaiTroModalOpen, setVaiTroModalOpen] = useState(false)
+  const [newVaiTroInput, setNewVaiTroInput] = useState('')
+  const saveVaiTroOptions = (opts) => { setVaiTroOptions(opts); localStorage.setItem(VAI_TRO_KEY, JSON.stringify(opts)) }
+  const addVaiTroOption = () => {
+    const v = newVaiTroInput.trim()
+    if (v && !vaiTroOptions.includes(v)) { saveVaiTroOptions([...vaiTroOptions, v]); setNewVaiTroInput('') }
+  }
 
   useEffect(() => {
-    if (!open || !schedule) return
+    const close = () => setContextMenu(null)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [])
+
+  useEffect(() => {
+    if (!open || !schedule) {
+      setIsInfoEditing(false)
+      setIsDirty(false)
+      setLookupStatus(null)
+      return
+    }
+    setIsInfoEditing(false)
+    setIsDirty(false)
     setOpenTabs(['list'])
     setActiveTabKey('list')
     setMaBravo('')
     setNsTrungBinh(null)
     setPendingDays([])
-    setScheduleCache({})
     setSessions([])
     setDaySlMap({})
     setEditingKeys(new Set())
+    setBatchEditDays(new Set())
+    setBatchSaving(new Set())
     setSavedSlKeys(new Set())
     setPendingDaySet(new Set())
     fetchSessions()
@@ -156,7 +238,87 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
         setNsTrungBinh(val != null ? Number(val) : null)
       })
       .catch(() => {})
+    api.get('/employees', { params: { page: 0, size: 500 } })
+      .then(r => setEmployees(r.data.content || []))
+      .catch(() => {})
   }, [open, schedule])
+
+  // Populate inline form when schedule changes (only when not actively editing)
+  useEffect(() => {
+    if (open && schedule && !isInfoEditing) {
+      infoForm.setFieldsValue({
+        ...schedule,
+        ngayThucHien: schedule.ngayThucHien ? dayjs(schedule.ngayThucHien) : null,
+      })
+      setLookupStatus(null)
+    }
+  }, [open, schedule, isInfoEditing])
+
+  const handleInfoMaBravoBlur = async (e) => {
+    if (!isInfoEditing) return
+    const val = e.target.value?.trim()
+    if (!val) { setLookupStatus(null); return }
+    setLookupStatus('loading')
+    try {
+      const { data } = await api.get(`/product-master/lookup-by-bravo/${encodeURIComponent(val)}`)
+      infoForm.setFieldsValue({ maSp: data.maTp, tenTrinh: data.tienTrinh })
+      setLookupStatus('found')
+    } catch { setLookupStatus('not_found') }
+  }
+
+  const handleInfoMaSpBlur = async (e) => {
+    if (!isInfoEditing) return
+    const val = e.target.value?.trim()
+    if (!val) { setLookupStatus(null); return }
+    setLookupStatus('loading')
+    try {
+      const { data } = await api.get(`/product-master/lookup/${encodeURIComponent(val)}`)
+      infoForm.setFieldsValue({ tenTrinh: data.tienTrinh })
+      setLookupStatus('found')
+    } catch { setLookupStatus('not_found') }
+  }
+
+  const saveInfo = async () => {
+    try {
+      const values = await infoForm.validateFields()
+      setInfoSaving(true)
+      const congField = CONG_FIELD_MAP[schedule?.congDoan]
+      const slField   = SL_FIELD_MAP[schedule?.congDoan]
+      await api.put(`/work-schedule/${schedule.id}`, {
+        // Preserve existing aggregate fields to avoid wiping syncAggregates() values
+        slPc: schedule.slPc, congPc: schedule.congPc,
+        slBbc1: schedule.slBbc1, congBbc1: schedule.congBbc1,
+        slPl: schedule.slPl, congPl: schedule.congPl,
+        slDg: schedule.slDg, congDg: schedule.congDg,
+        congCc: schedule.congCc,
+        // Preserve identity fields not present in form
+        maDonHang: schedule.maDonHang ?? null,
+        maBravo:   schedule.maBravo   ?? null,
+        // Form fields override base values
+        ...values,
+        // Current session-computed totals override for this stage
+        ...(congField ? { [congField]: tongCong || null } : {}),
+        ...(slField   ? { [slField]:   tongSanLuong || null } : {}),
+        ngayThucHien: values.ngayThucHien?.format('YYYY-MM-DD'),
+        congDoan: schedule.congDoan,
+        source: 'SCHEDULE',
+      })
+      message.success('Đã lưu thông tin')
+      setIsInfoEditing(false)
+      setIsDirty(false)
+      setLookupStatus(null)
+      onSaved()
+    } catch (err) {
+      if (err?.response) message.error(err.response.data?.message || 'Lưu thất bại')
+    } finally { setInfoSaving(false) }
+  }
+
+  const infoLookupIcon = () => {
+    if (lookupStatus === 'loading') return <SyncOutlined spin style={{ color: '#1890ff' }} />
+    if (lookupStatus === 'found') return <Tooltip title="Đã tự động điền"><CheckCircleOutlined style={{ color: '#52c41a' }} /></Tooltip>
+    if (lookupStatus === 'not_found') return <Tag color="orange" style={{ margin: 0 }}>Thủ công</Tag>
+    return null
+  }
 
   const fetchSessions = async () => {
     setLoading(true)
@@ -186,12 +348,14 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
   const normalizeSession = (s) => ({
     ...s,
     ngay: s.ngay || '',
+    maNhanVien: s.maNhanVien || '',
     nguoiThucHien: s.nguoiThucHien || '',
     nhomThucHien: s.nhomThucHien || '',
     thoiGianBatDau: s.thoiGianBatDau || '',
     congThucHien: s.congThucHien ?? '',
     vaiTro: s.vaiTro || '',
     ghiChu: s.ghiChu || '',
+    caSanXuat: s.caSanXuat || '', isTangCa: s.isTangCa || false,
   })
 
   const tongCong = sessions.reduce((acc, r) => acc + (parseFloat(r.congThucHien) || 0), 0)
@@ -210,17 +374,28 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
   }
 
   const addNewDay = () => {
+    const scrollEl = scrollDivRef.current
+    const savedTop = scrollEl?.scrollTop ?? 0
     setPendingDays(prev => [...prev, { tempId: Date.now(), ngay: dayjs().format('YYYY-MM-DD') }])
+    requestAnimationFrame(() => { if (scrollEl) scrollEl.scrollTop = savedTop })
   }
 
   const addRowToDay = (ngayKey) => {
     const tempId = Date.now()
     setSessions(prev => [...prev, {
       _tempId: tempId, id: null, workScheduleId: schedule.id,
-      ngay: ngayKey, nguoiThucHien: '', nhomThucHien: '',
-      thoiGianBatDau: '', congThucHien: '', vaiTro: '', ghiChu: '',
+      ngay: ngayKey, maNhanVien: '', nguoiThucHien: '', nhomThucHien: '',
+      thoiGianBatDau: '', congThucHien: '', vaiTro: '', ghiChu: '', caSanXuat: '', isTangCa: false,
     }])
+    setBatchEditDays(prev => new Set([...prev, ngayKey]))
     setEditingKeys(prev => new Set([...prev, tempId]))
+  }
+
+  const calcCong = (thoiGian, ca) => {
+    const t = parseFloat(thoiGian)
+    if (!t || !ca) return ''
+    const divisor = ca === 'HC' ? 8 : 7
+    return parseFloat((t / divisor).toFixed(2))
   }
 
   const updateLocal = (identifier, field, value) => {
@@ -230,16 +405,21 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
     ))
   }
 
+  const updateLocals = (identifier, fields) => {
+    setSessions(prev => prev.map(s =>
+      (s.id ? s.id === identifier : s._tempId === identifier)
+        ? { ...s, ...fields } : s
+    ))
+  }
+
   const syncCong = async (updatedSessions) => {
     const field = CONG_FIELD_MAP[schedule?.congDoan]
     if (!field || !schedule?.id) return
     const newCong = updatedSessions.reduce((acc, r) => acc + (parseFloat(r.congThucHien) || 0), 0)
     const value = newCong || null
-    const newCache = { ...scheduleCache, [field]: value }
-    setScheduleCache(newCache)
     try {
-      await api.put(`/work-schedule/${schedule.id}`, { ...schedule, ...newCache })
-      onSaved?.()
+      await api.patch(`/work-schedule/${schedule.id}/patch-field`, { field, value })
+      onRefresh?.()
     } catch { /* silent */ }
   }
 
@@ -247,26 +427,81 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
     const field = SL_FIELD_MAP[schedule?.congDoan]
     if (!field || !schedule?.id) return
     const value = newTongSl || null
-    const newCache = { ...scheduleCache, [field]: value }
-    setScheduleCache(newCache)
     try {
-      await api.put(`/work-schedule/${schedule.id}`, { ...schedule, ...newCache })
-      onSaved?.()
+      await api.patch(`/work-schedule/${schedule.id}/patch-field`, { field, value })
+      onRefresh?.()
     } catch { /* silent */ }
+  }
+
+  const markMaNvError = (key) => {
+    setMaNvErrorKeys(prev => new Set([...prev, key]))
+    // Tự xóa sau 4 giây
+    setTimeout(() => setMaNvErrorKeys(prev => { const n = new Set(prev); n.delete(key); return n }), 4000)
+  }
+  const clearMaNvError = (key) => {
+    setMaNvErrorKeys(prev => { const n = new Set(prev); n.delete(key); return n })
   }
 
   const saveRow = async (s) => {
     const key = s.id || s._tempId
     setSaving(key)
+
+    // Tự động tìm mã NV nếu chưa có nhưng đã chọn tên
+    // Nguyên tắc STRICT: nếu đã chọn nhomThucHien → chỉ tìm trong nhóm đó
+    // Không fallback sang nhóm khác để tránh gán sai maNhanVien
+    let resolvedMaNv = s.maNhanVien || ''
+    if (!resolvedMaNv && s.nguoiThucHien) {
+      const exactByName = employees.filter(emp => emp.hoVaTen === s.nguoiThucHien)
+      const byGroup = s.nhomThucHien
+        ? exactByName.filter(emp => emp.toNhom === s.nhomThucHien)
+        : []
+      // STRICT: nếu có nhóm → chỉ nhận kết quả trong nhóm; nếu không có nhóm → chỉ nhận khi duy nhất
+      const match = byGroup.length > 0
+        ? byGroup[0]
+        : (!s.nhomThucHien && exactByName.length === 1 ? exactByName[0] : null)
+
+      if (match) {
+        resolvedMaNv = match.maNhanVien
+      } else {
+        // Fallback API — cũng áp dụng strict nhomThucHien
+        try {
+          const { data } = await api.get('/employees', {
+            params: { page: 0, size: 500, search: s.nguoiThucHien }
+          })
+          const apiCandidates = (data.content || []).filter(emp => emp.hoVaTen === s.nguoiThucHien)
+          const apiByGroup = s.nhomThucHien
+            ? apiCandidates.filter(emp => emp.toNhom === s.nhomThucHien)
+            : []
+          const apiMatch = apiByGroup.length > 0
+            ? apiByGroup[0]
+            : (!s.nhomThucHien && apiCandidates.length === 1 ? apiCandidates[0] : null)
+          if (apiMatch) resolvedMaNv = apiMatch.maNhanVien
+        } catch { /* non-blocking */ }
+      }
+      if (resolvedMaNv) updateLocal(key, 'maNhanVien', resolvedMaNv)
+    }
+
+    // Bắt buộc: maNhanVien không được trống
+    if (!resolvedMaNv || resolvedMaNv.trim() === '') {
+      markMaNvError(key)
+      message.error({
+        content: `Mã Nhân Viên bắt buộc! Nhập trực tiếp hoặc đảm bảo "${s.nguoiThucHien || 'nhân viên'}" đã có trong Danh sách nhân sự với nhóm "${s.nhomThucHien || 'đúng'}".`,
+        duration: 6,
+      })
+      setSaving(null)
+      return
+    }
     const payload = {
       workScheduleId: schedule.id,
       ngay: s.ngay || null,
+      maNhanVien: resolvedMaNv || null,
       nguoiThucHien: s.nguoiThucHien || null,
       nhomThucHien: s.nhomThucHien || null,
       thoiGianBatDau: s.thoiGianBatDau || null,
       congThucHien: s.congThucHien !== '' ? s.congThucHien : null,
       vaiTro: s.vaiTro || null,
       ghiChu: s.ghiChu || null,
+      caSanXuat: s.caSanXuat || null, isTangCa: s.isTangCa || false,
     }
     try {
       let updated
@@ -278,25 +513,92 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
         updated = sessions.map(r => r._tempId === s._tempId ? normalizeSession(data) : r)
       }
       setSessions(updated)
-      await syncCong(updated)
+      syncCong(updated)
       setEditingKeys(prev => { const next = new Set(prev); next.delete(key); return next })
+      onRefresh?.()
       message.success('Đã lưu')
     } catch { message.error('Lưu thất bại') }
     finally { setSaving(null) }
+  }
+
+  const saveAllForDay = async (ngayKey) => {
+    const rows = sessions.filter(s => (s.ngay || 'unknown') === ngayKey)
+    if (rows.length === 0) {
+      setBatchEditDays(prev => { const n = new Set(prev); n.delete(ngayKey); return n })
+      return
+    }
+    setBatchSaving(prev => new Set([...prev, ngayKey]))
+    let hasError = false
+    let currentSessions = [...sessions]
+
+    for (const s of rows) {
+      const key = s.id || s._tempId
+      let resolvedMaNv = s.maNhanVien || ''
+      if (!resolvedMaNv && s.nguoiThucHien) {
+        const exactByName = employees.filter(emp => emp.hoVaTen === s.nguoiThucHien)
+        const byGroup = s.nhomThucHien ? exactByName.filter(emp => emp.toNhom === s.nhomThucHien) : []
+        const match = byGroup.length > 0 ? byGroup[0]
+          : (!s.nhomThucHien && exactByName.length === 1 ? exactByName[0] : null)
+        if (match) resolvedMaNv = match.maNhanVien
+      }
+      if (!resolvedMaNv?.trim()) {
+        markMaNvError(key)
+        hasError = true
+        continue
+      }
+      const payload = {
+        workScheduleId: schedule.id,
+        ngay: s.ngay || null,
+        maNhanVien: resolvedMaNv || null,
+        nguoiThucHien: s.nguoiThucHien || null,
+        nhomThucHien: s.nhomThucHien || null,
+        thoiGianBatDau: s.thoiGianBatDau || null,
+        congThucHien: s.congThucHien !== '' ? s.congThucHien : null,
+        vaiTro: s.vaiTro || null,
+        ghiChu: s.ghiChu || null,
+        caSanXuat: s.caSanXuat || null,
+        isTangCa: s.isTangCa || false,
+      }
+      try {
+        if (s.id) {
+          const { data } = await api.put(`/work-schedule-session/${s.id}`, payload)
+          currentSessions = currentSessions.map(r => r.id === s.id ? normalizeSession(data) : r)
+        } else {
+          const { data } = await api.post('/work-schedule-session', payload)
+          currentSessions = currentSessions.map(r => r._tempId === s._tempId ? normalizeSession(data) : r)
+        }
+      } catch {
+        hasError = true
+        message.error(`Lưu thất bại: ${s.nguoiThucHien || 'dòng lỗi'}`)
+      }
+    }
+
+    setSessions(currentSessions)
+    syncCong(currentSessions)
+    onRefresh?.()
+    setBatchSaving(prev => { const n = new Set(prev); n.delete(ngayKey); return n })
+    if (hasError) {
+      message.warning('Một số dòng lưu thất bại hoặc thiếu Mã NV')
+    } else {
+      setBatchEditDays(prev => { const n = new Set(prev); n.delete(ngayKey); return n })
+      message.success('Đã lưu tất cả')
+    }
   }
 
   const deleteRow = async (s) => {
     if (!s.id) {
       const updated = sessions.filter(r => r._tempId !== s._tempId)
       setSessions(updated)
-      await syncCong(updated)
+      syncCong(updated)
+      onRefresh?.()
       return
     }
     try {
       await api.delete(`/work-schedule-session/${s.id}`)
       const updated = sessions.filter(r => r.id !== s.id)
       setSessions(updated)
-      await syncCong(updated)
+      syncCong(updated)
+      onRefresh?.()
       message.success('Đã xóa')
     } catch { message.error('Xóa thất bại') }
   }
@@ -309,9 +611,10 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
     if (!first?.id) return
     setSavingDay(ngayKey)
 
-    // Non-admin editing an existing SL → submit change request instead
+    // Stage admin → luôn phải gửi yêu cầu phê duyệt, chỉ ADMIN/ADMIN_KH lưu trực tiếp
     const hasExistingSl = first.sanLuong != null && first.sanLuong !== ''
-    if (!isAdmin() && hasExistingSl) {
+    const needsApproval = isStageAdmin() || (!canEditDetail && hasExistingSl)
+    if (needsApproval) {
       try {
         await api.post('/sl-change-request', {
           workScheduleId: schedule.id,
@@ -338,7 +641,9 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
         workScheduleId: schedule.id,
         ngay: first.ngay || null,
         nguoiThucHien: first.nguoiThucHien || null,
+        maNhanVien: first.maNhanVien || null,
         nhomThucHien: first.nhomThucHien || null,
+        caSanXuat: first.caSanXuat || null,
         thoiGianBatDau: first.thoiGianBatDau || null,
         thoiGianKetThuc: first.thoiGianKetThuc || null,
         congThucHien: first.congThucHien !== '' ? first.congThucHien : null,
@@ -352,8 +657,13 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
       setSessions(prev => prev.map(r => r.id === first.id ? normalizeSession(data) : r))
       const newTongSl = Object.values({ ...daySlMap, [ngayKey]: val })
         .reduce((acc, v) => acc + (parseFloat(v) || 0), 0)
-      await syncSl(newTongSl)
+      syncSl(newTongSl)
       setSavedSlKeys(prev => new Set([...prev, ngayKey]))
+      setSlHistory(prev => ({
+        ...prev,
+        [ngayKey]: [...(prev[ngayKey] || []), { value: parseInt(val, 10), savedAt: new Date() }],
+      }))
+      onRefresh?.()
       message.success('Đã lưu sản lượng')
     } catch { message.error('Lưu sản lượng thất bại') }
     finally { setSavingDay(null) }
@@ -361,45 +671,66 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
 
   const cellStyle = { padding: '5px 8px', border: '1px solid #d9d9d9', verticalAlign: 'middle' }
   const headStyle = { ...cellStyle, background: '#e6f4ff', fontWeight: 600, color: '#1677ff', whiteSpace: 'nowrap' }
-  const subHeadStyle = { ...cellStyle, background: '#fff7e6', fontWeight: 600, color: '#d46b08', whiteSpace: 'nowrap' }
-  const inputStyle = { width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: 13 }
+  const subHeadStyle = { ...cellStyle, background: '#fff7e6', fontWeight: 600, color: '#1890ff', whiteSpace: 'nowrap' }
+  const inputStyle = { width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: 12 }
 
-  const HeaderTable = () => (
-    <div style={{ overflowX: 'auto', marginBottom: 16 }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <thead>
-          <tr>
-            {['Mã sản phẩm', 'Mã Bravo', 'Tiến Trình', 'Số Lô', 'Số Lượng', 'Sản Lượng', 'NS Trung Bình', 'Tổng Công'].map(h => (
-              <th key={h} style={headStyle}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style={cellStyle}><Tag color="blue">{schedule?.maSp || '—'}</Tag></td>
-            <td style={cellStyle}>{maBravo || '—'}</td>
-            <td style={{ ...cellStyle, maxWidth: 260 }}>{schedule?.tenTrinh || '—'}</td>
-            <td style={cellStyle}>{schedule?.soLo || '—'}</td>
-            <td style={{ ...cellStyle, textAlign: 'right' }}>{schedule?.coLo ?? '—'}</td>
-            <td style={{ ...cellStyle, textAlign: 'right', fontWeight: 700, color: '#389e0d' }}>
-              {tongSanLuong ? tongSanLuong.toFixed(2) : '—'}
-            </td>
-            <td style={{ ...cellStyle, textAlign: 'right', fontWeight: 700, color: '#722ed1' }}>
-              {nsTrungBinh != null ? nsTrungBinh : '—'}
-            </td>
-            <td style={{ ...cellStyle, textAlign: 'right', fontWeight: 700, color: '#1677ff' }}>
-              {tongCong ? tongCong.toFixed(4) : '0.0000'}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  )
+  const nangSuat = tongCong > 0 && tongSanLuong > 0 ? tongSanLuong / tongCong : null
+
+  const HeaderTable = () => {
+    const validKeys = ngayKeys.filter(k => k !== 'unknown' && dayjs(k).isValid())
+    const ngayBatDau  = validKeys.length > 0 ? dayjs(validKeys[0]) : null
+    const ngayKetThuc = validKeys.length > 0 ? dayjs(validKeys[validKeys.length - 1]) : null
+    const soNgay      = (ngayBatDau && ngayKetThuc) ? ngayKetThuc.diff(ngayBatDau, 'day') + 1 : null
+    return (
+      <div style={{ overflowX: 'auto', marginBottom: 16 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr>
+              {['Mã Bravo', 'Mã sản phẩm', 'Tiến Trình', 'Số Lô', 'Số Lượng', 'Sản Lượng', 'Tổng Công', 'Năng Suất', 'NS Trung Bình',
+                'Ngày Bắt đầu', 'Ngày Kết thúc', 'Tổng Số Ngày TH'].map(h => (
+                <th key={h} style={headStyle}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style={cellStyle}><Tag color="blue" style={{ fontFamily: 'monospace' }}>{maBravo || '—'}</Tag></td>
+              <td style={cellStyle}><span style={{ color: '#3cc6ec', fontWeight: 600 }}>{schedule?.maSp || '—'}</span></td>
+              <td style={{ ...cellStyle, maxWidth: 260 }}>{schedule?.tenTrinh || '—'}</td>
+              <td style={cellStyle}>{schedule?.soLo || '—'}</td>
+              <td style={{ ...cellStyle, textAlign: 'right' }}>{schedule?.coLo ?? '—'}</td>
+              <td style={{ ...cellStyle, textAlign: 'right', fontWeight: 700, color: '#389e0d' }}>
+                {tongSanLuong ? tongSanLuong.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
+              </td>
+              <td style={{ ...cellStyle, textAlign: 'right', fontWeight: 700, color: '#1677ff' }}>
+                {tongCong ? tongCong.toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : '0.0000'}
+              </td>
+              <td style={{ ...cellStyle, textAlign: 'right', fontWeight: 700, color: nangSuat ? '#d46b08' : '#aaa' }}>
+                {nangSuat != null ? Math.round(nangSuat).toLocaleString('vi-VN') : '—'}
+              </td>
+              <td style={{ ...cellStyle, textAlign: 'right', fontWeight: 700, color: '#722ed1' }}>
+                {nsTrungBinh != null ? nsTrungBinh : '—'}
+              </td>
+              <td style={{ ...cellStyle, textAlign: 'center', color: '#1677ff', fontWeight: 600 }}>
+                {ngayBatDau ? ngayBatDau.format('DD/MM/YYYY') : '—'}
+              </td>
+              <td style={{ ...cellStyle, textAlign: 'center', color: '#f97316', fontWeight: 600 }}>
+                {ngayKetThuc ? ngayKetThuc.format('DD/MM/YYYY') : '—'}
+              </td>
+              <td style={{ ...cellStyle, textAlign: 'center', fontWeight: 700, color: soNgay != null ? '#389e0d' : '#aaa' }}>
+                {soNgay != null ? soNgay : '—'}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    )
+  }
 
   const renderListTab = () => (
     <>
       <div style={{ overflowX: 'auto', marginBottom: 12 }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr>
               <th style={subHeadStyle}>Ngày thực hiện</th>
@@ -432,37 +763,11 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
                     {isOpen && <Tag color="green" style={{ marginLeft: 6, fontSize: 11 }}>Đang mở</Tag>}
                   </td>
                   <td style={{ ...cellStyle, textAlign: 'right' }}>{rows.length}</td>
-                  <td style={{ ...cellStyle, textAlign: 'right' }}>{tong ? tong.toFixed(4) : '—'}</td>
-                  <td style={{ ...cellStyle, padding: '2px 4px' }}
-                    onClick={e => e.stopPropagation()}>
-                    {savedSlKeys.has(k) && slVal !== '' ? (
-                      <Space size={2} wrap>
-                        <span style={{ fontWeight: 600, minWidth: 60, display: 'inline-block', textAlign: 'right' }}>
-                          {Number(slVal).toLocaleString('vi-VN')}
-                        </span>
-                        {pendingDaySet.has(k)
-                          ? <Tag color="orange" style={{ fontSize: 11, marginRight: 0 }}>Chờ duyệt</Tag>
-                          : <Button size="small" type="text" icon={<EditOutlined />}
-                              onClick={() => setSavedSlKeys(prev => { const next = new Set(prev); next.delete(k); return next })} />
-                        }
-                      </Space>
-                    ) : (
-                      <Space size={2}>
-                        <input
-                          type="number" step="1" min="0"
-                          style={{ ...inputStyle, textAlign: 'right', width: 80 }}
-                          placeholder="Nhập SL"
-                          value={slVal}
-                          onChange={e => setDaySlMap(prev => ({ ...prev, [k]: e.target.value }))}
-                          onKeyDown={e => { if (e.key === 'Enter') saveDaySl(k) }}
-                        />
-                        <Button size="small" type="primary" loading={savingDay === k}
-                          disabled={slVal === ''}
-                          onClick={() => saveDaySl(k)}>
-                          Lưu
-                        </Button>
-                      </Space>
-                    )}
+                  <td style={{ ...cellStyle, textAlign: 'right' }}>{tong ? tong.toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : '—'}</td>
+                  <td style={{ ...cellStyle, textAlign: 'right' }}>
+                    {slVal !== '' && slVal != null
+                      ? <span style={{ fontWeight: 600, color: '#722ed1' }}>{Number(slVal).toLocaleString('vi-VN')}</span>
+                      : <span style={{ color: '#aaa' }}>—</span>}
                   </td>
                   <td style={{ ...cellStyle, textAlign: 'right' }}>
                     {(() => {
@@ -471,7 +776,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
                       let arrow = ''
                       if (nsTrungBinh && nsNgay > nsTrungBinh) { color = '#389e0d'; arrow = ' ▲' }
                       if (nsTrungBinh && nsNgay < nsTrungBinh) { color = '#cf1322'; arrow = ' ▼' }
-                      if (!nsTrungBinh) return <span style={{ fontWeight: 600, color }}>{nsNgay.toFixed(2)}</span>
+                      if (!nsTrungBinh) return <span style={{ fontWeight: 600, color }}>{nsNgay.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       const delta = nsNgay - nsTrungBinh
                       const pct = (delta / nsTrungBinh) * 100
                       const sign = delta >= 0 ? '+' : ''
@@ -479,7 +784,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
                         <span style={{ fontWeight: 600, color }}>
                           {Math.round(nsNgay).toLocaleString('vi-VN')}
                           <span style={{ fontSize: 11, fontWeight: 400, marginLeft: 3 }}>
-                            {sign}{Math.round(delta).toLocaleString('vi-VN')} ({sign}{pct.toFixed(2)}%){arrow}
+                            {sign}{Math.round(delta).toLocaleString('vi-VN')} ({sign}{pct.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%){arrow}
                           </span>
                         </span>
                       )
@@ -494,10 +799,10 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
                 openDetail(pd.ngay)
               }
               return (
-                <tr key={pd.tempId} style={{ background: '#fffbe6' }}>
+                <tr key={pd.tempId} className="ws-row-new" style={{ background: '#fffbe6' }}>
                   <td style={{ ...cellStyle, padding: '2px 6px' }}>
                     <Space size={4}>
-                      <input type="date" style={{ ...inputStyle, width: 120, fontSize: 13 }} value={pd.ngay}
+                      <input type="date" style={{ ...inputStyle, width: 120, fontSize: 12 }} value={pd.ngay}
                         onChange={e => setPendingDays(prev =>
                           prev.map(p => p.tempId === pd.tempId ? { ...p, ngay: e.target.value } : p)
                         )} />
@@ -511,13 +816,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
                   </td>
                   <td style={{ ...cellStyle, textAlign: 'right', color: '#aaa' }}>0</td>
                   <td style={{ ...cellStyle, textAlign: 'right', color: '#aaa' }}>—</td>
-                  <td style={{ ...cellStyle, padding: '2px 4px' }}>
-                    <input type="number" step="1" min="0"
-                      style={{ ...inputStyle, textAlign: 'right', width: 80 }}
-                      placeholder="Nhập SL"
-                      value={daySlMap[pd.ngay] ?? ''}
-                      onChange={e => setDaySlMap(prev => ({ ...prev, [pd.ngay]: e.target.value }))} />
-                  </td>
+                  <td style={{ ...cellStyle, textAlign: 'right', color: '#aaa' }}>—</td>
                   <td style={{ ...cellStyle, textAlign: 'right', color: '#aaa' }}>—</td>
                 </tr>
               )
@@ -525,7 +824,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
           </tbody>
         </table>
       </div>
-      <Button icon={<PlusOutlined />} onClick={addNewDay} type="dashed" block>Thêm ngày</Button>
+      {canEditDetail && <Button icon={<PlusOutlined />} onClick={addNewDay} type="dashed" block>Thêm ngày</Button>}
     </>
   )
 
@@ -534,8 +833,10 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
     const tongCongNgay = detailRows.reduce((a, r) => a + (parseFloat(r.congThucHien) || 0), 0)
     const slVal = daySlMap[ngayKey] ?? ''
     const slNum = parseFloat(slVal) || 0
-    const nsNgay = tongCongNgay > 0 && slNum > 0 ? (slNum / tongCongNgay).toFixed(2) : '—'
+    const nsNgay = tongCongNgay > 0 && slNum > 0 ? (slNum / tongCongNgay).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
     const hasSavedRow = detailRows.some(r => r.id)
+    const isInBatchMode = batchEditDays.has(ngayKey)
+    const isBatchSaving = batchSaving.has(ngayKey)
     return (
       <>
         {/* ── Thanh sản lượng ngày ── */}
@@ -546,7 +847,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
         }}>
           <Space size={6}>
             <span style={{ color: '#595959' }}>Tổng công:</span>
-            <span style={{ fontWeight: 700, color: '#1677ff' }}>{tongCongNgay ? tongCongNgay.toFixed(4) : '0.0000'}</span>
+            <span style={{ fontWeight: 700, color: '#595959' }}>{tongCongNgay ? tongCongNgay.toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : '0.0000'}</span>
           </Space>
           <Space size={6}>
             <span style={{ color: '#595959' }}>Sản lượng ngày:</span>
@@ -555,32 +856,35 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
                 <span style={{ fontWeight: 700, color: '#722ed1' }}>
                   {Number(slVal).toLocaleString('vi-VN')}
                 </span>
-                {pendingDaySet.has(ngayKey)
-                  ? <Tag color="orange" style={{ fontSize: 11, marginRight: 0 }}>Chờ duyệt</Tag>
-                  : <Button size="small" type="text" icon={<EditOutlined />}
-                      onClick={() => setSavedSlKeys(prev => { const next = new Set(prev); next.delete(ngayKey); return next })} />
-                }
+                {canEditDetail && !pendingDaySet.has(ngayKey) && (
+                  <Button size="small" type="text" icon={<EditOutlined />}
+                    onClick={() => setSavedSlKeys(prev => { const next = new Set(prev); next.delete(ngayKey); return next })} />
+                )}
+                {pendingDaySet.has(ngayKey) && <Tag color="orange" style={{ fontSize: 11, marginRight: 0 }}>Chờ duyệt</Tag>}
               </Space>
-            ) : (
-              <>
+            ) : canEditDetail ? (
+              <Space size={4}>
                 <input
                   type="number" step="1" min="0"
                   style={{ ...inputStyle, width: 90, border: '1px solid #d9d9d9', borderRadius: 4, padding: '2px 6px', background: '#fff' }}
-                  placeholder="Nhập SL"
+                  placeholder="Nhập SL..."
                   value={slVal}
                   onChange={e => setDaySlMap(prev => ({ ...prev, [ngayKey]: e.target.value }))}
                   onKeyDown={e => { if (e.key === 'Enter') saveDaySl(ngayKey) }}
+                  autoFocus
                 />
-                <Button
-                  size="small" type="primary"
-                  loading={savingDay === ngayKey}
+                <Button size="small" type="primary" loading={savingDay === ngayKey}
                   disabled={slVal === '' || !hasSavedRow}
-                  onClick={() => saveDaySl(ngayKey)}
-                >Lưu SL</Button>
+                  style={{ color: '#fff' }}
+                  onClick={() => saveDaySl(ngayKey)}>
+                  Cập nhật
+                </Button>
                 {!hasSavedRow && slVal !== '' && (
-                  <span style={{ color: '#fa8c16', fontSize: 12 }}>Cần lưu ít nhất 1 dòng trước</span>
+                  <span style={{ color: '#c61111', fontSize: 12 }}>Cần lưu ít nhất 1 dòng trước</span>
                 )}
-              </>
+              </Space>
+            ) : (
+              <span style={{ color: '#aaa' }}>—</span>
             )}
           </Space>
           <Space size={6}>
@@ -599,19 +903,37 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
                 <span style={{ fontWeight: 700, color }}>
                   {Math.round(nsNum).toLocaleString('vi-VN')}
                   <span style={{ fontSize: 12, fontWeight: 400, marginLeft: 3 }}>
-                    {sign}{Math.round(delta).toLocaleString('vi-VN')} ({sign}{pct.toFixed(2)}%){arrow}
+                    {sign}{Math.round(delta).toLocaleString('vi-VN')} ({sign}{pct.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%){arrow}
                   </span>
                 </span>
               )
             })()}
           </Space>
         </div>
+        {(slHistory[ngayKey]?.length > 0) && (
+          <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 8, paddingLeft: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 600 }}>Lịch sử SL:</span>
+            {slHistory[ngayKey].map((h, i) => (
+              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                {i > 0 && <span style={{ color: '#bbb' }}>→</span>}
+                <Tag style={{ margin: 0, fontSize: 11 }} color="purple">
+                  {Number(h.value).toLocaleString('vi-VN')}
+                </Tag>
+                <span style={{ color: '#bbb' }}>
+                  {dayjs(h.savedAt).format('HH:mm')}
+                </span>
+              </span>
+            ))}
+          </div>
+        )}
 
         <div style={{ overflowX: 'auto', marginBottom: 12 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr>
-                {['Người Thực hiện', 'Nhóm/tổ', 'Thời gian thực hiện', 'Công thực hiện', 'Vai Trò', 'Ghi Chú', ''].map((h, i) => (
+                {['Người Thực hiện', 'Mã NV', 'Nhóm/tổ', 'Ca SX', 'Thời gian thực hiện', 'Công thực hiện',
+                  <span key="vaitro-hdr">Vai Trò{canEditDetail && <SettingOutlined onClick={() => setVaiTroModalOpen(true)} style={{ marginLeft: 5, cursor: 'pointer', color: '#1677ff', fontSize: 11 }} title="Quản lý danh sách vai trò" />}</span>,
+                  'Ghi Chú'].map((h, i) => (
                   <th key={i} style={subHeadStyle}>{h}</th>
                 ))}
               </tr>
@@ -619,7 +941,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
             <tbody>
               {detailRows.length === 0 && (
                 <tr>
-                  <td colSpan={7} style={{ ...cellStyle, textAlign: 'center', color: '#aaa', padding: 16 }}>
+                  <td colSpan={8} style={{ ...cellStyle, textAlign: 'center', color: '#aaa', padding: 16 }}>
                     Chưa có dòng nào. Nhấn "+ Thêm dòng".
                   </td>
                 </tr>
@@ -627,41 +949,143 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
               {detailRows.map(s => {
                 const key = s.id || s._tempId
                 const isSaving = saving === key
-                const isEditing = editingKeys.has(key)
+                const isEditing = isInBatchMode || editingKeys.has(key)
                 const startEdit = () => setEditingKeys(prev => new Set([...prev, key]))
                 if (!isEditing) return (
-                  <tr key={key} style={{ background: '#fafafa' }}>
+                  <tr key={key} className={!s.id ? 'ws-row-new' : ''} style={{ background: '#fafafa', cursor: canEditDetail ? 'context-menu' : 'default' }}
+                    onContextMenu={canEditDetail ? e => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, s, ngayKey }) } : undefined}>
                     <td style={{ ...cellStyle, minWidth: 130 }}>{s.nguoiThucHien || <span style={{ color: '#bbb' }}>—</span>}</td>
+                    <td style={{ ...cellStyle, width: 90 }}>{s.maNhanVien || <span style={{ color: '#bbb' }}>—</span>}</td>
                     <td style={{ ...cellStyle, minWidth: 100 }}>{s.nhomThucHien || <span style={{ color: '#bbb' }}>—</span>}</td>
+                    <td style={{ ...cellStyle, width: 90, textAlign: 'center' }}>
+                      {s.caSanXuat
+                        ? <Tag color={s.caSanXuat === 'HC' ? 'green' : 'blue'} style={{ marginRight: 0 }}>{s.caSanXuat}</Tag>
+                        : <span style={{ color: '#bbb' }}>—</span>}
+                    </td>
                     <td style={{ ...cellStyle, width: 90, textAlign: 'right' }}>{s.thoiGianBatDau || <span style={{ color: '#bbb' }}>—</span>}</td>
                     <td style={{ ...cellStyle, width: 110, textAlign: 'right', fontWeight: 600 }}>{s.congThucHien ?? <span style={{ color: '#bbb' }}>—</span>}</td>
-                    <td style={{ ...cellStyle, minWidth: 110 }}>{s.vaiTro || <span style={{ color: '#bbb' }}>—</span>}</td>
-                    <td style={{ ...cellStyle, minWidth: 150 }}>{s.ghiChu || <span style={{ color: '#bbb' }}>—</span>}</td>
-                    <td style={{ ...cellStyle, width: 90, whiteSpace: 'nowrap' }}>
-                      <Space size={4}>
-                        <Button size="small" type="default" icon={<EditOutlined />} onClick={startEdit}>Sửa</Button>
-                        <Popconfirm title="Xóa dòng này?" okText="Xóa" cancelText="Hủy"
-                          onConfirm={() => deleteRow(s)}>
-                          <Button size="small" danger>Xóa</Button>
-                        </Popconfirm>
-                      </Space>
+                    <td style={{ ...cellStyle, minWidth: 110 }}>
+                      {s.vaiTro
+                        ? <Tag color={s.vaiTro === 'Trưởng ca' ? 'gold' : 'geekblue'} style={{ marginRight: 0 }}>{s.vaiTro}</Tag>
+                        : <span style={{ color: '#bbb' }}>—</span>}
                     </td>
+                    <td style={{ ...cellStyle, minWidth: 150 }}>{s.ghiChu || <span style={{ color: '#bbb' }}>—</span>}</td>
                   </tr>
                 )
                 return (
-                  <tr key={key}>
-                    <td style={{ ...cellStyle, minWidth: 130 }}>
-                      <input style={inputStyle} value={s.nguoiThucHien}
-                        onChange={e => updateLocal(key, 'nguoiThucHien', e.target.value)} />
+                  <tr key={key} className={!s.id ? 'ws-row-new' : ''}
+                    onContextMenu={canEditDetail ? e => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, s, ngayKey }) } : undefined}>
+                    <td style={{ ...cellStyle, minWidth: 150 }}>
+                      <select
+                        style={{ ...inputStyle, cursor: 'pointer' }}
+                        value={s.nguoiThucHien}
+                        onChange={e => {
+                          const name = e.target.value
+                          const allMatches = employees.filter(emp => emp.hoVaTen === name)
+                          // Ưu tiên khớp trong nhóm; nếu 1 kết quả duy nhất → auto-fill
+                          const groupMatches = s.nhomThucHien
+                            ? allMatches.filter(emp => emp.toNhom === s.nhomThucHien)
+                            : []
+                          const best = groupMatches.length === 1 ? groupMatches[0]
+                            : allMatches.length === 1 ? allMatches[0]
+                            : null
+                          updateLocals(key, {
+                            nguoiThucHien: name,
+                            maNhanVien: best ? best.maNhanVien : '',
+                          })
+                        }}
+                      >
+                        <option value="">-- Chọn nhân viên --</option>
+                        {employees
+                          .filter(emp => !s.nhomThucHien || emp.toNhom === s.nhomThucHien)
+                          .map(emp => (
+                            <option key={emp.id} value={emp.hoVaTen}>{emp.hoVaTen}</option>
+                          ))
+                        }
+                      </select>
                     </td>
-                    <td style={{ ...cellStyle, minWidth: 100 }}>
-                      <input style={inputStyle} value={s.nhomThucHien}
-                        onChange={e => updateLocal(key, 'nhomThucHien', e.target.value)} />
+                    <td style={{ ...cellStyle, width: 100 }}>
+                      {(() => {
+                        // Ưu tiên khớp trong nhóm → nếu tên duy nhất trong nhóm, không cần dropdown
+                        const allByName = s.nguoiThucHien
+                          ? employees.filter(emp => emp.hoVaTen === s.nguoiThucHien)
+                          : []
+                        const groupByName = s.nhomThucHien
+                          ? allByName.filter(emp => emp.toNhom === s.nhomThucHien)
+                          : []
+                        // Dùng group-filtered nếu có; fallback về all nếu group rỗng
+                        const matches = groupByName.length > 0 ? groupByName : allByName
+                        if (matches.length > 1) {
+                          return (
+                            <select
+                              style={{ ...inputStyle, cursor: 'pointer', color: '#1890ff', fontWeight: 600 }}
+                              value={s.maNhanVien}
+                              onChange={e => updateLocal(key, 'maNhanVien', e.target.value)}
+                            >
+                              <option value="">-- Chọn mã --</option>
+                              {matches.map(emp => (
+                                <option key={emp.id} value={emp.maNhanVien}>{emp.maNhanVien} ({emp.toNhom})</option>
+                              ))}
+                            </select>
+                          )
+                        }
+                        const hasError = maNvErrorKeys.has(key)
+                        return (
+                          <>
+                            <input
+                              style={{
+                                ...inputStyle, color: '#1890ff', fontWeight: 600,
+                                ...(hasError ? { border: '2px solid #ef4444', background: '#fef2f2' } : {}),
+                              }}
+                              value={s.maNhanVien}
+                              onChange={e => { clearMaNvError(key); updateLocal(key, 'maNhanVien', e.target.value) }}
+                              placeholder="Nhập mã NV"
+                            />
+                            {hasError && (
+                              <div style={{ fontSize: 10, color: '#ef4444', marginTop: 2, fontWeight: 600 }}>
+                                ⚠ Bắt buộc
+                              </div>
+                            )}
+                          </>
+                        )
+                      })()}
+                    </td>
+                    <td style={{ ...cellStyle, minWidth: 110 }}>
+                      <select
+                        style={{ ...inputStyle, cursor: 'pointer' }}
+                        value={s.nhomThucHien}
+                        onChange={e => { clearMaNvError(key); updateLocals(key, { nhomThucHien: e.target.value, nguoiThucHien: '', maNhanVien: '' }) }}
+                      >
+                        <option value="">-- Chọn nhóm --</option>
+                        {['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG'].map(v => (
+                          <option key={v} value={v}>{v}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td style={{ ...cellStyle, width: 100 }}>
+                      <select
+                        style={{ ...inputStyle, cursor: 'pointer', fontWeight: 600, color: s.caSanXuat === 'HC' ? '#389e0d' : s.caSanXuat ? '#1677ff' : undefined }}
+                        value={s.caSanXuat}
+                        onChange={e => {
+                          const ca = e.target.value
+                          const newCong = calcCong(s.thoiGianBatDau, ca)
+                          updateLocals(key, { caSanXuat: ca, congThucHien: newCong })
+                        }}
+                      >
+                        <option value="">-- Chọn ca --</option>
+                        <option value="Ca 1">Ca 1</option>
+                        <option value="Ca 2">Ca 2</option>
+                        <option value="HC">Hành Chính</option>
+                      </select>
                     </td>
                     <td style={{ ...cellStyle, width: 90 }}>
                       <input style={{ ...inputStyle, textAlign: 'right' }} type="number" step="0.01" min="0"
                         value={s.thoiGianBatDau}
-                        onChange={e => updateLocal(key, 'thoiGianBatDau', e.target.value)} />
+                        onChange={e => {
+                          const tg = e.target.value
+                          const newCong = calcCong(tg, s.caSanXuat)
+                          updateLocals(key, { thoiGianBatDau: tg, congThucHien: newCong })
+                        }} />
                     </td>
                     <td style={{ ...cellStyle, width: 110 }}>
                       <input style={{ ...inputStyle, textAlign: 'right' }} type="number" step="0.0001"
@@ -669,22 +1093,20 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
                         onChange={e => updateLocal(key, 'congThucHien', e.target.value)} />
                     </td>
                     <td style={{ ...cellStyle, minWidth: 110 }}>
-                      <input style={inputStyle} value={s.vaiTro}
-                        onChange={e => updateLocal(key, 'vaiTro', e.target.value)} />
+                      <input
+                        list={`vaitro-list-${key}`}
+                        style={{ ...inputStyle, border: '1px solid #d9d9d9', borderRadius: 3, padding: '1px 5px', background: '#fff' }}
+                        value={s.vaiTro}
+                        placeholder="Chọn hoặc nhập..."
+                        onChange={e => updateLocal(key, 'vaiTro', e.target.value)}
+                      />
+                      <datalist id={`vaitro-list-${key}`}>
+                        {vaiTroOptions.map(v => <option key={v} value={v} />)}
+                      </datalist>
                     </td>
                     <td style={{ ...cellStyle, minWidth: 150 }}>
                       <input style={inputStyle} value={s.ghiChu}
                         onChange={e => updateLocal(key, 'ghiChu', e.target.value)} />
-                    </td>
-                    <td style={{ ...cellStyle, width: 90, whiteSpace: 'nowrap' }}>
-                      <Space size={4}>
-                        <Button size="small" type="primary" loading={isSaving}
-                          onClick={() => saveRow(s)}>Lưu</Button>
-                        <Popconfirm title="Xóa dòng này?" okText="Xóa" cancelText="Hủy"
-                          onConfirm={() => deleteRow(s)}>
-                          <Button size="small" danger>Xóa</Button>
-                        </Popconfirm>
-                      </Space>
                     </td>
                   </tr>
                 )
@@ -692,7 +1114,43 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
             </tbody>
           </table>
         </div>
-        <Button icon={<PlusOutlined />} onClick={() => addRowToDay(ngayKey)} type="dashed" block>Thêm dòng</Button>
+        {canEditDetail && (
+          isInBatchMode ? (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button
+                type="primary" icon={<CheckOutlined />} loading={isBatchSaving}
+                onClick={() => saveAllForDay(ngayKey)}
+                style={{ flex: 1 }}>
+                💾 Lưu tất cả
+              </Button>
+              <Button icon={<PlusOutlined />} onClick={() => addRowToDay(ngayKey)} type="dashed">
+                Thêm dòng
+              </Button>
+              <Button icon={<CloseOutlined />} onClick={() => {
+                setSessions(prev => prev.filter(s => (s.ngay || 'unknown') !== ngayKey || s.id))
+                setBatchEditDays(prev => { const n = new Set(prev); n.delete(ngayKey); return n })
+                setEditingKeys(prev => {
+                  const n = new Set(prev)
+                  sessions.filter(s => (s.ngay || 'unknown') === ngayKey).forEach(s => n.delete(s.id || s._tempId))
+                  return n
+                })
+              }}>Hủy</Button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 8 }}>
+              {detailRows.length > 0 && (
+                <Button icon={<EditOutlined />} onClick={() => {
+                  setBatchEditDays(prev => new Set([...prev, ngayKey]))
+                }}>
+                  ✏ Cập nhật
+                </Button>
+              )}
+              <Button icon={<PlusOutlined />} onClick={() => addRowToDay(ngayKey)} type="dashed" style={{ flex: 1 }}>
+                + Thêm dòng
+              </Button>
+            </div>
+          )
+        )}
       </>
     )
   }
@@ -705,38 +1163,399 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved }) {
     closable: key !== 'list',
     children: (
       <>
-        <HeaderTable />
         {key === 'list' ? renderListTab() : renderDayTab(key)}
       </>
     ),
   }))
 
+  const handleDrawerClose = () => {
+    if (isDirty) {
+      Modal.confirm({
+        title: 'Có thay đổi chưa lưu',
+        content: 'Bạn chưa nhấn "Cập nhật". Thoát sẽ mất các thay đổi vừa nhập.',
+        okText: 'Thoát không lưu',
+        okType: 'danger',
+        cancelText: 'Quay lại',
+        onOk: () => { setIsDirty(false); onClose() },
+      })
+    } else {
+      onClose()
+    }
+  }
+
   return (
     <Drawer
       title={<Space><EyeOutlined /><span>Chi tiết sản xuất — {schedule?.tenTrinh || schedule?.maSp}</span></Space>}
       open={open}
-      onClose={onClose}
-      width={1000}
-      styles={{ body: { padding: '8px 16px' } }}
+      onClose={handleDrawerClose}
+      width="100vw"
+      styles={{ body: { padding: 0, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' } }}
     >
-      {loading ? <Spin style={{ display: 'block', margin: '40px auto' }} /> : (
-        <Tabs
-          type="editable-card"
-          hideAdd
-          activeKey={activeTabKey}
-          onChange={setActiveTabKey}
-          onEdit={(key, action) => { if (action === 'remove') closeTab(key) }}
-          items={tabItems}
-          size="small"
-          style={{ marginTop: -8 }}
-        />
+      {/* ── Styles (tách ra ngoài để không bị flex shrink) ── */}
+      <style>{`
+          .erp-info-form .ant-form-item { margin-bottom: 0 !important; }
+          .erp-info-form .ant-form-item-label { display: none !important; }
+          .erp-info-form .ant-input, .erp-info-form .ant-input-number-input { font-size: 12px !important; color: #00CC00 !important; }
+          .erp-info-form .ant-select-selector { font-size: 12px !important; }
+          .erp-info-form .ant-input-number { width: 100% !important; }
+          .erp-info-form .ant-picker { width: 100% !important; font-size: 12px !important; }
+          .erp-info-form .ant-picker-input input { color: #00CC00 !important; }
+          .erp-info-form .ant-select-selection-item { color: #00CC00 !important; }
+
+          /* ── Ô trống: nền #99CCCC, placeholder #669966 ── */
+          .erp-info-form input.ant-input:placeholder-shown { background-color: #99CCCC !important; }
+          .erp-info-form textarea.ant-input:placeholder-shown { background-color: #99CCCC !important; }
+          .erp-info-form .ant-input-affix-wrapper:has(input.ant-input:placeholder-shown) { background-color: #99CCCC !important; }
+          .erp-info-form .ant-picker:has(input:placeholder-shown) { background-color: #99CCCC !important; }
+          .erp-info-form .ant-select-selector:has(.ant-select-selection-placeholder) { background-color: #99CCCC !important; }
+          .erp-info-form .ant-input::placeholder { color: #669966 !important; opacity: 1 !important; }
+          .erp-info-form textarea.ant-input::placeholder { color: #669966 !important; opacity: 1 !important; }
+          .erp-info-form .ant-picker-input input::placeholder { color: #669966 !important; opacity: 1 !important; }
+          .erp-info-form .ant-select-selection-placeholder { color: #669966 !important; }
+
+          /* ── ERP form scroll cap: tắt trên màn hình nhỏ ── */
+          @media (max-height: 750px) {
+            .erp-form-scroll-cap { max-height: none !important; overflow-y: visible !important; }
+          }
+
+          /* ── Tabs Chi tiết / ngày ── */
+          .ws-detail-tabs .ant-tabs-tab {
+            background: #f1f5f9 !important;
+            border: 1.5px solid #d1d5db !important;
+            border-bottom: none !important;
+            margin-right: 3px !important;
+            padding: 4px 14px !important;
+            transition: all 0.18s;
+          }
+          .ws-detail-tabs .ant-tabs-tab .ant-tabs-tab-btn {
+            color: #475569 !important;
+            font-weight: 600;
+            font-size: 12px;
+          }
+          .ws-detail-tabs .ant-tabs-tab:hover {
+            background: #dbeafe !important;
+            border-color: #93c5fd !important;
+          }
+          .ws-detail-tabs .ant-tabs-tab:hover .ant-tabs-tab-btn { color: #1D4ED8 !important; }
+          .ws-detail-tabs .ant-tabs-tab.ant-tabs-tab-active {
+            background: #1D4ED8 !important;
+            border-color: #1D4ED8 !important;
+          }
+          .ws-detail-tabs .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+            color: #ffffff !important;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+          }
+          .ws-detail-tabs .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-remove { color: rgba(255,255,255,0.85) !important; }
+          .ws-detail-tabs .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-remove:hover { color: #ffffff !important; }
+          .ws-detail-tabs .ant-tabs-nav::before { border-color: #BFDBFE !important; }
+        `}</style>
+
+      {/* ── [1] Gradient header — luôn cố định, không bao giờ cuộn ── */}
+      <div style={{ flexShrink: 0, background: '#669999', padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span style={{ fontSize: 22, flexShrink: 0 }}>⚙️</span>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ color: '#fff', fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {schedule?.tenTrinh || schedule?.maSp || 'Chi tiết sản xuất'}
+          </div>
+          <div style={{ color: '#93c5fd', fontSize: 11, marginTop: 2, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {schedule?.maSp      && <span>SP: <b style={{ color: '#bfdbfe' }}>{schedule.maSp}</b></span>}
+            {schedule?.soLo      && <span>Lô: <b style={{ color: '#fcd34d' }}>{schedule.soLo}</b></span>}
+            {schedule?.congDoan  && <span>Công đoạn: <b style={{ color: '#a5f3fc' }}>{schedule.congDoan}</b></span>}
+            {schedule?.ngayThucHien && <span>Ngày: <b style={{ color: '#6ee7b7' }}>{dayjs(schedule.ngayThucHien).format('DD/MM/YYYY')}</b></span>}
+          </div>
+        </div>
+        {isInfoEditing ? (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button size="small"
+              onClick={() => { setIsInfoEditing(false); setIsDirty(false); setLookupStatus(null); infoForm.setFieldsValue({ ...schedule, ngayThucHien: schedule?.ngayThucHien ? dayjs(schedule.ngayThucHien) : null }) }}
+              style={{ fontWeight: 600, fontSize: 11, background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.35)', color: '#fff', borderRadius: 6, height: 32 }}>
+              Hủy
+            </Button>
+            <Button type="primary" loading={infoSaving} onClick={saveInfo}
+              style={{ flexShrink: 0, background: '#16a34a', borderColor: '#16a34a', fontWeight: 700, height: 32, minWidth: 110, fontSize: 12, borderRadius: 6,
+                ...(isDirty ? { boxShadow: '0 0 0 3px rgba(22,163,74,0.5)' } : {}) }}>
+              Cập nhật
+            </Button>
+          </div>
+        ) : (
+          <Button onClick={() => setIsInfoEditing(true)}
+            style={{ flexShrink: 0, background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.35)', fontWeight: 700, height: 36, minWidth: 130, fontSize: 12, borderRadius: 6, backdropFilter: 'blur(4px)', color: '#fff' }}>
+            Cập nhật
+          </Button>
+        )}
+      </div>
+
+      {/* ── [2] ERP Info form — giới hạn chiều cao, cuộn nội bộ nếu quá dài ── */}
+      <div className="erp-form-scroll-cap" style={{ flexShrink: 0, maxHeight: 230, overflowY: 'auto', borderBottom: '2px solid #e2e8f0', background: '#fff' }}>
+        <Form form={infoForm} layout="vertical" className="erp-info-form" onValuesChange={() => { if (isInfoEditing) setIsDirty(true) }}>
+          {(() => {
+            const LC = ({ children, accent }) => (
+              <div style={{
+                padding: '6px 10px', background: '#f1f5f9',
+                fontWeight: 700, fontSize: 11, color: accent || '#64748b',
+                borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0',
+                display: 'flex', alignItems: 'center', gap: 4,
+                textTransform: 'uppercase', letterSpacing: 0.4,
+              }}>{children}</div>
+            )
+            const VC = ({ children, style: s = {}, span }) => (
+              <div style={{
+                padding: '4px 8px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0',
+                display: 'flex', alignItems: 'center',
+                ...(span ? { gridColumn: `span ${span}` } : {}),
+                ...s,
+              }}>{children}</div>
+            )
+            return (
+              <div style={{ padding: '10px 16px 10px', background: '#fff' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 110px 1fr 110px 1fr 110px 1fr', border: '1px solid #e2e8f0', borderRadius: 7, overflow: 'hidden' }}>
+
+                  {/* Row 1 — Product IDs + Cỡ Lô */}
+                  <LC accent="#1677ff">🔷 Mã Bravo{isInfoEditing && <span style={{ marginLeft: 2 }}>{infoLookupIcon()}</span>}</LC>
+                  <VC>
+                    <Form.Item name="maBravo" noStyle>
+                      <Input size="small" onBlur={handleInfoMaBravoBlur} allowClear disabled={!isInfoEditing}
+                        style={{ fontWeight: 700, color: '#1677ff', fontFamily: 'monospace', width: '100%' }} />
+                    </Form.Item>
+                  </VC>
+                  <LC accent="#607080">🔹 Mã SP</LC>
+                  <VC>
+                    <Form.Item name="maSp" noStyle>
+                      <Input size="small" onBlur={handleInfoMaSpBlur} allowClear disabled={!isInfoEditing} style={{ fontWeight: 600, color: '#607080', width: '100%' }} />
+                    </Form.Item>
+                  </VC>
+                  <LC accent="#d46b08">🏷 Số Lô</LC>
+                  <VC>
+                    <Form.Item name="soLo" noStyle>
+                      <Input size="small" disabled={!isInfoEditing} style={{ fontFamily: 'monospace', fontWeight: 700, color: '#d46b08', width: '100%' }} />
+                    </Form.Item>
+                  </VC>
+                  <LC accent="#f97316">📦 Cỡ Lô</LC>
+                  <VC style={{ borderRight: 'none' }}>
+                    <Form.Item name="coLo" noStyle>
+                      <InputNumber size="small" min={0} step={1} disabled={!isInfoEditing}
+                        formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
+                        parser={v => v ? v.replace(/[^\d]/g, '') : 0}
+                        style={{ width: '100%', fontWeight: 700 }} />
+                    </Form.Item>
+                  </VC>
+
+                  {/* Row 2 — Tiến trình (full width) */}
+                  <LC>📝 Tiến Trình</LC>
+                  <VC span={7}>
+                    <Form.Item name="tenTrinh" noStyle>
+                      <Input size="small" disabled={!isInfoEditing} style={{ width: '100%', fontSize: 12 }} />
+                    </Form.Item>
+                  </VC>
+
+                  {/* Row 3 — Schedule info */}
+                  <LC>📅 Ngày TH</LC>
+                  <VC>
+                    <Form.Item name="ngayThucHien" noStyle rules={[{ required: true }]}>
+                      <DatePicker size="small" format="DD/MM/YYYY" disabled={!isInfoEditing} style={{ width: '100%' }} />
+                    </Form.Item>
+                  </VC>
+                  <LC>🔘 Tình Trạng</LC>
+                  <VC>
+                    <Form.Item name="tinhTrang" noStyle>
+                      <Select size="small" allowClear placeholder="Chọn" disabled={!isInfoEditing} style={{ width: '100%' }}>
+                        {TINH_TRANG_OPTIONS.map(o => <Option key={o.value} value={o.value}>{o.label}</Option>)}
+                      </Select>
+                    </Form.Item>
+                  </VC>
+                  <LC accent="#607080">👥 Tổ / Nhóm</LC>
+                  <VC>
+                    <Form.Item name="toNhom" noStyle>
+                      {TO_NHOM_OPTIONS[schedule?.congDoan]
+                        ? <Select size="small" allowClear placeholder="Chọn nhóm" disabled={!isInfoEditing} style={{ width: '100%' }}>
+                            {TO_NHOM_OPTIONS[schedule?.congDoan].map(o => <Option key={o} value={o}>{o}</Option>)}
+                          </Select>
+                        : <Input size="small" placeholder="Nhập nhóm" disabled={!isInfoEditing} style={{ width: '100%' }} />}
+                    </Form.Item>
+                  </VC>
+                  <LC>🏢 Phòng TH</LC>
+                  <VC style={{ borderRight: 'none' }}>
+                    <Form.Item name="phongThucHien" noStyle>
+                      <PhongThucHienSelect size="small" disabled={!isInfoEditing} style={{ width: '100%' }} placeholder="VD: Pha chế 06" />
+                    </Form.Item>
+                  </VC>
+
+                  {/* Row 4 — Personnel + Notes */}
+                  <LC>🙋 Trưởng Ca</LC>
+                  <VC>
+                    <Form.Item name="truongCa" noStyle>
+                      <AutoComplete
+                        size="small"
+                        placeholder="Họ tên trưởng ca"
+                        disabled={!isInfoEditing}
+                        style={{ width: '100%' }}
+                        options={(watchedToNhom
+                          ? employees.filter(e => e.toNhom === watchedToNhom)
+                          : employees
+                        ).map(e => ({ value: e.hoVaTen }))}
+                        filterOption={(input, option) =>
+                          option.value.toLowerCase().includes(input.toLowerCase())
+                        }
+                      />
+                    </Form.Item>
+                  </VC>
+                  <LC>👤 Hỗ Trợ</LC>
+                  <VC>
+                    <Form.Item name="nguoiHoTro" noStyle>
+                      <AutoComplete
+                        size="small"
+                        placeholder="Họ tên (nếu có)"
+                        disabled={!isInfoEditing}
+                        style={{ width: '100%' }}
+                        options={(watchedToNhom
+                          ? employees.filter(e => e.toNhom === watchedToNhom)
+                          : employees
+                        ).map(e => ({ value: e.hoVaTen }))}
+                        filterOption={(input, option) =>
+                          option.value.toLowerCase().includes(input.toLowerCase())
+                        }
+                      />
+                    </Form.Item>
+                  </VC>
+                  <LC accent="#d97706">⚠ Sai Lệch</LC>
+                  <VC>
+                    <Form.Item name="saiLech" noStyle>
+                      <Input.TextArea size="small" rows={2} disabled={!isInfoEditing} style={{ width: '100%', fontSize: 11, borderColor: '#fbbf24', resize: 'none' }} />
+                    </Form.Item>
+                  </VC>
+                  <LC>💬 Chú Ý</LC>
+                  <VC style={{ borderRight: 'none' }}>
+                    <Form.Item name="chuY" noStyle>
+                      <Input.TextArea size="small" rows={2} disabled={!isInfoEditing} style={{ width: '100%', fontSize: 11, resize: 'none' }} />
+                    </Form.Item>
+                  </VC>
+
+                  {/* Row 5 — Tổng hợp sản lượng (chỉ đọc) */}
+                  <LC accent="#389e0d">📊 Sản Lượng</LC>
+                  <VC>
+                    <span style={{ fontWeight: 700, color: tongSanLuong ? '#389e0d' : '#aaa', fontFamily: 'monospace', fontSize: 13 }}>
+                      {tongSanLuong ? tongSanLuong.toLocaleString('vi-VN') : '—'}
+                    </span>
+                  </VC>
+                  <LC accent="#1677ff">⏱ Tổng Công</LC>
+                  <VC>
+                    <span style={{ fontWeight: 700, color: tongCong ? '#1677ff' : '#aaa', fontFamily: 'monospace', fontSize: 13 }}>
+                      {tongCong ? tongCong.toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : '—'}
+                    </span>
+                  </VC>
+                  <LC accent="#d46b08">⚡ Năng Suất</LC>
+                  <VC>
+                    {(() => {
+                      const ns = tongCong > 0 && tongSanLuong > 0 ? tongSanLuong / tongCong : null
+                      return ns != null
+                        ? <span style={{ fontWeight: 700, color: '#d46b08', fontFamily: 'monospace', fontSize: 13 }}>{Math.round(ns).toLocaleString('vi-VN')}</span>
+                        : <span style={{ color: '#aaa', fontSize: 13 }}>—</span>
+                    })()}
+                  </VC>
+                  <LC accent="#0891b2">🔬 QA Lấy mẫu</LC>
+                  <VC style={{ borderRight: 'none' }}>
+                    <Form.Item name="qaLayMau" noStyle>
+                      <InputNumber size="small" min={0} step={1} disabled={!isInfoEditing}
+                        formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
+                        parser={v => v ? v.replace(/[^\d]/g, '') : 0}
+                        style={{ width: '100%', fontWeight: 700 }} placeholder="0" />
+                    </Form.Item>
+                  </VC>
+                </div>
+              </div>
+            )
+          })()}
+        </Form>
+      </div>
+
+      {/* ── Header Table (cố định, không cuộn) ── */}
+      {/* Gọi là function call thay vì <HeaderTable /> để tránh React unmount/remount DOM khi re-render */}
+      <div style={{ flexShrink: 0, padding: '6px 16px 0', borderBottom: '1px solid #e2e8f0', background: '#fafcff' }}>
+        {HeaderTable()}
+      </div>
+
+      {/* ── BOTTOM 2/3: Sessions tabs ── */}
+      <div ref={scrollDivRef} style={{ flex: 1, overflowY: 'auto', padding: '8px 16px' }}>
+        {loading ? <Spin style={{ display: 'block', margin: '40px auto' }} /> : (
+          <Tabs
+            className="ws-detail-tabs"
+            type="editable-card"
+            hideAdd
+            activeKey={activeTabKey}
+            onChange={setActiveTabKey}
+            onEdit={(key, action) => { if (action === 'remove') closeTab(key) }}
+            items={tabItems}
+            size="small"
+            style={{ marginTop: -4 }}
+          />
+        )}
+      </div>
+
+      {/* ── Modal quản lý danh sách Vai Trò ── */}
+      <Modal
+        title={<Space><SettingOutlined />Quản lý danh sách Vai Trò</Space>}
+        open={vaiTroModalOpen}
+        onCancel={() => { setVaiTroModalOpen(false); setNewVaiTroInput('') }}
+        footer={null}
+        width={380}
+      >
+        <Space direction="vertical" style={{ width: '100%', marginTop: 8 }}>
+          {vaiTroOptions.map((opt, i) => (
+            <div key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Tag color={opt === 'Trưởng ca' ? 'gold' : opt === 'Phụ máy' ? 'geekblue' : 'default'}
+                style={{ flex: 1, margin: 0, padding: '3px 8px', fontSize: 13 }}>{opt}</Tag>
+              <Button size="small" danger icon={<DeleteOutlined />}
+                onClick={() => saveVaiTroOptions(vaiTroOptions.filter((_, j) => j !== i))} />
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <Input
+              value={newVaiTroInput}
+              onChange={e => setNewVaiTroInput(e.target.value)}
+              placeholder="Nhập vai trò mới..."
+              onPressEnter={addVaiTroOption}
+            />
+            <Button type="primary" icon={<PlusOutlined />} onClick={addVaiTroOption}>Thêm</Button>
+          </div>
+        </Space>
+      </Modal>
+
+      {contextMenu && (
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            position: 'fixed', top: contextMenu.y, left: contextMenu.x,
+            background: '#fff', border: '1px solid #e8e8e8', borderRadius: 6,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.18)', zIndex: 9999,
+            minWidth: 130, overflow: 'hidden', fontSize: 13,
+          }}>
+          {!batchEditDays.has(contextMenu.ngayKey) && (
+            <div
+              style={{ padding: '9px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#f0f5ff' }}
+              onMouseLeave={e => { e.currentTarget.style.background = '' }}
+              onClick={() => {
+                setBatchEditDays(prev => new Set([...prev, contextMenu.ngayKey]))
+                setContextMenu(null)
+              }}>
+              <EditOutlined style={{ color: '#1677ff' }} /> Sửa
+            </div>
+          )}
+          <div
+            style={{ padding: '9px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, color: '#cf1322' }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#fff1f0' }}
+            onMouseLeave={e => { e.currentTarget.style.background = '' }}
+            onClick={() => { deleteRow(contextMenu.s); setContextMenu(null) }}>
+            <DeleteOutlined /> Xóa
+          </div>
+        </div>
       )}
     </Drawer>
   )
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
-function WorkScheduleModal({ open, editItem, congDoan, extraFormFields = [], onClose, onSaved }) {
+function WorkScheduleModal({ open, editItem, congDoan, defaultToNhom, extraFormFields = [], onClose, onSaved }) {
   const [form] = Form.useForm()
   const [lookupStatus, setLookupStatus] = useState(null)
   const timerRef = useRef(null)
@@ -751,12 +1570,30 @@ function WorkScheduleModal({ open, editItem, congDoan, extraFormFields = [], onC
         setLookupStatus(null)
       } else {
         form.resetFields()
-        form.setFieldValue('ngayThucHien', dayjs())
+        if (defaultToNhom) form.setFieldValue('toNhom', defaultToNhom)
         setLookupStatus(null)
       }
     }
   }, [open, editItem])
 
+  // Primary: auto-fill Mã SP + Tiến trình khi nhập Mã Bravo
+  const handleMaBravoChange = (e) => {
+    const val = e.target.value?.trim()
+    if (timerRef.current) clearTimeout(timerRef.current)
+    if (!val) { setLookupStatus(null); return }
+    setLookupStatus('loading')
+    timerRef.current = setTimeout(async () => {
+      try {
+        const { data } = await api.get(`/product-master/lookup-by-bravo/${encodeURIComponent(val)}`)
+        form.setFieldsValue({ maSp: data.maTp, tenTrinh: data.tienTrinh })
+        setLookupStatus('found')
+      } catch {
+        setLookupStatus('not_found')
+      }
+    }, 500)
+  }
+
+  // Fallback: auto-fill Tiến trình khi nhập Mã SP
   const handleMaSpChange = (e) => {
     const val = e.target.value?.trim()
     if (timerRef.current) clearTimeout(timerRef.current)
@@ -783,9 +1620,27 @@ function WorkScheduleModal({ open, editItem, congDoan, extraFormFields = [], onC
         source: 'SCHEDULE',
       }
       if (editItem) {
-        await api.put(`/work-schedule/${editItem.id}`, payload)
+        await api.put(`/work-schedule/${editItem.id}`, {
+          maDonHang: editItem.maDonHang ?? null,
+          maBravo:   editItem.maBravo   ?? null,
+          ...payload,
+        })
         message.success('Cập nhật thành công')
       } else {
+        if (payload.maSp) {
+          const params = { page: 0, size: 10, congDoan, source: 'SCHEDULE', maSp: payload.maSp }
+          if (payload.soLo) params.soLo = payload.soLo
+          const { data: existing } = await api.get('/work-schedule', { params })
+          const isDuplicate = existing.content?.some(r =>
+            r.maSp === payload.maSp &&
+            (r.soLo || '') === (payload.soLo || '') &&
+            (r.tenTrinh || '').trim() === (payload.tenTrinh || '').trim()
+          )
+          if (isDuplicate) {
+            message.warning('Bản ghi đã tồn tại với Mã SP, Tiến trình và Số Lô này!')
+            return
+          }
+        }
         await api.post('/work-schedule', payload)
         message.success('Thêm mới thành công')
       }
@@ -825,8 +1680,13 @@ function WorkScheduleModal({ open, editItem, congDoan, extraFormFields = [], onC
             </Form.Item>
           </Col>
           <Col xs={24} sm={12} md={8}>
-            <Form.Item label={<Space size={4}><span>Mã SP</span>{lookupIcon()}</Space>} name="maSp">
-              <Input onChange={handleMaSpChange} placeholder="Nhập để tự điền tiến trình" allowClear />
+            <Form.Item label={<Space size={4}><span>Mã Bravo</span>{lookupIcon()}</Space>} name="maBravo">
+              <Input onChange={handleMaBravoChange} placeholder="Nhập để tự điền Mã SP và tiến trình" allowClear />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={12} md={8}>
+            <Form.Item label="Mã SP" name="maSp">
+              <Input onChange={handleMaSpChange} placeholder="Tự động điền hoặc nhập tay" allowClear />
             </Form.Item>
           </Col>
           <Col xs={24} sm={12} md={8}>
@@ -885,7 +1745,7 @@ function WorkScheduleModal({ open, editItem, congDoan, extraFormFields = [], onC
           </Col>
           <Col xs={24} sm={12} md={8}>
             <Form.Item label="Phòng thực hiện" name="phongThucHien">
-              <Input />
+              <PhongThucHienSelect style={{ width: '100%' }} />
             </Form.Item>
           </Col>
           <Col xs={24} sm={12} md={8}>
@@ -935,17 +1795,19 @@ function WorkScheduleModal({ open, editItem, congDoan, extraFormFields = [], onC
 }
 
 // ── StageTab ──────────────────────────────────────────────────────────────────
-function StageTab({ congDoan, config, onSaved: parentOnSaved, jumpTarget }) {
+function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved, jumpTarget }) {
   const navigate = useNavigate()
-  const { canEditStage } = useAuth()
+  const { canEditStage, getAllowedNhom } = useAuth()
+  const allowedNhom = forcedNhom || (congDoan === 'PC' ? getAllowedNhom() : null)
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 })
+  const paginationRef = useRef({ current: 1, pageSize: 20 })
   const [filters, setFilters] = useState({
     dateRange: null,
     maSp: '',
     tenTrinh: '',
-    soLo: jumpTarget?.soLo || '',
+    soLo: '',
     tinhTrang: ''
   })
   const [modalOpen, setModalOpen] = useState(false)
@@ -955,11 +1817,30 @@ function StageTab({ congDoan, config, onSaved: parentOnSaved, jumpTarget }) {
   const [detailSchedule, setDetailSchedule] = useState(null)
   const [highlightId, setHighlightId] = useState(null)
   const [nsMap, setNsMap] = useState({})
+  const [updatingTT, setUpdatingTT] = useState({})
+  const [innerTab, setInnerTab] = useState('list')
+  const [hiddenCount, setHiddenCount] = useState(0)
   const jumpApplied = useRef(false)
   const controlsRef = useRef(null)
 
-  const fetchData = useCallback(async (page = 0, size = 20, f = filters) => {
-    setLoading(true)
+  const patchTinhTrang = async (record, newTT) => {
+    setUpdatingTT(p => ({ ...p, [record.id]: true }))
+    try {
+      await api.patch(`/work-schedule/${record.id}/tinh-trang`, { tinhTrang: newTT || null })
+      setData(prev => prev.map(r => r.id === record.id ? { ...r, tinhTrang: newTT || null } : r))
+      parentOnSaved?.()
+    } catch { message.error('Cập nhật tình trạng thất bại') }
+    finally { setUpdatingTT(p => { const n = { ...p }; delete n[record.id]; return n }) }
+  }
+
+  const parseSoLo = (soLo) => {
+    if (!soLo || soLo.length !== 6) return 0
+    const yy = soLo.slice(4, 6), mm = soLo.slice(2, 4), dd = soLo.slice(0, 2)
+    return parseInt(`${yy}${mm}${dd}`, 10)
+  }
+
+  const fetchData = useCallback(async (page = 0, size = 20, f = filters, { silent = false } = {}) => {
+    if (!silent) setLoading(true)
     try {
       const params = {
         page, size, congDoan, source: 'SCHEDULE',
@@ -969,10 +1850,16 @@ function StageTab({ congDoan, config, onSaved: parentOnSaved, jumpTarget }) {
         tenTrinh: f.tenTrinh || undefined,
         soLo: f.soLo || undefined,
         tinhTrang: f.tinhTrang || undefined,
+        toNhom: allowedNhom || undefined,
       }
       const { data: res } = await api.get('/work-schedule', { params })
-      setData(res.content)
-      setPagination(p => ({ ...p, total: res.totalElements }))
+      const sorted = [...res.content].sort((a, b) => parseSoLo(b.soLo) - parseSoLo(a.soLo))
+      setData(sorted)
+      setPagination(p => {
+        const next = { ...p, total: res.totalElements }
+        paginationRef.current = { current: next.current, pageSize: next.pageSize }
+        return next
+      })
       // Fetch NS trung bình cho từng mã SP ngay sau khi có dữ liệu
       const uniqueMaSp = [...new Set(res.content.map(r => r.maSp).filter(Boolean))]
       if (uniqueMaSp.length > 0) {
@@ -992,25 +1879,68 @@ function StageTab({ congDoan, config, onSaved: parentOnSaved, jumpTarget }) {
         setNsMap({})
       }
     } catch { message.error('Không thể tải dữ liệu') }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [congDoan, filters])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchData(0) }, [congDoan])
 
+  useEffect(() => {
+    const handler = () => {
+      if (detailOpen) return  // pause khi drawer đang mở
+      fetchData(paginationRef.current.current - 1, paginationRef.current.pageSize, undefined, { silent: true })
+    }
+    window.addEventListener('app:silent-refresh', handler)
+    return () => window.removeEventListener('app:silent-refresh', handler)
+  }, [fetchData, detailOpen])
+
+  // ── Auto-refresh mỗi 3 giây, giữ nguyên trang + filter ──────────────────
+  const AUTO_REFRESH_SEC = 3
+  const [arCountdown, setArCountdown] = useState(AUTO_REFRESH_SEC)
+  const [arLastAt,    setArLastAt]    = useState(null)
+
+  useEffect(() => {
+    setArCountdown(AUTO_REFRESH_SEC)
+    const tick = setInterval(() => {
+      if (detailOpen) return  // dừng hoàn toàn khi drawer đang mở
+      setArCountdown(c => {
+        if (c <= 1) {
+          const active = document.activeElement
+          const isTyping = active && ['INPUT', 'TEXTAREA', 'SELECT'].includes(active.tagName)
+          if (!isTyping) {
+            fetchData(
+              paginationRef.current.current - 1,
+              paginationRef.current.pageSize,
+              undefined,
+              { silent: true }
+            )
+            setArLastAt(new Date())
+          }
+          return AUTO_REFRESH_SEC
+        }
+        return c - 1
+      })
+    }, 1000)
+    return () => clearInterval(tick)
+  }, [fetchData, detailOpen])
+
   // Sau khi dữ liệu tải xong, tìm hàng khớp jumpTarget và highlight/scroll
   useEffect(() => {
     if (!jumpTarget || jumpApplied.current || data.length === 0) return
-    const match = data.find(r =>
-      (r.tenTrinh || '').trim() === (jumpTarget.tienTrinh || '').trim() &&
-      (r.soLo || '') === (jumpTarget.soLo || '')
-    )
+    const tienTrinhTarget = (jumpTarget.tienTrinh || '').trim()
+    const match = data.find(r => {
+      const tienTrinhMatch = (r.tenTrinh || '').trim() === tienTrinhTarget
+      if (!tienTrinhMatch) return false
+      if (jumpTarget.soLo) return (r.soLo || '') === jumpTarget.soLo
+      if (jumpTarget.maSp) return (r.maSp || '') === jumpTarget.maSp
+      return true
+    })
     if (match) {
       setHighlightId(match.id)
       jumpApplied.current = true
       setTimeout(() => {
         document.getElementById(`ws-row-${match.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      }, 250)
+      }, 300)
     }
   }, [data])
 
@@ -1032,84 +1962,153 @@ function StageTab({ congDoan, config, onSaved: parentOnSaved, jumpTarget }) {
   const handleDelete = async (id) => {
     try {
       await api.delete(`/work-schedule/${id}`)
-      message.success('Đã xóa')
+      message.success('Đã chuyển vào thùng rác')
       fetchData(pagination.current - 1)
       parentOnSaved?.()
     } catch { message.error('Xóa thất bại') }
   }
 
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [selectedRowKeys, setSelectedRowKeys] = useState([])
+
+  const handleDeleteAll = async () => {
+    const ids = data.map(r => r.id)
+    if (ids.length === 0) return
+    setBulkDeleting(true)
+    try {
+      const { data: res } = await api.delete('/work-schedule/bulk', { data: ids })
+      message.success(`Đã xóa ${res.deleted} bản ghi`)
+      setSelectedRowKeys([])
+      fetchData(0)
+      parentOnSaved?.()
+    } catch { message.error('Xóa thất bại') }
+    finally { setBulkDeleting(false) }
+  }
+
+  const handleBulkDeleteSelected = async () => {
+    if (selectedRowKeys.length === 0) return
+    setBulkDeleting(true)
+    try {
+      const { data: res } = await api.delete('/work-schedule/bulk', { data: selectedRowKeys })
+      message.success(`Đã xóa ${res.deleted} bản ghi đã chọn`)
+      setSelectedRowKeys([])
+      fetchData(0)
+      parentOnSaved?.()
+    } catch { message.error('Xóa thất bại') }
+    finally { setBulkDeleting(false) }
+  }
+
+  const handleHide = async (id) => {
+    try {
+      await api.patch(`/work-schedule/${id}/hidden`, { hidden: true })
+      setData(prev => prev.filter(r => r.id !== id))
+      setHiddenCount(c => c + 1)
+      message.success('Đã ẩn bản ghi — xem trong tab "Đã ẩn"')
+      parentOnSaved?.()
+    } catch { message.error('Ẩn thất bại') }
+  }
+
   useEffect(() => {
-    if (controlsRef.current) setHeaderOffset(46 + controlsRef.current.offsetHeight + 8)
+    if (controlsRef.current) setHeaderOffset(46 + 38 + controlsRef.current.offsetHeight + 2)
   })
 
   const onSaved = () => { fetchData(0); parentOnSaved?.() }
 
   const columns = [
     {
+      title: '#', key: 'stt', width: 48, fixed: 'left', align: 'center',
+      render: (_, __, index) => {
+        const pageSize = pagination.pageSize || 20
+        const currentPage = pagination.current || 1
+        return <span style={{ color: '#8c8c8c', fontSize: 12 }}>{pagination.total - (currentPage - 1) * pageSize - index}</span>
+      },
+    },
+    {
       title: 'Ngày TH', dataIndex: 'ngayThucHien', key: 'ngayThucHien', width: 95, fixed: 'left',
+      sorter: (a, b) => (a.ngayThucHien || '').localeCompare(b.ngayThucHien || ''),
       render: v => v ? (
         <div style={{ textAlign: 'center', lineHeight: 1.3 }}>
-          <div style={{ fontWeight: 600, fontSize: 13 }}>{dayjs(v).format('DD/MM')}</div>
+          <div style={{ fontWeight: 600, fontSize: 12, color: '#000011' }}>{dayjs(v).format('DD/MM')}</div>
           <div style={{ color: '#8c8c8c', fontSize: 11 }}>{dayjs(v).format('YYYY')}</div>
         </div>
       ) : '—'
     },
     {
+      title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 100, fixed: 'left', align: 'center',
+      ...colSearch('maBravo'),
+      render: v => v ? <Tag color="blue" style={{ fontWeight: 600, marginRight: 0, fontFamily: 'monospace', color: '#000011' }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>
+    },
+    {
       title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 80, fixed: 'left', align: 'center',
-      render: v => v ? <Tag color="blue" style={{ fontWeight: 600, marginRight: 0 }}>{v}</Tag> : '—'
+      ...colSearch('maSp'),
+      render: v => v ? <span style={{ fontWeight: 600, color: '#000011', fontSize: 12 }}>{v}</span> : '—'
     },
     {
       title: 'Tiến trình', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 210, fixed: 'left',
-      render: (v, record) => (
-        <div>
-          <div
-            style={{ color: '#1677ff', cursor: 'pointer', fontWeight: 500, lineHeight: 1.4, marginBottom: 2, wordBreak: 'break-word' }}
-            onClick={() => { setDetailSchedule(record); setDetailOpen(true) }}
-          >
-            {v || '—'}
-          </div>
-          <Button
-            type="link" size="small" icon={<LinkOutlined />}
-            style={{ padding: 0, height: 'auto', fontSize: 11, color: '#52c41a' }}
-            onClick={() => navigate('/', { state: { backJump: { tienTrinh: record.tenTrinh, soLo: record.soLo, maTp: record.maSp } } })}
-          >
-            Xem SL
-          </Button>
+      ...colSearch('tenTrinh'),
+      render: (v) => (
+        <div style={{ color: '#000011', fontWeight: 500, lineHeight: 1.4, wordBreak: 'break-word' }}>
+          {v || '—'}
         </div>
       )
     },
     {
       title: 'Số lô', dataIndex: 'soLo', key: 'soLo', width: 82, fixed: 'left',
-      render: v => <span style={{ color: '#595959', fontFamily: 'monospace', fontSize: 12 }}>{v || '—'}</span>
+      ...colSearch('soLo'),
+      render: v => <span style={{ color: '#000011', fontFamily: 'monospace', fontSize: 12 }}>{v || '—'}</span>
+    },
+    {
+      title: 'Mã ĐH', dataIndex: 'maDonHang', key: 'maDonHang', width: 90, align: 'center',
+      ...colSearch('maDonHang'),
+      render: v => v ? <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#7c3aed', fontWeight: 600 }}>{v}</span>
+                     : <span style={{ color: '#d9d9d9' }}>—</span>
     },
     {
       title: 'Cỡ lô', dataIndex: 'coLo', key: 'coLo', width: 80, align: 'right',
-      render: v => (v != null && v !== '') ? <span style={{ fontWeight: 500 }}>{Number(v).toLocaleString('vi-VN')}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+      sorter: (a, b) => (Number(a.coLo) || 0) - (Number(b.coLo) || 0),
+      render: v => (v != null && v !== '') ? <span style={NUM_STYLE}>{Number(v).toLocaleString('vi-VN')}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
     },
     {
       title: 'Tổ/Nhóm TH', dataIndex: 'toNhom', key: 'toNhom', width: 120, ellipsis: true,
-      render: v => v ? <span style={{ whiteSpace: 'pre-wrap' }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+      filters: ['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG'].map(v => ({ text: v, value: v })),
+      filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#fff' : 'rgba(255,255,255,0.7)' }} />,
+      onFilter: (value, record) => record.toNhom === value,
+      render: v => v ? <span style={{ ...TEXT_STYLE, whiteSpace: 'pre-wrap' }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
     },
     {
       title: 'Phòng TH', dataIndex: 'phongThucHien', key: 'phongThucHien', width: 100,
-      render: v => v || <span style={{ color: '#d9d9d9' }}>—</span>
+      ...colSearch('phongThucHien'),
+      render: v => v ? <span style={TEXT_STYLE}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
     },
     {
-      title: 'Trưởng ca', dataIndex: 'truongCa', key: 'truongCa', width: 100,
-      render: v => v || <span style={{ color: '#d9d9d9' }}>—</span>
+      title: 'Trưởng ca', dataIndex: 'truongCa', key: 'truongCa', width: 110, ellipsis: true,
+      ...colSearch('truongCa'),
+      render: v => v
+        ? <Tooltip title={v}><span style={{ ...TEXT_STYLE, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{v}</span></Tooltip>
+        : <span style={{ color: '#d9d9d9' }}>—</span>
     },
     {
       title: 'Người HT', dataIndex: 'nguoiHoTro', key: 'nguoiHoTro', width: 120, ellipsis: true,
-      render: v => v ? <span style={{ whiteSpace: 'pre-wrap' }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+      ...colSearch('nguoiHoTro'),
+      render: v => v
+        ? <Tooltip title={v}><span style={{ ...TEXT_STYLE, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{v}</span></Tooltip>
+        : <span style={{ color: '#d9d9d9' }}>—</span>
     },
     {
       title: 'Chú ý', dataIndex: 'chuY', key: 'chuY', width: 120, ellipsis: true,
+      ...colSearch('chuY'),
       render: v => v
-        ? <Tooltip title={v}><span style={{ color: '#8c8c8c' }}>{v}</span></Tooltip>
+        ? <Tooltip title={v}><span style={TEXT_STYLE}>{v}</span></Tooltip>
         : <span style={{ color: '#d9d9d9' }}>—</span>
     },
     {
       title: 'Sai lệch', dataIndex: 'saiLech', key: 'saiLech', width: 90, align: 'center',
+      filters: [
+        { text: 'Có sai lệch', value: 'yes' },
+        { text: 'Không sai lệch', value: 'no' },
+      ],
+      filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#fff' : 'rgba(255,255,255,0.7)' }} />,
+      onFilter: (value, record) => value === 'yes' ? !!record.saiLech : !record.saiLech,
       render: v => v
         ? <Tooltip title={v}><Tag color="orange" icon={<WarningOutlined />} style={{ marginRight: 0 }}>Có</Tag></Tooltip>
         : <Tag color="green" style={{ marginRight: 0 }}>Không</Tag>
@@ -1138,133 +2137,451 @@ function StageTab({ congDoan, config, onSaved: parentOnSaved, jumpTarget }) {
           <span style={{ fontWeight: 600, color }}>
             {Math.round(ns).toLocaleString('vi-VN')}
             <span style={{ fontSize: 11, fontWeight: 400, marginLeft: 3 }}>
-              {sign}{Math.round(delta).toLocaleString('vi-VN')} ({sign}{pct.toFixed(2)}%){arrow}
+              {sign}{Math.round(delta).toLocaleString('vi-VN')} ({sign}{pct.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%){arrow}
             </span>
           </span>
         )
       }
     },
     {
-      title: 'Tình trạng', dataIndex: 'tinhTrang', key: 'tinhTrang', width: 100, align: 'center',
-      render: tinhTrangTag
+      title: 'QA Lấy mẫu', dataIndex: 'qaLayMau', key: 'qaLayMau', width: 90, align: 'right',
+      render: v => v != null ? <span style={{ fontWeight: 600, color: '#0891b2' }}>{Number(v).toLocaleString('vi-VN')}</span> : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
     {
-      title: 'Thao tác', key: 'action', width: 80, fixed: 'right', align: 'center',
-      render: (_, record) => canEditStage(congDoan) ? (
-        <Space size={4}>
-          <Button size="small" type="text" icon={<EditOutlined />} style={{ color: '#1677ff' }}
-            onClick={() => { setEditItem(record); setModalOpen(true) }} />
-          <Popconfirm title="Xóa công việc này?" onConfirm={() => handleDelete(record.id)}
-            okText="Xóa" cancelText="Hủy">
-            <Button size="small" type="text" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
-      ) : null
+      title: 'Tình trạng', dataIndex: 'tinhTrang', key: 'tinhTrang', width: 112, align: 'center',
+      ...colStatus('tinhTrang'),
+      render: (v, record) => {
+        const canEdit = canEditStage(congDoan) &&
+          (!allowedNhom || !record.toNhom?.trim() || record.toNhom.trim() === allowedNhom)
+        if (!canEdit) return tinhTrangTag(v)
+        return (
+          <Select
+            size="small"
+            value={v || ''}
+            loading={!!updatingTT[record.id]}
+            onChange={val => patchTinhTrang(record, val || null)}
+            style={{ width: 96 }}
+            onClick={e => e.stopPropagation()}
+          >
+            <Option value="">—</Option>
+            <Option value="doing"><span style={{ color: '#fa8c16', fontWeight: 600 }}>● Doing</span></Option>
+            <Option value="done"><span style={{ color: '#52c41a', fontWeight: 600 }}>✓ Done</span></Option>
+          </Select>
+        )
+      }
+    },
+    {
+      key: 'action', width: 100, fixed: 'right', align: 'center',
+      title: () => canEditStage(congDoan) && !allowedNhom ? (
+        <Popconfirm
+          title={`Xóa tất cả ${data.length} bản ghi trên trang này?`}
+          description={<span style={{ color: '#cf1322', fontWeight: 600 }}>Hành động này không thể hoàn tác!</span>}
+          okText="Xóa tất cả" cancelText="Hủy"
+          okButtonProps={{ danger: true, loading: bulkDeleting }}
+          onConfirm={handleDeleteAll}
+        >
+          <Tooltip title="Xóa tất cả bản ghi đang hiển thị">
+            <Button size="small" type="text" danger icon={<DeleteOutlined />}
+              style={{ fontSize: 10, opacity: 0.75 }} loading={bulkDeleting}>
+              Tất cả
+            </Button>
+          </Tooltip>
+        </Popconfirm>
+      ) : <span style={{ fontWeight: 600, fontSize: 11 }}>Thao tác</span>,
+      render: (_, record) => {
+        const toNhom = record.toNhom?.trim() || ''
+        const canEdit = canEditStage(congDoan) &&
+          (!allowedNhom || !toNhom || toNhom === allowedNhom)
+        const menuItems = [
+          canEdit && {
+            key: 'edit',
+            label: 'Chỉnh sửa',
+            icon: <EditOutlined style={{ color: '#1677ff' }} />,
+            onClick: () => { setEditItem(record); setModalOpen(true) }
+          },
+          canEdit && {
+            key: 'delete',
+            label: (
+              <Popconfirm title="Xóa công việc này?" onConfirm={() => handleDelete(record.id)}
+                okText="Xóa" cancelText="Hủy">
+                <span style={{ color: '#ff4d4f' }}>
+                  <DeleteOutlined style={{ marginRight: 6 }} />Xóa
+                </span>
+              </Popconfirm>
+            ),
+          },
+          {
+            key: 'hide',
+            label: 'Ẩn bản ghi',
+            icon: <EyeInvisibleOutlined style={{ color: '#8c8c8c' }} />,
+            onClick: () => handleHide(record.id)
+          }
+        ].filter(Boolean)
+        return (
+          <div onClick={e => e.stopPropagation()}>
+            <Dropdown menu={{ items: menuItems }} trigger={['click']} placement="bottomRight">
+              <Button size="small" type="default"
+                style={{ fontSize: 11, padding: '0 6px', height: 24 }}>
+                Cập nhật <DownOutlined style={{ fontSize: 9 }} />
+              </Button>
+            </Dropdown>
+          </div>
+        )
+      }
     }
   ]
 
   return (
     <>
-      <div ref={controlsRef} style={{ position: 'sticky', top: 46, zIndex: 9, background: '#fff', paddingBottom: 8 }}>
-        <Card style={{ marginBottom: 8 }}>
-          <Row gutter={[12, 8]} align="bottom">
-            <Col xs={24} md={8}>
-              <RangePicker style={{ width: '100%' }} format="DD/MM/YYYY"
-                placeholder={['Từ ngày', 'Đến ngày']}
-                value={filters.dateRange}
-                onChange={v => setFilters(f => ({ ...f, dateRange: v }))} />
-            </Col>
-            <Col xs={24} sm={12} md={4}>
-              <Input placeholder="Mã SP" value={filters.maSp} allowClear
-                onChange={e => setFilters(f => ({ ...f, maSp: e.target.value }))}
-                onPressEnter={() => fetchData(0)} />
-            </Col>
-            <Col xs={24} sm={12} md={4}>
-              <Input placeholder="Tiến trình" value={filters.tenTrinh} allowClear
-                onChange={e => setFilters(f => ({ ...f, tenTrinh: e.target.value }))}
-                onPressEnter={() => fetchData(0)} />
-            </Col>
-            <Col xs={24} sm={12} md={4}>
-              <Input placeholder="Lô sản xuất" value={filters.soLo} allowClear
-                onChange={e => setFilters(f => ({ ...f, soLo: e.target.value }))}
-                onPressEnter={() => fetchData(0)} />
-            </Col>
-            <Col xs={24} sm={12} md={4}>
-              <Select style={{ width: '100%' }} placeholder="Tình trạng" allowClear
-                value={filters.tinhTrang || undefined}
-                onChange={v => setFilters(f => ({ ...f, tinhTrang: v || '' }))}>
-                <Option value="done">Done</Option>
-                <Option value="doing">Doing</Option>
-              </Select>
-            </Col>
-            <Col>
-              <Space>
-                <Button type="primary" icon={<SearchOutlined />} onClick={() => fetchData(0)}>Tìm</Button>
-                <Button icon={<ReloadOutlined />} onClick={() => {
-                  const reset = { dateRange: null, maSp: '', tenTrinh: '', soLo: '', tinhTrang: '' }
-                  setFilters(reset)
-                  fetchData(0, 20, reset)
-                }} />
-                {canEditStage(congDoan) && (
-                  <Button type="primary" icon={<PlusOutlined />}
-                    onClick={() => { setEditItem(null); setModalOpen(true) }}>
-                    Thêm mới
-                  </Button>
+      {/* ── Inner sub-tab bar (sticky ở top=46) ── */}
+      <div style={{
+        position: 'sticky', top: 46, zIndex: 10,
+        background: '#fff', borderBottom: '1px solid #e2e8f0',
+        display: 'flex', alignItems: 'center', gap: 0,
+        paddingLeft: 12,
+      }}>
+        {[
+          { key: 'list', label: 'Danh sách' },
+          {
+            key: 'hidden',
+            label: (
+              <span>
+                <EyeInvisibleOutlined style={{ marginRight: 5, color: hiddenCount > 0 ? '#722ed1' : undefined }} />
+                Đã ẩn
+                {hiddenCount > 0 && (
+                  <Badge count={hiddenCount} size="small" color="#722ed1" style={{ marginLeft: 5 }} />
                 )}
-              </Space>
-            </Col>
-          </Row>
-        </Card>
+              </span>
+            )
+          }
+        ].map(tab => (
+          <div
+            key={tab.key}
+            onClick={() => setInnerTab(tab.key)}
+            style={{
+              padding: '7px 18px',
+              cursor: 'pointer',
+              fontWeight: innerTab === tab.key ? 700 : 400,
+              fontSize: 13,
+              color: innerTab === tab.key ? (tab.key === 'hidden' ? '#722ed1' : '#1677ff') : '#595959',
+              borderBottom: innerTab === tab.key
+                ? `2px solid ${tab.key === 'hidden' ? '#722ed1' : '#1677ff'}`
+                : '2px solid transparent',
+              marginBottom: -1,
+              userSelect: 'none',
+              transition: 'color 0.15s',
+            }}
+          >
+            {tab.label}
+          </div>
+        ))}
       </div>
 
-      <Table
-        columns={columns}
-        dataSource={data}
-        rowKey="id"
-        loading={loading}
-        scroll={{ x: 1600 + config.extraTableCols.length * 87 }}
-        size="small"
-        sticky={{ offsetHeader: headerOffset }}
-        rowHoverable={false}
-        rowClassName={record => {
-          const slField = SL_FIELD_MAP[congDoan]
-          const sl = slField ? Number(record[slField]) || 0 : 0
-          const coLo = Number(record.coLo) || 0
-          const slExceeds = sl > 0 && coLo > 0 && sl > coLo
-          if (record.id === highlightId && record.saiLech) return 'row-has-deviation row-jump-highlight'
-          if (record.id === highlightId) return 'row-jump-highlight'
-          if (record.saiLech) return 'row-has-deviation'
-          if (slExceeds) return 'row-sl-exceed'
-          return getNsRowClass(record)
-        }}
-        onRow={record => ({ id: `ws-row-${record.id}` })}
-        pagination={{
-          ...pagination,
-          showSizeChanger: true,
-          showTotal: t => `Tổng ${t} bản ghi`,
-          onChange: (p, ps) => {
-            setPagination(prev => ({ ...prev, current: p, pageSize: ps }))
-            fetchData(p - 1, ps)
-          }
-        }}
+      {/* ── Tab: Danh sách ── */}
+      {innerTab === 'list' && (
+        <>
+          <div ref={controlsRef} style={{
+            position: 'sticky', top: 84, zIndex: 9,
+            background: '#f0f4ff', borderBottom: '2px solid #c5cef5',
+            padding: '6px 12px', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap'
+          }}>
+            <RangePicker size="small" style={{ width: 224 }} format="DD/MM/YYYY"
+              placeholder={['Từ ngày', 'Đến ngày']}
+              value={filters.dateRange}
+              onChange={v => setFilters(f => ({ ...f, dateRange: v }))} />
+            <Input size="small" style={{ width: 96 }} placeholder="Mã SP" value={filters.maSp} allowClear
+              onChange={e => setFilters(f => ({ ...f, maSp: e.target.value }))}
+              onPressEnter={() => fetchData(0)} />
+            <Input size="small" style={{ width: 148 }} placeholder="Tiến trình" value={filters.tenTrinh} allowClear
+              onChange={e => setFilters(f => ({ ...f, tenTrinh: e.target.value }))}
+              onPressEnter={() => fetchData(0)} />
+            <Input size="small" style={{ width: 110 }} placeholder="Lô sản xuất" value={filters.soLo} allowClear
+              onChange={e => setFilters(f => ({ ...f, soLo: e.target.value }))}
+              onPressEnter={() => fetchData(0)} />
+            <Select size="small" style={{ width: 110 }} placeholder="Tình trạng" allowClear
+              value={filters.tinhTrang || undefined}
+              onChange={v => setFilters(f => ({ ...f, tinhTrang: v || '' }))}>
+              <Option value="done">Done</Option>
+              <Option value="doing">Doing</Option>
+            </Select>
+            <Button size="small" type="primary" icon={<SearchOutlined />} onClick={() => fetchData(0)}>Tìm</Button>
+            <Button size="small" icon={<ReloadOutlined />} onClick={() => {
+              const reset = { dateRange: null, maSp: '', tenTrinh: '', soLo: '', tinhTrang: '' }
+              setFilters(reset)
+              fetchData(0, 20, reset)
+            }} />
+            {canEditStage(congDoan) && selectedRowKeys.length > 0 && (
+              <Popconfirm
+                title={`Xóa ${selectedRowKeys.length} bản ghi đã chọn?`}
+                okText="Xóa" cancelText="Hủy"
+                okButtonProps={{ danger: true, loading: bulkDeleting }}
+                onConfirm={handleBulkDeleteSelected}
+              >
+                <Button size="small" danger icon={<DeleteOutlined />} loading={bulkDeleting}
+                  style={{ fontWeight: 700 }}>
+                  Xóa đã chọn ({selectedRowKeys.length})
+                </Button>
+              </Popconfirm>
+            )}
+            {canEditStage(congDoan) && (
+              <Button size="small" type="primary" icon={<PlusOutlined />}
+                onClick={() => { setEditItem(null); setModalOpen(true) }}>
+                Thêm mới
+              </Button>
+            )}
+
+            {/* Auto-refresh indicator */}
+            <Tooltip title={arLastAt ? `Lần cuối: ${arLastAt.toLocaleTimeString('vi-VN')}` : 'Tự động làm mới dữ liệu'}>
+              <span style={{
+                marginLeft: 4, fontSize: 11, color: arCountdown <= 10 ? '#1677ff' : '#94a3b8',
+                display: 'inline-flex', alignItems: 'center', gap: 3, cursor: 'default',
+                transition: 'color 0.3s',
+              }}>
+                <SyncOutlined spin={arCountdown <= 5} style={{ fontSize: 10 }} />
+                {arCountdown}s
+              </span>
+            </Tooltip>
+          </div>
+
+          <Table
+            className="ws-table"
+            columns={columns}
+            dataSource={data}
+            rowKey="id"
+            loading={loading}
+            scroll={{ x: 1600 + config.extraTableCols.length * 87 }}
+            size="small"
+            sticky={{ offsetHeader: headerOffset }}
+            rowHoverable={false}
+            rowSelection={canEditStage(congDoan) && !allowedNhom ? {
+              selectedRowKeys,
+              onChange: keys => setSelectedRowKeys(keys),
+              preserveSelectedRowKeys: true,
+            } : undefined}
+            rowClassName={record => {
+              const slField = SL_FIELD_MAP[congDoan]
+              const sl = slField ? Number(record[slField]) || 0 : 0
+              const coLo = Number(record.coLo) || 0
+              const slExceeds = sl > 0 && coLo > 0 && sl > coLo
+              if (record.id === highlightId && record.saiLech) return 'row-has-deviation row-jump-highlight'
+              if (record.id === highlightId) return 'row-jump-highlight'
+              if (record.saiLech) return 'row-has-deviation'
+              if (slExceeds) return 'row-sl-exceed'
+              return getNsRowClass(record)
+            }}
+            onRow={record => ({
+              id: `ws-row-${record.id}`,
+              style: { cursor: 'pointer' },
+              onClick: () => {
+                setDetailSchedule(record)
+                setDetailOpen(true)
+              },
+            })}
+            pagination={{
+              ...pagination,
+              showSizeChanger: true,
+              showTotal: t => `Tổng ${t} bản ghi`,
+              onChange: (p, ps) => {
+                setPagination(prev => ({ ...prev, current: p, pageSize: ps }))
+                paginationRef.current = { current: p, pageSize: ps }
+                fetchData(p - 1, ps)
+              }
+            }}
+          />
+        </>
+      )}
+
+      {/* ── Tab: Đã ẩn ── */}
+      {innerTab === 'hidden' && (
+        <HiddenTab
+          congDoan={congDoan}
+          toNhom={forcedNhom}
+          onUnhide={() => fetchData(0)}
+          onCountChange={setHiddenCount}
+        />
+      )}
+
+      <WorkDetailDrawer
+        open={detailOpen}
+        schedule={detailSchedule}
+        onClose={() => setDetailOpen(false)}
+        onSaved={() => { setDetailOpen(false); onSaved() }}
+        onRefresh={onSaved}
       />
 
       <WorkScheduleModal
         open={modalOpen}
         editItem={editItem}
         congDoan={congDoan}
+        defaultToNhom={allowedNhom}
         extraFormFields={config.extraFormFields}
         onClose={() => setModalOpen(false)}
         onSaved={onSaved}
       />
 
-      <WorkDetailDrawer
-        open={detailOpen}
-        schedule={detailSchedule}
-        onClose={() => setDetailOpen(false)}
-        onSaved={onSaved}
-      />
     </>
+  )
+}
+
+// ── HiddenTab ─────────────────────────────────────────────────────────────────
+function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange }) {
+  const [data, setData] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 50, total: 0 })
+  const [selectedIds, setSelectedIds] = useState([])
+  const [bulkLoading, setBulkLoading] = useState(false)
+
+  const fetchHidden = useCallback(async (page = 0, size = 50) => {
+    setLoading(true)
+    try {
+      const { data: res } = await api.get('/work-schedule/hidden', {
+        params: { source: 'SCHEDULE', congDoan, toNhom: toNhom || undefined, page, size }
+      })
+      setData(res.content || [])
+      setPagination(p => ({ ...p, total: res.totalElements, current: page + 1, pageSize: size }))
+      onCountChange?.(res.totalElements)
+    } catch { message.error('Không thể tải danh sách đã ẩn') }
+    finally { setLoading(false) }
+  }, [congDoan, toNhom])
+
+  useEffect(() => { fetchHidden(0) }, [fetchHidden])
+
+  const handleUnhide = async (id) => {
+    try {
+      await api.patch(`/work-schedule/${id}/hidden`, { hidden: false })
+      const next = data.filter(r => r.id !== id)
+      setData(next)
+      setSelectedIds(prev => prev.filter(i => i !== id))
+      message.success('Đã bỏ ẩn')
+      onCountChange?.(next.length)
+      onUnhide?.()
+    } catch { message.error('Bỏ ẩn thất bại') }
+  }
+
+  const handleBulkUnhide = async () => {
+    if (selectedIds.length === 0) { message.warning('Chưa chọn bản ghi nào'); return }
+    setBulkLoading(true)
+    try {
+      await api.post('/work-schedule/bulk-unhide', selectedIds)
+      const next = data.filter(r => !selectedIds.includes(r.id))
+      setData(next)
+      message.success(`Đã bỏ ẩn ${selectedIds.length} bản ghi`)
+      setSelectedIds([])
+      onCountChange?.(next.length)
+      onUnhide?.()
+    } catch { message.error('Bỏ ẩn hàng loạt thất bại') }
+    finally { setBulkLoading(false) }
+  }
+
+  const columns = [
+    {
+      title: 'Ngày TH', dataIndex: 'ngayThucHien', key: 'ngay', width: 90, align: 'center',
+      render: v => v ? (
+        <div style={{ lineHeight: 1.3 }}>
+          <div style={{ fontWeight: 600 }}>{dayjs(v).format('DD/MM')}</div>
+          <div style={{ color: '#8c8c8c', fontSize: 11 }}>{dayjs(v).format('YYYY')}</div>
+        </div>
+      ) : '—'
+    },
+    {
+      title: 'Công đoạn', dataIndex: 'congDoan', key: 'congDoan', width: 90,
+      render: v => v ? <Tag color="purple" style={{ marginRight: 0 }}>{v}</Tag> : '—'
+    },
+    {
+      title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 100,
+      render: v => v ? <Tag color="blue" style={{ fontFamily: 'monospace', marginRight: 0 }}>{v}</Tag>
+        : <span style={{ color: '#d9d9d9' }}>—</span>
+    },
+    {
+      title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 80,
+      render: v => v ? <span style={{ fontWeight: 600, color: '#595959' }}>{v}</span> : '—'
+    },
+    {
+      title: 'Tiến trình', dataIndex: 'tenTrinh', key: 'tenTrinh',
+      render: v => <span style={{ wordBreak: 'break-word' }}>{v || '—'}</span>
+    },
+    {
+      title: 'Số lô', dataIndex: 'soLo', key: 'soLo', width: 90,
+      render: v => <span style={{ fontFamily: 'monospace', color: '#595959' }}>{v || '—'}</span>
+    },
+    {
+      title: 'Cỡ lô', dataIndex: 'coLo', key: 'coLo', width: 80, align: 'right',
+      render: v => fmtNum(v)
+    },
+    {
+      title: 'Tổ/Nhóm', dataIndex: 'toNhom', key: 'toNhom', width: 100,
+      render: v => v || <span style={{ color: '#d9d9d9' }}>—</span>
+    },
+    {
+      title: 'Tình trạng', dataIndex: 'tinhTrang', key: 'tinhTrang', width: 90, align: 'center',
+      render: tinhTrangTag
+    },
+    {
+      title: 'Thao tác', key: 'action', width: 90, fixed: 'right', align: 'center',
+      render: (_, record) => (
+        <Tooltip title="Bỏ ẩn — khôi phục bản ghi">
+          <Button size="small" type="primary" ghost icon={<EyeTwoTone />}
+            onClick={() => handleUnhide(record.id)}>
+            Bỏ ẩn
+          </Button>
+        </Tooltip>
+      )
+    }
+  ]
+
+  return (
+    <div style={{ padding: '8px 0' }}>
+      {/* Toolbar */}
+      <div style={{
+        position: 'sticky', top: 84, zIndex: 9,
+        background: '#f5f0ff', borderBottom: '2px solid #d3adf7',
+        padding: '7px 12px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap'
+      }}>
+        <EyeInvisibleOutlined style={{ color: '#722ed1', fontSize: 15 }} />
+        <span style={{ fontSize: 13, color: '#531dab', fontWeight: 600 }}>
+          Bản ghi đã ẩn — Tổng: {pagination.total}
+        </span>
+        {selectedIds.length > 0 && (
+          <Button
+            type="primary"
+            size="small"
+            icon={<EyeTwoTone />}
+            loading={bulkLoading}
+            style={{ background: '#722ed1', borderColor: '#722ed1', marginLeft: 8 }}
+            onClick={handleBulkUnhide}
+          >
+            Bỏ ẩn {selectedIds.length} mục đã chọn
+          </Button>
+        )}
+        <Button size="small" icon={<ReloadOutlined />} onClick={() => fetchHidden(0)} loading={loading}
+          style={{ marginLeft: 'auto' }} />
+      </div>
+
+      <Table
+        className="ws-table"
+        rowSelection={{
+          selectedRowKeys: selectedIds,
+          onChange: keys => setSelectedIds(keys),
+        }}
+        columns={columns}
+        dataSource={data}
+        rowKey="id"
+        loading={loading}
+        size="small"
+        scroll={{ x: 900 }}
+        sticky={{ offsetHeader: 46 }}
+        rowHoverable={false}
+        pagination={{
+          ...pagination,
+          showSizeChanger: true,
+          showTotal: t => `Tổng ${t} bản ghi đã ẩn`,
+          onChange: (p, ps) => {
+            setPagination(prev => ({ ...prev, current: p, pageSize: ps }))
+            fetchHidden(p - 1, ps)
+          }
+        }}
+      />
+    </div>
   )
 }
 
@@ -1399,15 +2716,38 @@ function AdminApprovalPanel() {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function WorkSchedulePage() {
-  const { isAdmin } = useAuth()
+  const { isAdmin, getAllowedStages, getAllowedNhom, user } = useAuth()
+  const allowedStages = getAllowedStages()
+  const allowedNhom = getAllowedNhom()
   const location = useLocation()
   const navigate = useNavigate()
   const jumpInit = location.state?.jumpTo || null
-  const [activeTab, setActiveTab] = useState(jumpInit?.stage || 'PC')
+  const defaultStage = (() => {
+    const s = jumpInit?.stage || (allowedNhom === 'PCPL2' ? 'PCPL2' : 'PCPL1')
+    if (!allowedStages) return s
+    if (s === 'PCPL1' || s === 'PCPL2') return allowedStages.includes('PC') ? s : allowedStages[0]
+    return allowedStages.includes(s) ? s : allowedStages[0]
+  })()
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ws_active_tab')
+      if (saved && (!allowedStages || allowedStages.length === 0 ||
+          allowedStages.includes(saved) ||
+          (saved === 'PCPL1' && allowedStages.includes('PC')) ||
+          (saved === 'PCPL2' && allowedStages.includes('PC')) ||
+          saved === 'deviation')) {
+        return saved
+      }
+    } catch {}
+    return defaultStage
+  })
   const [jumpTarget] = useState(jumpInit)
 
   useEffect(() => {
-    if (jumpInit) navigate(location.pathname, { replace: true, state: {} })
+    if (jumpInit) {
+      navigate(location.pathname, { replace: true, state: {} })
+      localStorage.setItem('ws_active_tab', activeTab)
+    }
   }, [])
   const [devCount, setDevCount] = useState(0)
   const [devData, setDevData] = useState([])
@@ -1423,6 +2763,24 @@ export default function WorkSchedulePage() {
       setDevCount(data.totalElements)
     } catch {}
   }, [])
+
+  const handleDevHide = async (id) => {
+    try {
+      await api.patch(`/work-schedule/${id}/hidden`, { hidden: true })
+      message.success('Đã ẩn bản ghi')
+      fetchDeviations(devPagination.current - 1, devPagination.pageSize)
+      refreshDevCount()
+    } catch { message.error('Không thể ẩn') }
+  }
+
+  const handleDevDelete = async (id) => {
+    try {
+      await api.delete(`/work-schedule/${id}`)
+      message.success('Đã xóa bản ghi')
+      fetchDeviations(devPagination.current - 1, devPagination.pageSize)
+      refreshDevCount()
+    } catch { message.error('Không thể xóa') }
+  }
 
   const fetchDeviations = useCallback(async (page = 0, size = 20, f = devFilters) => {
     setDevLoading(true)
@@ -1449,8 +2807,12 @@ export default function WorkSchedulePage() {
       render: v => v ? dayjs(v).format('DD/MM/YYYY') : '-'
     },
     {
-      title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 90,
-      render: v => v ? <Tag color="blue">{v}</Tag> : '-'
+      title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 100,
+      render: v => v ? <Tag color="blue" style={{ fontFamily: 'monospace' }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>
+    },
+    {
+      title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 80,
+      render: v => v ? <span style={{ fontWeight: 600, color: '#595959', fontSize: 12 }}>{v}</span> : '-'
     },
     {
       title: 'Công đoạn', dataIndex: 'congDoan', key: 'congDoan', width: 95,
@@ -1470,30 +2832,85 @@ export default function WorkSchedulePage() {
     },
     { title: 'Tình trạng', dataIndex: 'tinhTrang', key: 'tinhTrang', width: 100, render: tinhTrangTag },
     {
-      title: 'Chi tiết', key: 'action', width: 80,
+      title: 'Thao tác', key: 'action', width: 130, align: 'center',
       render: (_, record) => (
-        <Button size="small" icon={<EditOutlined />}
-          onClick={() => { setDevEditItem(record); setDevModalOpen(true) }}>
-          Xem
-        </Button>
+        <Space size={4}>
+          <Tooltip title="Chỉnh sửa">
+            <Button size="small" icon={<EditOutlined />}
+              onClick={() => { setDevEditItem(record); setDevModalOpen(true) }} />
+          </Tooltip>
+          <Popconfirm
+            title="Ẩn bản ghi này?"
+            description="Bản ghi sẽ bị ẩn khỏi tab Sai lệch."
+            onConfirm={() => handleDevHide(record.id)}
+            okText="Ẩn" cancelText="Hủy"
+          >
+            <Tooltip title="Ẩn">
+              <Button size="small" icon={<EyeInvisibleOutlined />} />
+            </Tooltip>
+          </Popconfirm>
+          <Popconfirm
+            title="Xóa bản ghi này?"
+            description="Hành động này không thể hoàn tác."
+            onConfirm={() => handleDevDelete(record.id)}
+            okText="Xóa" okButtonProps={{ danger: true }} cancelText="Hủy"
+          >
+            <Tooltip title="Xóa">
+              <Button size="small" danger icon={<DeleteOutlined />} />
+            </Tooltip>
+          </Popconfirm>
+        </Space>
       )
     },
   ]
 
   const tabItems = [
-    ...Object.entries(STAGE_CONFIG).map(([stage, config]) => ({
-      key: stage,
-      label: config.label,
-      children: (
-        <StageTab
-          congDoan={stage}
-          config={config}
-          onSaved={refreshDevCount}
-          jumpTarget={jumpTarget?.stage === stage ? jumpTarget : null}
-        />
-      )
-    })),
-    {
+    ...Object.entries(STAGE_CONFIG)
+      .filter(([stage]) => !allowedStages || allowedStages.includes(stage))
+      .flatMap(([stage, config]) => {
+        if (stage === 'PC') {
+          return [
+            { nhom: 'PCPL1', label: 'Lịch sản xuất PCPL1' },
+            { nhom: 'PCPL2', label: 'Lịch sản xuất PCPL2' },
+          ]
+            .filter(({ nhom }) => !allowedNhom || allowedNhom === nhom)
+            .map(({ nhom, label }) => ({
+              key: nhom,
+              label,
+              children: (
+                <StageTab
+                  congDoan="PC"
+                  config={config}
+                  forcedNhom={nhom}
+                  onSaved={refreshDevCount}
+                  jumpTarget={jumpTarget?.stage === nhom || jumpTarget?.stage === 'PC' ? jumpTarget : null}
+                />
+              )
+            }))
+        }
+        return [{
+          key: stage,
+          label: config.label,
+          children: (
+            <StageTab
+              congDoan={stage}
+              config={config}
+              onSaved={refreshDevCount}
+              jumpTarget={jumpTarget?.stage === stage ? jumpTarget : null}
+            />
+          )
+        }]
+      }),
+    ...(user?.role !== 'NHAN_VIEN' ? [{
+      key: 'wip',
+      label: (
+        <Space>
+          <span>Hàng dở dang</span>
+        </Space>
+      ),
+      children: <WipPage />,
+    }] : []),
+    ...(!allowedStages ? [{
       key: 'deviation',
       label: (
         <Space>
@@ -1504,44 +2921,37 @@ export default function WorkSchedulePage() {
       ),
       children: (
         <>
-          <Card style={{ marginBottom: 12, borderColor: '#fa8c16', background: '#fffbe6' }}
-            styles={{ body: { padding: '8px 16px' } }}>
-            <Space>
-              <WarningOutlined style={{ color: '#fa8c16', fontSize: 16 }} />
-              <Typography.Text>
-                Danh sách công việc <strong>có sai lệch</strong> — tổng hợp từ tất cả công đoạn.
+          <div style={{
+            background: '#fff7e0', borderBottom: '2px solid #ffd591',
+            padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+            marginBottom: 0
+          }}>
+            <Space size={6}>
+              <WarningOutlined style={{ color: '#fa8c16', fontSize: 15 }} />
+              <Typography.Text style={{ fontSize: 13 }}>
+                Công việc <strong>có sai lệch</strong> — tổng hợp từ tất cả công đoạn
               </Typography.Text>
             </Space>
-          </Card>
-
-          <Card style={{ marginBottom: 12 }}>
-            <Row gutter={[12, 8]} align="bottom">
-              <Col xs={24} md={8}>
-                <RangePicker style={{ width: '100%' }} format="DD/MM/YYYY"
-                  placeholder={['Từ ngày', 'Đến ngày']}
-                  value={devFilters.dateRange}
-                  onChange={v => setDevFilters(f => ({ ...f, dateRange: v }))} />
-              </Col>
-              <Col xs={24} sm={12} md={4}>
-                <Input placeholder="Mã SP" value={devFilters.maSp} allowClear
-                  onChange={e => setDevFilters(f => ({ ...f, maSp: e.target.value }))}
-                  onPressEnter={() => fetchDeviations(0)} />
-              </Col>
-              <Col>
-                <Space>
-                  <Button type="primary" icon={<SearchOutlined />}
-                    onClick={() => fetchDeviations(0)}>Tìm</Button>
-                  <Button icon={<ReloadOutlined />} onClick={() => {
-                    const reset = { dateRange: null, maSp: '' }
-                    setDevFilters(reset)
-                    fetchDeviations(0, 20, reset)
-                  }} />
-                </Space>
-              </Col>
-            </Row>
-          </Card>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+              <RangePicker size="small" style={{ width: 224 }} format="DD/MM/YYYY"
+                placeholder={['Từ ngày', 'Đến ngày']}
+                value={devFilters.dateRange}
+                onChange={v => setDevFilters(f => ({ ...f, dateRange: v }))} />
+              <Input size="small" style={{ width: 96 }} placeholder="Mã SP" value={devFilters.maSp} allowClear
+                onChange={e => setDevFilters(f => ({ ...f, maSp: e.target.value }))}
+                onPressEnter={() => fetchDeviations(0)} />
+              <Button size="small" type="primary" icon={<SearchOutlined />}
+                onClick={() => fetchDeviations(0)}>Tìm</Button>
+              <Button size="small" icon={<ReloadOutlined />} onClick={() => {
+                const reset = { dateRange: null, maSp: '' }
+                setDevFilters(reset)
+                fetchDeviations(0, 20, reset)
+              }} />
+            </div>
+          </div>
 
           <Table
+            className="ws-table"
             columns={deviationColumns}
             dataSource={devData}
             rowKey="id"
@@ -1571,40 +2981,80 @@ export default function WorkSchedulePage() {
           />
         </>
       )
-    }
+    }] : []),
   ]
 
   return (
     <>
       <style>{`
-        .ant-table-tbody > tr.row-has-deviation > td { background: #fff7e6 !important; }
-        .ant-table-tbody > tr.row-jump-highlight > td { background: #e6fffb !important; border-top: 2px solid #5cdbd3; border-bottom: 2px solid #5cdbd3; }
-        .ant-table-tbody > tr.row-ns-high > td { background: #f6ffed !important; }
-        .ant-table-tbody > tr.row-ns-low > td { background: #ffb3b0 !important; }
-        .ant-table-tbody > tr.row-sl-exceed > td { background: #f9f0ff !important; }
-        .ant-table-thead > tr > th.ant-table-cell { text-align: center !important; text-transform: uppercase; font-size: 11px; letter-spacing: 0.4px; color: #595959; background: #fafafa; }
-        .ant-table-tbody > tr > td.ant-table-cell { vertical-align: middle; }
-        .ant-table-tbody > tr > td { border-bottom: 1px solid #f0f0f0 !important; }
+        @keyframes wsRowSlideIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .ws-row-new { animation: wsRowSlideIn 0.22s cubic-bezier(0.22,1,0.36,1); }
+        /* Row highlight classes */
+        .ant-table-tbody > tr.row-has-deviation > td { background: #fffdf5 !important; }
+        .ant-table-tbody > tr.row-jump-highlight > td { background: #f0fffe !important; border-top: 1px solid #91d5d0; border-bottom: 1px solid #91d5d0; }
+        .ant-table-tbody > tr.row-ns-high > td { background: #fafff7 !important; }
+        .ant-table-tbody > tr.row-ns-low > td { background: #fffaf9 !important; }
+        .ant-table-tbody > tr.row-sl-exceed > td { background: #fdfaff !important; }
+        /* ERP table headers – emerald gradient */
+        .ws-table .ant-table-thead > tr > th {
+          background: linear-gradient(90deg, #2980b3 0%, #3399CC 100%) !important;
+          color: #ffffff !important;
+          text-align: center !important;
+          text-transform: uppercase;
+          font-size: 11px;
+          letter-spacing: 0.5px;
+          padding: 7px 8px !important;
+          white-space: nowrap;
+          border-right: 1px solid #4db3d4 !important;
+        }
+        .ws-table .ant-table-thead > tr > th::before { display: none !important; }
+        .ws-table .ant-table-thead > tr > th .ant-table-column-sorter { color: rgba(255,255,255,0.7) !important; }
+        .ws-table .ant-table-thead > tr > th .ant-table-column-sorter-up.active .anticon,
+        .ws-table .ant-table-thead > tr > th .ant-table-column-sorter-down.active .anticon { color: #fff !important; }
+        .ws-table .ant-table-thead > tr > th.ant-table-column-sort { background: linear-gradient(90deg, #1f6fa3 0%, #2980b3 100%) !important; }
+        .ws-table .ant-table-thead .ant-table-filter-trigger { color: rgba(255,255,255,0.7) !important; }
+        .ws-table .ant-table-thead .ant-table-filter-trigger:hover,
+        .ws-table .ant-table-thead .ant-table-filter-trigger.active { color: #fff !important; background: rgba(255,255,255,0.18) !important; }
+        .ws-table .ant-table-thead .anticon { color: rgba(255,255,255,0.85) !important; }
+        .ws-table .ant-table-tbody > tr > td { padding: 5px 8px !important; font-size: 12px; vertical-align: middle; border-bottom: 1px solid #DDE1E8 !important; }
+        .ws-table .ant-table-tbody > tr:hover > td { background: #DDE1E8 !important; }
+        .ws-table .ant-table-tbody > tr:nth-child(even) > td { background: #EAECF2; }
+        .ws-table .ant-table-tbody > tr:nth-child(even):hover > td { background: #DDE1E8 !important; }
+        /* Navy tab bar */
+        .ws-tabs > .ant-tabs-nav { margin: 0 !important; background: #1e4570; padding: 0 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.25); }
+        .ws-tabs > .ant-tabs-nav .ant-tabs-tab { color: #ffffff !important; border: none !important; background: transparent !important; padding: 9px 18px !important; font-size: 13px; margin: 0 2px !important; border-radius: 6px 6px 0 0 !important; transition: all 0.2s; }
+        .ws-tabs > .ant-tabs-nav .ant-tabs-tab:hover { color: #FDE68A !important; background: rgba(251,191,36,0.12) !important; }
+        .ws-tabs > .ant-tabs-nav .ant-tabs-tab-active { color: #fff !important; background: rgba(29,78,216,0.28) !important; font-weight: 700; box-shadow: 0 -3px 0 #60A5FA inset; }
+        .ws-tabs > .ant-tabs-nav .ant-tabs-ink-bar { background: #60A5FA !important; height: 3px !important; border-radius: 2px; }
+        .ws-tabs > .ant-tabs-nav::before { border-bottom: none !important; }
+        .ws-tabs > .ant-tabs-nav .ant-tabs-nav-wrap::before,
+        .ws-tabs > .ant-tabs-nav .ant-tabs-nav-wrap::after { box-shadow: none !important; }
+        .ws-tabs > .ant-tabs-nav .ant-tabs-nav-more { color: #ffffff !important; }
       `}</style>
 
       <Tabs
+        className="ws-tabs"
         activeKey={activeTab}
         onChange={key => {
           setActiveTab(key)
+          localStorage.setItem('ws_active_tab', key)
           if (key === 'deviation') fetchDeviations(0)
         }}
         items={tabItems}
-        type="card"
-        size="large"
+        type="line"
+        size="middle"
         tabBarExtraContent={
-          <Space>
+          <Space style={{ paddingRight: 8 }}>
             {isAdmin() && <AdminApprovalPanel />}
-            <Typography.Text strong style={{ marginRight: 8, fontSize: 15 }}>
+            <Typography.Text strong style={{ color: '#DDE1E8', fontSize: 14, letterSpacing: 0.3 }}>
               Lịch làm việc sản xuất
             </Typography.Text>
           </Space>
         }
-        tabBarStyle={{ position: 'sticky', top: 0, zIndex: 10, background: '#fff', margin: 0, paddingBottom: 0 }}
+        tabBarStyle={{ position: 'sticky', top: 0, zIndex: 10, margin: 0, paddingBottom: 0 }}
       />
     </>
   )

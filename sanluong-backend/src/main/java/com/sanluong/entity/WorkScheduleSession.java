@@ -28,6 +28,9 @@ public class WorkScheduleSession {
     @Column(name = "nhom_thuc_hien", length = 100)
     private String nhomThucHien;
 
+    @Column(name = "ma_nhan_vien", length = 50)
+    private String maNhanVien;
+
     @Column(name = "nguoi_thuc_hien", length = 255)
     private String nguoiThucHien;
 
@@ -57,6 +60,12 @@ public class WorkScheduleSession {
 
     @Column(name = "khac", length = 500)
     private String khac;
+
+    @Column(name = "ca_san_xuat", length = 20)
+    private String caSanXuat;
+
+    @Column(name = "is_tang_ca", nullable = false)
+    private boolean isTangCa = false;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -89,6 +98,8 @@ public class WorkScheduleSession {
     public void setThoiGianKetThuc(String thoiGianKetThuc) { this.thoiGianKetThuc = thoiGianKetThuc; }
     public String getNhomThucHien() { return nhomThucHien; }
     public void setNhomThucHien(String nhomThucHien) { this.nhomThucHien = nhomThucHien; }
+    public String getMaNhanVien() { return maNhanVien; }
+    public void setMaNhanVien(String maNhanVien) { this.maNhanVien = maNhanVien; }
     public String getNguoiThucHien() { return nguoiThucHien; }
     public void setNguoiThucHien(String nguoiThucHien) { this.nguoiThucHien = nguoiThucHien; }
     public BigDecimal getSoGioThucHien() { return soGioThucHien; }
@@ -109,6 +120,10 @@ public class WorkScheduleSession {
     public void setGhiChu(String ghiChu) { this.ghiChu = ghiChu; }
     public String getKhac() { return khac; }
     public void setKhac(String khac) { this.khac = khac; }
+    public String getCaSanXuat() { return caSanXuat; }
+    public void setCaSanXuat(String caSanXuat) { this.caSanXuat = caSanXuat; }
+    public boolean isIsTangCa() { return isTangCa; }
+    public void setIsTangCa(boolean isTangCa) { this.isTangCa = isTangCa; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 }

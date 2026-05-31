@@ -1,9 +1,12 @@
 package com.sanluong.service;
 
 import com.sanluong.dto.ProductionRecordDto;
+import com.sanluong.entity.ProductionEditHistory;
 import com.sanluong.entity.ProductionRecord;
+import com.sanluong.repository.ProductionEditHistoryRepository;
 import com.sanluong.repository.ProductionRecordRepository;
 import com.sanluong.repository.ProductMasterRepository;
+import com.sanluong.repository.WorkScheduleRepository;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.data.domain.*;
@@ -11,31 +14,151 @@ import org.springframework.stereotype.Service;
 
 import java.io.*;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductionService {
 
     private final ProductionRecordRepository repository;
     private final ProductMasterRepository productMasterRepository;
+    private final WorkScheduleRepository workScheduleRepository;
+    private final ProductionEditHistoryRepository historyRepository;
+    private final NotificationService notificationService;
 
     public ProductionService(ProductionRecordRepository repository,
-                             ProductMasterRepository productMasterRepository) {
+                             ProductMasterRepository productMasterRepository,
+                             WorkScheduleRepository workScheduleRepository,
+                             ProductionEditHistoryRepository historyRepository,
+                             NotificationService notificationService) {
         this.repository = repository;
         this.productMasterRepository = productMasterRepository;
+        this.workScheduleRepository = workScheduleRepository;
+        this.historyRepository = historyRepository;
+        this.notificationService = notificationService;
+    }
+
+    // Tên hiển thị tiếng Việt của từng trường
+    private static final Map<String, String> FIELD_LABELS = Map.ofEntries(
+        Map.entry("maBravo",       "Mã Bravo"),
+        Map.entry("maTp",          "Mã TP"),
+        Map.entry("tienTrinh",     "Tiến trình"),
+        Map.entry("lsx",           "LSX"),
+        Map.entry("soLuong",       "Cỡ lô"),
+        Map.entry("pcTrangThai",   "PC – Tình trạng"),
+        Map.entry("plTrangThai",   "PL – Tình trạng"),
+        Map.entry("dgTrangThai",   "ĐG – Tình trạng"),
+        Map.entry("bbc1TrangThai", "BBC1 – Tình trạng"),
+        Map.entry("slPc",          "SL PC"),
+        Map.entry("pcPl",          "SL PL"),
+        Map.entry("dg2",           "SL ĐG"),
+        Map.entry("bbc1_2",        "SL BBC1"),
+        Map.entry("bbc1_1",        "BBC1 Ngày phối"),
+        Map.entry("pcChiPhi",      "Công PC"),
+        Map.entry("plChiPhi",      "Công PL"),
+        Map.entry("dgChiPhi",      "Công ĐG"),
+        Map.entry("bbc1_3",        "Công BBC1"),
+        Map.entry("spTrungGian",   "SP Trung gian"),
+        Map.entry("tpNhapKho",     "TP Nhập kho"),
+        Map.entry("temDb",         "TEM ĐB"),
+        Map.entry("slTrungBinh",   "SL Trung bình"),
+        Map.entry("moTa",          "Ghi chú"),
+        Map.entry("qaLayMau",      "QA Lấy mẫu"),
+        Map.entry("phatLenh",      "Phát lệnh")
+    );
+
+    private void saveFieldHistory(List<ProductionEditHistory> list, Long productionId,
+                                   String field, String oldVal, String newVal,
+                                   String changedBy, LocalDateTime changedAt) {
+        if (Objects.equals(oldVal, newVal)) return;
+        ProductionEditHistory h = new ProductionEditHistory();
+        h.setProductionId(productionId);
+        h.setFieldName(field);
+        h.setFieldLabel(FIELD_LABELS.getOrDefault(field, field));
+        h.setOldValue(oldVal);
+        h.setNewValue(newVal);
+        h.setChangedBy(changedBy);
+        h.setChangedAt(changedAt);
+        list.add(h);
+    }
+
+    private String str(Object v) { return v == null ? null : v.toString().trim(); }
+
+    /**
+     * Trả về tất cả ProductionRecord chưa hoàn thành (ít nhất 1 công đoạn chưa done)
+     * dùng để gợi ý auto-fill trong form thêm Kế hoạch.
+     * Trả về Map gọn: id, tienTrinh, maDonHang, maTp, lsx, soLuong
+     */
+    public List<Map<String, Object>> getForPlanSuggestions() {
+        List<ProductionRecord> all = repository.searchAll(null, null, null, null, null);
+        return all.stream()
+                .filter(r -> {
+                    // Chưa hoàn thành = ít nhất 1 công đoạn chưa done
+                    boolean done = "done".equals(r.getPcTrangThai())
+                            && "done".equals(r.getPlTrangThai())
+                            && "done".equals(r.getDgTrangThai())
+                            && "done".equals(r.getBbc1TrangThai());
+                    return !done;
+                })
+                .sorted(Comparator
+                        .comparingInt((ProductionRecord r) -> lsxSortKey(r.getLsx())).reversed()
+                        .thenComparing(Comparator.comparing(
+                                ProductionRecord::getCreatedAt,
+                                Comparator.nullsLast(Comparator.reverseOrder()))))
+                .map(r -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id",         r.getId());
+                    m.put("tienTrinh",  r.getTienTrinh());
+                    m.put("maDonHang",  r.getMaDonHang());
+                    m.put("maTp",       r.getMaTp());
+                    m.put("lsx",        r.getLsx());
+                    m.put("soLuong",    r.getSoLuong());
+                    return m;
+                })
+                .collect(Collectors.toList());
     }
 
     public Page<ProductionRecord> search(String maTp, String maBravo, String tienTrinh,
-                                         String lsx, String trangThai, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return repository.search(
+                                         String lsx, String trangThai, Boolean hoanThanh, int page, int size) {
+        List<ProductionRecord> all = repository.searchAll(
                 isEmpty(maTp) ? null : maTp,
                 isEmpty(maBravo) ? null : maBravo,
                 isEmpty(tienTrinh) ? null : tienTrinh,
                 isEmpty(lsx) ? null : lsx,
-                isEmpty(trangThai) ? null : trangThai,
-                pageable
+                isEmpty(trangThai) ? null : trangThai
         );
+        if (hoanThanh != null) {
+            all = all.stream().filter(r -> {
+                boolean done = "done".equals(r.getPcTrangThai())
+                        && "done".equals(r.getPlTrangThai())
+                        && "done".equals(r.getDgTrangThai())
+                        && "done".equals(r.getBbc1TrangThai());
+                return hoanThanh ? done : !done;
+            }).collect(Collectors.toList());
+        }
+        all.sort(Comparator
+                .comparingInt((ProductionRecord r) -> lsxSortKey(r.getLsx())).reversed()
+                .thenComparing(Comparator.comparing(
+                        ProductionRecord::getCreatedAt,
+                        Comparator.nullsLast(Comparator.reverseOrder()))));
+        int start = page * size;
+        int end = Math.min(start + size, all.size());
+        List<ProductionRecord> content = start < all.size() ? all.subList(start, end) : List.of();
+        enrichToNhom(content);
+        return new PageImpl<>(content, PageRequest.of(page, size), all.size());
+    }
+
+    private int lsxSortKey(String lsx) {
+        if (lsx == null || lsx.length() != 6) return 0;
+        try {
+            return Integer.parseInt(lsx.substring(4, 6) + lsx.substring(2, 4) + lsx.substring(0, 2));
+        } catch (NumberFormatException e) { return 0; }
     }
 
     public ProductionRecord getById(Long id) {
@@ -43,22 +166,150 @@ public class ProductionService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));
     }
 
+    public boolean existsByKey(String maBravo, String lsx, String maDonHang) {
+        return repository.existsByMaBravoAndLsxAndMaDonHang(maBravo, lsx, maDonHang);
+    }
+
     public ProductionRecord create(ProductionRecordDto dto, String username) {
+        // Chặn duplicate theo maBravo + lsx + maDonHang
+        if (!isEmpty(dto.getMaBravo()) && !isEmpty(dto.getLsx())) {
+            if (repository.existsByMaBravoAndLsxAndMaDonHang(
+                    dto.getMaBravo(), dto.getLsx(), dto.getMaDonHang())) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.CONFLICT,
+                        "Bản ghi Sản lượng đã tồn tại: Mã Bravo '" + dto.getMaBravo()
+                        + "' + LSX '" + dto.getLsx()
+                        + (dto.getMaDonHang() != null ? "' + Mã ĐH '" + dto.getMaDonHang() : "")
+                        + "' đã được ghi nhận!");
+            }
+        } else if (!isEmpty(dto.getMaTp()) && dto.getSoLuong() != null) {
+            String tienTrinhParam = isEmpty(dto.getTienTrinh()) ? null : dto.getTienTrinh();
+            String lsxParam = isEmpty(dto.getLsx()) ? null : dto.getLsx();
+            boolean exists = repository.existsByTripletAndSoLuong(
+                    dto.getMaTp(), tienTrinhParam, lsxParam, dto.getSoLuong());
+            if (exists) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.CONFLICT,
+                        "Sản phẩm đã tồn tại: Mã TP '" + dto.getMaTp()
+                        + "' với cùng Tiến trình, Số Lô và Số Lượng đã được ghi nhận!");
+            }
+        }
         ProductionRecord record = mapToEntity(dto);
         record.setCreatedBy(username);
         record.setUpdatedBy(username);
-        return repository.save(record);
+        ProductionRecord saved = repository.save(record);
+        notificationService.createSanLuongNewNotification(
+                saved.getId(), saved.getTienTrinh(), saved.getMaTp(),
+                saved.getLsx(), saved.getSoLuong(), username);
+        return saved;
     }
 
     public ProductionRecord update(Long id, ProductionRecordDto dto, String username) {
-        ProductionRecord record = getById(id);
-        updateEntity(record, dto);
-        record.setUpdatedBy(username);
-        return repository.save(record);
+        ProductionRecord old = getById(id);
+        LocalDateTime now = LocalDateTime.now();
+        List<ProductionEditHistory> changes = new ArrayList<>();
+
+        // So sánh từng trường và ghi lịch sử thay đổi
+        saveFieldHistory(changes, id, "maBravo",       str(old.getMaBravo()),       str(dto.getMaBravo()),       username, now);
+        saveFieldHistory(changes, id, "maTp",          str(old.getMaTp()),          str(dto.getMaTp()),          username, now);
+        saveFieldHistory(changes, id, "tienTrinh",     str(old.getTienTrinh()),     str(dto.getTienTrinh()),     username, now);
+        saveFieldHistory(changes, id, "lsx",           str(old.getLsx()),           str(dto.getLsx()),           username, now);
+        saveFieldHistory(changes, id, "soLuong",       str(old.getSoLuong()),       str(dto.getSoLuong()),       username, now);
+        saveFieldHistory(changes, id, "pcTrangThai",   str(old.getPcTrangThai()),   str(dto.getPcTrangThai()),   username, now);
+        saveFieldHistory(changes, id, "plTrangThai",   str(old.getPlTrangThai()),   str(dto.getPlTrangThai()),   username, now);
+        saveFieldHistory(changes, id, "dgTrangThai",   str(old.getDgTrangThai()),   str(dto.getDgTrangThai()),   username, now);
+        saveFieldHistory(changes, id, "bbc1TrangThai", str(old.getBbc1TrangThai()), str(dto.getBbc1TrangThai()), username, now);
+        saveFieldHistory(changes, id, "slPc",          str(old.getSlPc()),          str(dto.getSlPc()),          username, now);
+        saveFieldHistory(changes, id, "pcPl",          str(old.getPcPl()),          str(dto.getPcPl()),          username, now);
+        saveFieldHistory(changes, id, "dg2",           str(old.getDg2()),           str(dto.getDg2()),           username, now);
+        saveFieldHistory(changes, id, "bbc1_2",        str(old.getBbc1_2()),        str(dto.getBbc1_2()),        username, now);
+        saveFieldHistory(changes, id, "bbc1_1",        str(old.getBbc1_1()),        str(dto.getBbc1_1()),        username, now);
+        saveFieldHistory(changes, id, "pcChiPhi",      str(old.getPcChiPhi()),      str(dto.getPcChiPhi()),      username, now);
+        saveFieldHistory(changes, id, "plChiPhi",      str(old.getPlChiPhi()),      str(dto.getPlChiPhi()),      username, now);
+        saveFieldHistory(changes, id, "dgChiPhi",      str(old.getDgChiPhi()),      str(dto.getDgChiPhi()),      username, now);
+        saveFieldHistory(changes, id, "bbc1_3",        str(old.getBbc1_3()),        str(dto.getBbc1_3()),        username, now);
+        saveFieldHistory(changes, id, "spTrungGian",   str(old.getSpTrungGian()),   str(dto.getSpTrungGian()),   username, now);
+        saveFieldHistory(changes, id, "tpNhapKho",     str(old.getTpNhapKho()),     str(dto.getTpNhapKho()),     username, now);
+        saveFieldHistory(changes, id, "temDb",         str(old.getTemDb()),         str(dto.getTemDb()),         username, now);
+        saveFieldHistory(changes, id, "slTrungBinh",   str(old.getSlTrungBinh()),   str(dto.getSlTrungBinh()),   username, now);
+        saveFieldHistory(changes, id, "moTa",          str(old.getMoTa()),          str(dto.getMoTa()),          username, now);
+        saveFieldHistory(changes, id, "qaLayMau",      str(old.getQaLayMau()),      str(dto.getQaLayMau()),      username, now);
+        saveFieldHistory(changes, id, "phatLenh",      str(old.getPhatLenh()),      str(dto.getPhatLenh()),      username, now);
+
+        updateEntity(old, dto);
+        old.setUpdatedBy(username);
+        ProductionRecord saved = repository.save(old);
+
+        if (!changes.isEmpty()) historyRepository.saveAll(changes);
+        return saved;
     }
 
-    public void delete(Long id) {
+    public List<ProductionEditHistory> getHistory(Long productionId) {
+        return historyRepository.findByProductionIdOrderByChangedAtDesc(productionId);
+    }
+
+    public void delete(Long id, String username) {
+        ProductionRecord r = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));
+        r.setDeletedAt(java.time.LocalDateTime.now());
+        r.setDeletedBy(username);
+        repository.save(r);
+    }
+
+    public ProductionRecord phatLenh(Long id, String username) {
+        ProductionRecord r = getById(id);
+        LocalDateTime now = LocalDateTime.now();
+        List<ProductionEditHistory> changes = new ArrayList<>();
+        saveFieldHistory(changes, id, "phatLenh", str(r.getPhatLenh()), "true", username, now);
+        r.setPhatLenh(true);
+        r.setUpdatedBy(username);
+        ProductionRecord saved = repository.save(r);
+        if (!changes.isEmpty()) historyRepository.saveAll(changes);
+        return saved;
+    }
+
+    public long countChuaPhatLenh() {
+        return repository.countChuaPhatLenhNative();
+    }
+
+    public java.util.List<ProductionRecord> getChuaPhatLenhList() {
+        return repository.findChuaPhatLenhList();
+    }
+
+    public java.util.List<ProductionRecord> getDaPhatChuaXepLich() {
+        return repository.findDaPhatChuaXepLich();
+    }
+
+    public java.util.List<ProductionRecord> findTrash() {
+        return repository.findAllDeleted();
+    }
+
+    public void restore(Long id) {
+        ProductionRecord r = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));
+        // Chặn khôi phục nếu đã có bản ghi active trùng maBravo + lsx + maDonHang
+        if (!isEmpty(r.getMaBravo()) && !isEmpty(r.getLsx())) {
+            if (repository.existsByMaBravoAndLsxAndMaDonHang(r.getMaBravo(), r.getLsx(), r.getMaDonHang())) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.CONFLICT,
+                        "Không thể khôi phục: đã tồn tại bản ghi active với Mã Bravo '"
+                        + r.getMaBravo() + "' + LSX '" + r.getLsx() + "'");
+            }
+        }
+        r.setDeletedAt(null);
+        r.setDeletedBy(null);
+        repository.save(r);
+    }
+
+    public void deletePermanent(Long id) {
         repository.deleteById(id);
+    }
+
+    public void hide(Long id) {
+        ProductionRecord r = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));
+        r.setHidden(true);
+        repository.save(r);
     }
 
     public byte[] exportExcel(String maTp, String maBravo, String tienTrinh,
@@ -146,12 +397,14 @@ public class ProductionService {
         r.setMaBravo(dto.getMaBravo());
         r.setTienTrinh(dto.getTienTrinh());
         r.setLsx(dto.getLsx());
+        r.setMaDonHang(dto.getMaDonHang());
         r.setSoLuong(dto.getSoLuong());
         r.setPcTrangThai(dto.getPcTrangThai());
         r.setPlTrangThai(dto.getPlTrangThai());
         r.setDgTrangThai(dto.getDgTrangThai());
         r.setBbc1TrangThai(dto.getBbc1TrangThai());
         r.setBbc1_1(dto.getBbc1_1());
+        r.setSlPc(dto.getSlPc());
         r.setPcPl(dto.getPcPl());
         r.setDg2(dto.getDg2());
         r.setBbc1_2(dto.getBbc1_2());
@@ -166,6 +419,8 @@ public class ProductionService {
         r.setSoSpCong(dto.getSoSpCong());
         r.setSlTrungBinh(dto.getSlTrungBinh());
         r.setMoTa(dto.getMoTa());
+        r.setQaLayMau(dto.getQaLayMau());
+        if (dto.getPhatLenh() != null) r.setPhatLenh(dto.getPhatLenh());
     }
 
     public List<ProductionRecord> getWipDg() {
@@ -181,13 +436,17 @@ public class ProductionService {
 
     public List<ProductionRecord> getWipPc() {
         List<ProductionRecord> list = repository.findWipPc();
+        org.springframework.data.domain.Pageable limit1 = org.springframework.data.domain.PageRequest.of(0, 1);
         list.forEach(r -> {
             if (r.getMaTp() != null) {
                 productMasterRepository.findByMaTpIgnoreCase(r.getMaTp()).ifPresent(pm -> {
-                    java.math.BigDecimal ns = pm.getNangSuatPc();
-                    r.setSlTrungBinh(ns != null ? ns : java.math.BigDecimal.ONE);
+                    r.setSlTrungBinh(pm.getNangSuatPc());
                     r.setMayMoc(pm.getMayMocPc());
                 });
+                String tenTrinh = isEmpty(r.getTienTrinh()) ? null : r.getTienTrinh();
+                String soLo = isEmpty(r.getLsx()) ? null : r.getLsx();
+                workScheduleRepository.findToNhomByPcTriplet(r.getMaTp(), tenTrinh, soLo, limit1)
+                        .stream().filter(t -> t != null && !t.isBlank()).findFirst().ifPresent(r::setToNhom);
             }
         });
         return list;
@@ -198,8 +457,7 @@ public class ProductionService {
         list.forEach(r -> {
             if (r.getMaTp() != null) {
                 productMasterRepository.findByMaTpIgnoreCase(r.getMaTp()).ifPresent(pm -> {
-                    java.math.BigDecimal ns = pm.getNangSuatPl();
-                    r.setSlTrungBinh(ns != null ? ns : java.math.BigDecimal.ONE);
+                    r.setSlTrungBinh(pm.getNangSuatPl());
                     r.setMayMoc(pm.getMayMocPl());
                 });
             }
@@ -212,8 +470,7 @@ public class ProductionService {
         list.forEach(r -> {
             if (r.getMaTp() != null) {
                 productMasterRepository.findByMaTpIgnoreCase(r.getMaTp()).ifPresent(pm -> {
-                    java.math.BigDecimal ns = pm.getNangSuatBbc1();
-                    r.setSlTrungBinh(ns != null ? ns : java.math.BigDecimal.ONE);
+                    r.setSlTrungBinh(pm.getNangSuatBbc1());
                     r.setMayMoc(pm.getMayMocBbc1());
                 });
             }
@@ -224,14 +481,33 @@ public class ProductionService {
     private List<ProductionRecord> enrichWithSlTrungBinh(List<ProductionRecord> list) {
         list.forEach(r -> {
             if (r.getMaTp() != null) {
-                productMasterRepository.findByMaTpIgnoreCase(r.getMaTp()).ifPresent(pm -> {
-                    java.math.BigDecimal slTb = pm.getSlTrungBinh();
-                    r.setSlTrungBinh(slTb != null ? slTb : java.math.BigDecimal.ONE);
-                });
+                productMasterRepository.findByMaTpIgnoreCase(r.getMaTp()).ifPresent(pm ->
+                    r.setSlTrungBinh(pm.getSlTrungBinh()));
             }
         });
         return list;
     }
+
+    private void enrichToNhom(List<ProductionRecord> content) {
+        if (content.isEmpty()) return;
+        List<String> maSps = content.stream()
+                .map(ProductionRecord::getMaTp)
+                .filter(s -> s != null && !s.isBlank())
+                .distinct().collect(Collectors.toList());
+        if (maSps.isEmpty()) return;
+        Map<String, String> toNhomMap = new HashMap<>();
+        workScheduleRepository.findToNhomForPcBatch(maSps).forEach(row -> {
+            String key = s(row[0]) + "|" + s(row[1]) + "|" + s(row[2]);
+            if (row[3] != null && !row[3].toString().isBlank())
+                toNhomMap.put(key, row[3].toString());
+        });
+        content.forEach(r -> {
+            String key = s(r.getMaTp()) + "|" + s(r.getTienTrinh()) + "|" + s(r.getLsx());
+            r.setToNhom(toNhomMap.get(key));
+        });
+    }
+
+    private String s(Object o) { return o != null ? o.toString() : ""; }
 
     private boolean isEmpty(String s) { return s == null || s.isBlank(); }
     private String nvl(String s) { return s != null ? s : ""; }

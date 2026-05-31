@@ -9,6 +9,7 @@ public class WorkScheduleSessionDto {
     private String thoiGianBatDau;
     private String thoiGianKetThuc;
     private String nhomThucHien;
+    private String maNhanVien;
     private String nguoiThucHien;
     private BigDecimal soGioThucHien;
     private BigDecimal congThucHien;
@@ -29,6 +30,8 @@ public class WorkScheduleSessionDto {
     public void setThoiGianKetThuc(String thoiGianKetThuc) { this.thoiGianKetThuc = thoiGianKetThuc; }
     public String getNhomThucHien() { return nhomThucHien; }
     public void setNhomThucHien(String nhomThucHien) { this.nhomThucHien = nhomThucHien; }
+    public String getMaNhanVien() { return maNhanVien; }
+    public void setMaNhanVien(String maNhanVien) { this.maNhanVien = maNhanVien; }
     public String getNguoiThucHien() { return nguoiThucHien; }
     public void setNguoiThucHien(String nguoiThucHien) { this.nguoiThucHien = nguoiThucHien; }
     public BigDecimal getSoGioThucHien() { return soGioThucHien; }
@@ -46,10 +49,18 @@ public class WorkScheduleSessionDto {
     private String vaiTro;
     private String ghiChu;
     private String khac;
+    private String caSanXuat;
     public String getVaiTro() { return vaiTro; }
     public void setVaiTro(String vaiTro) { this.vaiTro = vaiTro; }
     public String getGhiChu() { return ghiChu; }
     public void setGhiChu(String ghiChu) { this.ghiChu = ghiChu; }
     public String getKhac() { return khac; }
     public void setKhac(String khac) { this.khac = khac; }
+    public String getCaSanXuat() { return caSanXuat; }
+    public void setCaSanXuat(String caSanXuat) { this.caSanXuat = caSanXuat; }
+
+    private boolean isTangCa;
+    public boolean isIsTangCa() { return isTangCa; }
+    public void setIsTangCa(boolean isTangCa) { this.isTangCa = isTangCa; }
+
 }

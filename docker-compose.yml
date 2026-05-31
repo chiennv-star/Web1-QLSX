@@ -1,0 +1,59 @@
+services:
+
+  # ── MySQL 8 ────────────────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: sanluong-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE:      sanluong
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER:     utf8mb4_unicode_ci
+    ports:
+      - "${MYSQL_PORT:-3307}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ── Spring Boot Backend ────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./sanluong-backend
+      dockerfile: Dockerfile
+    container_name: sanluong-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL:      jdbc:mysql://mysql:3306/sanluong?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      APP_JWT_SECRET:     ${JWT_SECRET:-sanluong-secret-key-2024-very-long-secret-key-for-jwt-signing-256bits}
+      APP_JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+
+  # ── React + Nginx Frontend ─────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./sanluong-frontend
+      dockerfile: Dockerfile
+    container_name: sanluong-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+
+volumes:
+  mysql_data:
+    driver: local

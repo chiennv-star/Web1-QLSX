@@ -33,6 +33,9 @@ public class WorkSchedule {
     @Column(name = "so_lo", length = 50)
     private String soLo;
 
+    @Column(name = "ma_don_hang", length = 50)
+    private String maDonHang;
+
     @Column(name = "co_lo", precision = 12, scale = 2)
     private BigDecimal coLo;
 
@@ -89,6 +92,9 @@ public class WorkSchedule {
     @Column(name = "cong_cc", precision = 12, scale = 4)
     private BigDecimal congCc;
 
+    @Column(name = "qa_lay_mau")
+    private Integer qaLayMau;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -100,6 +106,22 @@ public class WorkSchedule {
 
     @Column(name = "updated_by", length = 100)
     private String updatedBy;
+
+    @Column(name = "hidden", nullable = false)
+    private boolean hidden = false;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @Column(name = "deleted_by", length = 100)
+    private String deletedBy;
+
+    @Column(name = "ma_bravo", length = 50)
+    private String maBravo;
+
+    /** Transient — true nếu tồn tại ProductionRecord có lsx = soLo */
+    @Transient
+    private boolean hasLsx = false;
 
     public WorkSchedule() {}
 
@@ -129,6 +151,8 @@ public class WorkSchedule {
     public void setTenTrinh(String tenTrinh) { this.tenTrinh = tenTrinh; }
     public String getSoLo() { return soLo; }
     public void setSoLo(String soLo) { this.soLo = soLo; }
+    public String getMaDonHang() { return maDonHang; }
+    public void setMaDonHang(String maDonHang) { this.maDonHang = maDonHang; }
     public BigDecimal getCoLo() { return coLo; }
     public void setCoLo(BigDecimal coLo) { this.coLo = coLo; }
     public String getToNhom() { return toNhom; }
@@ -169,4 +193,16 @@ public class WorkSchedule {
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
     public String getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
+    public Integer getQaLayMau() { return qaLayMau; }
+    public void setQaLayMau(Integer qaLayMau) { this.qaLayMau = qaLayMau; }
+    public String getMaBravo() { return maBravo; }
+    public void setMaBravo(String maBravo) { this.maBravo = maBravo; }
+    public boolean isHasLsx() { return hasLsx; }
+    public void setHasLsx(boolean hasLsx) { this.hasLsx = hasLsx; }
+    public boolean isHidden() { return hidden; }
+    public void setHidden(boolean hidden) { this.hidden = hidden; }
+    public LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
+    public String getDeletedBy() { return deletedBy; }
+    public void setDeletedBy(String deletedBy) { this.deletedBy = deletedBy; }
 }

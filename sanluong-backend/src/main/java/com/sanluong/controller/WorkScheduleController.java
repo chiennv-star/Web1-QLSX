@@ -1,5 +1,7 @@
 package com.sanluong.controller;
 
+import com.sanluong.dto.StageTimelineDto;
+import com.sanluong.dto.WorkScheduleCoLoHistoryDto;
 import com.sanluong.dto.WorkScheduleDto;
 import com.sanluong.entity.WorkSchedule;
 import com.sanluong.service.WorkScheduleService;
@@ -35,17 +37,19 @@ public class WorkScheduleController {
     }
 
     // ADMIN: toàn quyền
-    // ADMIN_KH: toàn quyền Kế hoạch (đã qua checkPlanPermission)
+    // ADMIN_KH: chỉ được ghi source=PLAN; không được ghi SCHEDULE
     // NHAN_VIEN: tất cả trừ CC
     // ADMIN_PC: được PC và CC
     // ADMIN_*: chỉ được công đoạn của mình
-    private void checkStagePermission(Authentication auth, String congDoan) {
+    private void checkStagePermission(Authentication auth, String congDoan, String source) {
         for (var a : auth.getAuthorities()) {
             String role = a.getAuthority();
             if ("ROLE_ADMIN".equals(role)) return;
-            if ("ROLE_ADMIN_KH".equals(role)) return;
+            if ("ROLE_ADMIN_KH".equals(role) && "PLAN".equals(source)) return;
             if ("ROLE_NHAN_VIEN".equals(role) && !"CC".equals(congDoan)) return;
             if ("ROLE_ADMIN_PC".equals(role) && ("PC".equals(congDoan) || "CC".equals(congDoan))) return;
+            if (("ROLE_ADMIN_PCPL1".equals(role) || "ROLE_ADMIN_PCPL2".equals(role)) && "PC".equals(congDoan)) return;
+            if ("ROLE_ADMIN_PCPL3".equals(role) && "PL".equals(congDoan)) return;
             if (congDoan != null && ("ROLE_ADMIN_" + congDoan).equals(role)) return;
         }
         throw new AccessDeniedException("Không có quyền chỉnh sửa công đoạn: " + congDoan);
@@ -61,14 +65,29 @@ public class WorkScheduleController {
             @RequestParam(required = false) String tinhTrang,
             @RequestParam(required = false) String congDoan,
             @RequestParam(required = false) String source,
+            @RequestParam(required = false) String toNhom,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(service.search(fromDate, toDate, maSp, tenTrinh, soLo, tinhTrang, congDoan, source, page, size));
+        return ResponseEntity.ok(service.search(fromDate, toDate, maSp, tenTrinh, soLo, tinhTrang, congDoan, source, toNhom, page, size));
     }
 
     @GetMapping("/suggestions")
     public ResponseEntity<List<Map<String, String>>> suggestions() {
         return ResponseEntity.ok(service.getSuggestions());
+    }
+
+    // Tự động tạo bản ghi SCHEDULE cho 5 công đoạn nếu chưa tồn tại
+    // Key dedup: maBravo + soLo + maDonHang
+    @PostMapping("/auto-sync")
+    public ResponseEntity<Integer> autoSync(
+            @RequestParam(required = false) String maBravo,
+            @RequestParam(required = false) String maSp,
+            @RequestParam(required = false) String tenTrinh,
+            @RequestParam(required = false) String soLo,
+            @RequestParam(required = false) java.math.BigDecimal coLo,
+            @RequestParam(required = false) String maDonHang) {
+        int created = service.autoSyncFromProduction(maBravo, maSp, tenTrinh, soLo, coLo, maDonHang);
+        return ResponseEntity.ok(created);
     }
 
     @GetMapping("/lookup-by-triplet")
@@ -77,6 +96,21 @@ public class WorkScheduleController {
             @RequestParam(required = false) String tenTrinh,
             @RequestParam(required = false) String soLo) {
         return ResponseEntity.ok(service.lookupByTriplet(maSp, tenTrinh, soLo));
+    }
+
+    @GetMapping("/stage-timeline")
+    public ResponseEntity<List<StageTimelineDto>> stageTimeline(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(required = false) String maSp) {
+        return ResponseEntity.ok(service.getStageTimeline(fromDate, toDate, maSp));
+    }
+
+    @GetMapping("/monthly-stats")
+    public ResponseEntity<Map<String, Object>> monthlyStats(
+            @RequestParam String month,
+            @RequestParam(required = false) String year) {
+        return ResponseEntity.ok(service.getMonthlyStats(month, year));
     }
 
     @GetMapping("/deviations")
@@ -89,6 +123,11 @@ public class WorkScheduleController {
         return ResponseEntity.ok(service.findDeviations(fromDate, toDate, maSp, page, size));
     }
 
+    @GetMapping("/new-today/count")
+    public ResponseEntity<Map<String, Long>> countNewToday() {
+        return ResponseEntity.ok(Map.of("count", service.countCreatedToday()));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<WorkSchedule> getById(@PathVariable Long id) {
         return ResponseEntity.ok(service.getById(id));
@@ -98,7 +137,7 @@ public class WorkScheduleController {
     public ResponseEntity<WorkSchedule> create(@Valid @RequestBody WorkScheduleDto dto,
                                                 Authentication auth) {
         checkPlanPermission(auth, dto.getSource());
-        checkStagePermission(auth, dto.getCongDoan());
+        checkStagePermission(auth, dto.getCongDoan(), dto.getSource());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(service.create(dto, auth.getName()));
     }
@@ -108,16 +147,103 @@ public class WorkScheduleController {
                                                 @Valid @RequestBody WorkScheduleDto dto,
                                                 Authentication auth) {
         checkPlanPermission(auth, dto.getSource());
-        checkStagePermission(auth, dto.getCongDoan());
+        checkStagePermission(auth, dto.getCongDoan(), dto.getSource());
         return ResponseEntity.ok(service.update(id, dto, auth.getName()));
+    }
+
+    // Cập nhật một field duy nhất (congPc, congPl, slPc, ...) — dùng cho sync từ session
+    @PatchMapping("/{id}/patch-field")
+    public ResponseEntity<Void> patchField(@PathVariable Long id,
+                                            @RequestBody Map<String, Object> body) {
+        String field = (String) body.get("field");
+        Object rawValue = body.get("value");
+        java.math.BigDecimal value = rawValue == null ? null
+                : new java.math.BigDecimal(rawValue.toString());
+        service.patchField(id, field, value);
+        return ResponseEntity.noContent().build();
+    }
+
+    // Cập nhật tình trạng và sync ngay sang sản lượng
+    @PatchMapping("/{id}/tinh-trang")
+    public ResponseEntity<WorkSchedule> patchTinhTrang(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body,
+            Authentication auth) {
+        WorkSchedule w = service.getById(id);
+        checkStagePermission(auth, w.getCongDoan(), w.getSource());
+        String tinhTrang = body.get("tinhTrang") != null ? body.get("tinhTrang").toString() : null;
+        return ResponseEntity.ok(service.patchTinhTrang(id, tinhTrang, auth.getName()));
+    }
+
+    @PatchMapping("/{id}/hidden")
+    public ResponseEntity<WorkSchedule> setHidden(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        boolean hidden = Boolean.TRUE.equals(body.get("hidden"));
+        return ResponseEntity.ok(service.setHidden(id, hidden));
+    }
+
+    @PostMapping("/bulk-unhide")
+    public ResponseEntity<Integer> bulkUnhide(@RequestBody List<Long> ids) {
+        return ResponseEntity.ok(service.bulkUnhide(ids));
+    }
+
+    @GetMapping("/hidden")
+    public ResponseEntity<Page<WorkSchedule>> getHidden(
+            @RequestParam(required = false) String congDoan,
+            @RequestParam(required = false) String source,
+            @RequestParam(required = false) String toNhom,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return ResponseEntity.ok(service.findHidden(congDoan, source, toNhom, page, size));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id, Authentication auth) {
         WorkSchedule existing = service.getById(id);
         checkPlanPermission(auth, existing.getSource());
-        checkStagePermission(auth, existing.getCongDoan());
-        service.delete(id);
+        checkStagePermission(auth, existing.getCongDoan(), existing.getSource());
+        service.delete(id, auth.getName());
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/trash")
+    public ResponseEntity<List<WorkSchedule>> getTrash() {
+        return ResponseEntity.ok(service.findTrash());
+    }
+
+    @PostMapping("/{id}/restore")
+    public ResponseEntity<Void> restore(@PathVariable Long id) {
+        service.restore(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/permanent")
+    public ResponseEntity<Void> deletePermanent(@PathVariable Long id) {
+        service.deletePermanent(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/bulk")
+    public ResponseEntity<Map<String, Integer>> bulkDelete(@RequestBody List<Long> ids) {
+        int deleted = service.bulkDelete(ids);
+        return ResponseEntity.ok(Map.of("deleted", deleted));
+    }
+
+    /** Đổi Cỡ Lô với lưu lịch sử */
+    @PostMapping("/{id}/doi-co-lo")
+    public ResponseEntity<WorkSchedule> doiCoLo(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body,
+            Authentication auth) {
+        java.math.BigDecimal coLoMoi = new java.math.BigDecimal(body.get("coLoMoi").toString());
+        String lyDo = body.containsKey("lyDo") ? body.get("lyDo").toString() : null;
+        return ResponseEntity.ok(service.doiCoLo(id, coLoMoi, lyDo, auth.getName()));
+    }
+
+    /** Lấy lịch sử đổi Cỡ Lô */
+    @GetMapping("/{id}/lich-su-co-lo")
+    public ResponseEntity<List<WorkScheduleCoLoHistoryDto>> getLichSuCoLo(@PathVariable Long id) {
+        return ResponseEntity.ok(service.getLichSuCoLo(id));
     }
 }

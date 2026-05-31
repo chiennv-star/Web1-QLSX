@@ -69,12 +69,17 @@ public class SlChangeRequestService {
         session.setSanLuong(req.getNewValue());
         sessionRepo.save(session);
 
-        // Recalculate total SL for this schedule across all sessions
+        // Recalculate total SL — dedup per day (same day's multiple sessions share one sanLuong)
         List<WorkScheduleSession> allSessions =
                 sessionRepo.findByWorkScheduleIdOrderByNgayAscIdAsc(req.getWorkScheduleId());
         BigDecimal totalSl = allSessions.stream()
-                .filter(s -> s.getSanLuong() != null)
-                .map(WorkScheduleSession::getSanLuong)
+                .filter(s -> s.getSanLuong() != null
+                        && s.getSanLuong().compareTo(BigDecimal.ZERO) > 0)
+                .collect(java.util.stream.Collectors.toMap(
+                        s -> s.getNgay() != null ? s.getNgay().toString() : String.valueOf(s.getId()),
+                        WorkScheduleSession::getSanLuong,
+                        (a, b) -> a))
+                .values().stream()
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         scheduleService.updateSlOnly(req.getWorkScheduleId(), req.getCongDoan(), totalSl);

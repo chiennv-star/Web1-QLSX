@@ -1,49 +1,158 @@
 package com.sanluong.service;
 
+import com.sanluong.dto.StageTimelineDto;
+import com.sanluong.dto.WorkScheduleCoLoHistoryDto;
 import com.sanluong.dto.WorkScheduleDto;
 import com.sanluong.entity.ProductionRecord;
 import com.sanluong.entity.WorkSchedule;
+import com.sanluong.entity.WorkScheduleCoLoHistory;
+import com.sanluong.entity.WorkScheduleSession;
 import com.sanluong.repository.ProductionRecordRepository;
+import com.sanluong.repository.ProductMasterRepository;
+import com.sanluong.repository.WorkScheduleCoLoHistoryRepository;
 import com.sanluong.repository.WorkScheduleRepository;
+import com.sanluong.repository.WorkScheduleSessionRepository;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
+import java.util.Comparator;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 public class WorkScheduleService {
 
     private final WorkScheduleRepository repository;
     private final ProductionRecordRepository productionRepo;
+    private final ProductMasterRepository productMasterRepository;
+    private final WorkScheduleCoLoHistoryRepository coLoHistoryRepo;
+    private final KhoachEventPublisher eventPublisher;
+    private final WorkScheduleSessionRepository sessionRepository;
+    private final NotificationService notificationService;
 
     public WorkScheduleService(WorkScheduleRepository repository,
-                                ProductionRecordRepository productionRepo) {
+                                ProductionRecordRepository productionRepo,
+                                ProductMasterRepository productMasterRepository,
+                                WorkScheduleCoLoHistoryRepository coLoHistoryRepo,
+                                KhoachEventPublisher eventPublisher,
+                                WorkScheduleSessionRepository sessionRepository,
+                                NotificationService notificationService) {
         this.repository = repository;
         this.productionRepo = productionRepo;
+        this.productMasterRepository = productMasterRepository;
+        this.coLoHistoryRepo = coLoHistoryRepo;
+        this.eventPublisher = eventPublisher;
+        this.sessionRepository = sessionRepository;
+        this.notificationService = notificationService;
+    }
+
+    /** Enrich hasLsx: đánh dấu các bản ghi có ProductionRecord.lsx = soLo */
+    private void enrichHasLsx(List<WorkSchedule> list) {
+        List<String> soLos = list.stream()
+                .map(WorkSchedule::getSoLo)
+                .filter(s -> s != null && !s.isBlank())
+                .distinct()
+                .collect(Collectors.toList());
+        if (soLos.isEmpty()) return;
+        Set<String> existingLsx = new HashSet<>(productionRepo.findExistingLsx(soLos));
+        list.forEach(w -> {
+            if (w.getSoLo() != null) {
+                w.setHasLsx(existingLsx.contains(w.getSoLo()));
+            }
+        });
+    }
+
+    /** Enrich maBravo từ ProductMaster cho các bản ghi chưa có (backward compat) */
+    private void enrichMaBravo(List<WorkSchedule> list) {
+        Set<String> maSps = list.stream()
+                .filter(w -> w.getMaBravo() == null && w.getMaSp() != null && !w.getMaSp().isBlank())
+                .map(WorkSchedule::getMaSp)
+                .collect(Collectors.toSet());
+        if (maSps.isEmpty()) return;
+        Map<String, String> bravoMap = new java.util.HashMap<>();
+        for (String maSp : maSps) {
+            productMasterRepository.findByMaTpIgnoreCase(maSp)
+                    .ifPresent(pm -> bravoMap.put(maSp.toUpperCase(), pm.getMaBravo()));
+        }
+        list.forEach(w -> {
+            if (w.getMaBravo() == null && w.getMaSp() != null) {
+                w.setMaBravo(bravoMap.get(w.getMaSp().toUpperCase()));
+            }
+        });
     }
 
     public Page<WorkSchedule> search(LocalDate fromDate, LocalDate toDate,
                                       String maSp, String tenTrinh, String soLo,
                                       String tinhTrang, String congDoan, String source,
-                                      int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return repository.search(fromDate, toDate,
+                                      String toNhom, int page, int size) {
+        List<WorkSchedule> all = repository.searchAll(fromDate, toDate,
                 isEmpty(maSp) ? null : maSp,
                 isEmpty(tenTrinh) ? null : tenTrinh,
                 isEmpty(soLo) ? null : soLo,
                 isEmpty(tinhTrang) ? null : tinhTrang,
                 isEmpty(congDoan) ? null : congDoan,
                 isEmpty(source) ? null : source,
+                isEmpty(toNhom) ? null : toNhom);
+        all.sort(Comparator
+                .comparingInt((WorkSchedule w) -> soLoSortKey(w.getSoLo())).reversed()
+                .thenComparing(Comparator.comparing(
+                        WorkSchedule::getNgayThucHien,
+                        Comparator.nullsLast(Comparator.reverseOrder()))));
+        int start = page * size;
+        int end = Math.min(start + size, all.size());
+        List<WorkSchedule> content = start < all.size() ? new ArrayList<>(all.subList(start, end)) : new ArrayList<>();
+        enrichMaBravo(content);
+        enrichHasLsx(content);
+        return new PageImpl<>(content, PageRequest.of(page, size), all.size());
+    }
+
+    private int soLoSortKey(String soLo) {
+        if (soLo == null || soLo.length() != 6) return 0;
+        try {
+            return Integer.parseInt(soLo.substring(4, 6) + soLo.substring(2, 4) + soLo.substring(0, 2));
+        } catch (NumberFormatException e) { return 0; }
+    }
+
+    public WorkSchedule setHidden(Long id, boolean hidden) {
+        WorkSchedule w = getById(id);
+        w.setHidden(hidden);
+        WorkSchedule saved = repository.save(w);
+        eventPublisher.publishKhoachUpdated();
+        return saved;
+    }
+
+    public int bulkUnhide(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return 0;
+        List<WorkSchedule> list = repository.findAllById(ids);
+        list.forEach(w -> w.setHidden(false));
+        repository.saveAll(list);
+        eventPublisher.publishKhoachUpdated();
+        return list.size();
+    }
+
+    public Page<WorkSchedule> findHidden(String congDoan, String source, String toNhom, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<WorkSchedule> result = repository.findHidden(
+                isEmpty(congDoan) ? null : congDoan,
+                isEmpty(source) ? null : source,
+                isEmpty(toNhom) ? null : toNhom,
                 pageable);
+        enrichMaBravo(new ArrayList<>(result.getContent()));
+        return result;
     }
 
     public Page<WorkSchedule> findDeviations(LocalDate fromDate, LocalDate toDate,
                                               String maSp, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return repository.findDeviations(fromDate, toDate,
+        Page<WorkSchedule> result = repository.findDeviations(fromDate, toDate,
                 isEmpty(maSp) ? null : maSp,
                 pageable);
+        enrichMaBravo(new ArrayList<>(result.getContent()));
+        return result;
     }
 
     // Returns unique (maSp, tenTrinh, soLo) triplets from PC + BBC1 stages
@@ -91,26 +200,199 @@ public class WorkScheduleService {
         return result;
     }
 
+    // Tự động tạo/cập nhật bản ghi SCHEDULE cho từng công đoạn
+    // Nếu đã có record (congDoan + maBravo + soLo) → update maDonHang + coLo
+    // Nếu chưa có → tạo mới
+    @org.springframework.transaction.annotation.Transactional
+    public int autoSyncFromProduction(String maBravo, String maSp, String tenTrinh,
+                                       String soLo, java.math.BigDecimal coLo, String maDonHang) {
+        if (isEmpty(maBravo) && isEmpty(maSp)) return 0;
+        String maBravoParam   = isEmpty(maBravo)  ? null : maBravo;
+        String maSpparam      = isEmpty(maSp)     ? null : maSp;
+        String tenTrinhParam  = isEmpty(tenTrinh) ? null : tenTrinh;
+        String soLoParam      = isEmpty(soLo)     ? null : soLo;
+        String maDonHangParam = isEmpty(maDonHang)? null : maDonHang;
+        java.time.LocalDate today = java.time.LocalDate.now();
+        int created = 0;
+
+        for (String stage : new String[]{"PC", "BBC1", "PL", "DG", "CC"}) {
+            java.util.Optional<WorkSchedule> existing =
+                    repository.findFirstScheduleByCongDoanAndKey(stage, maBravoParam, maSpparam, soLoParam);
+            if (existing.isPresent()) {
+                WorkSchedule w = existing.get();
+                boolean changed = false;
+                if (maDonHangParam != null && !maDonHangParam.equals(w.getMaDonHang())) {
+                    w.setMaDonHang(maDonHangParam);
+                    changed = true;
+                }
+                if (coLo != null && !coLo.equals(w.getCoLo())) {
+                    w.setCoLo(coLo);
+                    changed = true;
+                }
+                if (maBravoParam != null && w.getMaBravo() == null) {
+                    w.setMaBravo(maBravoParam);
+                    changed = true;
+                }
+                if (changed) repository.save(w);
+            } else {
+                WorkSchedule w = new WorkSchedule();
+                w.setSource("SCHEDULE");
+                w.setCongDoan(stage);
+                w.setMaBravo(maBravoParam);
+                w.setMaSp(maSpparam);
+                w.setTenTrinh(tenTrinhParam);
+                w.setSoLo(soLoParam);
+                w.setMaDonHang(maDonHangParam);
+                w.setCoLo(coLo);
+                w.setNgayThucHien(today);
+                repository.save(w);
+                created++;
+            }
+        }
+        return created;
+    }
+
     public WorkSchedule getById(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy ID: " + id));
     }
 
+    public long countCreatedToday() {
+        LocalDateTime start = LocalDate.now().atStartOfDay();
+        LocalDateTime end   = start.plusDays(1);
+        return repository.countCreatedBetween(start, end);
+    }
+
+    /** Đổi Cỡ Lô với lưu lịch sử, đồng thời cập nhật các bản ghi cùng maSp + maDonHang + soLo */
+    @org.springframework.transaction.annotation.Transactional
+    public WorkSchedule doiCoLo(Long id, BigDecimal coLoMoi, String lyDo, String username) {
+        WorkSchedule w = getById(id);
+        LocalDateTime now = LocalDateTime.now();
+
+        WorkScheduleCoLoHistory hist = new WorkScheduleCoLoHistory();
+        hist.setWorkScheduleId(id);
+        hist.setCoLoCu(w.getCoLo());
+        hist.setCoLoMoi(coLoMoi);
+        hist.setLyDo(lyDo);
+        hist.setChangedBy(username);
+        hist.setChangedAt(now);
+        coLoHistoryRepo.save(hist);
+
+        w.setCoLo(coLoMoi);
+        w.setUpdatedBy(username);
+        WorkSchedule saved = repository.save(w);
+
+        // Cập nhật tất cả bản ghi cùng maSp + maDonHang + soLo + toNhom
+        if (!isEmpty(w.getMaSp()) && !isEmpty(w.getMaDonHang())) {
+            String soLoParam   = isEmpty(w.getSoLo())   ? null : w.getSoLo();
+            String toNhomParam = isEmpty(w.getToNhom()) ? null : w.getToNhom();
+            List<WorkSchedule> siblings = repository.findSiblings(id, w.getMaSp(), w.getMaDonHang(), soLoParam, toNhomParam);
+            if (!siblings.isEmpty()) {
+                List<WorkScheduleCoLoHistory> sibHists = new ArrayList<>();
+                for (WorkSchedule sib : siblings) {
+                    WorkScheduleCoLoHistory sh = new WorkScheduleCoLoHistory();
+                    sh.setWorkScheduleId(sib.getId());
+                    sh.setCoLoCu(sib.getCoLo());
+                    sh.setCoLoMoi(coLoMoi);
+                    sh.setLyDo(lyDo);
+                    sh.setChangedBy(username);
+                    sh.setChangedAt(now);
+                    sibHists.add(sh);
+                    sib.setCoLo(coLoMoi);
+                    sib.setUpdatedBy(username);
+                }
+                coLoHistoryRepo.saveAll(sibHists);
+                repository.saveAll(siblings);
+            }
+        }
+
+        eventPublisher.publishKhoachUpdated();
+        return saved;
+    }
+
+    /** Lấy lịch sử đổi Cỡ Lô của một bản ghi kế hoạch */
+    public List<WorkScheduleCoLoHistoryDto> getLichSuCoLo(Long id) {
+        return coLoHistoryRepo.findByWorkScheduleIdOrderByChangedAtDesc(id)
+                .stream().map(h -> {
+                    WorkScheduleCoLoHistoryDto d = new WorkScheduleCoLoHistoryDto();
+                    d.setId(h.getId());
+                    d.setWorkScheduleId(h.getWorkScheduleId());
+                    d.setCoLoCu(h.getCoLoCu());
+                    d.setCoLoMoi(h.getCoLoMoi());
+                    d.setLyDo(h.getLyDo());
+                    d.setChangedBy(h.getChangedBy());
+                    d.setChangedAt(h.getChangedAt());
+                    return d;
+                }).collect(Collectors.toList());
+    }
+
     public WorkSchedule create(WorkScheduleDto dto, String username) {
+        // Kế hoạch PLAN: nếu trùng key (ngày + tổ + maSp + maDonHang + soLo) → cộng dồn coLo
+        if ("PLAN".equals(dto.getSource())) {
+            List<WorkSchedule> existing = repository.findPlanByKey(
+                    dto.getNgayThucHien(),
+                    dto.getToNhom(),
+                    isEmpty(dto.getMaSp())      ? null : dto.getMaSp(),
+                    isEmpty(dto.getMaDonHang()) ? null : dto.getMaDonHang(),
+                    isEmpty(dto.getSoLo())      ? null : dto.getSoLo()
+            );
+            if (!existing.isEmpty()) {
+                WorkSchedule w = existing.get(0);
+                // Khôi phục nếu bản ghi đã bị ẩn hoặc xóa mềm
+                w.setHidden(false);
+                w.setDeletedAt(null);
+                if (dto.getCoLo() != null) {
+                    BigDecimal current = w.getCoLo() != null ? w.getCoLo() : BigDecimal.ZERO;
+                    w.setCoLo(current.add(dto.getCoLo()));
+                }
+                w.setUpdatedBy(username);
+                autoApplyDone(w);
+                WorkSchedule saved = repository.save(w);
+                notificationService.createKeHoachNotification("UPDATE", saved.getId(),
+                        saved.getMaSp(), resolveTenTrinh(saved.getMaSp(), saved.getTenTrinh()), saved.getSoLo(), saved.getCoLo(),
+                        saved.getNgayThucHien(), saved.getToNhom(), saved.getCongDoan(), username);
+                eventPublisher.publishKhoachUpdated();
+                return saved;
+            }
+        }
         WorkSchedule w = toEntity(dto);
         w.setCreatedBy(username);
         w.setUpdatedBy(username);
+        autoApplyDone(w);
         WorkSchedule saved = repository.save(w);
+        if ("PLAN".equals(saved.getSource())) {
+            notificationService.createKeHoachNotification("NEW", saved.getId(),
+                    saved.getMaSp(), resolveTenTrinh(saved.getMaSp(), saved.getTenTrinh()), saved.getSoLo(), saved.getCoLo(),
+                    saved.getNgayThucHien(), saved.getToNhom(), saved.getCongDoan(), username);
+        } else if ("SCHEDULE".equals(saved.getSource())) {
+            notificationService.createLichSanXuatNotification(saved.getId(), saved.getCongDoan(),
+                    saved.getMaSp(), resolveTenTrinh(saved.getMaSp(), saved.getTenTrinh()), saved.getSoLo(), saved.getCoLo(),
+                    saved.getNgayThucHien(), saved.getToNhom(), username);
+        }
         syncToProduction(saved);
+        eventPublisher.publishKhoachUpdated();
         return saved;
     }
 
     public WorkSchedule update(Long id, WorkScheduleDto dto, String username) {
         WorkSchedule w = getById(id);
+        java.time.LocalDate oldNgay = w.getNgayThucHien();
+        String oldToNhom = w.getToNhom();
         applyDto(w, dto);
         w.setUpdatedBy(username);
+        autoApplyDone(w);
         WorkSchedule saved = repository.save(w);
+        if ("PLAN".equals(saved.getSource())) {
+            boolean dateChanged = !Objects.equals(oldNgay, saved.getNgayThucHien());
+            boolean nhomChanged = !Objects.equals(oldToNhom, saved.getToNhom());
+            String action = (dateChanged || nhomChanged) ? "MOVE" : "UPDATE";
+            notificationService.createKeHoachNotification(action, saved.getId(),
+                    saved.getMaSp(), resolveTenTrinh(saved.getMaSp(), saved.getTenTrinh()), saved.getSoLo(), saved.getCoLo(),
+                    saved.getNgayThucHien(), saved.getToNhom(), saved.getCongDoan(), username,
+                    oldNgay, oldToNhom);
+        }
         syncToProduction(saved);
+        eventPublisher.publishKhoachUpdated();
         return saved;
     }
 
@@ -126,31 +408,67 @@ public class WorkScheduleService {
         List<ProductionRecord> records = productionRepo.findByTriplet(w.getMaSp(), tienTrinh, lsx);
         if (records.isEmpty()) return;
 
+        // Normalize tinhTrang: blank string → null (represents "-")
+        String trangThai = (w.getTinhTrang() != null && !w.getTinhTrang().isBlank())
+                ? w.getTinhTrang() : null;
+
         for (ProductionRecord r : records) {
             switch (stage) {
                 case "PC" -> {
-                    if (w.getSlPc()    != null) r.setSlPc(String.valueOf(w.getSlPc().intValue()));
-                    if (w.getCongPc()  != null) r.setPcChiPhi(w.getCongPc());
-                    if (w.getTinhTrang() != null) r.setPcTrangThai(w.getTinhTrang());
+                    if (w.getSlPc()   != null) r.setSlPc(String.valueOf(w.getSlPc().intValue()));
+                    if (w.getCongPc() != null) r.setPcChiPhi(w.getCongPc());
+                    r.setPcTrangThai(trangThai);
                 }
                 case "BBC1" -> {
                     if (w.getCongBbc1() != null) r.setBbc1_3(w.getCongBbc1());
-                    if (w.getSlBbc1()  != null) r.setBbc1_2(String.valueOf(w.getSlBbc1().intValue()));
-                    if (w.getTinhTrang() != null) r.setBbc1TrangThai(w.getTinhTrang());
+                    if (w.getSlBbc1()   != null) r.setBbc1_2(String.valueOf(w.getSlBbc1().intValue()));
+                    r.setBbc1TrangThai(trangThai);
                 }
                 case "PL" -> {
                     if (w.getCongPl() != null) r.setPlChiPhi(w.getCongPl());
                     if (w.getSlPl()   != null) r.setPcPl(String.valueOf(w.getSlPl().intValue()));
-                    if (w.getTinhTrang() != null) r.setPlTrangThai(w.getTinhTrang());
+                    r.setPlTrangThai(trangThai);
                 }
                 case "DG" -> {
                     if (w.getCongDg() != null) r.setDgChiPhi(w.getCongDg());
                     if (w.getSlDg()   != null) r.setDg2(String.valueOf(w.getSlDg().intValue()));
-                    if (w.getTinhTrang() != null) r.setDgTrangThai(w.getTinhTrang());
+                    r.setDgTrangThai(trangThai);
                 }
             }
         }
         productionRepo.saveAll(records);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void patchField(Long id, String field, java.math.BigDecimal value) {
+        WorkSchedule w = getById(id);
+        switch (field) {
+            case "congPc"   -> w.setCongPc(value);
+            case "congBbc1" -> w.setCongBbc1(value);
+            case "congPl"   -> w.setCongPl(value);
+            case "congDg"   -> w.setCongDg(value);
+            case "congCc"   -> w.setCongCc(value);
+            case "slPc"     -> w.setSlPc(value);
+            case "slBbc1"   -> w.setSlBbc1(value);
+            case "slPl"     -> w.setSlPl(value);
+            case "slDg"     -> w.setSlDg(value);
+            default -> throw new IllegalArgumentException("Unknown patchable field: " + field);
+        }
+        autoApplyDone(w);
+        WorkSchedule saved = repository.save(w);
+        syncToProduction(saved);
+        eventPublisher.publishKhoachUpdated();
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public WorkSchedule patchTinhTrang(Long id, String tinhTrang, String username) {
+        WorkSchedule w = getById(id);
+        w.setTinhTrang((tinhTrang != null && !tinhTrang.isBlank()) ? tinhTrang : null);
+        w.setUpdatedBy(username);
+        WorkSchedule saved = repository.save(w);
+        syncToProduction(saved);
+        eventPublisher.publishKhoachUpdated();
+        return saved;
     }
 
     @org.springframework.transaction.annotation.Transactional
@@ -162,12 +480,71 @@ public class WorkScheduleService {
             case "PL"   -> w.setSlPl(newSl);
             case "DG"   -> w.setSlDg(newSl);
         }
+        autoApplyDone(w);
         repository.save(w);
         syncToProduction(w);
     }
 
-    public void delete(Long id) {
+    public Map<String, Object> getMonthlyStats(String month, String year) {
+        List<Object[]> rows = repository.getMonthlyStatsByCongDoan(
+                month, isEmpty(year) ? null : year);
+        Map<String, Object> result = new HashMap<>();
+        result.put("month", month);
+        result.put("year", year);
+        for (Object[] row : rows) {
+            String congDoan = (String) row[0];
+            long slSum = 0L;
+            if (row[1] != null) {
+                if (row[1] instanceof java.math.BigDecimal bd) slSum = bd.longValue();
+                else slSum = ((Number) row[1]).longValue();
+            }
+            long lotCount = row[2] != null ? ((Number) row[2]).longValue() : 0L;
+            Map<String, Long> stageStats = new HashMap<>();
+            stageStats.put("soLuong", slSum);
+            stageStats.put("soLuongLsx", lotCount);
+            result.put(congDoan.toLowerCase(), stageStats);
+        }
+        return result;
+    }
+
+    public void delete(Long id, String username) {
+        WorkSchedule w = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));
+        if ("PLAN".equals(w.getSource())) {
+            notificationService.createKeHoachNotification("DELETE", w.getId(),
+                    w.getMaSp(), resolveTenTrinh(w.getMaSp(), w.getTenTrinh()), w.getSoLo(), w.getCoLo(),
+                    w.getNgayThucHien(), w.getToNhom(), w.getCongDoan(), username);
+        }
+        w.setDeletedAt(java.time.LocalDateTime.now());
+        w.setDeletedBy(username);
+        repository.save(w);
+        eventPublisher.publishKhoachUpdated();
+    }
+
+    public java.util.List<WorkSchedule> findTrash() {
+        return repository.findAllDeleted();
+    }
+
+    public void restore(Long id) {
+        WorkSchedule w = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));
+        w.setDeletedAt(null);
+        w.setDeletedBy(null);
+        repository.save(w);
+        eventPublisher.publishKhoachUpdated();
+    }
+
+    public void deletePermanent(Long id) {
         repository.deleteById(id);
+        eventPublisher.publishKhoachUpdated();
+    }
+
+    public int bulkDelete(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return 0;
+        List<WorkSchedule> list = repository.findAllById(ids);
+        repository.deleteAll(list);
+        eventPublisher.publishKhoachUpdated();
+        return list.size();
     }
 
     private WorkSchedule toEntity(WorkScheduleDto dto) {
@@ -183,6 +560,7 @@ public class WorkScheduleService {
         w.setMaSp(dto.getMaSp());
         w.setTenTrinh(dto.getTenTrinh());
         w.setSoLo(dto.getSoLo());
+        w.setMaDonHang(dto.getMaDonHang());
         w.setCoLo(dto.getCoLo());
         w.setToNhom(dto.getToNhom());
         w.setPhongThucHien(dto.getPhongThucHien());
@@ -200,7 +578,100 @@ public class WorkScheduleService {
         w.setSlDg(dto.getSlDg());
         w.setCongDg(dto.getCongDg());
         w.setCongCc(dto.getCongCc());
+        w.setQaLayMau(dto.getQaLayMau());
+    }
+
+    // Tự động chuyển tình trạng sang "done" khi SL đạt cỡ lô (PC và BBC1)
+    private void autoApplyDone(WorkSchedule w) {
+        String stage = w.getCongDoan();
+        if (stage == null) return;
+        java.math.BigDecimal coLo = w.getCoLo();
+        if (coLo == null || coLo.compareTo(java.math.BigDecimal.ZERO) <= 0) return;
+        switch (stage) {
+            case "PC" -> {
+                if (w.getSlPc() != null && w.getSlPc().compareTo(coLo) >= 0)
+                    w.setTinhTrang("done");
+            }
+            case "BBC1" -> {
+                if (w.getSlBbc1() != null && w.getSlBbc1().compareTo(coLo) >= 0)
+                    w.setTinhTrang("done");
+            }
+        }
+    }
+
+    public List<StageTimelineDto> getStageTimeline(LocalDate fromDate, LocalDate toDate, String maSp) {
+        List<WorkSchedule> allWs = repository.searchAll(
+                fromDate, toDate,
+                isEmpty(maSp) ? null : maSp,
+                null, null, null, null, "SCHEDULE", null);
+        if (allWs.isEmpty()) return List.of();
+
+        List<Long> wsIds = allWs.stream().map(WorkSchedule::getId).collect(Collectors.toList());
+        List<WorkScheduleSession> allSessions = sessionRepository.findByWorkScheduleIdIn(wsIds);
+        Map<Long, List<WorkScheduleSession>> sessionMap = allSessions.stream()
+                .collect(Collectors.groupingBy(WorkScheduleSession::getWorkScheduleId));
+
+        Map<String, List<WorkSchedule>> grouped = allWs.stream()
+                .collect(Collectors.groupingBy(w ->
+                        (w.getMaSp() != null ? w.getMaSp().trim() : "") + "|||" +
+                        (w.getTenTrinh() != null ? w.getTenTrinh().trim() : "") + "|||" +
+                        (w.getSoLo() != null ? w.getSoLo().trim() : "")));
+
+        List<StageTimelineDto> result = new ArrayList<>();
+        for (Map.Entry<String, List<WorkSchedule>> entry : grouped.entrySet()) {
+            String[] parts = entry.getKey().split("\\|\\|\\|", -1);
+            StageTimelineDto dto = new StageTimelineDto();
+            dto.setMaSp(parts[0]);
+            dto.setTenTrinh(parts[1]);
+            dto.setSoLo(parts[2]);
+            List<WorkSchedule> wsList = entry.getValue();
+            dto.setIds(wsList.stream().map(WorkSchedule::getId).collect(Collectors.toList()));
+            wsList.stream().map(WorkSchedule::getCoLo).filter(Objects::nonNull).findFirst()
+                    .ifPresent(dto::setCoLo);
+
+            for (WorkSchedule ws : wsList) {
+                String stage = ws.getCongDoan();
+                if (stage == null) continue;
+                List<WorkScheduleSession> sessions = sessionMap.getOrDefault(ws.getId(), List.of());
+                StageTimelineDto.StageInfo info = buildStageInfo(sessions, ws.getTinhTrang());
+                switch (stage) {
+                    case "PC"   -> dto.setPc(info);
+                    case "BBC1" -> dto.setBbc1(info);
+                    case "PL"   -> dto.setPl(info);
+                    case "DG"   -> dto.setDg(info);
+                    case "CC"   -> dto.setCc(info);
+                }
+            }
+            result.add(dto);
+        }
+
+        result.sort(Comparator.comparing(StageTimelineDto::getSoLo,
+                Comparator.nullsLast(Comparator.reverseOrder())));
+        return result;
+    }
+
+    private StageTimelineDto.StageInfo buildStageInfo(List<WorkScheduleSession> sessions, String tinhTrang) {
+        StageTimelineDto.StageInfo info = new StageTimelineDto.StageInfo();
+        info.setTinhTrang(tinhTrang);
+        Set<LocalDate> distinctDays = sessions.stream()
+                .filter(s -> s.getNgay() != null)
+                .map(WorkScheduleSession::getNgay)
+                .collect(Collectors.toSet());
+        if (!distinctDays.isEmpty()) {
+            info.setStartDate(distinctDays.stream().min(Comparator.naturalOrder()).orElse(null));
+            info.setEndDate(distinctDays.stream().max(Comparator.naturalOrder()).orElse(null));
+            info.setSoDays(distinctDays.size());
+        }
+        return info;
     }
 
     private boolean isEmpty(String s) { return s == null || s.isBlank(); }
+
+    private String resolveTenTrinh(String maSp, String tenTrinh) {
+        if (tenTrinh != null && !tenTrinh.isBlank()) return tenTrinh;
+        if (maSp == null || maSp.isBlank()) return null;
+        return productMasterRepository.findByMaTpIgnoreCase(maSp)
+                .map(pm -> pm.getTienTrinh())
+                .orElse(null);
+    }
 }

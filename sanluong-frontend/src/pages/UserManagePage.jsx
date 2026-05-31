@@ -1,12 +1,25 @@
-import React, { useState, useEffect } from 'react'
+﻿import React, { useState, useEffect, useRef } from 'react'
 import {
-  Table, Button, Space, Typography, Modal, Form,
-  Input, Select, Switch, Popconfirm, message, Tag
+  Table, Button, Space, Modal, Form,
+  Input, Select, Switch, Popconfirm, message, Tag, Tooltip
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, SafetyOutlined } from '@ant-design/icons'
 import api from '../api/axios'
 
 const { Option } = Select
+
+const ROLE_MAP = {
+  ADMIN:       { color: 'blue',     label: 'Quản trị viên' },
+  NHAN_VIEN:   { color: 'green',    label: 'Nhân viên' },
+  ADMIN_KH:    { color: 'cyan',     label: 'Admin Kế hoạch' },
+  ADMIN_PC:    { color: 'purple',   label: 'Admin PC' },
+  ADMIN_BBC1:  { color: 'volcano',  label: 'Admin BBC1' },
+  ADMIN_PL:    { color: 'purple',   label: 'Admin PL' },
+  ADMIN_DG:    { color: 'gold',     label: 'Admin ĐG' },
+  ADMIN_PCPL1: { color: 'geekblue', label: 'Admin PCPL1' },
+  ADMIN_PCPL2: { color: 'geekblue', label: 'Admin PCPL2' },
+  ADMIN_PCPL3: { color: 'geekblue', label: 'Admin PCPL3' },
+}
 
 export default function UserManagePage() {
   const [users, setUsers] = useState([])
@@ -14,6 +27,15 @@ export default function UserManagePage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editUser, setEditUser] = useState(null)
   const [form] = Form.useForm()
+
+  const toolbarRef = useRef(null)
+  const [toolbarH, setToolbarH] = useState(0)
+  useEffect(() => {
+    if (!toolbarRef.current) return
+    const obs = new ResizeObserver(() => setToolbarH(toolbarRef.current?.offsetHeight || 0))
+    obs.observe(toolbarRef.current)
+    return () => obs.disconnect()
+  }, [])
 
   const fetchUsers = async () => {
     setLoading(true)
@@ -70,36 +92,37 @@ export default function UserManagePage() {
   }
 
   const columns = [
-    { title: 'Tên đăng nhập', dataIndex: 'username', key: 'username', width: 150 },
-    { title: 'Họ tên', dataIndex: 'fullName', key: 'fullName' },
     {
-      title: 'Vai trò', dataIndex: 'role', key: 'role', width: 160,
+      title: 'Tên Đăng Nhập', dataIndex: 'username', key: 'username', width: 160,
+      render: v => <span style={{ fontWeight: 700, color: '#1677ff', fontFamily: 'monospace' }}>{v}</span>
+    },
+    {
+      title: 'Họ Tên', dataIndex: 'fullName', key: 'fullName',
+      render: v => v ? <span style={{ fontWeight: 500 }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+    },
+    {
+      title: 'Vai Trò', dataIndex: 'role', key: 'role', width: 160,
       render: r => {
-        const map = {
-          ADMIN:      { color: 'blue',     label: 'Quản trị viên' },
-          NHAN_VIEN:  { color: 'green',    label: 'Nhân viên' },
-          ADMIN_KH:   { color: 'cyan',     label: 'Admin Kế hoạch' },
-          ADMIN_PC:   { color: 'purple',   label: 'Admin PC' },
-          ADMIN_BBC1: { color: 'purple',   label: 'Admin BBC1' },
-          ADMIN_PL:   { color: 'purple',   label: 'Admin PL' },
-          ADMIN_DG:   { color: 'purple',   label: 'Admin ĐG' },
-        }
-        const { color, label } = map[r] || { color: 'default', label: r }
-        return <Tag color={color}>{label}</Tag>
+        const { color, label } = ROLE_MAP[r] || { color: 'default', label: r }
+        return <Tag color={color} style={{ marginRight: 0, fontWeight: 600 }}>{label}</Tag>
       }
     },
     {
-      title: 'Trạng thái', dataIndex: 'enabled', key: 'enabled', width: 120,
-      render: v => <Tag color={v ? 'green' : 'red'}>{v ? 'Hoạt động' : 'Vô hiệu'}</Tag>
+      title: 'Trạng Thái', dataIndex: 'enabled', key: 'enabled', width: 120, align: 'center',
+      render: v => <Tag color={v ? 'green' : 'red'} style={{ marginRight: 0, fontWeight: 600 }}>{v ? 'Hoạt động' : 'Vô hiệu'}</Tag>
     },
     {
-      title: 'Thao tác', key: 'action', width: 120,
+      title: 'Thao Tác', key: 'action', width: 100, align: 'center',
       render: (_, record) => (
-        <Space>
-          <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+        <Space size={4}>
+          <Tooltip title="Sửa">
+            <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+          </Tooltip>
           <Popconfirm title="Xóa người dùng?" onConfirm={() => handleDelete(record.id)}
             okText="Xóa" cancelText="Hủy">
-            <Button size="small" danger icon={<DeleteOutlined />} />
+            <Tooltip title="Xóa">
+              <Button size="small" danger icon={<DeleteOutlined />} />
+            </Tooltip>
           </Popconfirm>
         </Space>
       )
@@ -108,17 +131,51 @@ export default function UserManagePage() {
 
   return (
     <>
-      <Typography.Title level={4} style={{ marginTop: 0 }}>
-        Quản lý Người dùng
-      </Typography.Title>
+      <style>{`
+        .um-table .ant-table-thead > tr > th {
+          background: linear-gradient(90deg, #2980b3 0%, #3399CC 100%) !important; color: #ffffff !important;
+          font-size: 11px !important; text-transform: uppercase;
+          padding: 7px 12px !important; letter-spacing: 0.4px;
+          border-right: 1px solid #4db3d4 !important;
+        }
+        .um-table .ant-table-thead > tr > th::before { display: none !important; }
+        .um-table .ant-table-tbody > tr > td { padding: 8px 12px !important; vertical-align: middle; }
+        .um-table .ant-table-tbody > tr:hover > td { background: #EAECF2 !important; }
+        .um-table .row-stripe td { background: #fafbff !important; }
+      `}</style>
 
-      <Button type="primary" icon={<PlusOutlined />}
-        onClick={openCreate} style={{ marginBottom: 16 }}>
-        Thêm người dùng
-      </Button>
+      {/* Toolbar */}
+      <div ref={toolbarRef} style={{
+        position: 'sticky', top: 0, zIndex: 20,
+        background: '#fff', borderBottom: '2px solid #DDE1E8',
+        padding: '10px 0 12px', marginBottom: 12,
+        display: 'flex', alignItems: 'center', gap: 12,
+      }}>
+        <span style={{ fontWeight: 800, fontSize: 16, color: '#1E3A5F' }}>
+          <SafetyOutlined style={{ marginRight: 6, color: '#4db3d4' }} />
+          Quản lý Người dùng
+        </span>
+        <Button type="primary" icon={<PlusOutlined />} size="small" onClick={openCreate}
+          style={{ marginLeft: 'auto', background: '#1D4ED8', borderColor: '#1D4ED8' }}>
+          Thêm người dùng
+        </Button>
+      </div>
 
-      <Table columns={columns} dataSource={users} rowKey="id"
-        loading={loading} pagination={false} />
+      <Table
+        className="um-table"
+        columns={columns}
+        dataSource={users}
+        rowKey="id"
+        loading={loading}
+        size="small"
+        sticky={{ offsetHeader: toolbarH }}
+        rowClassName={(_, i) => i % 2 !== 0 ? 'row-stripe' : ''}
+        pagination={{
+          showTotal: t => `Tổng ${t} người dùng`,
+          showSizeChanger: true,
+          defaultPageSize: 50,
+        }}
+      />
 
       <Modal
         title={editUser ? 'Chỉnh sửa người dùng' : 'Thêm người dùng mới'}
@@ -127,18 +184,19 @@ export default function UserManagePage() {
         onCancel={() => setModalOpen(false)}
         okText="Lưu"
         cancelText="Hủy"
+        width={480}
       >
-        <Form form={form} layout="vertical">
+        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item label="Tên đăng nhập" name="username"
             rules={[{ required: true, message: 'Nhập tên đăng nhập' }]}>
-            <Input disabled={Boolean(editUser)} />
+            <Input disabled={Boolean(editUser)} placeholder="VD: adminPCPL1" />
           </Form.Item>
           <Form.Item label="Mật khẩu" name="password"
             rules={editUser ? [] : [{ required: true, message: 'Nhập mật khẩu' }]}>
-            <Input.Password placeholder={editUser ? 'Để trống nếu không đổi' : ''} />
+            <Input.Password placeholder={editUser ? 'Để trống nếu không đổi' : 'Nhập mật khẩu'} />
           </Form.Item>
           <Form.Item label="Họ tên" name="fullName">
-            <Input />
+            <Input placeholder="Họ và tên đầy đủ" />
           </Form.Item>
           <Form.Item label="Vai trò" name="role"
             rules={[{ required: true, message: 'Chọn vai trò' }]}>
@@ -146,10 +204,13 @@ export default function UserManagePage() {
               <Option value="ADMIN">Quản trị viên</Option>
               <Option value="NHAN_VIEN">Nhân viên</Option>
               <Option value="ADMIN_KH">Admin Kế hoạch (sản lượng, kế hoạch, danh mục, WIP)</Option>
-              <Option value="ADMIN_PC">Admin PC (chỉ sửa Lịch làm việc PC)</Option>
-              <Option value="ADMIN_BBC1">Admin BBC1 (chỉ sửa Lịch làm việc BBC1)</Option>
-              <Option value="ADMIN_PL">Admin PL (chỉ sửa Lịch làm việc PL)</Option>
-              <Option value="ADMIN_DG">Admin ĐG (chỉ sửa Lịch làm việc ĐG)</Option>
+              <Option value="ADMIN_PC">Admin PC (Lịch làm việc PC, xem toàn bộ Hiệu quả)</Option>
+              <Option value="ADMIN_BBC1">Admin BBC1 (Lịch làm việc BBC1, chỉ xem Hiệu quả BBC1)</Option>
+              <Option value="ADMIN_PL">Admin PL (Lịch làm việc PL, xem toàn bộ Hiệu quả PL)</Option>
+              <Option value="ADMIN_DG">Admin ĐG (Lịch làm việc ĐG, chỉ xem Hiệu quả ĐG)</Option>
+              <Option value="ADMIN_PCPL1">Admin PCPL1 (Lịch làm việc, chỉ xem Hiệu quả PCPL1)</Option>
+              <Option value="ADMIN_PCPL2">Admin PCPL2 (Lịch làm việc, chỉ xem Hiệu quả PCPL2)</Option>
+              <Option value="ADMIN_PCPL3">Admin PCPL3 (Lịch làm việc, chỉ xem Hiệu quả PCPL3)</Option>
             </Select>
           </Form.Item>
           {editUser && (

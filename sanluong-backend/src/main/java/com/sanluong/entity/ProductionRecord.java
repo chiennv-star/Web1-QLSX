@@ -24,6 +24,9 @@ public class ProductionRecord {
     @Column(name = "lsx", length = 50)
     private String lsx;
 
+    @Column(name = "ma_don_hang", length = 100)
+    private String maDonHang;
+
     @Column(name = "so_luong")
     private Integer soLuong;
 
@@ -93,8 +96,48 @@ public class ProductionRecord {
     @jakarta.persistence.Transient
     private String mayMoc;
 
+    @jakarta.persistence.Transient
+    private String toNhom;
+
     @Column(name = "mo_ta", length = 500)
     private String moTa;
+
+    // ── Trạng thái xử lý hàng lỗi (auto-sync từ HangLoi khi lưu) ──
+    @Column(name = "hl_so_luong_tra_ve", precision = 12, scale = 2)
+    private BigDecimal hlSoLuongTraVe;
+
+    @Column(name = "hl_li_do_tra_ve", length = 1000)
+    private String hlLiDoTraVe;
+
+    @Column(name = "hl_huong_xu_ly", length = 100)
+    private String hlHuongXuLy;
+
+    @Column(name = "hl_trang_thai_xu_ly", length = 50)
+    private String hlTrangThaiXuLy;
+
+    @Column(name = "hl_ly_do_chua_thuc_hien", length = 1000)
+    private String hlLyDoChuaThucHien;
+
+    @Column(name = "hl_sl_dat_sau_xu_ly", precision = 12, scale = 2)
+    private BigDecimal hlSlDatSauXuLy;
+
+    @Column(name = "hl_sl_huy", precision = 12, scale = 2)
+    private BigDecimal hlSlHuy;
+
+    @Column(name = "qa_lay_mau")
+    private Integer qaLayMau;
+
+    @Column(name = "phat_lenh")
+    private Boolean phatLenh;
+
+    @Column(name = "hidden")
+    private Boolean hidden;
+
+    @Column(name = "deleted_at")
+    private java.time.LocalDateTime deletedAt;
+
+    @Column(name = "deleted_by", length = 100)
+    private String deletedBy;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -185,6 +228,8 @@ public class ProductionRecord {
     public void setTienTrinh(String tienTrinh) { this.tienTrinh = tienTrinh; }
     public String getLsx() { return lsx; }
     public void setLsx(String lsx) { this.lsx = lsx; }
+    public String getMaDonHang() { return maDonHang; }
+    public void setMaDonHang(String maDonHang) { this.maDonHang = maDonHang; }
     public Integer getSoLuong() { return soLuong; }
     public void setSoLuong(Integer soLuong) { this.soLuong = soLuong; }
     public String getSlPc() { return slPc; }
@@ -231,8 +276,34 @@ public class ProductionRecord {
     public void setSlTrungBinh(java.math.BigDecimal slTrungBinh) { this.slTrungBinh = slTrungBinh; }
     public String getMayMoc() { return mayMoc; }
     public void setMayMoc(String mayMoc) { this.mayMoc = mayMoc; }
+    public String getToNhom() { return toNhom; }
+    public void setToNhom(String toNhom) { this.toNhom = toNhom; }
     public String getMoTa() { return moTa; }
     public void setMoTa(String moTa) { this.moTa = moTa; }
+    public BigDecimal getHlSoLuongTraVe() { return hlSoLuongTraVe; }
+    public void setHlSoLuongTraVe(BigDecimal v) { this.hlSoLuongTraVe = v; }
+    public String getHlLiDoTraVe() { return hlLiDoTraVe; }
+    public void setHlLiDoTraVe(String v) { this.hlLiDoTraVe = v; }
+    public String getHlHuongXuLy() { return hlHuongXuLy; }
+    public void setHlHuongXuLy(String v) { this.hlHuongXuLy = v; }
+    public String getHlTrangThaiXuLy() { return hlTrangThaiXuLy; }
+    public void setHlTrangThaiXuLy(String v) { this.hlTrangThaiXuLy = v; }
+    public String getHlLyDoChuaThucHien() { return hlLyDoChuaThucHien; }
+    public void setHlLyDoChuaThucHien(String v) { this.hlLyDoChuaThucHien = v; }
+    public BigDecimal getHlSlDatSauXuLy() { return hlSlDatSauXuLy; }
+    public void setHlSlDatSauXuLy(BigDecimal v) { this.hlSlDatSauXuLy = v; }
+    public BigDecimal getHlSlHuy() { return hlSlHuy; }
+    public void setHlSlHuy(BigDecimal v) { this.hlSlHuy = v; }
+    public Integer getQaLayMau() { return qaLayMau; }
+    public void setQaLayMau(Integer qaLayMau) { this.qaLayMau = qaLayMau; }
+    public Boolean getPhatLenh() { return phatLenh; }
+    public void setPhatLenh(Boolean phatLenh) { this.phatLenh = phatLenh; }
+    public Boolean getHidden() { return hidden; }
+    public void setHidden(Boolean hidden) { this.hidden = hidden; }
+    public java.time.LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(java.time.LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
+    public String getDeletedBy() { return deletedBy; }
+    public void setDeletedBy(String deletedBy) { this.deletedBy = deletedBy; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

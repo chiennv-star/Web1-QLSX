@@ -9,9 +9,11 @@ public class WorkScheduleDto {
     private String source;
     private String congDoan;
     @NotNull private LocalDate ngayThucHien;
+    private String maBravo;
     private String maSp;
     private String tenTrinh;
     private String soLo;
+    private String maDonHang;
     private BigDecimal coLo;
     private String toNhom;
     private String phongThucHien;
@@ -29,6 +31,7 @@ public class WorkScheduleDto {
     private BigDecimal slDg;
     private BigDecimal congDg;
     private BigDecimal congCc;
+    private Integer qaLayMau;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -38,12 +41,16 @@ public class WorkScheduleDto {
     public void setCongDoan(String congDoan) { this.congDoan = congDoan; }
     public LocalDate getNgayThucHien() { return ngayThucHien; }
     public void setNgayThucHien(LocalDate ngayThucHien) { this.ngayThucHien = ngayThucHien; }
+    public String getMaBravo() { return maBravo; }
+    public void setMaBravo(String maBravo) { this.maBravo = maBravo; }
     public String getMaSp() { return maSp; }
     public void setMaSp(String maSp) { this.maSp = maSp; }
     public String getTenTrinh() { return tenTrinh; }
     public void setTenTrinh(String tenTrinh) { this.tenTrinh = tenTrinh; }
     public String getSoLo() { return soLo; }
     public void setSoLo(String soLo) { this.soLo = soLo; }
+    public String getMaDonHang() { return maDonHang; }
+    public void setMaDonHang(String maDonHang) { this.maDonHang = maDonHang; }
     public BigDecimal getCoLo() { return coLo; }
     public void setCoLo(BigDecimal coLo) { this.coLo = coLo; }
     public String getToNhom() { return toNhom; }
@@ -78,4 +85,6 @@ public class WorkScheduleDto {
     public void setCongDg(BigDecimal congDg) { this.congDg = congDg; }
     public BigDecimal getCongCc() { return congCc; }
     public void setCongCc(BigDecimal congCc) { this.congCc = congCc; }
+    public Integer getQaLayMau() { return qaLayMau; }
+    public void setQaLayMau(Integer qaLayMau) { this.qaLayMau = qaLayMau; }
 }

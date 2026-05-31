@@ -7,9 +7,17 @@ import RecordFormPage from './pages/RecordFormPage'
 import UserManagePage from './pages/UserManagePage'
 import ProductMasterPage from './pages/ProductMasterPage'
 import WorkSchedulePage from './pages/WorkSchedulePage'
-import WipPage from './pages/WipPage'
 import HangLoiPage from './pages/HangLoiPage'
 import KhoachPage from './pages/KhoachPage'
+import EmployeePage from './pages/EmployeePage'
+import WorkEfficiencyPage from './pages/WorkEfficiencyPage'
+import DailySanLuongPage from './pages/DailySanLuongPage'
+import ChamCongPage from './pages/ChamCongPage'
+import TrashPage from './pages/TrashPage'
+import DanhMucPage from './pages/DanhMucPage'
+import NotificationPage from './pages/NotificationPage'
+import LenhSanXuatPage from './pages/LenhSanXuatPage'
+import DonHangPage from './pages/DonHangPage'
 import MainLayout from './components/MainLayout'
 
 function PrivateRoute({ children, adminOnly = false, allowedRoles = null }) {
@@ -32,17 +40,12 @@ export default function App() {
         <Route index element={<DashboardPage />} />
         <Route path="work-schedule" element={<WorkSchedulePage />} />
         <Route path="record/new" element={<RecordFormPage />} />
-        <Route path="record/edit/:id" element={
-          <PrivateRoute adminOnly>
-            <RecordFormPage />
-          </PrivateRoute>
-        } />
+        <Route path="record/edit/:id" element={<RecordFormPage />} />
         <Route path="users" element={
           <PrivateRoute adminOnly>
             <UserManagePage />
           </PrivateRoute>
         } />
-        <Route path="wip" element={<WipPage />} />
         <Route path="hang-loi" element={<HangLoiPage />} />
         <Route path="khoach" element={<KhoachPage />} />
         <Route path="product-master" element={
@@ -50,6 +53,27 @@ export default function App() {
             <ProductMasterPage />
           </PrivateRoute>
         } />
+        <Route path="employees" element={<EmployeePage />} />
+        <Route path="work-efficiency" element={
+          <PrivateRoute adminOnly>
+            <WorkEfficiencyPage />
+          </PrivateRoute>
+        } />
+        <Route path="daily-sl" element={<DailySanLuongPage />} />
+        <Route path="cham-cong" element={
+          <PrivateRoute adminOnly>
+            <ChamCongPage />
+          </PrivateRoute>
+        } />
+        <Route path="trash" element={
+          <PrivateRoute adminOnly>
+            <TrashPage />
+          </PrivateRoute>
+        } />
+        <Route path="danh-muc" element={<DanhMucPage />} />
+        <Route path="notifications" element={<NotificationPage />} />
+        <Route path="lenh-san-xuat" element={<LenhSanXuatPage />} />
+        <Route path="don-hang" element={<DonHangPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

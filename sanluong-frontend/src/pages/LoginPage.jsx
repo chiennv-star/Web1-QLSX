@@ -25,11 +25,28 @@ export default function LoginPage() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #6366f1 100%)',
     }}>
-      <Card style={{ width: 380, borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+      <Card style={{
+        width: 400,
+        borderRadius: 16,
+        boxShadow: '0 24px 64px rgba(0,0,0,0.35)',
+        border: '1px solid rgba(255,255,255,0.15)',
+        overflow: 'hidden',
+      }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <Typography.Title level={3} style={{ margin: 0, color: '#1890ff' }}>
+          <div style={{
+            width: 60, height: 60,
+            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+            borderRadius: '50%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 16px',
+            fontSize: 28,
+            boxShadow: '0 4px 16px rgba(99,102,241,0.5)',
+          }}>
+            ⚡
+          </div>
+          <Typography.Title level={3} style={{ margin: 0, color: '#1e1b4b', fontWeight: 700 }}>
             Quản lý Sản lượng
           </Typography.Title>
           <Typography.Text type="secondary">Đăng nhập để tiếp tục</Typography.Text>

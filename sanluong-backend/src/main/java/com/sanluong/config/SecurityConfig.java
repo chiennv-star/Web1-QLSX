@@ -27,13 +27,18 @@ public class SecurityConfig {
 
     // Stage admin roles (without ROLE_ prefix for hasAnyRole())
     private static final String[] STAGE_ADMIN_ROLES = {
-        "ADMIN_PC", "ADMIN_BBC1", "ADMIN_PL", "ADMIN_DG"
+        "ADMIN_PC", "ADMIN_BBC1", "ADMIN_PL", "ADMIN_DG",
+        "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3"
     };
+    // TKSX: tương đương ADMIN (trừ write lenh-san-xuat)
+    // QUAN_DOC: chỉ đọc (GET), không write
     private static final String[] ALL_WRITE_ROLES = {
-        "ADMIN", "NHAN_VIEN", "ADMIN_PC", "ADMIN_BBC1", "ADMIN_PL", "ADMIN_DG", "ADMIN_KH"
+        "ADMIN", "TKSX", "NHAN_VIEN", "ADMIN_PC", "ADMIN_BBC1", "ADMIN_PL", "ADMIN_DG", "ADMIN_KH",
+        "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3"
     };
     private static final String[] ALL_ROLES = {
-        "ADMIN", "NHAN_VIEN", "ADMIN_PC", "ADMIN_BBC1", "ADMIN_PL", "ADMIN_DG", "ADMIN_KH"
+        "ADMIN", "TKSX", "QUAN_DOC", "NHAN_VIEN", "ADMIN_PC", "ADMIN_BBC1", "ADMIN_PL", "ADMIN_DG", "ADMIN_KH",
+        "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3"
     };
 
     public SecurityConfig(JwtFilter jwtFilter) {
@@ -48,39 +53,78 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/ws/**").permitAll()
 
                 // ── Sản lượng: ADMIN_KH có toàn quyền như ADMIN ───────────────
-                .requestMatchers(HttpMethod.DELETE, "/api/production/**").hasAnyRole("ADMIN", "ADMIN_KH")
-                .requestMatchers(HttpMethod.PUT, "/api/production/**").hasAnyRole("ADMIN", "ADMIN_KH")
-                .requestMatchers(HttpMethod.POST, "/api/production/**").hasAnyRole("ADMIN", "NHAN_VIEN", "ADMIN_KH")
+                .requestMatchers(HttpMethod.DELETE, "/api/production/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH")
+                .requestMatchers(HttpMethod.PUT, "/api/production/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH")
+                .requestMatchers(HttpMethod.POST, "/api/production/**").hasAnyRole("ADMIN", "TKSX", "NHAN_VIEN", "ADMIN_KH")
                 .requestMatchers(HttpMethod.GET, "/api/production/**").hasAnyRole(ALL_ROLES)
 
                 // ── Lịch làm việc: stage admins chỉnh sửa đúng công đoạn ──────
                 // (controller sẽ kiểm tra congDoan cụ thể)
-                .requestMatchers(HttpMethod.DELETE, "/api/work-schedule/**").hasAnyRole("ADMIN", "ADMIN_PC", "ADMIN_BBC1", "ADMIN_PL", "ADMIN_DG")
+                .requestMatchers(HttpMethod.DELETE, "/api/work-schedule/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH", "ADMIN_PC", "ADMIN_BBC1", "ADMIN_PL", "ADMIN_DG", "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3")
+                .requestMatchers(HttpMethod.PATCH, "/api/work-schedule/**").hasAnyRole(ALL_WRITE_ROLES)
                 .requestMatchers(HttpMethod.PUT, "/api/work-schedule/**").hasAnyRole(ALL_WRITE_ROLES)
                 .requestMatchers(HttpMethod.POST, "/api/work-schedule/**").hasAnyRole(ALL_WRITE_ROLES)
                 .requestMatchers(HttpMethod.GET, "/api/work-schedule/**").hasAnyRole(ALL_ROLES)
 
                 // ── Danh mục: ADMIN_KH có toàn quyền ─────────────────────────
                 .requestMatchers(HttpMethod.GET, "/api/product-master/**").hasAnyRole(ALL_ROLES)
-                .requestMatchers("/api/product-master/**").hasAnyRole("ADMIN", "ADMIN_KH")
+                .requestMatchers("/api/product-master/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH", "ADMIN_PC", "ADMIN_BBC1", "ADMIN_PL", "ADMIN_DG", "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3")
 
-                // ── Duyệt sản lượng: tất cả tạo, chỉ ADMIN duyệt ────────────
+                // ── Duyệt sản lượng: tất cả tạo, ADMIN + ADMIN_KH duyệt ─────
                 .requestMatchers(HttpMethod.POST, "/api/sl-change-request").hasAnyRole(ALL_WRITE_ROLES)
                 .requestMatchers(HttpMethod.GET, "/api/sl-change-request/for-schedule/**").hasAnyRole(ALL_ROLES)
-                .requestMatchers("/api/sl-change-request/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/sl-change-request/pending").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH")
+                .requestMatchers(HttpMethod.PUT, "/api/sl-change-request/*/approve").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH")
+                .requestMatchers(HttpMethod.PUT, "/api/sl-change-request/*/reject").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH")
+                .requestMatchers("/api/sl-change-request/**").hasAnyRole("ADMIN", "TKSX")
 
-                // ── Kế hoạch sản xuất xưởng: chỉ ADMIN tạo/sửa/xóa ─────────
+                // ── Lệnh sản xuất: tất cả xem, ADMIN/ADMIN_KH sửa ─────────
+                .requestMatchers(HttpMethod.GET, "/api/lenh-san-xuat/**").hasAnyRole(ALL_ROLES)
+                .requestMatchers("/api/lenh-san-xuat/**").hasAnyRole("ADMIN", "ADMIN_KH")
+
+                // ── Đơn hàng: tất cả xem, ADMIN/TKSX/ADMIN_KH sửa ───────────────
+                .requestMatchers(HttpMethod.GET, "/api/don-hang/**").hasAnyRole(ALL_ROLES)
+                .requestMatchers("/api/don-hang/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH")
+
+                // ── Kế hoạch sản xuất xưởng: ADMIN và TKSX tạo/sửa/xóa ──────
                 .requestMatchers(HttpMethod.GET, "/api/factory-plan/**").hasAnyRole(ALL_ROLES)
-                .requestMatchers("/api/factory-plan/**").hasRole("ADMIN")
+                .requestMatchers("/api/factory-plan/**").hasAnyRole("ADMIN", "TKSX")
 
-                // ── Hàng lỗi: tất cả xem, chỉ ADMIN/ADMIN_PL/ADMIN_DG thêm/sửa/xóa ─
+                // ── Hàng lỗi: tất cả xem, tất cả ADMIN_* + TKSX sửa ─────────────
                 .requestMatchers(HttpMethod.GET, "/api/hang-loi/**").hasAnyRole(ALL_ROLES)
-                .requestMatchers("/api/hang-loi/**").hasAnyRole("ADMIN", "ADMIN_PL", "ADMIN_DG")
+                .requestMatchers("/api/hang-loi/**").hasAnyRole(
+                    "ADMIN", "TKSX",
+                    "ADMIN_KH", "ADMIN_PC", "ADMIN_BBC1",
+                    "ADMIN_PL", "ADMIN_DG",
+                    "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3"
+                )
 
-                // ── Quản lý người dùng: chỉ ADMIN ─────────────────────────────
-                .requestMatchers("/api/users/**").hasRole("ADMIN")
+                // ── Nhân sự: tất cả xem, ADMIN + TKSX + ADMIN_KH thêm/sửa/xóa ──
+                .requestMatchers(HttpMethod.GET, "/api/employees/**").hasAnyRole(ALL_ROLES)
+                .requestMatchers("/api/employees/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH")
+
+                // ── Hiệu quả công việc: tất cả xem, ADMIN và TKSX cập nhật ───
+                .requestMatchers(HttpMethod.GET, "/api/work-efficiency/**").hasAnyRole(ALL_ROLES)
+                .requestMatchers("/api/work-efficiency/**").hasAnyRole("ADMIN", "TKSX")
+
+                // ── Chấm công: tất cả xem ──────────────────────────────────────
+                .requestMatchers(HttpMethod.GET, "/api/attendance/**").hasAnyRole(ALL_ROLES)
+
+                // ── Quản lý người dùng: ADMIN và TKSX ─────────────────────────
+                .requestMatchers("/api/users/**").hasAnyRole("ADMIN", "TKSX")
+
+                // ── Chat realtime ─────────────────────────────────────────────
+                .requestMatchers("/api/chat/**").hasAnyRole(ALL_ROLES)
+
+                // ── Thông báo: tất cả xem, tất cả đánh dấu đã đọc ────────────
+                .requestMatchers("/api/notifications/**").hasAnyRole(ALL_ROLES)
+
+                // ── Phòng thực hiện: tất cả xem, ADMIN + TKSX thêm/sửa/xóa ──
+                .requestMatchers(HttpMethod.GET, "/api/phong-thuc-hien/**").hasAnyRole(ALL_ROLES)
+                .requestMatchers("/api/phong-thuc-hien/**").hasAnyRole("ADMIN", "TKSX")
 
                 .anyRequest().authenticated()
             )
@@ -101,8 +145,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedOriginPatterns(List.of("http://localhost:5173", "http://localhost:3000", "http://192.168.*.*:5173", "http://10.*.*.*:5173"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

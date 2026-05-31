@@ -19,6 +19,8 @@ public class HangLoiDto {
     private String ghiChu;
     private BigDecimal slDatSauXuLy;
     private BigDecimal slHuy;
+    private BigDecimal soLuongTraVe;
+    private String lyDoChuaThucHien;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -52,4 +54,8 @@ public class HangLoiDto {
     public void setSlDatSauXuLy(BigDecimal v) { this.slDatSauXuLy = v; }
     public BigDecimal getSlHuy() { return slHuy; }
     public void setSlHuy(BigDecimal v) { this.slHuy = v; }
+    public BigDecimal getSoLuongTraVe() { return soLuongTraVe; }
+    public void setSoLuongTraVe(BigDecimal v) { this.soLuongTraVe = v; }
+    public String getLyDoChuaThucHien() { return lyDoChuaThucHien; }
+    public void setLyDoChuaThucHien(String v) { this.lyDoChuaThucHien = v; }
 }

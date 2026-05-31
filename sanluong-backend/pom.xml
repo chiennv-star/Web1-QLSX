@@ -66,6 +66,12 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- WebSocket / STOMP -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
         <!-- Excel export -->
         <dependency>
             <groupId>org.apache.poi</groupId>

@@ -9,12 +9,14 @@ public class ProductionRecordDto {
     private String maBravo;
     private String tienTrinh;
     private String lsx;
+    private String maDonHang;
     private Integer soLuong;
     private String pcTrangThai;
     private String plTrangThai;
     private String dgTrangThai;
     private String bbc1TrangThai;
     private String bbc1_1;
+    private String slPc;
     private String pcPl;
     private String dg2;
     private String bbc1_2;
@@ -31,6 +33,16 @@ public class ProductionRecordDto {
     private BigDecimal soSpCong;
     private BigDecimal slTrungBinh;
     private String moTa;
+    // ── Hàng lỗi (auto-sync từ HangLoi) ──
+    private BigDecimal hlSoLuongTraVe;
+    private String hlLiDoTraVe;
+    private String hlHuongXuLy;
+    private String hlTrangThaiXuLy;
+    private String hlLyDoChuaThucHien;
+    private BigDecimal hlSlDatSauXuLy;
+    private BigDecimal hlSlHuy;
+    private Integer qaLayMau;
+    private Boolean phatLenh;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String createdBy;
@@ -46,6 +58,8 @@ public class ProductionRecordDto {
     public void setTienTrinh(String tienTrinh) { this.tienTrinh = tienTrinh; }
     public String getLsx() { return lsx; }
     public void setLsx(String lsx) { this.lsx = lsx; }
+    public String getMaDonHang() { return maDonHang; }
+    public void setMaDonHang(String maDonHang) { this.maDonHang = maDonHang; }
     public Integer getSoLuong() { return soLuong; }
     public void setSoLuong(Integer soLuong) { this.soLuong = soLuong; }
     public String getPcTrangThai() { return pcTrangThai; }
@@ -58,6 +72,8 @@ public class ProductionRecordDto {
     public void setBbc1TrangThai(String bbc1TrangThai) { this.bbc1TrangThai = bbc1TrangThai; }
     public String getBbc1_1() { return bbc1_1; }
     public void setBbc1_1(String bbc1_1) { this.bbc1_1 = bbc1_1; }
+    public String getSlPc() { return slPc; }
+    public void setSlPc(String slPc) { this.slPc = slPc; }
     public String getPcPl() { return pcPl; }
     public void setPcPl(String pcPl) { this.pcPl = pcPl; }
     public String getDg2() { return dg2; }
@@ -90,6 +106,24 @@ public class ProductionRecordDto {
     public void setSlTrungBinh(BigDecimal slTrungBinh) { this.slTrungBinh = slTrungBinh; }
     public String getMoTa() { return moTa; }
     public void setMoTa(String moTa) { this.moTa = moTa; }
+    public BigDecimal getHlSoLuongTraVe() { return hlSoLuongTraVe; }
+    public void setHlSoLuongTraVe(BigDecimal v) { this.hlSoLuongTraVe = v; }
+    public String getHlLiDoTraVe() { return hlLiDoTraVe; }
+    public void setHlLiDoTraVe(String v) { this.hlLiDoTraVe = v; }
+    public String getHlHuongXuLy() { return hlHuongXuLy; }
+    public void setHlHuongXuLy(String v) { this.hlHuongXuLy = v; }
+    public String getHlTrangThaiXuLy() { return hlTrangThaiXuLy; }
+    public void setHlTrangThaiXuLy(String v) { this.hlTrangThaiXuLy = v; }
+    public String getHlLyDoChuaThucHien() { return hlLyDoChuaThucHien; }
+    public void setHlLyDoChuaThucHien(String v) { this.hlLyDoChuaThucHien = v; }
+    public BigDecimal getHlSlDatSauXuLy() { return hlSlDatSauXuLy; }
+    public void setHlSlDatSauXuLy(BigDecimal v) { this.hlSlDatSauXuLy = v; }
+    public BigDecimal getHlSlHuy() { return hlSlHuy; }
+    public void setHlSlHuy(BigDecimal v) { this.hlSlHuy = v; }
+    public Integer getQaLayMau() { return qaLayMau; }
+    public void setQaLayMau(Integer qaLayMau) { this.qaLayMau = qaLayMau; }
+    public Boolean getPhatLenh() { return phatLenh; }
+    public void setPhatLenh(Boolean phatLenh) { this.phatLenh = phatLenh; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

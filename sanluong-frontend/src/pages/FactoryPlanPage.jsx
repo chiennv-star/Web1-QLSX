@@ -189,7 +189,7 @@ export default function FactoryPlanPage() {
       </div>
 
       {/* Week label */}
-      <div style={{ marginBottom: 12, color: '#595959', fontSize: 13 }}>
+      <div style={{ marginBottom: 12, color: '#64f5b1', fontSize: 13 }}>
         Tuần: <strong>{weekStart.format('DD/MM/YYYY')}</strong> – <strong>{weekEnd.format('DD/MM/YYYY')}</strong>
       </div>
 
@@ -258,7 +258,7 @@ export default function FactoryPlanPage() {
                           value={d.tenSanPham || ''}
                           placeholder="Tự điền từ Mã SP..."
                           onChange={e => updateDraft(k, 'tenSanPham', e.target.value)}
-                          style={{ color: d.tenSanPham ? '#262626' : '#bbb' }}
+                          style={{ color: d.tenSanPham ? '#3ac0e2' : '#bbb' }}
                         />
                       </td>
                       <td style={cellStyle}>
@@ -350,7 +350,7 @@ export default function FactoryPlanPage() {
                 // Read-only row
                 return (
                   <tr key={k}>
-                    <td style={{ ...cellStyle, color: '#8c8c8c', textAlign: 'center', fontWeight: 500 }}>
+                    <td style={{ ...cellStyle, color: '#b91515', textAlign: 'center', fontWeight: 500 }}>
                       {getThu(r.ngayThucHien)}
                     </td>
                     <td style={{ ...cellStyle, textAlign: 'center' }}>
@@ -380,7 +380,7 @@ export default function FactoryPlanPage() {
                     <td style={{ ...cellStyle, textAlign: 'right' }}>
                       {r.soNguoiThucHien ?? <span style={{ color: '#d9d9d9' }}>—</span>}
                     </td>
-                    <td style={{ ...cellStyle, color: '#8c8c8c' }}>
+                    <td style={{ ...cellStyle, color: '#3dedf4' }}>
                       {r.ghiChu || <span style={{ color: '#d9d9d9' }}>—</span>}
                     </td>
                     <td style={{ ...cellStyle, textAlign: 'center', whiteSpace: 'nowrap' }}>
@@ -388,7 +388,7 @@ export default function FactoryPlanPage() {
                         {isAdmin() && (
                           <Tooltip title="Sửa">
                             <Button size="small" type="text" icon={<EditOutlined />}
-                              style={{ color: '#1677ff' }}
+                              style={{ color: '#27c265' }}
                               onClick={() => startEdit(r)} />
                           </Tooltip>
                         )}

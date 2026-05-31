@@ -37,7 +37,7 @@ public class User {
         createdAt = LocalDateTime.now();
     }
 
-    public enum Role { ADMIN, NHAN_VIEN, ADMIN_PC, ADMIN_BBC1, ADMIN_PL, ADMIN_DG, ADMIN_KH }
+    public enum Role { ADMIN, TKSX, QUAN_DOC, NHAN_VIEN, ADMIN_PC, ADMIN_BBC1, ADMIN_PL, ADMIN_DG, ADMIN_KH, ADMIN_PCPL1, ADMIN_PCPL2, ADMIN_PCPL3 }
 
     // Getters & Setters
     public Long getId() { return id; }

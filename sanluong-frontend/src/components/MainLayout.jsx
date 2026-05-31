@@ -1,133 +1,417 @@
-import React, { useState } from 'react'
-import { Layout, Menu, Button, Typography, Space, Avatar, Dropdown } from 'antd'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { Layout, Menu, Button, Typography, Space, Avatar, Dropdown, Drawer, Grid, Badge, Tooltip } from 'antd'
 import {
   TableOutlined,
   UserOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  BookOutlined,
   ScheduleOutlined,
-  InboxOutlined,
   WarningOutlined,
   CalendarOutlined,
+  TrophyOutlined,
+  BarChartOutlined,
+  FileDoneOutlined,
+  DeleteOutlined,
+  AppstoreOutlined,
+  ArrowLeftOutlined,
+  BellOutlined,
 } from '@ant-design/icons'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useAutoReload } from '../hooks/useAutoReload'
+import api from '../api/axios'
+import WorkChecklistWidget from './WorkChecklistWidget'
+import ChatWidget from './ChatWidget'
 
 const { Header, Sider, Content } = Layout
+const { useBreakpoint } = Grid
+
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const NAV = {
+  bg:     '#339999',
+  logo:   '#277a7a',
+  border: 'rgba(255,255,255,0.07)',
+}
+
+// ── Shared sidebar inner content ───────────────────────────────────────────────
+function SidebarInner({ collapsed, location, menuItems, onNavigate }) {
+  return (
+    <>
+      {/* Brand */}
+      <div style={{
+        height: 56,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: collapsed ? 'center' : 'flex-start',
+        gap: 10,
+        padding: collapsed ? 0 : '0 18px',
+        background: NAV.logo,
+        borderBottom: `1px solid ${NAV.border}`,
+        flexShrink: 0,
+      }}>
+        <div style={{
+          width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+          background: 'linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 15, boxShadow: '0 2px 8px rgba(29,78,216,0.5)',
+        }}>
+          📋
+        </div>
+        {!collapsed && (
+          <div style={{ lineHeight: 1.2, overflow: 'hidden' }}>
+            <div style={{ fontWeight: 800, fontSize: 13, color: '#F1F5F9', letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>
+              Sản lượng SX
+            </div>
+            <div style={{ fontSize: 10, color: '#64748B', fontWeight: 500, whiteSpace: 'nowrap' }}>
+              Quản lý sản xuất
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Nav menu */}
+      <style>{`
+        .nav-menu.ant-menu-dark .ant-menu-item { color: #e0ffff !important; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 12px; }
+        .nav-menu.ant-menu-dark .ant-menu-item .ant-menu-title-content { color: #e0ffff !important; }
+        .nav-menu.ant-menu-dark .ant-menu-item:hover { color: #ffffff !important; background: rgba(255,255,255,0.15) !important; }
+        .nav-menu.ant-menu-dark .ant-menu-item:hover .ant-menu-title-content { color: #ffffff !important; }
+        .nav-menu.ant-menu-dark .ant-menu-item-selected { background: rgba(255,255,255,0.2) !important; color: #ffffff !important; }
+        .nav-menu.ant-menu-dark .ant-menu-item-selected .ant-menu-title-content { color: #ffffff !important; }
+        .nav-menu.ant-menu-dark .ant-menu-item .anticon { color: #e0ffff !important; }
+        .nav-menu.ant-menu-dark .ant-menu-item-selected .anticon { color: #ffffff !important; }
+      `}</style>
+      <Menu
+        mode="inline"
+        selectedKeys={[location.pathname]}
+        items={menuItems}
+        onClick={({ key }) => onNavigate(key)}
+        theme="dark"
+        className="nav-menu"
+        style={{ background: 'transparent', border: 'none', marginTop: 6, fontSize: 12 }}
+      />
+
+      {/* Bottom status */}
+      {!collapsed && (
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          padding: '10px 14px',
+          borderTop: `1px solid ${NAV.border}`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+        }}>
+          <div style={{
+            width: 6, height: 6, borderRadius: '50%',
+            background: '#22C55E', boxShadow: '0 0 6px #22C55E',
+          }} />
+          <span style={{ fontSize: 10, color: '#64748B' }}>Hệ thống đang hoạt động</span>
+        </div>
+      )}
+    </>
+  )
+}
 
 export default function MainLayout() {
   const [collapsed, setCollapsed] = useState(false)
-  const { user, logout, isAdmin, isAdminKH } = useAuth()
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [unreadByType, setUnreadByType] = useState({})
+  const { user, logout, isAdmin, isAdminKH, isStageAdmin, canEditHangLoi } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const screens = useBreakpoint()
+  const isMobile = !screens.md
+  const pollRef = useRef(null)
+  const pollChuaPhatRef = useRef(null)
+  const [chuaPhatLenhCount, setChuaPhatLenhCount] = useState(0)
+  useAutoReload()
+
+  const canSeeChuaPhat = isAdmin() || isAdminKH()
+
+  const fetchUnread = useCallback(async () => {
+    try {
+      const [countRes, byTypeRes] = await Promise.all([
+        api.get('/notifications/unread-count'),
+        api.get('/notifications/unread-by-type'),
+      ])
+      setUnreadCount(countRes.data.count || 0)
+      setUnreadByType(byTypeRes.data || {})
+    } catch { /* non-blocking */ }
+  }, [])
+
+  const fetchChuaPhatLenh = useCallback(async () => {
+    if (!canSeeChuaPhat) return
+    try {
+      const { data } = await api.get('/production/chua-phat-lenh/count')
+      setChuaPhatLenhCount(data.count || 0)
+    } catch { /* non-blocking */ }
+  }, [canSeeChuaPhat])
+
+  useEffect(() => {
+    fetchUnread()
+    pollRef.current = setInterval(fetchUnread, 30000)
+    return () => clearInterval(pollRef.current)
+  }, [fetchUnread])
+
+  useEffect(() => {
+    fetchChuaPhatLenh()
+    pollChuaPhatRef.current = setInterval(fetchChuaPhatLenh, 60000)
+    return () => clearInterval(pollChuaPhatRef.current)
+  }, [fetchChuaPhatLenh])
+
+  // Reset badge khi vào trang thông báo
+  useEffect(() => {
+    if (location.pathname === '/notifications') {
+      fetchUnread()
+    }
+  }, [location.pathname, fetchUnread])
+
+  const mkBadgeIcon = (icon, count) =>
+    count > 0
+      ? <Badge count={count} size="small" style={{ background: '#e85d04' }} offset={[6, -2]}>{icon}</Badge>
+      : icon
+
+  const mkBadgeLabel = (label, count) =>
+    count > 0
+      ? <span>{label}<Badge count={count} size="small" style={{ background: '#e85d04', marginLeft: 6 }} /></span>
+      : label
+
+  const lenhNew   = unreadByType['LENH_SX_NEW']  || 0
+  const hangLoi   = unreadByType['HANG_LOI_NEW']  || 0
+  const donHang   = unreadByType['DON_HANG_NEW']  || 0
+  const lichSxNew = unreadByType['LICH_SX_NEW']   || 0
 
   const menuItems = [
     {
       key: '/',
-      icon: <TableOutlined />,
-      label: 'Sản lượng',
+      icon: mkBadgeIcon(<TableOutlined />, lenhNew + chuaPhatLenhCount),
+      label: canSeeChuaPhat && chuaPhatLenhCount > 0
+        ? (
+          <span>
+            Sản lượng
+            {lenhNew > 0 && <Badge count={lenhNew} size="small" style={{ background: '#e85d04', marginLeft: 6 }} />}
+            <Badge count={chuaPhatLenhCount} size="small"
+              style={{ background: '#008080', marginLeft: 6 }}
+              title={`${chuaPhatLenhCount} bản ghi chưa phát lệnh`}
+            />
+          </span>
+        )
+        : mkBadgeLabel('Sản lượng', lenhNew),
     },
+    { key: '/daily-sl',        icon: <BarChartOutlined />, label: 'Sản lượng theo ngày' },
     {
       key: '/work-schedule',
-      icon: <ScheduleOutlined />,
-      label: 'Lịch làm việc',
+      icon: mkBadgeIcon(<ScheduleOutlined />, lichSxNew),
+      label: mkBadgeLabel('Lịch làm việc', lichSxNew),
     },
-    {
-      key: '/wip',
-      icon: <InboxOutlined />,
-      label: 'Hàng dở dang',
-    },
-    {
-      key: '/khoach',
-      icon: <CalendarOutlined />,
-      label: 'Kế hoạch',
-    },
-    {
+    { key: '/khoach',          icon: <CalendarOutlined />, label: 'Kế hoạch' },
+    ...(canEditHangLoi() ? [{
       key: '/hang-loi',
-      icon: <WarningOutlined />,
-      label: 'Hàng Lỗi',
+      icon: mkBadgeIcon(<WarningOutlined />, hangLoi),
+      label: mkBadgeLabel('Hàng Lỗi', hangLoi),
+    }] : []),
+    ...(isAdmin() ? [
+      { key: '/work-efficiency', icon: <TrophyOutlined />, label: 'Hiệu quả công việc' },
+    ] : []),
+    ...(isAdmin() ? [
+      { key: '/cham-cong', icon: <FileDoneOutlined />, label: 'Chấm công' },
+    ] : []),
+    { key: '/danh-muc',        icon: <AppstoreOutlined />, label: 'Quản Lý Danh Mục' },
+    {
+      key: '/notifications',
+      icon: (
+        <Badge count={unreadCount} size="small" style={{ background: '#008080' }} offset={[6, -2]}>
+          <BellOutlined />
+        </Badge>
+      ),
+      label: (
+        <span>
+          Thông báo
+          {unreadCount > 0 && (
+            <Badge count={unreadCount} size="small" style={{ background: '#008080', marginLeft: 6 }} />
+          )}
+        </span>
+      ),
     },
-    ...(isAdmin() || isAdminKH() ? [{
-      key: '/product-master',
-      icon: <BookOutlined />,
-      label: 'Danh mục Mã TP',
-    }] : []),
-    ...(isAdmin() ? [{
-      key: '/users',
-      icon: <UserOutlined />,
-      label: 'Quản lý người dùng',
-    }] : []),
+    ...(isAdmin() ? [{ key: '/trash', icon: <DeleteOutlined style={{ color: '#f87171' }} />, label: <span style={{ color: '#f87171' }}>Thùng Rác</span> }] : []),
   ]
 
   const userMenu = {
-    items: [
-      {
-        key: 'logout',
-        icon: <LogoutOutlined />,
-        label: 'Đăng xuất',
-        onClick: () => { logout(); navigate('/login') },
-      },
-    ],
+    items: [{
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Đăng xuất',
+      onClick: () => { logout(); navigate('/login') },
+    }],
+  }
+
+  const ROLE_LABELS = {
+    ADMIN:       'Quản trị viên',
+    ADMIN_KH:    'Admin Kế hoạch',
+    ADMIN_PC:    'Admin PC',
+    ADMIN_BBC1:  'Admin BBC1',
+    ADMIN_PL:    'Admin PL',
+    ADMIN_DG:    'Admin ĐG',
+    ADMIN_PCPL1: 'Admin PCPL1',
+    ADMIN_PCPL2: 'Admin PCPL2',
+    ADMIN_PCPL3: 'Admin PCPL3',
+    NHAN_VIEN:   'Nhân viên',
+  }
+
+  const handleNavigate = (key) => {
+    navigate(key)
+    if (isMobile) setDrawerOpen(false)
   }
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider trigger={null} collapsible collapsed={collapsed}
-        style={{ background: '#001529' }}>
-        <div style={{
-          height: 64,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#fff',
-          fontWeight: 'bold',
-          fontSize: collapsed ? 14 : 16,
-          padding: '0 8px',
-          borderBottom: '1px solid rgba(255,255,255,0.1)'
-        }}>
-          {collapsed ? 'SL' : 'Quản lý Sản lượng'}
-        </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          items={menuItems}
-          onClick={({ key }) => navigate(key)}
-        />
-      </Sider>
 
+      {/* ── Mobile: menu as Drawer overlay ── */}
+      {isMobile && (
+        <Drawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          placement="left"
+          width={220}
+          styles={{
+            body: { padding: 0, background: NAV.bg, position: 'relative', overflow: 'hidden' },
+            header: { display: 'none' },
+          }}
+        >
+          <SidebarInner
+            collapsed={false}
+            location={location}
+            menuItems={menuItems}
+            onNavigate={handleNavigate}
+          />
+        </Drawer>
+      )}
+
+      {/* ── Desktop: fixed Sider ── */}
+      {!isMobile && (
+        <Sider
+          trigger={null}
+          collapsible
+          collapsed={collapsed}
+          width={210}
+          style={{
+            background: NAV.bg,
+            boxShadow: '4px 0 20px rgba(0,0,0,0.35)',
+            position: 'relative',
+            zIndex: 100,
+          }}
+        >
+          <SidebarInner
+            collapsed={collapsed}
+            location={location}
+            menuItems={menuItems}
+            onNavigate={(key) => navigate(key)}
+          />
+        </Sider>
+      )}
+
+      <WorkChecklistWidget />
+      <ChatWidget />
       <Layout style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+        {/* ── Top Header ── */}
         <Header style={{
-          padding: '0 16px',
-          background: '#fff',
+          padding: isMobile ? '0 12px 0 8px' : '0 20px 0 16px',
+          background: '#FFFFFF',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
-          flexShrink: 0
+          boxShadow: '0 1px 8px rgba(29,78,216,0.10)',
+          borderBottom: '1.5px solid #DBEAFE',
+          height: 52,
+          flexShrink: 0,
         }}>
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
-          />
+          <Space size={4}>
+            {/* Hamburger / collapse toggle */}
+            <Button
+              type="text"
+              icon={isMobile
+                ? <MenuUnfoldOutlined />
+                : (collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />)
+              }
+              onClick={() => isMobile ? setDrawerOpen(true) : setCollapsed(!collapsed)}
+              style={{ color: '#1D4ED8', fontSize: 17, fontWeight: 600, height: 38 }}
+            />
+            {/* Back button */}
+            {location.pathname !== '/' && (
+              <Button
+                type="text"
+                icon={<ArrowLeftOutlined style={{ color: '#fff' }} />}
+                onClick={() => navigate(-1)}
+                style={{
+                  color: '#fff',
+                  fontSize: 14,
+                  height: 38,
+                  background: '#00CC99',
+                  borderRadius: 8,
+                  paddingLeft: 10,
+                  paddingRight: 14,
+                  fontWeight: 600,
+                  border: 'none',
+                }}
+              >
+                {!isMobile && 'Quay lại'}
+              </Button>
+            )}
+          </Space>
+
+          <Space size={8} align="center">
+          {/* Bell icon */}
+          <Tooltip title="Thông báo">
+            <Badge count={unreadCount} size="small" style={{ background: '#008080' }}>
+              <Button
+                type="text"
+                icon={<BellOutlined style={{ fontSize: 18, color: unreadCount > 0 ? '#008080' : '#64748B' }} />}
+                onClick={() => navigate('/notifications')}
+                style={{ height: 38, padding: '0 8px' }}
+              />
+            </Badge>
+          </Tooltip>
+
+          {/* User info */}
           <Dropdown menu={userMenu} placement="bottomRight">
-            <Space style={{ cursor: 'pointer' }}>
-              <Avatar icon={<UserOutlined />} style={{ background: '#1890ff' }} />
-              <Typography.Text strong>
-                {user?.fullName || user?.username}
-              </Typography.Text>
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                ({user?.role === 'ADMIN' ? 'Quản trị viên' : 'Nhân viên'})
-              </Typography.Text>
+            <Space style={{ cursor: 'pointer', gap: 8 }} align="center">
+              <Avatar
+                icon={<UserOutlined />}
+                size={34}
+                style={{
+                  background: 'linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)',
+                  boxShadow: '0 2px 8px rgba(29,78,216,0.35)',
+                }}
+              />
+              {!isMobile && (
+                <div style={{ lineHeight: 1.25 }}>
+                  <Typography.Text strong style={{ display: 'block', color: '#1E293B', fontSize: 13 }}>
+                    {user?.fullName || user?.username}
+                  </Typography.Text>
+                  <Typography.Text style={{ fontSize: 11, color: '#64748B', fontWeight: 500 }}>
+                    {ROLE_LABELS[user?.role] || 'Nhân viên'}
+                  </Typography.Text>
+                </div>
+              )}
             </Space>
           </Dropdown>
+          </Space>
         </Header>
 
-        <Content style={{ margin: '16px', background: '#fff', padding: 0, borderRadius: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}>
-          <div style={{ padding: 24 }}>
+        {/* ── Page content ── */}
+        <Content style={{
+          margin: isMobile ? '6px' : '14px',
+          background: '#fff',
+          padding: 0,
+          borderRadius: 10,
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          boxShadow: '0 2px 16px rgba(29,78,216,0.07)',
+          border: '1px solid #DBEAFE',
+        }}>
+          <div style={{ padding: isMobile ? 10 : 24 }}>
             <Outlet />
           </div>
         </Content>

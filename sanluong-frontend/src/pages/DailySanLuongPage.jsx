@@ -1,0 +1,1124 @@
+﻿import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
+import {
+  Table, Button, Space, Typography, message, Select, DatePicker,
+  Tooltip, Modal, Input, Badge, Tag, Tabs, Popconfirm
+} from 'antd'
+import {
+  SearchOutlined, ReloadOutlined, BarChartOutlined,
+  CheckOutlined, CloseOutlined, ClockCircleOutlined,
+  RiseOutlined, TeamOutlined, FundOutlined, DeleteOutlined, ExclamationCircleOutlined
+} from '@ant-design/icons'
+import dayjs from 'dayjs'
+import api from '../api/axios'
+import { useAuth } from '../context/AuthContext'
+
+const { RangePicker } = DatePicker
+
+// ─── Shared constants ────────────────────────────────────────────────────────
+
+const CONG_DOAN_COLOR = { PC: 'blue', PL: 'green', DG: 'gold', BBC1: 'purple', CC: 'volcano' }
+
+const CONG_DOAN_OPTIONS = [
+  { value: '', label: 'Tất cả công đoạn' },
+  { value: 'PC', label: 'PC' },
+  { value: 'PL', label: 'PL' },
+  { value: 'DG', label: 'ĐG' },
+  { value: 'BBC1', label: 'BBC1' },
+]
+
+const STAGES = [
+  { key: 'PC',   label: 'PC',   slColor: '#1D4ED8', congColor: '#60A5FA', bg: '#EFF6FF', border: '#BFDBFE' },
+  { key: 'PL',   label: 'PL',   slColor: '#1677ff', congColor: '#69b1ff', bg: '#e6f4ff', border: '#91caff' },
+  { key: 'DG',   label: 'ĐG',   slColor: '#d48806', congColor: '#ffc53d', bg: '#fffbe6', border: '#ffe58f' },
+  { key: 'BBC1', label: 'BBC1', slColor: '#531dab', congColor: '#b37feb', bg: '#f9f0ff', border: '#d3adf7' },
+  { key: 'CC',   label: 'CC',   slColor: '#c41d7f', congColor: '#ff85c2', bg: '#fff0f6', border: '#ffadd2' },
+]
+
+const fmtSL   = v => (v || 0).toLocaleString('vi-VN')
+const fmtCong = (v, d = 4) => (v || 0).toLocaleString('vi-VN', { minimumFractionDigits: d, maximumFractionDigits: d })
+
+// ─── Tab 1: Sản lượng theo ngày (chi tiết) ───────────────────────────────────
+
+function DailyDetailTab() {
+  const { isAdmin, isAdminKH } = useAuth()
+  const canApprove = isAdmin() || isAdminKH()
+
+  const [data, setData] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [dateRange, setDateRange] = useState([dayjs().subtract(6, 'day'), dayjs()])
+  const [congDoan, setCongDoan] = useState('')
+
+  const [selectedRowKeys, setSelectedRowKeys] = useState([])
+  const [deleteLoading, setDeleteLoading] = useState(false)
+
+  const [rejectModal, setRejectModal] = useState(false)
+  const [rejectNote, setRejectNote] = useState('')
+  const [rejectingId, setRejectingId] = useState(null)
+  const [actionLoading, setActionLoading] = useState({})
+  const [nsTbMap, setNsTbMap] = useState({}) // maSp → slTrungBinh (năng suất trung bình)
+
+  const filterRef = useRef(null)
+  const [filterH, setFilterH] = useState(0)
+  useEffect(() => {
+    if (!filterRef.current) return
+    const obs = new ResizeObserver(() => setFilterH(filterRef.current?.offsetHeight || 0))
+    obs.observe(filterRef.current)
+    return () => obs.disconnect()
+  }, [])
+
+  useEffect(() => { fetchData() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Lấy slTrungBinh từ ProductMaster cho các maSp xuất hiện trong data
+  const fetchNsTb = useCallback(async (rows) => {
+    const uniqueMaSp = [...new Set(rows.filter(r => r.maSp).map(r => r.maSp))]
+    if (!uniqueMaSp.length) return
+    const results = await Promise.allSettled(
+      uniqueMaSp.map(maSp =>
+        api.get(`/product-master/lookup/${encodeURIComponent(maSp)}`)
+           .then(({ data }) => ({ maSp, slTrungBinh: data.slTrungBinh }))
+      )
+    )
+    const map = {}
+    results.forEach(r => {
+      if (r.status === 'fulfilled' && r.value.slTrungBinh != null) {
+        map[r.value.maSp] = Number(r.value.slTrungBinh)
+      }
+    })
+    setNsTbMap(map)
+  }, [])
+
+  const fetchData = useCallback(async (range = dateRange, cd = congDoan, { silent = false } = {}) => {
+    if (!silent) setLoading(true)
+    try {
+      const params = {}
+      if (range?.[0]) params.fromDate = range[0].format('YYYY-MM-DD')
+      if (range?.[1]) params.toDate = range[1].format('YYYY-MM-DD')
+      if (cd) params.congDoan = cd
+      const { data: res } = await api.get('/work-schedule-session/daily-report', { params })
+      setData(res)
+      fetchNsTb(res)
+    } catch {
+      message.error('Không thể tải dữ liệu sản lượng theo ngày')
+    } finally {
+      if (!silent) setLoading(false)
+    }
+  }, [dateRange, congDoan, fetchNsTb])
+
+  useEffect(() => {
+    const handler = () => fetchData(undefined, undefined, { silent: true })
+    window.addEventListener('app:silent-refresh', handler)
+    return () => window.removeEventListener('app:silent-refresh', handler)
+  }, [fetchData])
+
+  const handleReset = () => {
+    const def = [dayjs().subtract(6, 'day'), dayjs()]
+    setDateRange(def)
+    setCongDoan('')
+    fetchData(def, '')
+  }
+
+  const handleApprove = async (requestId) => {
+    setActionLoading(p => ({ ...p, [requestId]: 'approving' }))
+    try {
+      await api.put(`/sl-change-request/${requestId}/approve`)
+      message.success('Đã duyệt — sản lượng đã được lưu')
+      fetchData()
+    } catch (e) {
+      message.error(e?.response?.data?.message || 'Duyệt thất bại')
+    } finally {
+      setActionLoading(p => { const n = { ...p }; delete n[requestId]; return n })
+    }
+  }
+
+  const openReject = (requestId) => {
+    setRejectingId(requestId)
+    setRejectNote('')
+    setRejectModal(true)
+  }
+
+  const handleReject = async () => {
+    setActionLoading(p => ({ ...p, [rejectingId]: 'rejecting' }))
+    try {
+      await api.put(`/sl-change-request/${rejectingId}/reject`, { note: rejectNote })
+      message.warning('Đã từ chối yêu cầu')
+      setRejectModal(false)
+      fetchData()
+    } catch (e) {
+      message.error(e?.response?.data?.message || 'Từ chối thất bại')
+    } finally {
+      setActionLoading(p => { const n = { ...p }; delete n[rejectingId]; return n })
+    }
+  }
+
+  const handleDeleteSelected = async () => {
+    setDeleteLoading(true)
+    try {
+      // selectedRowKeys dạng "s-{sessionId}" — lấy sessionId
+      const ids = selectedRowKeys
+        .filter(k => k.startsWith('s-'))
+        .map(k => Number(k.slice(2)))
+      await Promise.all(ids.map(id => api.delete(`/work-schedule-session/${id}`)))
+      message.success(`Đã xóa ${ids.length} bản ghi`)
+      setSelectedRowKeys([])
+      fetchData()
+    } catch {
+      message.error('Xóa thất bại, vui lòng thử lại')
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
+  const summary = useMemo(() => {
+    const totals = { PC: 0, PL: 0, DG: 0, BBC1: 0, total: 0, pending: 0, inProgress: 0 }
+    data.forEach(r => {
+      if (r.status === 'PENDING') { totals.pending++; return }
+      if (r.status === 'IN_PROGRESS') { totals.inProgress++; return }
+      const cd = r.congDoan?.toUpperCase()
+      const sl = Number(r.sanLuong || 0)
+      if (totals[cd] !== undefined) totals[cd] += sl
+      totals.total += sl
+    })
+    return totals
+  }, [data])
+
+  const dateKeys = useMemo(() => {
+    const seen = []
+    data.forEach(r => { if (r.ngay && !seen.includes(r.ngay)) seen.push(r.ngay) })
+    return seen
+  }, [data])
+
+  const pageSummaryTotals = (pageData) => {
+    const sl = pageData.filter(r => r.status !== 'PENDING').reduce((a, r) => a + Number(r.sanLuong || 0), 0)
+    const cong = pageData.reduce((a, r) => a + Number(r.congThucHien || 0), 0)
+    return { sl, cong }
+  }
+
+  const pendingCount = data.filter(r => r.status === 'PENDING').length
+
+  const SUMMARY_CARDS = [
+    { label: 'Tổng SL PC',   key: 'PC',   color: '#1677ff', bg: '#e6f4ff', border: '#91caff' },
+    { label: 'Tổng SL PL',   key: 'PL',   color: '#389e0d', bg: '#f6ffed', border: '#b7eb8f' },
+    { label: 'Tổng SL ĐG',   key: 'DG',   color: '#d48806', bg: '#fffbe6', border: '#ffe58f' },
+    { label: 'Tổng SL BBC1', key: 'BBC1', color: '#531dab', bg: '#f9f0ff', border: '#d3adf7' },
+  ]
+
+  const columns = [
+    {
+      title: 'Ngày', dataIndex: 'ngay', key: 'ngay', width: 110, fixed: 'left',
+      render: v => v
+        ? <span style={{ fontWeight: 700, color: '#1677ff' }}>{dayjs(v).format('DD/MM/YYYY')}</span>
+        : '—',
+    },
+    {
+      title: 'Trạng Thái', dataIndex: 'status', key: 'status', width: 120, align: 'center',
+      render: (v, r) => {
+        if (v === 'PENDING') return (
+          <Tooltip title={`Yêu cầu bởi: ${r.requestedBy || '—'} · ${r.requestedAt ? dayjs(r.requestedAt).format('DD/MM HH:mm') : ''}`}>
+            <Tag icon={<ClockCircleOutlined />} color="warning" style={{ marginRight: 0, fontWeight: 600 }}>Chờ duyệt</Tag>
+          </Tooltip>
+        )
+        if (v === 'IN_PROGRESS') return (
+          <Tag color="processing" style={{ marginRight: 0, fontWeight: 600 }}>Đang thực hiện</Tag>
+        )
+        return <Tag color="success" style={{ marginRight: 0, fontWeight: 600 }}>Đã lưu</Tag>
+      },
+    },
+    {
+      title: 'Công Đoạn', dataIndex: 'congDoan', key: 'congDoan', width: 100, align: 'center',
+      render: v => v
+        ? <Tag color={CONG_DOAN_COLOR[v] || 'default'} style={{ fontWeight: 700, marginRight: 0, minWidth: 40, textAlign: 'center' }}>{v}</Tag>
+        : '—',
+    },
+    {
+      title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 90, align: 'center',
+      render: v => v ? <Tag color="blue" style={{ marginRight: 0 }}>{v}</Tag> : <span style={{ color: '#bbb' }}>—</span>,
+    },
+    {
+      title: 'Tiến Trình', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 260,
+      render: v => v
+        ? <span style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.4 }}>{v}</span>
+        : <span style={{ color: '#bbb' }}>—</span>,
+    },
+    {
+      title: 'Số Lô', dataIndex: 'soLo', key: 'soLo', width: 88, align: 'center',
+      render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v || '—'}</span>,
+    },
+    {
+      title: 'Tổ / Nhóm', key: 'nhom', width: 110, align: 'center',
+      render: (_, r) => {
+        const nhom = r.toNhom || r.nhomThucHien
+        return nhom
+          ? <Tag color="cyan" style={{ marginRight: 0 }}>{nhom}</Tag>
+          : <span style={{ color: '#bbb' }}>—</span>
+      },
+    },
+    {
+      title: 'Ca SX', dataIndex: 'caSanXuat', key: 'caSanXuat', width: 84, align: 'center',
+      render: v => v
+        ? <Tag color="orange" style={{ marginRight: 0, fontSize: 11 }}>{v}</Tag>
+        : <span style={{ color: '#bbb' }}>—</span>,
+    },
+    {
+      title: 'Vai Trò', dataIndex: 'vaiTro', key: 'vaiTro', width: 110, align: 'center',
+      render: v => {
+        if (!v) return <span style={{ color: '#bbb' }}>—</span>
+        const isTruong = v.toLowerCase().includes('trưởng')
+        return <Tag color={isTruong ? 'gold' : 'geekblue'} style={{ marginRight: 0 }}>{v}</Tag>
+      },
+    },
+    {
+      title: 'Người TH', key: 'nguoiTH', width: 160, ellipsis: true,
+      render: (_, r) => {
+        const list = r.nguoiThucHienList || r.nguoiThucHien
+        const soNguoi = r.soNguoi
+        if (!list) return <span style={{ color: '#bbb' }}>—</span>
+        return (
+          <Tooltip title={list}>
+            <span>
+              {list.length > 22 ? list.slice(0, 20) + '…' : list}
+              {soNguoi > 1 && <Tag style={{ marginLeft: 4, fontSize: 10, padding: '0 4px' }} color="geekblue">{soNguoi} người</Tag>}
+            </span>
+          </Tooltip>
+        )
+      },
+    },
+    {
+      title: 'Công TH (Σ)', dataIndex: 'congThucHien', key: 'congThucHien', width: 100, align: 'right',
+      render: v => v != null
+        ? <span style={{ color: '#722ed1', fontWeight: 600 }}>{Number(v).toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</span>
+        : <span style={{ color: '#bbb' }}>—</span>,
+    },
+    {
+      title: 'Sản Lượng', key: 'sanLuong', width: 130, align: 'right',
+      render: (_, r) => {
+        if (r.status === 'PENDING') {
+          return (
+            <Tooltip title={`SL cũ: ${r.sanLuong != null ? Number(r.sanLuong).toLocaleString('vi-VN') : '—'} → Yêu cầu thay đổi`}>
+              <span style={{ fontWeight: 700, color: '#d48806', fontSize: 14 }}>
+                {Number(r.requestedValue || 0).toLocaleString('vi-VN')}
+                <span style={{ fontSize: 10, marginLeft: 3, color: '#fa8c16' }}>(YC)</span>
+              </span>
+            </Tooltip>
+          )
+        }
+        if (r.status === 'IN_PROGRESS') {
+          return <span style={{ color: '#bbb', fontSize: 12 }}>Chưa nhập</span>
+        }
+        return r.sanLuong != null
+          ? <span style={{ fontWeight: 700, color: '#389e0d', fontSize: 14 }}>{Number(r.sanLuong).toLocaleString('vi-VN')}</span>
+          : <span style={{ color: '#bbb' }}>—</span>
+      },
+      sorter: (a, b) => Number(a.sanLuong || a.requestedValue || 0) - Number(b.sanLuong || b.requestedValue || 0),
+    },
+    {
+      title: 'Năng Suất', key: 'nangSuat', width: 105, align: 'right',
+      sorter: (a, b) => {
+        const ns = r => r.nangSuat != null ? Number(r.nangSuat)
+          : (r.congThucHien && r.sanLuong ? Number(r.sanLuong) / Number(r.congThucHien) : 0)
+        return ns(a) - ns(b)
+      },
+      render: (_, r) => {
+        if (r.status === 'PENDING' || r.status === 'IN_PROGRESS') return <span style={{ color: '#bbb' }}>—</span>
+        const ns = r.nangSuat != null ? Number(r.nangSuat)
+          : (r.congThucHien && r.sanLuong ? Number(r.sanLuong) / Number(r.congThucHien) : null)
+        if (ns == null) return <span style={{ color: '#bbb' }}>—</span>
+        const nsTb = r.nangSuatTrungBinh != null ? Number(r.nangSuatTrungBinh)
+          : (r.maSp ? nsTbMap[r.maSp] ?? null : null)
+        const color = nsTb != null ? (ns >= nsTb ? '#16a34a' : '#dc2626') : '#595959'
+        return (
+          <Tooltip title={nsTb != null ? `NS trung bình: ${Number(nsTb).toLocaleString('vi-VN', { maximumFractionDigits: 2 })}` : 'Chưa có NS trung bình'}>
+            <span style={{ fontFamily: 'monospace', fontWeight: 700, color }}>
+              {ns.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}
+            </span>
+          </Tooltip>
+        )
+      },
+    },
+    {
+      title: 'Kết Quả', key: 'ketQua', width: 110, align: 'center',
+      render: (_, r) => {
+        if (r.status === 'PENDING' || r.status === 'IN_PROGRESS') return <span style={{ color: '#bbb' }}>—</span>
+        const ns = r.nangSuat != null ? Number(r.nangSuat)
+          : (r.congThucHien && r.sanLuong ? Number(r.sanLuong) / Number(r.congThucHien) : null)
+        const nsTb = r.nangSuatTrungBinh != null ? Number(r.nangSuatTrungBinh)
+          : (r.maSp ? nsTbMap[r.maSp] ?? null : null)
+        if (ns == null || nsTb == null) return <span style={{ color: '#bbb', fontSize: 11 }}>Chưa có NS TB</span>
+        const dat = ns >= nsTb
+        return (
+          <Tooltip title={`NS: ${ns.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} / NS TB: ${nsTb.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}`}>
+            <Tag color={dat ? 'success' : 'error'} style={{ marginRight: 0, fontWeight: 700 }}>
+              {dat ? '✓ Đạt' : '✗ Không đạt'}
+            </Tag>
+          </Tooltip>
+        )
+      },
+    },
+    ...(canApprove ? [{
+      title: 'Duyệt', key: 'action', width: 110, fixed: 'right', align: 'center',
+      render: (_, r) => {
+        if (r.status !== 'PENDING') return <span style={{ color: '#bbb', fontSize: 12 }}>—</span>
+        return (
+          <Space size={4}>
+            <Tooltip title="Duyệt — lưu sản lượng">
+              <Button
+                size="small" type="primary" icon={<CheckOutlined />}
+                loading={actionLoading[r.requestId] === 'approving'}
+                disabled={!!actionLoading[r.requestId]}
+                onClick={() => handleApprove(r.requestId)}
+                style={{ background: '#389e0d', borderColor: '#389e0d' }}
+              />
+            </Tooltip>
+            <Tooltip title="Từ chối">
+              <Button
+                size="small" danger icon={<CloseOutlined />}
+                loading={actionLoading[r.requestId] === 'rejecting'}
+                disabled={!!actionLoading[r.requestId]}
+                onClick={() => openReject(r.requestId)}
+              />
+            </Tooltip>
+          </Space>
+        )
+      }
+    }] : []),
+  ]
+
+  return (
+    <>
+      {/* Bộ lọc + KPI (sticky wrapper) */}
+      <div ref={filterRef} style={{ position: 'sticky', top: 0, zIndex: 20 }}>
+
+      {/* Dark header */}
+      <div style={{
+        background: '#1e4570',
+        padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+      }}>
+        <span style={{ fontWeight: 800, fontSize: 14, color: '#fff', whiteSpace: 'nowrap' }}>
+          📋 Sản lượng theo ngày
+        </span>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginLeft: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, color: '#86efac', fontWeight: 600 }}>
+            Đã lưu: <strong>{summary.total.toLocaleString('vi-VN')}</strong>
+          </span>
+          {pendingCount > 0 && (
+            <span style={{ fontSize: 12, color: '#fcd34d', fontWeight: 600 }}>
+              Chờ duyệt: <strong>{pendingCount}</strong>
+            </span>
+          )}
+          {summary.inProgress > 0 && (
+            <span style={{ fontSize: 12, color: '#93c5fd', fontWeight: 600 }}>
+              Đang TH: <strong>{summary.inProgress}</strong>
+            </span>
+          )}
+          <span style={{ fontSize: 12, color: '#cbd5e1' }}>
+            <strong style={{ color: '#fff' }}>{data.length}</strong> lô/ngày
+          </span>
+        </div>
+      </div>
+
+      {/* Filter bar */}
+      <div style={{
+        background: '#f8fafc', borderBottom: '1px solid #e2e8f0',
+        padding: '7px 12px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+      }}>
+        <RangePicker size="small" value={dateRange} onChange={setDateRange}
+          format="DD/MM/YYYY" allowClear placeholder={['Từ ngày', 'Đến ngày']} />
+        <Select size="small" value={congDoan} onChange={setCongDoan}
+          options={CONG_DOAN_OPTIONS} style={{ width: 160 }} />
+        <Button size="small" type="primary" icon={<SearchOutlined />} onClick={() => fetchData()}
+          style={{ background: '#1D4ED8', borderColor: '#1D4ED8' }}>Truy xuất</Button>
+        <Button size="small" icon={<ReloadOutlined />} onClick={handleReset} />
+
+        {selectedRowKeys.length > 0 && (
+          <Popconfirm
+            title={`Xóa ${selectedRowKeys.filter(k => k.startsWith('s-')).length} bản ghi đã chọn?`}
+            description="Hành động này không thể hoàn tác."
+            icon={<ExclamationCircleOutlined style={{ color: '#dc2626' }} />}
+            okText="Xóa"
+            cancelText="Hủy"
+            okButtonProps={{ danger: true }}
+            onConfirm={handleDeleteSelected}
+          >
+            <Button
+              size="small" danger
+              icon={<DeleteOutlined />}
+              loading={deleteLoading}
+              style={{ fontWeight: 600 }}
+            >
+              Xóa ({selectedRowKeys.filter(k => k.startsWith('s-')).length})
+            </Button>
+          </Popconfirm>
+        )}
+
+        {/* KPI inline */}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {SUMMARY_CARDS.map(({ label, key, color, bg, border }) => (
+            <span key={key} style={{
+              fontSize: 11, fontWeight: 700, padding: '2px 10px',
+              background: bg, border: `1px solid ${border}`,
+              color, borderRadius: 10,
+            }}>
+              {label}: <strong>{Number(summary[key]).toLocaleString('vi-VN')}</strong>
+            </span>
+          ))}
+        </div>
+      </div>
+      </div>{/* end sticky filter wrapper */}
+
+      <style>{`
+        .daily-sl-table .ant-table-thead > tr > th {
+          background: linear-gradient(90deg, #2980b3 0%, #3399CC 100%) !important;
+          color: #ffffff !important; text-align: center !important;
+          text-transform: uppercase; font-size: 11px !important;
+          letter-spacing: 0.4px; padding: 7px 8px !important;
+          border-right: 1px solid #4db3d4 !important;
+        }
+        .daily-sl-table .ant-table-thead > tr > th::before { display: none !important; }
+        .daily-sl-table .ant-table-thead > tr > th .ant-table-column-sorter { color: rgba(255,255,255,0.8) !important; }
+        .daily-sl-table .ant-table-thead > tr > th.ant-table-column-sort { background: linear-gradient(90deg, #1f6fa3 0%, #2980b3 100%) !important; }
+        .daily-sl-table .row-group-even td { background: #EAECF2 !important; }
+        .daily-sl-table .row-group-odd  td { background: #ffffff !important; }
+        .daily-sl-table .row-pending     td { background: #fffbe6 !important; }
+        .daily-sl-table .row-in-progress td { background: #f0f9ff !important; }
+        .daily-sl-table .ant-table-tbody > tr > td { font-size: 12px; border-bottom: 1px solid #dcfce7 !important; }
+        .daily-sl-table .ant-table-tbody > tr:hover > td { background: #DDE1E8 !important; }
+      `}</style>
+
+      <Table
+        className="daily-sl-table"
+        columns={columns}
+        dataSource={data}
+        rowKey={r => r.status === 'PENDING' ? `req-${r.requestId}` : `s-${r.sessionId}`}
+        rowSelection={{
+          selectedRowKeys,
+          onChange: setSelectedRowKeys,
+          getCheckboxProps: r => ({
+            disabled: r.status === 'PENDING',
+            title: r.status === 'PENDING' ? 'Không thể xóa bản ghi đang chờ duyệt' : undefined,
+          }),
+        }}
+        loading={loading}
+        size="small"
+        scroll={{ x: 1600 }}
+        sticky={{ offsetHeader: filterH }}
+        rowClassName={record => {
+          if (record.status === 'PENDING') return 'row-pending'
+          if (record.status === 'IN_PROGRESS') return 'row-in-progress'
+          const idx = dateKeys.indexOf(record.ngay)
+          return idx % 2 === 0 ? 'row-group-even' : 'row-group-odd'
+        }}
+        pagination={{
+          defaultPageSize: 100,
+          showSizeChanger: true,
+          pageSizeOptions: ['50', '100', '200', '500'],
+          showTotal: total => `Tổng ${total} bản ghi`,
+        }}
+      />
+
+      <Modal
+        title="Từ chối yêu cầu sản lượng"
+        open={rejectModal}
+        onOk={handleReject}
+        onCancel={() => setRejectModal(false)}
+        okText="Xác nhận từ chối"
+        cancelText="Hủy"
+        okButtonProps={{ danger: true, loading: actionLoading }}
+        destroyOnClose
+      >
+        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 10 }}>
+          Lý do từ chối (không bắt buộc):
+        </Typography.Text>
+        <Input.TextArea
+          rows={3}
+          value={rejectNote}
+          onChange={e => setRejectNote(e.target.value)}
+          placeholder="Nhập lý do từ chối..."
+          maxLength={500}
+        />
+      </Modal>
+    </>
+  )
+}
+
+// ─── Modal chi tiết một ngày ─────────────────────────────────────────────────
+
+function DayDetailModal({ open, date, rows, onClose }) {
+  const kpi = useMemo(() => {
+    const totals = {}
+    STAGES.forEach(s => { totals[s.key] = { sl: 0, cong: 0, soPhien: 0 } })
+    rows.forEach(r => {
+      const cd = r.congDoan?.toUpperCase()
+      if (totals[cd]) {
+        totals[cd].sl      += Number(r.sanLuong     || 0)
+        totals[cd].cong    += Number(r.congThucHien || 0)
+        totals[cd].soPhien += 1
+      }
+    })
+    return totals
+  }, [rows])
+
+  const grandSL   = STAGES.reduce((s, st) => s + kpi[st.key].sl,   0)
+  const grandCong = STAGES.reduce((s, st) => s + kpi[st.key].cong, 0)
+
+  const cols = [
+    {
+      title: 'Công đoạn', dataIndex: 'congDoan', key: 'cd', width: 90, align: 'center',
+      filters: STAGES.map(s => ({ text: s.label, value: s.key })),
+      onFilter: (v, r) => r.congDoan?.toUpperCase() === v,
+      render: v => v ? <Tag color={CONG_DOAN_COLOR[v] || 'default'} style={{ fontWeight: 700, marginRight: 0 }}>{v}</Tag> : '—',
+    },
+    {
+      title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 88, align: 'center',
+      render: v => v ? <Tag color="blue" style={{ marginRight: 0 }}>{v}</Tag> : <span style={{ color: '#ccc' }}>—</span>,
+    },
+    {
+      title: 'Tiến trình / Tên SP', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 240,
+      render: v => v ? <span style={{ fontSize: 12, lineHeight: 1.4 }}>{v}</span> : <span style={{ color: '#ccc' }}>—</span>,
+    },
+    {
+      title: 'Số lô', dataIndex: 'soLo', key: 'soLo', width: 82, align: 'center',
+      render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v || '—'}</span>,
+    },
+    {
+      title: 'Tổ', key: 'to', width: 80, align: 'center',
+      render: (_, r) => {
+        const v = r.toNhom || r.nhomThucHien
+        return v ? <Tag color="cyan" style={{ marginRight: 0 }}>{v}</Tag> : <span style={{ color: '#ccc' }}>—</span>
+      },
+    },
+    {
+      title: 'Ca', dataIndex: 'caSanXuat', key: 'ca', width: 70, align: 'center',
+      render: v => v ? <Tag color="orange" style={{ marginRight: 0, fontSize: 11 }}>{v}</Tag> : <span style={{ color: '#ccc' }}>—</span>,
+    },
+    {
+      title: 'Người TH', key: 'nguoi', width: 150, ellipsis: true,
+      render: (_, r) => {
+        const list = r.nguoiThucHienList || r.nguoiThucHien
+        return list
+          ? <Tooltip title={list}><span style={{ fontSize: 12 }}>{list.length > 22 ? list.slice(0, 20) + '…' : list}</span></Tooltip>
+          : <span style={{ color: '#ccc' }}>—</span>
+      },
+    },
+    {
+      title: 'Công TH', dataIndex: 'congThucHien', key: 'cong', width: 95, align: 'right',
+      render: v => v != null
+        ? <span style={{ color: '#722ed1', fontWeight: 600, fontFamily: 'monospace' }}>{fmtCong(v)}</span>
+        : <span style={{ color: '#ccc' }}>—</span>,
+      sorter: (a, b) => (a.congThucHien || 0) - (b.congThucHien || 0),
+    },
+    {
+      title: 'Sản lượng', dataIndex: 'sanLuong', key: 'sl', width: 100, align: 'right',
+      render: v => v != null
+        ? <span style={{ fontWeight: 700, color: '#389e0d', fontSize: 13 }}>{fmtSL(Number(v))}</span>
+        : <span style={{ color: '#ccc' }}>—</span>,
+      sorter: (a, b) => (Number(a.sanLuong) || 0) - (Number(b.sanLuong) || 0),
+      defaultSortOrder: 'descend',
+    },
+    {
+      title: 'Năng suất', key: 'ns', width: 90, align: 'right',
+      render: (_, r) => {
+        const ns = r.nangSuat != null ? Number(r.nangSuat)
+          : (r.congThucHien && r.sanLuong ? Number(r.sanLuong) / Number(r.congThucHien) : null)
+        return ns != null
+          ? <span style={{ fontSize: 12, color: '#595959', fontFamily: 'monospace' }}>{ns.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</span>
+          : <span style={{ color: '#ccc' }}>—</span>
+      },
+      sorter: (a, b) => {
+        const ns = r => r.nangSuat != null ? Number(r.nangSuat)
+          : (r.congThucHien && r.sanLuong ? Number(r.sanLuong) / Number(r.congThucHien) : 0)
+        return ns(a) - ns(b)
+      },
+    },
+  ]
+
+  return (
+    <Modal
+      open={open}
+      onCancel={onClose}
+      footer={null}
+      width={1100}
+      destroyOnClose
+      styles={{ body: { padding: 0, background: '#f4f6f9' } }}
+      title={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontWeight: 800, fontSize: 16, color: '#1D4ED8' }}>
+            Chi tiết sản lượng ngày
+          </span>
+          <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 18, color: '#374151' }}>
+            {date ? dayjs(date).format('DD/MM/YYYY') : ''}
+          </span>
+          <span style={{ fontSize: 12, color: '#64748b', fontWeight: 400 }}>
+            ({rows.length} phiên làm việc)
+          </span>
+        </div>
+      }
+    >
+      <style>{`
+        .day-modal-kpi { display: flex; gap: 8px; flex-wrap: wrap; padding: 12px 16px; background: #fff; border-bottom: 1px solid #e2e8f0; }
+        .day-detail-tbl .ant-table-thead > tr > th {
+          background: linear-gradient(90deg, #2980b3 0%, #3399CC 100%) !important;
+          color: #fff !important; font-size: 11px !important; font-weight: 700 !important;
+          text-transform: uppercase; padding: 6px 8px !important; white-space: nowrap;
+          border-right: 1px solid #4db3d4 !important;
+        }
+        .day-detail-tbl .ant-table-thead > tr > th::before { display: none !important; }
+        .day-detail-tbl .ant-table-tbody > tr > td { padding: 5px 8px !important; font-size: 12px; }
+        .day-detail-tbl .ant-table-tbody > tr:nth-child(even) > td { background: #f8fafc; }
+        .day-detail-tbl .ant-table-tbody > tr:hover > td { background: #dbeafe !important; }
+        .day-detail-tbl .ant-table-summary > tr > td {
+          background: #1e40af !important; color: #fff !important;
+          font-weight: 700 !important; padding: 6px 8px !important;
+        }
+      `}</style>
+
+      {/* KPI per stage */}
+      <div className="day-modal-kpi">
+        {STAGES.map(s => {
+          const d = kpi[s.key]
+          if (!d.soPhien) return null
+          return (
+            <div key={s.key} style={{
+              background: s.bg, border: `1.5px solid ${s.border}`,
+              borderRadius: 8, padding: '5px 14px', minWidth: 130,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                <Tag style={{ margin: 0, fontWeight: 700, fontSize: 11, background: s.slColor, color: '#fff', border: 'none' }}>{s.label}</Tag>
+                <span style={{ fontSize: 10, color: '#888' }}>{d.soPhien} phiên</span>
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 9, color: '#999', fontWeight: 600 }}>SẢN LƯỢNG</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: s.slColor, lineHeight: 1.2 }}>{fmtSL(d.sl)}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, color: '#999', fontWeight: 600 }}>CÔNG TH</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: s.congColor, lineHeight: 1.2 }}>{fmtCong(d.cong, 2)}</div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+        <div style={{
+          background: 'linear-gradient(135deg,#EAECF2,#DDE1E8)', border: '2px solid #4db3d4',
+          borderRadius: 8, padding: '5px 14px', minWidth: 140,
+        }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#1D4ED8', marginBottom: 3 }}>TỔNG CỘNG</div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 9, color: '#999', fontWeight: 600 }}>SẢN LƯỢNG</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#1D4ED8', lineHeight: 1.2 }}>{fmtSL(grandSL)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 9, color: '#999', fontWeight: 600 }}>CÔNG TH</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#1D4ED8', lineHeight: 1.2 }}>{fmtCong(grandCong, 2)}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Detail table */}
+      <div style={{ padding: '0 0 8px' }}>
+        <Table
+          className="day-detail-tbl"
+          columns={cols}
+          dataSource={rows}
+          rowKey={r => r.sessionId || r.requestId || Math.random()}
+          size="small"
+          scroll={{ x: 1050 }}
+          pagination={false}
+          summary={() => (
+            <Table.Summary fixed="bottom">
+              <Table.Summary.Row>
+                <Table.Summary.Cell index={0} colSpan={7} align="right">
+                  <strong style={{ color: '#bfdbfe', fontSize: 11 }}>Tổng trang</strong>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={7} align="right">
+                  <strong style={{ color: '#e9d5ff' }}>{fmtCong(grandCong)}</strong>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={8} align="right">
+                  <strong style={{ color: '#bbf7d0', fontSize: 13 }}>{fmtSL(grandSL)}</strong>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={9} />
+              </Table.Summary.Row>
+            </Table.Summary>
+          )}
+        />
+      </div>
+    </Modal>
+  )
+}
+
+// ─── Tab 2: Tổng hợp sản lượng (pivot theo ngày) ─────────────────────────────
+
+function TongHopTab() {
+  const [raw, setRaw]         = useState([])
+  const [loading, setLoading] = useState(false)
+  const [dateRange, setDateRange] = useState([dayjs().subtract(13, 'day'), dayjs()])
+  const [selectedDay, setSelectedDay] = useState(null)
+
+  const filterRef = useRef(null)
+  const [filterH, setFilterH] = useState(0)
+  useEffect(() => {
+    if (!filterRef.current) return
+    const obs = new ResizeObserver(() => setFilterH(filterRef.current?.offsetHeight || 0))
+    obs.observe(filterRef.current)
+    return () => obs.disconnect()
+  }, [])
+
+  useEffect(() => { fetchData() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fetchData = useCallback(async (range = dateRange, { silent = false } = {}) => {
+    if (!silent) setLoading(true)
+    try {
+      const params = {}
+      if (range?.[0]) params.fromDate = range[0].format('YYYY-MM-DD')
+      if (range?.[1]) params.toDate   = range[1].format('YYYY-MM-DD')
+      const { data: res } = await api.get('/work-schedule-session/daily-report', { params })
+      setRaw(res)
+    } catch {
+      message.error('Không thể tải dữ liệu tổng hợp')
+    } finally {
+      if (!silent) setLoading(false)
+    }
+  }, [dateRange])
+
+  useEffect(() => {
+    const handler = () => fetchData(undefined, { silent: true })
+    window.addEventListener('app:silent-refresh', handler)
+    return () => window.removeEventListener('app:silent-refresh', handler)
+  }, [fetchData])
+
+  const handleReset = () => {
+    const def = [dayjs().subtract(13, 'day'), dayjs()]
+    setDateRange(def)
+    fetchData(def)
+  }
+
+  const pivotData = useMemo(() => {
+    const map = {}
+    raw.forEach(r => {
+      if (r.status === 'PENDING' || r.status === 'IN_PROGRESS') return
+      const date = r.ngay
+      if (!date) return
+      if (!map[date]) map[date] = { ngay: date }
+      const cd = r.congDoan?.toUpperCase()
+      if (!cd) return
+      if (!map[date][cd]) map[date][cd] = { sl: 0, cong: 0, soPhien: 0 }
+      map[date][cd].sl      += Number(r.sanLuong      || 0)
+      map[date][cd].cong    += Number(r.congThucHien  || 0)
+      map[date][cd].soPhien += 1
+    })
+    return Object.values(map).sort((a, b) => b.ngay.localeCompare(a.ngay))
+  }, [raw])
+
+  const kpi = useMemo(() => {
+    const totals = {}
+    STAGES.forEach(s => { totals[s.key] = { sl: 0, cong: 0, soPhien: 0 } })
+    pivotData.forEach(row => {
+      STAGES.forEach(s => {
+        totals[s.key].sl      += row[s.key]?.sl      || 0
+        totals[s.key].cong    += row[s.key]?.cong    || 0
+        totals[s.key].soPhien += row[s.key]?.soPhien || 0
+      })
+    })
+    return totals
+  }, [pivotData])
+
+  const grandSL   = STAGES.reduce((s, st) => s + kpi[st.key].sl,   0)
+  const grandCong = STAGES.reduce((s, st) => s + kpi[st.key].cong, 0)
+
+  const columns = [
+    {
+      title: 'Ngày', dataIndex: 'ngay', key: 'ngay',
+      width: 110, fixed: 'left', align: 'center',
+      render: v => (
+        <span style={{ fontWeight: 700, color: '#1677ff' }}>
+          {dayjs(v).format('DD/MM/YYYY')}
+        </span>
+      ),
+      sorter: (a, b) => a.ngay.localeCompare(b.ngay),
+      defaultSortOrder: 'descend',
+    },
+    ...STAGES.map(s => ({
+      title: <span style={{ letterSpacing: 1 }}>{s.label}</span>,
+      key: s.key,
+      children: [
+        {
+          title: 'SL',
+          key: `${s.key}_sl`,
+          width: 95, align: 'right',
+          render: (_, r) => {
+            const val = r[s.key]?.sl
+            if (!val) return <span style={{ color: '#e0e0e0' }}>—</span>
+            return (
+              <Tooltip title={`${r[s.key]?.soPhien || 0} phiên làm việc`}>
+                <span style={{ fontWeight: 700, color: s.slColor }}>{fmtSL(val)}</span>
+              </Tooltip>
+            )
+          },
+          sorter: (a, b) => (a[s.key]?.sl || 0) - (b[s.key]?.sl || 0),
+        },
+        {
+          title: 'Công',
+          key: `${s.key}_cong`,
+          width: 90, align: 'right',
+          render: (_, r) => {
+            const val = r[s.key]?.cong
+            if (!val) return <span style={{ color: '#e0e0e0' }}>—</span>
+            return <span style={{ color: s.congColor }}>{fmtCong(val)}</span>
+          },
+        },
+      ],
+    })),
+    {
+      title: 'Tổng SL', key: 'grandSl', width: 110, align: 'right', fixed: 'right',
+      render: (_, r) => {
+        const total = STAGES.reduce((sum, s) => sum + (r[s.key]?.sl || 0), 0)
+        return total
+          ? <strong style={{ color: '#1D4ED8', fontSize: 13 }}>{fmtSL(total)}</strong>
+          : <span style={{ color: '#e0e0e0' }}>—</span>
+      },
+      sorter: (a, b) =>
+        STAGES.reduce((s, st) => s + (a[st.key]?.sl || 0), 0) -
+        STAGES.reduce((s, st) => s + (b[st.key]?.sl || 0), 0),
+    },
+    {
+      title: 'Tổng Công', key: 'grandCong', width: 105, align: 'right', fixed: 'right',
+      render: (_, r) => {
+        const total = STAGES.reduce((sum, s) => sum + (r[s.key]?.cong || 0), 0)
+        return total
+          ? <strong style={{ color: '#1D4ED8' }}>{fmtCong(total, 2)}</strong>
+          : <span style={{ color: '#e0e0e0' }}>—</span>
+      },
+    },
+  ]
+
+  return (
+    <>
+      {/* Bộ lọc + KPI (sticky wrapper) */}
+      <div ref={filterRef} style={{ position: 'sticky', top: 0, zIndex: 20 }}>
+
+      {/* Dark header */}
+      <div style={{
+        background: '#1e4570',
+        padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+      }}>
+        <span style={{ fontWeight: 800, fontSize: 14, color: '#fff', whiteSpace: 'nowrap' }}>
+          📊 Tổng hợp sản lượng
+        </span>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginLeft: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, color: '#93c5fd' }}>
+            <strong style={{ color: '#fff' }}>{pivotData.length}</strong> ngày
+          </span>
+          <span style={{ fontSize: 12, color: '#86efac', fontWeight: 600 }}>
+            Tổng SL: <strong>{fmtSL(grandSL)}</strong>
+          </span>
+          <span style={{ fontSize: 12, color: '#fcd34d', fontWeight: 600 }}>
+            Tổng Công: <strong>{fmtCong(grandCong, 2)}</strong>
+          </span>
+        </div>
+
+        {/* Stage KPI pills */}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {STAGES.map(s => (
+            <span key={s.key} style={{
+              fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 10,
+              background: 'rgba(255,255,255,0.12)', border: `1px solid rgba(255,255,255,0.22)`,
+              color: '#fff', display: 'flex', gap: 6, alignItems: 'center',
+            }}>
+              <span style={{ color: s.slColor }}>{s.label}</span>
+              <span>{fmtSL(kpi[s.key].sl)}</span>
+              <span style={{ opacity: 0.6, fontSize: 10 }}>{kpi[s.key].soPhien}p</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Filter bar */}
+      <div style={{
+        background: '#f8fafc', borderBottom: '1px solid #e2e8f0',
+        padding: '7px 12px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+      }}>
+        <RangePicker size="small" value={dateRange} onChange={setDateRange}
+          format="DD/MM/YYYY" allowClear placeholder={['Từ ngày', 'Đến ngày']} />
+        <Button size="small" type="primary" icon={<SearchOutlined />}
+          style={{ background: '#1D4ED8', borderColor: '#1D4ED8' }}
+          onClick={() => fetchData()}>Truy xuất</Button>
+        <Button size="small" icon={<ReloadOutlined />} onClick={handleReset} />
+      </div>
+      </div>{/* end sticky filter wrapper */}
+
+      <style>{`
+        .tonghop-table .ant-table-thead > tr > th {
+          background: linear-gradient(90deg, #2980b3 0%, #3399CC 100%) !important;
+          color: #ffffff !important; text-align: center !important;
+          text-transform: uppercase; font-size: 11px !important;
+          letter-spacing: 0.4px; padding: 7px 6px !important;
+          border-right: 1px solid #4db3d4 !important; white-space: nowrap;
+        }
+        .tonghop-table .ant-table-thead > tr > th::before { display: none !important; }
+        .tonghop-table .ant-table-thead > tr:first-child > th {
+          background: linear-gradient(90deg, #1f6fa3 0%, #2980b3 100%) !important;
+          font-size: 12px !important; font-weight: 700 !important; letter-spacing: 1px;
+        }
+        .tonghop-table .ant-table-thead > tr > th .ant-table-column-sorter { color: rgba(255,255,255,0.8) !important; }
+        .tonghop-table .ant-table-tbody > tr > td { padding: 6px 8px !important; font-size: 12px; border-bottom: 1px solid #EAECF2 !important; }
+        .tonghop-table .ant-table-tbody > tr:nth-child(even) > td { background: #EAECF2; }
+        .tonghop-table .ant-table-tbody > tr:hover > td { background: #DDE1E8 !important; }
+        .tonghop-table .ant-table-summary > tr > td {
+          background: linear-gradient(90deg, #1f6fa3 0%, #2980b3 100%) !important;
+          color: #ffffff !important; font-weight: 700; font-size: 12px; padding: 7px 8px !important;
+        }
+      `}</style>
+
+      <Table
+        className="tonghop-table"
+        columns={columns}
+        dataSource={pivotData}
+        rowKey="ngay"
+        loading={loading}
+        size="small"
+        scroll={{ x: 1300 }}
+        sticky={{ offsetHeader: filterH }}
+        onRow={record => ({
+          onClick: () => setSelectedDay(record.ngay),
+          style: { cursor: 'pointer' },
+        })}
+        pagination={{
+          defaultPageSize: 31,
+          showSizeChanger: true,
+          pageSizeOptions: ['14', '31', '60', '90'],
+          showTotal: total => `Tổng ${total} ngày`,
+        }}
+        summary={pageData => {
+          const tot = {}
+          STAGES.forEach(s => { tot[s.key] = { sl: 0, cong: 0 } })
+          pageData.forEach(r => {
+            STAGES.forEach(s => {
+              tot[s.key].sl   += r[s.key]?.sl   || 0
+              tot[s.key].cong += r[s.key]?.cong || 0
+            })
+          })
+          const gSl   = STAGES.reduce((sum, s) => sum + tot[s.key].sl,   0)
+          const gCong = STAGES.reduce((sum, s) => sum + tot[s.key].cong, 0)
+          return (
+            <Table.Summary fixed="bottom">
+              <Table.Summary.Row>
+                <Table.Summary.Cell index={0} align="center">
+                  <strong style={{ color: '#a7f3d0' }}>TỔNG TRANG</strong>
+                </Table.Summary.Cell>
+                {STAGES.flatMap((s, i) => [
+                  <Table.Summary.Cell key={`sl${i}`} index={i * 2 + 1} align="right">
+                    <strong>{fmtSL(tot[s.key].sl)}</strong>
+                  </Table.Summary.Cell>,
+                  <Table.Summary.Cell key={`cong${i}`} index={i * 2 + 2} align="right">
+                    <strong>{fmtCong(tot[s.key].cong, 2)}</strong>
+                  </Table.Summary.Cell>,
+                ])}
+                <Table.Summary.Cell index={11} align="right">
+                  <strong style={{ color: '#4db3d4', fontSize: 13 }}>{fmtSL(gSl)}</strong>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={12} align="right">
+                  <strong style={{ color: '#4db3d4' }}>{fmtCong(gCong, 2)}</strong>
+                </Table.Summary.Cell>
+              </Table.Summary.Row>
+            </Table.Summary>
+          )
+        }}
+      />
+
+      <DayDetailModal
+        open={!!selectedDay}
+        date={selectedDay}
+        rows={raw.filter(r => r.ngay === selectedDay && r.status !== 'PENDING' && r.status !== 'IN_PROGRESS')}
+        onClose={() => setSelectedDay(null)}
+      />
+    </>
+  )
+}
+
+// ─── Page chính: wrapper Tabs ─────────────────────────────────────────────────
+
+export default function DailySanLuongPage() {
+  const { isAdmin, isAdminKH } = useAuth()
+  const canApprove = isAdmin() || isAdminKH()
+  const location = useLocation()
+
+  // Đọc ?tab= từ URL để điều hướng đúng tab
+  const tabFromUrl = new URLSearchParams(location.search).get('tab')
+  const [activeTab, setActiveTab] = useState(tabFromUrl || 'daily')
+
+  // Cập nhật activeTab khi URL thay đổi (ví dụ: navigate('/daily-sl?tab=daily'))
+  useEffect(() => {
+    const t = new URLSearchParams(location.search).get('tab')
+    if (t) setActiveTab(t)
+  }, [location.search])
+
+  // Đếm pending để hiển thị badge trên tab
+  const [pendingCount, setPendingCount] = useState(0)
+  useEffect(() => {
+    api.get('/work-schedule-session/daily-report', {
+      params: { fromDate: dayjs().subtract(6, 'day').format('YYYY-MM-DD'), toDate: dayjs().format('YYYY-MM-DD') }
+    }).then(({ data }) => {
+      setPendingCount(data.filter(r => r.status === 'PENDING').length)
+    }).catch(() => {})
+  }, [])
+
+  const tabItems = [
+    {
+      key: 'daily',
+      label: (
+        <span>
+          <BarChartOutlined style={{ marginRight: 5 }} />
+          Sản lượng theo ngày
+          {canApprove && pendingCount > 0 && (
+            <Badge count={pendingCount} style={{ marginLeft: 6, background: '#fa8c16' }} />
+          )}
+        </span>
+      ),
+      children: <DailyDetailTab />,
+    },
+    {
+      key: 'tonghop',
+      label: (
+        <span>
+          <FundOutlined style={{ marginRight: 5 }} />
+          Tổng hợp sản lượng
+        </span>
+      ),
+      children: <TongHopTab />,
+    },
+  ]
+
+  return (
+    <>
+      <style>{`
+        .sl-page-tabs > .ant-tabs-nav {
+          background: #1e4570 !important;
+          padding: 0 12px; margin: 0 !important; box-shadow: 0 2px 12px rgba(0,0,0,0.22);
+        }
+        .sl-page-tabs > .ant-tabs-nav .ant-tabs-tab {
+          color: #94A3B8 !important; border: none !important; background: transparent !important;
+          padding: 9px 18px !important; font-size: 13px; margin: 0 2px !important;
+          border-radius: 6px 6px 0 0 !important; transition: all 0.2s;
+        }
+        .sl-page-tabs > .ant-tabs-nav .ant-tabs-tab:hover { color: #FDE68A !important; background: rgba(251,191,36,0.12) !important; }
+        .sl-page-tabs > .ant-tabs-nav .ant-tabs-tab-active { color: #fff !important; background: rgba(29,78,216,0.28) !important; font-weight: 700; box-shadow: 0 -3px 0 #60A5FA inset; }
+        .sl-page-tabs > .ant-tabs-nav .ant-tabs-tab-active .ant-tabs-tab-btn { color: #fff !important; }
+        .sl-page-tabs > .ant-tabs-nav .ant-tabs-ink-bar { background: #60A5FA !important; height: 3px !important; border-radius: 2px; }
+        .sl-page-tabs > .ant-tabs-nav::before { border-bottom: none !important; }
+        .sl-page-tabs > .ant-tabs-nav .ant-tabs-nav-more { color: #94A3B8 !important; }
+        .sl-page-tabs > .ant-tabs-content-holder { padding-top: 0; }
+      `}</style>
+      <Tabs
+        className="sl-page-tabs"
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={tabItems}
+        size="middle"
+        style={{ marginTop: -8 }}
+        tabBarStyle={{ marginBottom: 0 }}
+      />
+    </>
+  )
+}

@@ -1,0 +1,119 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #EEF2F9;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: #EEF2F9; }
+::-webkit-scrollbar-thumb  { background: #93C5FD; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #2563EB; }
+
+/* ── Ink bar (shared) ────────────────────────────────────────────────────── */
+.ant-tabs-ink-bar { background: #93C5FD !important; }
+
+/* ── Button — primary blue ───────────────────────────────────────────────────*/
+.ant-btn-primary {
+  background: #1D4ED8 !important;
+  border-color: #1D4ED8 !important;
+  box-shadow: 0 2px 6px rgba(29,78,216,0.30) !important;
+  font-weight: 600;
+}
+.ant-btn-primary:hover {
+  background: #2563EB !important;
+  border-color: #2563EB !important;
+  box-shadow: 0 3px 10px rgba(29,78,216,0.38) !important;
+  transform: translateY(-1px);
+}
+.ant-btn-primary:active { transform: translateY(0); }
+
+/* ── Input / Select focus ──────────────────────────────────────────────────── */
+.ant-input:focus, .ant-input-focused,
+.ant-select-focused .ant-select-selector,
+.ant-input-number-focused {
+  border-color: #2563EB !important;
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.16) !important;
+}
+
+/* ── Table header (global fallback) ──────────────────────────────────────── */
+.ant-table-thead > tr > th {
+  font-weight: 700 !important;
+  font-size: 11px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: linear-gradient(90deg, #2980b3 0%, #3399CC 100%) !important;
+  color: #ffffff !important;
+}
+.ant-table-thead > tr > th::before { display: none !important; }
+
+/* ── Card ─────────────────────────────────────────────────────────────────── */
+.ant-card {
+  box-shadow: 0 1px 4px rgba(29,78,216,0.08), 0 1px 2px rgba(0,0,0,0.04);
+}
+
+/* ── Checkbox — primary blue ──────────────────────────────────────────────── */
+.ant-checkbox-checked .ant-checkbox-inner {
+  background-color: #1D4ED8 !important;
+  border-color: #1D4ED8 !important;
+}
+.ant-checkbox:hover .ant-checkbox-inner {
+  border-color: #2563EB !important;
+}
+
+/* ── Switch ───────────────────────────────────────────────────────────────── */
+.ant-switch-checked {
+  background: #1D4ED8 !important;
+}
+
+/* ── Pagination active ────────────────────────────────────────────────────── */
+.ant-pagination-item-active {
+  border-color: #1D4ED8 !important;
+  background: #EFF6FF !important;
+}
+.ant-pagination-item-active a { color: #1D4ED8 !important; }
+.ant-pagination-item-active:hover { border-color: #2563EB !important; }
+
+/* ── Tag — default color override for blue theme ─────────────────────────── */
+.ant-tag-blue { background: #DBEAFE; color: #1D4ED8; border-color: #BFDBFE; }
+
+/* ── Popover / Dropdown hover ─────────────────────────────────────────────── */
+.ant-menu-item-selected { background: rgba(29,78,216,0.12) !important; }
+.ant-menu-item:hover { background: rgba(29,78,216,0.08) !important; }
+
+/* ── Mobile responsive ───────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  /* Tables scroll horizontally on small screens */
+  .ant-table-wrapper { overflow-x: auto; }
+  .ant-table { min-width: 600px; }
+
+  /* Smaller font in table cells */
+  .ant-table-tbody > tr > td { font-size: 12px !important; padding: 6px 8px !important; }
+  .ant-table-thead > tr > th { font-size: 10px !important; padding: 6px 8px !important; }
+
+  /* Stack form items vertically */
+  .ant-form-item { margin-bottom: 8px; }
+
+  /* Full-width selects and inputs in filter bars */
+  .ant-select, .ant-picker { width: 100% !important; }
+
+  /* Modals: full screen on mobile */
+  .ant-modal { max-width: 100vw !important; margin: 0 !important; top: 0 !important; padding-bottom: 0 !important; }
+  .ant-modal-content { border-radius: 0 !important; min-height: 100vh; }
+
+  /* Pagination: smaller */
+  .ant-pagination { font-size: 12px; }
+  .ant-pagination-item { min-width: 28px; height: 28px; line-height: 26px; }
+
+  /* Tags smaller */
+  .ant-tag { font-size: 11px; padding: 0 5px; }
+
+  /* Tabs: allow scroll */
+  .ant-tabs-nav { overflow-x: auto; }
+  .ant-tabs-nav-wrap { overflow: unset !important; }
+}
+

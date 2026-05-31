@@ -1,6 +1,7 @@
 package com.sanluong.controller;
 
 import com.sanluong.dto.ProductionRecordDto;
+import com.sanluong.entity.ProductionEditHistory;
 import com.sanluong.entity.ProductionRecord;
 import com.sanluong.service.ProductionService;
 import org.springframework.data.domain.Page;
@@ -9,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/production")
@@ -27,14 +29,32 @@ public class ProductionController {
             @RequestParam(required = false) String tienTrinh,
             @RequestParam(required = false) String lsx,
             @RequestParam(required = false) String trangThai,
+            @RequestParam(required = false) Boolean hoanThanh,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(productionService.search(maTp, maBravo, tienTrinh, lsx, trangThai, page, size));
+        return ResponseEntity.ok(productionService.search(maTp, maBravo, tienTrinh, lsx, trangThai, hoanThanh, page, size));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ProductionRecord> getById(@PathVariable Long id) {
         return ResponseEntity.ok(productionService.getById(id));
+    }
+
+    /** Gợi ý cho form Kế hoạch: trả về các LSX chưa hoàn thành */
+    @GetMapping("/for-plan-suggestions")
+    public ResponseEntity<List<Map<String, Object>>> forPlanSuggestions() {
+        return ResponseEntity.ok(productionService.getForPlanSuggestions());
+    }
+
+    /** Kiểm tra duplicate trước khi tạo mới từ UI */
+    @GetMapping("/check-duplicate")
+    public ResponseEntity<Map<String, Object>> checkDuplicate(
+            @RequestParam(required = false) String maBravo,
+            @RequestParam(required = false) String lsx,
+            @RequestParam(required = false) String maDonHang) {
+        boolean exists = maBravo != null && !maBravo.isBlank() && lsx != null && !lsx.isBlank()
+                && productionService.existsByKey(maBravo, lsx, maDonHang);
+        return ResponseEntity.ok(Map.of("exists", exists));
     }
 
     @PostMapping
@@ -51,9 +71,58 @@ public class ProductionController {
         return ResponseEntity.ok(productionService.update(id, dto, auth.getName()));
     }
 
+    @GetMapping("/{id}/history")
+    public ResponseEntity<List<ProductionEditHistory>> getHistory(@PathVariable Long id) {
+        return ResponseEntity.ok(productionService.getHistory(id));
+    }
+
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        productionService.delete(id);
+    public ResponseEntity<Void> delete(@PathVariable Long id, Authentication auth) {
+        productionService.delete(id, auth.getName());
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/chua-phat-lenh/count")
+    public ResponseEntity<java.util.Map<String, Long>> countChuaPhatLenh() {
+        long count = productionService.countChuaPhatLenh();
+        return ResponseEntity.ok(java.util.Map.of("count", count));
+    }
+
+    @GetMapping("/inbox/chua-phat-lenh")
+    public ResponseEntity<List<ProductionRecord>> inboxChuaPhatLenh() {
+        return ResponseEntity.ok(productionService.getChuaPhatLenhList());
+    }
+
+    @GetMapping("/inbox/cho-xep-lich")
+    public ResponseEntity<List<ProductionRecord>> inboxChoXepLich() {
+        return ResponseEntity.ok(productionService.getDaPhatChuaXepLich());
+    }
+
+    @GetMapping("/trash")
+    public ResponseEntity<List<ProductionRecord>> getTrash() {
+        return ResponseEntity.ok(productionService.findTrash());
+    }
+
+    @PostMapping("/{id}/restore")
+    public ResponseEntity<Void> restore(@PathVariable Long id) {
+        productionService.restore(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/permanent")
+    public ResponseEntity<Void> deletePermanent(@PathVariable Long id) {
+        productionService.deletePermanent(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/phat-lenh")
+    public ResponseEntity<ProductionRecord> phatLenh(@PathVariable Long id, Authentication auth) {
+        return ResponseEntity.ok(productionService.phatLenh(id, auth.getName()));
+    }
+
+    @PatchMapping("/{id}/hide")
+    public ResponseEntity<Void> hide(@PathVariable Long id) {
+        productionService.hide(id);
         return ResponseEntity.noContent().build();
     }
 

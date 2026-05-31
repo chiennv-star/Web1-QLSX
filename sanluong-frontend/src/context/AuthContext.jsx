@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState } from 'react'
 
 const AuthContext = createContext(null)
 
-const STAGE_ROLES = ['ADMIN_PC', 'ADMIN_BBC1', 'ADMIN_PL', 'ADMIN_DG']
+const STAGE_ROLES = ['ADMIN_PC', 'ADMIN_BBC1', 'ADMIN_PL', 'ADMIN_DG', 'ADMIN_PCPL1', 'ADMIN_PCPL2', 'ADMIN_PCPL3']
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
@@ -28,32 +28,98 @@ export function AuthProvider({ children }) {
   // Admin kế hoạch: sản lượng, kế hoạch, danh mục mã SP, hàng dở dang
   const isAdminKH = () => user?.role === 'ADMIN_KH'
 
-  // Có thể thêm/sửa/xóa trong tab Kế hoạch
-  const canEditPlan = () => ['ADMIN', 'ADMIN_KH'].includes(user?.role)
+  // Tài khoản sản xuất: tương đương ADMIN trừ write Lệnh Sản Xuất
+  const isTKSX = () => user?.role === 'TKSX'
+
+  // Quản lý chỉ đọc
+  const isQuanDoc = () => user?.role === 'QUAN_DOC'
+
+  // Có thể thêm/sửa/xóa trong tab Kế hoạch (lịch kế hoạch): ADMIN + ADMIN_KH + TKSX
+  const canEditPlan = () => ['ADMIN', 'ADMIN_KH', 'TKSX'].includes(user?.role)
+
+  // Có thể thêm/sửa/xóa Lệnh Sản Xuất: chỉ ADMIN và ADMIN_KH, không phải TKSX
+  const canEditLenh = () => ['ADMIN', 'ADMIN_KH'].includes(user?.role)
 
   // Có thể tạo/sửa/xóa bản ghi Sản lượng và WIP
-  const canEditProduction = () => ['ADMIN', 'NHAN_VIEN', 'ADMIN_KH'].includes(user?.role)
+  const canEditProduction = () => ['ADMIN', 'TKSX', 'NHAN_VIEN', 'ADMIN_KH'].includes(user?.role)
 
-  // Có thể thêm/sửa/xóa Danh mục Mã SP
-  const canEditProductMaster = () => ['ADMIN', 'ADMIN_KH'].includes(user?.role)
+  // Có thể thêm/sửa/xóa Danh mục Mã SP — tất cả ADMIN_* roles
+  const canEditProductMaster = () => ['ADMIN', 'TKSX', 'ADMIN_KH', ...STAGE_ROLES].includes(user?.role)
 
   // Có thể chỉnh sửa Lịch làm việc của công đoạn cụ thể
   // CC: chỉ ADMIN và ADMIN_PC; các công đoạn khác: ADMIN, NHAN_VIEN, ADMIN_*
+  // ADMIN_KH: chỉ xem, không sửa lịch sản xuất
   const canEditStage = (congDoan) => {
     if (user?.role === 'ADMIN') return true
-    if (user?.role === 'ADMIN_KH') return true
     if (congDoan === 'CC') return user?.role === 'ADMIN_PC'
-    return user?.role === 'NHAN_VIEN' || user?.role === `ADMIN_${congDoan}`
+    if (congDoan === 'PC') return ['ADMIN_PC', 'ADMIN_PCPL1', 'ADMIN_PCPL2'].includes(user?.role)
+    if (congDoan === 'PL') return ['ADMIN_PL', 'ADMIN_PCPL3'].includes(user?.role)
+    return user?.role === `ADMIN_${congDoan}`
   }
 
   // Là admin công đoạn (không phải admin toàn quyền)
   const isStageAdmin = () => STAGE_ROLES.includes(user?.role)
 
-  // Có thể thêm/sửa/xóa Hàng Lỗi
-  const canEditHangLoi = () => ['ADMIN', 'ADMIN_PL', 'ADMIN_DG'].includes(user?.role)
+  // Có thể nhập/sửa xử lý hàng lỗi: tất cả ADMIN_* + TKSX
+  const canEditHangLoi = () => [
+    'ADMIN', 'TKSX',
+    'ADMIN_KH', 'ADMIN_PC', 'ADMIN_BBC1',
+    'ADMIN_PL', 'ADMIN_DG',
+    'ADMIN_PCPL1', 'ADMIN_PCPL2', 'ADMIN_PCPL3',
+  ].includes(user?.role)
+
+  // Các tab Hiệu quả công việc được phép xem
+  // null = tất cả; mảng = chỉ các tab được liệt kê
+  const allowedEfficiencyTabs = () => {
+    const role = user?.role
+    if (role === 'ADMIN_BBC1') return ['BBC1']
+    if (role === 'ADMIN_DG') return ['ĐG']
+    if (role === 'ADMIN_PC' || role === 'ADMIN_PL') return ['PCPL1', 'PCPL2', 'PCPL3']
+    if (role === 'ADMIN_PCPL1') return ['PCPL1']
+    if (role === 'ADMIN_PCPL2') return ['PCPL2']
+    if (role === 'ADMIN_PCPL3') return ['PCPL3']
+    if (role === 'ADMIN_KH') return []
+    return null // ADMIN → tất cả
+  }
+
+  // Nhóm thực hiện được phép xem/sửa (chỉ áp dụng tab PC)
+  // null = không hạn chế; string = chỉ nhóm đó
+  const getAllowedNhom = () => {
+    const role = user?.role
+    if (role === 'ADMIN_PCPL1') return 'PCPL1'
+    if (role === 'ADMIN_PCPL2') return 'PCPL2'
+    // PCPL3 quản lý PL, không phải PC → không hạn chế nhom trên tab PC
+    return null
+  }
+
+  // Nhóm nhân sự được phép xem và quản lý
+  // null = tất cả; mảng = chỉ các nhóm được liệt kê
+  const getAllowedEmployeeGroups = () => {
+    const role = user?.role
+    if (role === 'ADMIN_BBC1') return ['BBC1']
+    if (role === 'ADMIN_DG')   return ['ĐG']
+    if (role === 'ADMIN_PC' || role === 'ADMIN_PL') return ['PCPL1', 'PCPL2', 'PCPL3']
+    if (role === 'ADMIN_PCPL1') return ['PCPL1']
+    if (role === 'ADMIN_PCPL2') return ['PCPL2']
+    if (role === 'ADMIN_PCPL3') return ['PCPL3']
+    return null // ADMIN, ADMIN_KH, TKSX, QUAN_DOC, NHAN_VIEN → tất cả
+  }
+
+  // Các tab Lịch làm việc được phép xem
+  // null = tất cả; mảng = chỉ các stage được liệt kê
+  const getAllowedStages = () => {
+    const role = user?.role
+    if (role === 'ADMIN_PC')   return ['PC']
+    if (role === 'ADMIN_BBC1') return ['BBC1']
+    if (role === 'ADMIN_PL')   return ['PL']
+    if (role === 'ADMIN_DG')   return ['DG']
+    if (['ADMIN_PCPL1', 'ADMIN_PCPL2'].includes(role)) return ['PC']
+    if (role === 'ADMIN_PCPL3') return ['PL']
+    return null // ADMIN, ADMIN_KH, NHAN_VIEN → tất cả
+  }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAdmin, isAdminKH, canEditProduction, canEditProductMaster, canEditPlan, canEditStage, isStageAdmin, canEditHangLoi }}>
+    <AuthContext.Provider value={{ user, login, logout, isAdmin, isAdminKH, isTKSX, isQuanDoc, canEditProduction, canEditProductMaster, canEditPlan, canEditLenh, canEditStage, isStageAdmin, canEditHangLoi, allowedEfficiencyTabs, getAllowedNhom, getAllowedStages, getAllowedEmployeeGroups }}>
       {children}
     </AuthContext.Provider>
   )
