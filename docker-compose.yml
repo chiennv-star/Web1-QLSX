@@ -24,9 +24,7 @@ services:
 
   # ── Spring Boot Backend ────────────────────────────────────────────────────
   backend:
-    build:
-      context: ./sanluong-backend
-      dockerfile: Dockerfile
+    image: ghcr.io/chiennv-star/sanluong-backend:latest
     container_name: sanluong-backend
     restart: unless-stopped
     depends_on:
@@ -44,9 +42,7 @@ services:
 
   # ── React + Nginx Frontend ─────────────────────────────────────────────────
   frontend:
-    build:
-      context: ./sanluong-frontend
-      dockerfile: Dockerfile
+    image: ghcr.io/chiennv-star/sanluong-frontend:latest
     container_name: sanluong-frontend
     restart: unless-stopped
     depends_on:

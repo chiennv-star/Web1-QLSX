@@ -1,13 +1,52 @@
-name: Deploy to Server
+name: Build, Push & Deploy
 
 on:
   push:
     branches:
       - master
 
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ghcr.io/chiennv-star/sanluong-backend
+  FRONTEND_IMAGE: ghcr.io/chiennv-star/sanluong-frontend
+
 jobs:
+  # ── Job 1: Build & push images lên ghcr.io ──────────────────────────────────
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login vào GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push Backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./sanluong-backend
+          push: true
+          tags: ${{ env.BACKEND_IMAGE }}:latest
+
+      - name: Build & push Frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./sanluong-frontend
+          push: true
+          tags: ${{ env.FRONTEND_IMAGE }}:latest
+
+  # ── Job 2: SSH vào server, pull image mới và restart ────────────────────────
   deploy:
     runs-on: ubuntu-latest
+    needs: build-and-push
 
     steps:
       - name: Deploy via SSH
@@ -20,16 +59,18 @@ jobs:
           script: |
             set -e
 
-            # ── 1. Đến thư mục dự án ────────────────────────────────────────
             cd ${{ secrets.PROJECT_PATH }}
 
-            # ── 2. Pull code mới nhất ────────────────────────────────────────
-            git pull origin master
+            # Đăng nhập ghcr.io để pull private image (nếu repo là private)
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin || true
 
-            # ── 3. Build lại image và khởi động lại container ───────────────
-            docker compose up --build -d
+            # Pull image mới nhất
+            docker compose pull
 
-            # ── 4. Xóa image cũ không dùng để tiết kiệm dung lượng ──────────
+            # Khởi động lại với image mới
+            docker compose up -d
+
+            # Xóa image cũ không dùng
             docker image prune -f
 
             echo "✅ Deploy thành công: $(date '+%Y-%m-%d %H:%M:%S')"
