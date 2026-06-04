@@ -1,9 +1,9 @@
 name: Build, Push & Deploy
 
 on:
-  push:
-    branches:
-      - master
+  # push:          # ⏸ TẠM TẮT — đang phát triển tính năng mới
+  #   branches:
+  #     - master
   # Cho phép bấm tay deploy từ GitHub UI (Actions → Run workflow)
   workflow_dispatch:
 
