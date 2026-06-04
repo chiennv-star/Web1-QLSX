@@ -3387,7 +3387,7 @@ function KhoachContent({ miniPickerMode = false }) {
             )
           })}
         </div>
-        </div> {/* end V1 relative wrapper */}
+        </div>
       )}  {/* end V1 layout / end loading conditional */}
 
       {/* ── Bảng ĐƠN HÀNG độc lập — chỉ admin/adminKH, ẩn ở V2 ── */}
