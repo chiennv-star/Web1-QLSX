@@ -659,6 +659,7 @@ function EmployeeProfileCard({ authUser, toNhom, onSaved }) {
   // Ảnh đại diện
   const avatarInputRef = useRef(null)
   const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false)
 
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0]
@@ -768,9 +769,10 @@ function EmployeeProfileCard({ authUser, toNhom, onSaved }) {
         marginBottom: 18, boxShadow: '0 4px 20px rgba(30,69,112,0.18)',
       }}>
         <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+          {/* Avatar — click để xem ảnh */}
           <div
-            style={{ position: 'relative', cursor: 'pointer' }}
-            onClick={() => !avatarUploading && avatarInputRef.current?.click()}
+            style={{ position: 'relative', cursor: authUser?.avatar ? 'zoom-in' : 'default' }}
+            onClick={() => authUser?.avatar && setAvatarPreviewOpen(true)}
           >
             <Avatar
               className="eff-profile-header-avatar"
@@ -785,17 +787,6 @@ function EmployeeProfileCard({ authUser, toNhom, onSaved }) {
                 display: 'block',
               }}
             />
-            {/* Overlay camera khi hover */}
-            <div className="eff-avatar-overlay" style={{
-              position: 'absolute', inset: 0, borderRadius: '50%',
-              background: 'rgba(0,0,0,0.45)',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              opacity: 0, transition: 'opacity 0.2s',
-              pointerEvents: 'none',
-            }}>
-              <CameraOutlined style={{ color: '#fff', fontSize: 22 }} />
-              <span style={{ color: '#fff', fontSize: 9, fontWeight: 600, marginTop: 2 }}>Đổi ảnh</span>
-            </div>
             {/* Badge trạng thái góc dưới */}
             <div style={{
               position: 'absolute', bottom: 2, right: 2,
@@ -808,7 +799,7 @@ function EmployeeProfileCard({ authUser, toNhom, onSaved }) {
                 : <CameraOutlined style={{ color: '#fff' }} />}
             </div>
           </div>
-          {/* Nút text rõ ràng phía dưới avatar */}
+          {/* Nút đổi ảnh — mở file picker */}
           <button
             onClick={() => !avatarUploading && avatarInputRef.current?.click()}
             disabled={avatarUploading}
@@ -822,6 +813,30 @@ function EmployeeProfileCard({ authUser, toNhom, onSaved }) {
             {avatarUploading ? 'Đang tải...' : 'Đổi ảnh'}
           </button>
         </div>
+
+        {/* Modal xem ảnh đại diện */}
+        <Modal
+          open={avatarPreviewOpen}
+          onCancel={() => setAvatarPreviewOpen(false)}
+          footer={[
+            <Button key="change" type="primary" icon={<CameraOutlined />}
+              onClick={() => { setAvatarPreviewOpen(false); avatarInputRef.current?.click() }}
+              style={{ background: '#00CC99', borderColor: '#00CC99' }}
+            >
+              Đổi ảnh
+            </Button>,
+            <Button key="close" onClick={() => setAvatarPreviewOpen(false)}>Đóng</Button>,
+          ]}
+          centered
+          width={360}
+          styles={{ body: { padding: 0, textAlign: 'center' } }}
+        >
+          <img
+            src={authUser?.avatar}
+            alt="Ảnh đại diện"
+            style={{ width: '100%', maxHeight: 400, objectFit: 'contain', borderRadius: 8 }}
+          />
+        </Modal>
         <div style={{ minWidth: 0 }}>
           <div className="eff-profile-header-name" style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 6, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {authUser?.fullName || authUser?.username}
@@ -1427,8 +1442,6 @@ export default function WorkEfficiencyPage() {
       {isNhanVien() && profileTab === 'profile' && (
         <>
         <style>{`
-          .eff-avatar-overlay { opacity: 0; transition: opacity 0.2s; }
-          div:hover > .eff-avatar-overlay { opacity: 1 !important; }
           @media (max-width: 768px) {
             .eff-profile-wrapper { max-width: 100% !important; padding: 0 10px !important; margin-top: 12px !important; }
             .eff-profile-header { padding: 14px 14px !important; gap: 10px !important; border-radius: 10px !important; }
