@@ -15,11 +15,11 @@ const fmtSL   = v => (v || 0).toLocaleString('vi-VN')
 const fmtCong = (v, d = 4) => (v || 0).toLocaleString('vi-VN', { minimumFractionDigits: d, maximumFractionDigits: d })
 
 const STAGES = [
-  { key: 'PC',   label: 'PC',   slColor: '#1D4ED8', congColor: '#60a5fa', bg: '#eff6ff', border: '#93c5fd', headerBg: '#1e5fa3' },
-  { key: 'PL',   label: 'PL',   slColor: '#0e7490', congColor: '#22d3ee', bg: '#ecfeff', border: '#67e8f9', headerBg: '#0e7490' },
-  { key: 'DG',   label: 'ĐG',   slColor: '#b45309', congColor: '#fbbf24', bg: '#fffbeb', border: '#fde68a', headerBg: '#b45309' },
-  { key: 'BBC1', label: 'BBC1', slColor: '#6d28d9', congColor: '#c084fc', bg: '#f5f3ff', border: '#c4b5fd', headerBg: '#6d28d9' },
-  { key: 'CC',   label: 'CC',   slColor: '#9d174d', congColor: '#f472b6', bg: '#fdf2f8', border: '#f9a8d4', headerBg: '#9d174d' },
+  { key: 'PC',   label: 'PC',   slColor: '#1d4ed8', congColor: '#2563eb', bg: '#eff6ff', border: '#93c5fd', headerBg: '#1d4ed8', kpiBg: '#1d4ed8', kpiBorder: '#93c5fd' },
+  { key: 'PL',   label: 'PL',   slColor: '#0e7490', congColor: '#0891b2', bg: '#ecfeff', border: '#67e8f9', headerBg: '#0e7490', kpiBg: '#0e7490', kpiBorder: '#67e8f9' },
+  { key: 'DG',   label: 'ĐG',   slColor: '#b45309', congColor: '#d97706', bg: '#fffbeb', border: '#fde68a', headerBg: '#b45309', kpiBg: '#b45309', kpiBorder: '#fde68a' },
+  { key: 'BBC1', label: 'BBC1', slColor: '#6d28d9', congColor: '#7c3aed', bg: '#f5f3ff', border: '#c4b5fd', headerBg: '#6d28d9', kpiBg: '#6d28d9', kpiBorder: '#c4b5fd' },
+  { key: 'CC',   label: 'CC',   slColor: '#be185d', congColor: '#db2777', bg: '#fdf2f8', border: '#f9a8d4', headerBg: '#be185d', kpiBg: '#be185d', kpiBorder: '#f9a8d4' },
 ]
 
 export default function TongHopSanLuongPage() {
@@ -187,19 +187,19 @@ export default function TongHopSanLuongPage() {
         ref={stickyRef}
         style={{
           position: 'sticky', top: 0, zIndex: 20,
-          background: 'linear-gradient(135deg, #1e3a5f 0%, #1e4e7a 100%)',
-          borderBottom: '3px solid #3b82f6',
-          padding: '10px 14px 8px',
-          boxShadow: '0 3px 12px rgba(30,58,95,0.25)',
+          background: '#fff',
+          borderBottom: '2px solid #e2e8f0',
+          padding: '10px 14px 10px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
         }}
       >
         {/* Row 1: Tiêu đề + bộ lọc */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
-          <span style={{ fontWeight: 800, color: '#7dd3fc', fontSize: 14, whiteSpace: 'nowrap', letterSpacing: 0.3 }}>
-            <BarChartOutlined style={{ marginRight: 6 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+          <span style={{ fontWeight: 800, color: '#1e3a5f', fontSize: 15, whiteSpace: 'nowrap', letterSpacing: 0.3 }}>
+            <BarChartOutlined style={{ marginRight: 6, color: '#3b82f6' }} />
             Tổng Hợp Sản Lượng
           </span>
-          <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.2)', margin: '0 2px' }} />
+          <div style={{ width: 1, height: 20, background: '#e2e8f0', margin: '0 2px' }} />
           <RangePicker
             size="small"
             value={dateRange}
@@ -207,88 +207,82 @@ export default function TongHopSanLuongPage() {
             format="DD/MM/YYYY"
             allowClear
             placeholder={['Từ ngày', 'Đến ngày']}
-            style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.25)' }}
           />
           <Button size="small" type="primary" icon={<SearchOutlined />}
-            style={{ background: '#3b82f6', borderColor: '#3b82f6', fontWeight: 600 }}
+            style={{ background: '#1d4ed8', borderColor: '#1d4ed8', fontWeight: 600 }}
             onClick={() => fetchData()}>
             Truy xuất
           </Button>
-          <Button size="small" icon={<ReloadOutlined />} onClick={handleReset}
-            style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', color: '#cbd5e1' }} />
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>
-              <strong style={{ color: '#e2e8f0' }}>{pivotData.length}</strong> ngày
-            </span>
-            <span style={{ fontSize: 13, color: '#7dd3fc', fontWeight: 700, whiteSpace: 'nowrap' }}>
-              SL: <strong style={{ color: '#fff', fontSize: 15 }}>{fmtSL(grandSL)}</strong>
-            </span>
-            <span style={{ fontSize: 13, color: '#7dd3fc', fontWeight: 700, whiteSpace: 'nowrap' }}>
-              Công: <strong style={{ color: '#fff', fontSize: 15 }}>{fmtCong(grandCong, 2)}</strong>
+          <Button size="small" icon={<ReloadOutlined />} onClick={handleReset} />
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>
+              <strong style={{ color: '#1e293b' }}>{pivotData.length}</strong> ngày &nbsp;·&nbsp;
+              SL: <strong style={{ color: '#1d4ed8', fontSize: 14 }}>{fmtSL(grandSL)}</strong>
+              &nbsp;&nbsp;
+              Công: <strong style={{ color: '#0e7490', fontSize: 14 }}>{fmtCong(grandCong, 2)}</strong>
             </span>
           </div>
         </div>
 
-        {/* Row 2: KPI strip — mỗi công đoạn */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {/* Row 2: KPI cards — mỗi công đoạn */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {STAGES.map(s => (
             <div key={s.key} style={{
-              background: 'rgba(255,255,255,0.07)',
-              border: `1px solid ${s.border}55`,
-              borderLeft: `3px solid ${s.headerBg}`,
-              borderRadius: 8,
-              padding: '5px 12px',
-              display: 'flex', alignItems: 'center', gap: 10,
-              minWidth: 130,
+              background: s.kpiBg,
+              borderRadius: 10,
+              padding: '7px 14px 7px 12px',
+              display: 'flex', alignItems: 'center', gap: 12,
+              minWidth: 140,
+              boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
             }}>
               <div style={{
-                fontSize: 13, fontWeight: 800, color: '#fff',
-                background: s.headerBg,
-                borderRadius: 5, padding: '1px 7px', letterSpacing: 0.8,
+                fontSize: 14, fontWeight: 900, color: '#fff',
+                letterSpacing: 0.8, minWidth: 36, textAlign: 'center',
+                borderRight: '1px solid rgba(255,255,255,0.25)',
+                paddingRight: 10, marginRight: 2,
               }}>{s.label}</div>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>SL</div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: s.slColor === '#1D4ED8' ? '#60a5fa' : s.slColor, lineHeight: 1.1 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 600, letterSpacing: 0.4 }}>SL</span>
+                  <span style={{ fontSize: 15, fontWeight: 900, color: '#fff', lineHeight: 1 }}>
                     {fmtSL(kpi[s.key].sl)}
-                  </div>
+                  </span>
                 </div>
-                <div style={{ width: 1, background: 'rgba(255,255,255,0.12)', alignSelf: 'stretch' }} />
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>Công</div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: s.congColor, lineHeight: 1.1 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 600, letterSpacing: 0.4 }}>Công</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.92)', lineHeight: 1 }}>
                     {fmtCong(kpi[s.key].cong, 2)}
-                  </div>
+                  </span>
+                  {kpi[s.key].soPhien > 0 && (
+                    <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)', marginLeft: 2 }}>
+                      {kpi[s.key].soPhien}p
+                    </span>
+                  )}
                 </div>
-                {kpi[s.key].soPhien > 0 && (
-                  <div style={{ fontSize: 9, color: '#64748b', alignSelf: 'flex-end', paddingBottom: 1 }}>
-                    {kpi[s.key].soPhien}p
-                  </div>
-                )}
               </div>
             </div>
           ))}
 
           {/* Tổng tất cả */}
           <div style={{
-            background: 'rgba(59,130,246,0.15)',
-            border: '1.5px solid #3b82f6',
-            borderRadius: 8, padding: '5px 14px',
-            display: 'flex', alignItems: 'center', gap: 12,
-            minWidth: 150,
+            background: 'linear-gradient(135deg, #1e3a5f 0%, #1e4e7a 100%)',
+            border: '2px solid #3b82f6',
+            borderRadius: 10, padding: '7px 16px',
+            display: 'flex', alignItems: 'center', gap: 14,
+            minWidth: 160,
+            boxShadow: '0 1px 4px rgba(30,58,95,0.25)',
           }}>
-            <div style={{ fontSize: 10, fontWeight: 800, color: '#7dd3fc', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ fontSize: 11, fontWeight: 900, color: '#7dd3fc', letterSpacing: 0.8, display: 'flex', alignItems: 'center', gap: 5 }}>
               <RiseOutlined /> TỔNG
             </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>SL</div>
-                <div style={{ fontSize: 16, fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>{fmtSL(grandSL)}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>SL</span>
+                <span style={{ fontSize: 16, fontWeight: 900, color: '#fff', lineHeight: 1 }}>{fmtSL(grandSL)}</span>
               </div>
-              <div style={{ width: 1, background: 'rgba(255,255,255,0.15)', alignSelf: 'stretch' }} />
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>Công</div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#7dd3fc', lineHeight: 1.1 }}>{fmtCong(grandCong, 2)}</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>Công</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#7dd3fc', lineHeight: 1 }}>{fmtCong(grandCong, 2)}</span>
               </div>
             </div>
           </div>
@@ -305,7 +299,7 @@ export default function TongHopSanLuongPage() {
           font-weight: 700 !important;
           letter-spacing: 0.5px;
           padding: 8px 6px !important;
-          border-right: 1px solid rgba(255,255,255,0.15) !important;
+          border-right: 1px solid rgba(255,255,255,0.18) !important;
           white-space: nowrap;
         }
         .tonghop-table .ant-table-thead > tr > th::before { display: none !important; }
@@ -313,26 +307,26 @@ export default function TongHopSanLuongPage() {
           font-size: 12px !important;
           font-weight: 800 !important;
           letter-spacing: 1.2px;
-          padding: 9px 8px !important;
+          padding: 10px 8px !important;
         }
-        .tonghop-table .ant-table-thead > tr > th .ant-table-column-sorter { color: rgba(255,255,255,0.6) !important; }
+        .tonghop-table .ant-table-thead > tr > th .ant-table-column-sorter { color: rgba(255,255,255,0.55) !important; }
         .tonghop-table .ant-table-thead > tr > th .ant-table-column-sorter-up.active,
-        .tonghop-table .ant-table-thead > tr > th .ant-table-column-sorter-down.active { color: #fbbf24 !important; }
+        .tonghop-table .ant-table-thead > tr > th .ant-table-column-sorter-down.active { color: #fde68a !important; }
         .tonghop-table .ant-table-tbody > tr > td {
-          padding: 7px 10px !important;
-          border-bottom: 1px solid #f1f5f9 !important;
+          padding: 8px 12px !important;
+          border-bottom: 1px solid #e2e8f0 !important;
           vertical-align: middle;
-          font-size: 12px;
+          font-size: 13px;
         }
-        .tonghop-table .ant-table-tbody > tr:nth-child(odd) > td { background: #ffffff; }
+        .tonghop-table .ant-table-tbody > tr:nth-child(odd) > td  { background: #ffffff; }
         .tonghop-table .ant-table-tbody > tr:nth-child(even) > td { background: #f8faff; }
-        .tonghop-table .ant-table-tbody > tr:hover > td { background: #eff6ff !important; transition: background 0.15s; }
+        .tonghop-table .ant-table-tbody > tr:hover > td { background: #eff6ff !important; transition: background 0.12s; }
         .tonghop-table .ant-table-summary > tr > td {
           background: #1e3a5f !important;
           color: #e2e8f0 !important;
-          font-weight: 700;
-          font-size: 12px;
-          padding: 8px 10px !important;
+          font-weight: 700 !important;
+          font-size: 13px !important;
+          padding: 9px 12px !important;
           border-top: 2px solid #3b82f6 !important;
         }
         .tonghop-table .ant-table-fixed-left .ant-table-tbody > tr > td,
