@@ -29,11 +29,19 @@ public class SlChangeRequestService {
 
     @Transactional
     public SlChangeRequest create(SlChangeRequestDto dto, String requestedBy) {
-        if (requestRepo.existsByWorkScheduleSessionIdAndStatus(dto.getWorkScheduleSessionId(), "PENDING")) {
-            throw new RuntimeException("Đã có yêu cầu đang chờ duyệt cho ngày này");
-        }
         WorkScheduleSession session = sessionRepo.findById(dto.getWorkScheduleSessionId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy session"));
+
+        // Nếu đã có yêu cầu PENDING → cập nhật giá trị mới thay vì tạo mới
+        java.util.Optional<SlChangeRequest> existing =
+                requestRepo.findByWorkScheduleSessionIdAndStatus(dto.getWorkScheduleSessionId(), "PENDING");
+        if (existing.isPresent()) {
+            SlChangeRequest req = existing.get();
+            req.setNewValue(dto.getNewValue());
+            req.setRequestedBy(requestedBy);
+            req.setRequestedAt(LocalDateTime.now());
+            return requestRepo.save(req);
+        }
 
         SlChangeRequest req = new SlChangeRequest();
         req.setWorkScheduleId(dto.getWorkScheduleId());

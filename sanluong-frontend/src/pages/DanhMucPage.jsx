@@ -1041,7 +1041,7 @@ function ImportExcelTab() {
 // ── ProductMasterDrawer: full-detail drawer ───────────────────────────────────
 function ProductMasterDrawer({ open, record, onClose, onEdit }) {
   if (!record) return null
-  const fmtN = v => v != null ? <b style={{ color: '#1D4ED8' }}>{Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 7 })}</b> : <span style={{ color: '#d9d9d9' }}>—</span>
+  const fmtN = v => v != null ? <b style={{ color: '#1D4ED8' }}>{Math.round(Number(v)).toLocaleString('vi-VN')}</b> : <span style={{ color: '#d9d9d9' }}>—</span>
   const fmtT = v => v || <span style={{ color: '#d9d9d9' }}>—</span>
 
   const Section = ({ title, color = '#1D4ED8', children }) => (
@@ -1203,7 +1203,7 @@ function ProductMasterTab() {
   }
 
   const numCell = v => v != null
-    ? <span style={{ fontWeight: 600, color: '#1D4ED8' }}>{Number(v).toLocaleString('vi-VN')}</span>
+    ? <span style={{ fontWeight: 600, color: '#1D4ED8' }}>{Math.round(Number(v)).toLocaleString('vi-VN')}</span>
     : <span style={{ color: '#d9d9d9' }}>—</span>
 
   const txtCell = v => v
@@ -1358,8 +1358,8 @@ function ProductMasterTab() {
             <Col span={8}>
               <Form.Item label="NS Trung Bình (sp/công)" name="slTrungBinh">
                 <InputNumber style={{ width: '100%' }} min={0}
-                  formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
-                  parser={v => v ? v.replace(/[^\d.]/g, '') : ''} />
+                  formatter={v => v ? Math.round(Number(v)).toLocaleString('vi-VN') : ''}
+                  parser={v => v ? v.replace(/[^\d]/g, '') : ''} />
               </Form.Item>
             </Col>
           </Row>
@@ -1382,8 +1382,8 @@ function ProductMasterTab() {
               <Form.Item label="Khối lượng 1 đơn vị (gram)" name="khoiLuong">
                 <InputNumber style={{ width: '100%' }} min={0} step={0.1}
                   placeholder="VD: 50, 100, 250..."
-                  formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
-                  parser={v => v ? v.replace(/[^\d.]/g, '') : ''} />
+                  formatter={v => v ? Math.round(Number(v)).toLocaleString('vi-VN') : ''}
+                  parser={v => v ? v.replace(/[^\d]/g, '') : ''} />
               </Form.Item>
             </Col>
           </Row>
@@ -1392,22 +1392,22 @@ function ProductMasterTab() {
             <Col span={8}>
               <Form.Item label="Năng suất PC (sp/công)" name="nangSuatPc">
                 <InputNumber style={{ width: '100%' }} min={0}
-                  formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
-                  parser={v => v ? v.replace(/[^\d.]/g, '') : ''} />
+                  formatter={v => v ? Math.round(Number(v)).toLocaleString('vi-VN') : ''}
+                  parser={v => v ? v.replace(/[^\d]/g, '') : ''} />
               </Form.Item>
             </Col>
             <Col span={8}>
               <Form.Item label="Năng suất PL (sp/công)" name="nangSuatPl">
                 <InputNumber style={{ width: '100%' }} min={0}
-                  formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
-                  parser={v => v ? v.replace(/[^\d.]/g, '') : ''} />
+                  formatter={v => v ? Math.round(Number(v)).toLocaleString('vi-VN') : ''}
+                  parser={v => v ? v.replace(/[^\d]/g, '') : ''} />
               </Form.Item>
             </Col>
             <Col span={8}>
               <Form.Item label="Năng suất BBC1 (sp/công)" name="nangSuatBbc1">
                 <InputNumber style={{ width: '100%' }} min={0}
-                  formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
-                  parser={v => v ? v.replace(/[^\d.]/g, '') : ''} />
+                  formatter={v => v ? Math.round(Number(v)).toLocaleString('vi-VN') : ''}
+                  parser={v => v ? v.replace(/[^\d]/g, '') : ''} />
               </Form.Item>
             </Col>
           </Row>
@@ -1520,7 +1520,7 @@ function ProductMasterTab() {
 
 function SongAnDrawer({ open, record, onClose }) {
   if (!record) return null
-  const fmtN = v => v != null ? <b style={{ color: '#1D4ED8' }}>{Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 7 })}</b> : <span style={{ color: '#d9d9d9' }}>—</span>
+  const fmtN = v => v != null ? <b style={{ color: '#1D4ED8' }}>{Math.round(Number(v)).toLocaleString('vi-VN')}</b> : <span style={{ color: '#d9d9d9' }}>—</span>
   const fmtT = v => v || <span style={{ color: '#d9d9d9' }}>—</span>
 
   const Section = ({ title, color = '#1D4ED8', children }) => (
@@ -1880,7 +1880,7 @@ function NangSuatTab() {
   useEffect(() => { fetchData() }, [])
 
   const numCell = v => v != null
-    ? <span style={{ fontWeight: 600, color: '#1D4ED8' }}>{Number(v).toLocaleString('vi-VN')}</span>
+    ? <span style={{ fontWeight: 600, color: '#1D4ED8' }}>{Math.round(Number(v)).toLocaleString('vi-VN')}</span>
     : <span style={{ color: '#d9d9d9' }}>—</span>
 
   const columns = [
@@ -1976,7 +1976,7 @@ function ProductMasterBackupTab() {
   }
 
   const numCell = v => v != null
-    ? <span style={{ fontWeight: 600, color: '#1D4ED8' }}>{Number(v).toLocaleString('vi-VN')}</span>
+    ? <span style={{ fontWeight: 600, color: '#1D4ED8' }}>{Math.round(Number(v)).toLocaleString('vi-VN')}</span>
     : <span style={{ color: '#d9d9d9' }}>—</span>
   const txtCell = v => v ? <span style={{ fontSize: 12 }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
 

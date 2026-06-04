@@ -47,7 +47,7 @@ export default function LoginPage() {
             ⚡
           </div>
           <Typography.Title level={3} style={{ margin: 0, color: '#1e1b4b', fontWeight: 700 }}>
-            Quản lý Sản lượng
+            Quản Trị Sản Xuất Song An
           </Typography.Title>
           <Typography.Text type="secondary">Đăng nhập để tiếp tục</Typography.Text>
         </div>

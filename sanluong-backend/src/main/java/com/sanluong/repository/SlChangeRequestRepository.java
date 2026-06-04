@@ -9,4 +9,5 @@ public interface SlChangeRequestRepository extends JpaRepository<SlChangeRequest
     List<SlChangeRequest> findByStatusOrderByRequestedAtDesc(String status);
     List<SlChangeRequest> findByWorkScheduleIdOrderByRequestedAtDesc(Long workScheduleId);
     boolean existsByWorkScheduleSessionIdAndStatus(Long sessionId, String status);
+    java.util.Optional<SlChangeRequest> findByWorkScheduleSessionIdAndStatus(Long sessionId, String status);
 }

@@ -593,7 +593,7 @@ export default function EmployeePage() {
             <Col span={12}>
               <Form.Item name="maNhanVien" label="Mã nhân viên"
                 rules={[{ required: true, message: 'Bắt buộc nhập mã nhân viên' }]}>
-                <Input placeholder="VD: SA001" disabled={Boolean(editing)} />
+                <Input placeholder="VD: SA001" />
               </Form.Item>
             </Col>
             <Col span={12}>

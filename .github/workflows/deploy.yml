@@ -1,10 +1,9 @@
 name: Build, Push & Deploy
 
 on:
-  # push:          # ⏸ TẠM TẮT — đang phát triển tính năng mới
-  #   branches:
-  #     - master
-  # Cho phép bấm tay deploy từ GitHub UI (Actions → Run workflow)
+  push:
+    branches:
+      - master
   workflow_dispatch:
 
 env:
@@ -13,11 +12,9 @@ env:
   FRONTEND_IMAGE: ghcr.io/chiennv-star/sanluong-frontend
 
 jobs:
-  # ── Job 1: Build & push images lên ghcr.io (chạy khi push code) ─────────────
+  # ── Job 1: Build & push images lên ghcr.io ──────────────────────────────────
   build-and-push:
     runs-on: ubuntu-latest
-    # Chỉ build khi push code, không build khi trigger tay
-    if: github.event_name == 'push'
     permissions:
       contents: read
       packages: write
@@ -48,10 +45,9 @@ jobs:
           tags: ${{ env.FRONTEND_IMAGE }}:latest
 
   # ── Job 2: SSH vào server, pull image mới và restart ────────────────────────
-  # Chỉ chạy khi bấm tay "Run workflow" trên GitHub UI
   deploy:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
+    needs: build-and-push
 
     steps:
       - name: Deploy via SSH

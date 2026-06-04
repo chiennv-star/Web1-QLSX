@@ -483,7 +483,7 @@ public class WorkScheduleSessionService {
             dto.setSanLuong(groupSl);          // sản lượng nhóm
             dto.setNangSuat(groupNs);          // năng suất nhóm
             dto.setNangSuatTrungBinh(nsTb);   // NS TB từ ProductMaster
-            dto.setChuY(ws != null ? ws.getChuY() : null);
+            dto.setChuY(s.getGhiChu() != null ? s.getGhiChu() : (ws != null ? ws.getChuY() : null));
             return dto;
         }).collect(Collectors.toList());
     }

@@ -168,6 +168,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const [batchEditDays, setBatchEditDays] = useState(new Set())
   const [batchSaving, setBatchSaving] = useState(new Set())
   const [savedSlKeys, setSavedSlKeys] = useState(new Set())
+  const [slEditOriginal, setSlEditOriginal] = useState({})
   const [slHistory, setSlHistory] = useState({})
   const [contextMenu, setContextMenu] = useState(null)
   const [pendingDaySet, setPendingDaySet] = useState(new Set())
@@ -659,13 +660,16 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
         .reduce((acc, v) => acc + (parseFloat(v) || 0), 0)
       syncSl(newTongSl)
       setSavedSlKeys(prev => new Set([...prev, ngayKey]))
+      setSlEditOriginal(prev => { const n = { ...prev }; delete n[ngayKey]; return n })
       setSlHistory(prev => ({
         ...prev,
         [ngayKey]: [...(prev[ngayKey] || []), { value: parseInt(val, 10), savedAt: new Date() }],
       }))
       onRefresh?.()
       message.success('Đã lưu sản lượng')
-    } catch { message.error('Lưu sản lượng thất bại') }
+    } catch (err) {
+      message.error(err?.response?.data?.message || err?.message || 'Lưu sản lượng thất bại')
+    }
     finally { setSavingDay(null) }
   }
 
@@ -709,7 +713,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                 {nangSuat != null ? Math.round(nangSuat).toLocaleString('vi-VN') : '—'}
               </td>
               <td style={{ ...cellStyle, textAlign: 'right', fontWeight: 700, color: '#722ed1' }}>
-                {nsTrungBinh != null ? nsTrungBinh : '—'}
+                {nsTrungBinh != null ? Math.round(nsTrungBinh).toLocaleString('vi-VN') : '—'}
               </td>
               <td style={{ ...cellStyle, textAlign: 'center', color: '#1677ff', fontWeight: 600 }}>
                 {ngayBatDau ? ngayBatDau.format('DD/MM/YYYY') : '—'}
@@ -776,7 +780,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                       let arrow = ''
                       if (nsTrungBinh && nsNgay > nsTrungBinh) { color = '#389e0d'; arrow = ' ▲' }
                       if (nsTrungBinh && nsNgay < nsTrungBinh) { color = '#cf1322'; arrow = ' ▼' }
-                      if (!nsTrungBinh) return <span style={{ fontWeight: 600, color }}>{nsNgay.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      if (!nsTrungBinh) return <span style={{ fontWeight: 600, color }}>{Math.round(nsNgay).toLocaleString('vi-VN')}</span>
                       const delta = nsNgay - nsTrungBinh
                       const pct = (delta / nsTrungBinh) * 100
                       const sign = delta >= 0 ? '+' : ''
@@ -833,7 +837,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     const tongCongNgay = detailRows.reduce((a, r) => a + (parseFloat(r.congThucHien) || 0), 0)
     const slVal = daySlMap[ngayKey] ?? ''
     const slNum = parseFloat(slVal) || 0
-    const nsNgay = tongCongNgay > 0 && slNum > 0 ? (slNum / tongCongNgay).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
+    const nsNgay = tongCongNgay > 0 && slNum > 0 ? Math.round(slNum / tongCongNgay).toLocaleString('vi-VN') : '—'
     const hasSavedRow = detailRows.some(r => r.id)
     const isInBatchMode = batchEditDays.has(ngayKey)
     const isBatchSaving = batchSaving.has(ngayKey)
@@ -853,32 +857,56 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
             <span style={{ color: '#595959' }}>Sản lượng ngày:</span>
             {savedSlKeys.has(ngayKey) && slVal !== '' ? (
               <Space size={4}>
-                <span style={{ fontWeight: 700, color: '#722ed1' }}>
+                <span style={{ fontWeight: 700, color: '#722ed1', fontFamily: 'monospace', fontSize: 13 }}>
                   {Number(slVal).toLocaleString('vi-VN')}
                 </span>
                 {canEditDetail && !pendingDaySet.has(ngayKey) && (
-                  <Button size="small" type="text" icon={<EditOutlined />}
-                    onClick={() => setSavedSlKeys(prev => { const next = new Set(prev); next.delete(ngayKey); return next })} />
+                  <Button size="small" icon={<EditOutlined />}
+                    style={{ color: '#722ed1', borderColor: '#d3adf7', fontWeight: 600, fontSize: 12 }}
+                    onClick={() => {
+                      setSlEditOriginal(prev => ({ ...prev, [ngayKey]: slVal }))
+                      setSavedSlKeys(prev => { const next = new Set(prev); next.delete(ngayKey); return next })
+                    }}>
+                    Sửa
+                  </Button>
                 )}
                 {pendingDaySet.has(ngayKey) && <Tag color="orange" style={{ fontSize: 11, marginRight: 0 }}>Chờ duyệt</Tag>}
               </Space>
             ) : canEditDetail ? (
-              <Space size={4}>
-                <input
-                  type="number" step="1" min="0"
-                  style={{ ...inputStyle, width: 90, border: '1px solid #d9d9d9', borderRadius: 4, padding: '2px 6px', background: '#fff' }}
-                  placeholder="Nhập SL..."
-                  value={slVal}
-                  onChange={e => setDaySlMap(prev => ({ ...prev, [ngayKey]: e.target.value }))}
-                  onKeyDown={e => { if (e.key === 'Enter') saveDaySl(ngayKey) }}
+              <Space size={4} align="center">
+                {slEditOriginal[ngayKey] !== undefined && (
+                  <span style={{ color: '#722ed1', fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap', fontFamily: 'monospace' }}>
+                    {Number(slEditOriginal[ngayKey]).toLocaleString('vi-VN')} →
+                  </span>
+                )}
+                <InputNumber
+                  size="small"
+                  style={{ width: 110 }}
+                  placeholder="Nhập SL mới..."
+                  value={slVal !== '' && slVal != null ? Number(slVal) : undefined}
+                  min={0}
+                  step={1}
+                  formatter={v => v != null && v !== '' ? Number(v).toLocaleString('vi-VN') : ''}
+                  parser={v => v ? v.replace(/[^\d]/g, '') : ''}
+                  onChange={v => setDaySlMap(prev => ({ ...prev, [ngayKey]: v != null ? String(v) : '' }))}
+                  onPressEnter={() => saveDaySl(ngayKey)}
                   autoFocus
                 />
                 <Button size="small" type="primary" loading={savingDay === ngayKey}
-                  disabled={slVal === '' || !hasSavedRow}
-                  style={{ color: '#fff' }}
+                  disabled={slVal === '' || slVal == null || !hasSavedRow}
                   onClick={() => saveDaySl(ngayKey)}>
-                  Cập nhật
+                  Lưu
                 </Button>
+                {slEditOriginal[ngayKey] !== undefined && (
+                  <Button size="small" danger
+                    onClick={() => {
+                      setDaySlMap(prev => ({ ...prev, [ngayKey]: slEditOriginal[ngayKey] }))
+                      setSavedSlKeys(prev => new Set([...prev, ngayKey]))
+                      setSlEditOriginal(prev => { const n = { ...prev }; delete n[ngayKey]; return n })
+                    }}>
+                    Hủy
+                  </Button>
+                )}
                 {!hasSavedRow && slVal !== '' && (
                   <span style={{ color: '#c61111', fontSize: 12 }}>Cần lưu ít nhất 1 dòng trước</span>
                 )}
@@ -1911,6 +1939,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const [updatingTT, setUpdatingTT] = useState({})
   const [innerTab, setInnerTab] = useState('list')
   const [hiddenCount, setHiddenCount] = useState(0)
+  const [doneCount, setDoneCount] = useState(0)
   const [filterPanelOpen, setFilterPanelOpen] = useState(false)
   const jumpApplied = useRef(false)
   const controlsRef = useRef(null)
@@ -1919,7 +1948,13 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
     setUpdatingTT(p => ({ ...p, [record.id]: true }))
     try {
       await api.patch(`/work-schedule/${record.id}/tinh-trang`, { tinhTrang: newTT || null })
-      setData(prev => prev.map(r => r.id === record.id ? { ...r, tinhTrang: newTT || null } : r))
+      if (newTT === 'done') {
+        setData(prev => prev.filter(r => r.id !== record.id))
+        setDoneCount(c => c + 1)
+      } else {
+        setData(prev => prev.map(r => r.id === record.id ? { ...r, tinhTrang: newTT || null } : r))
+        if (record.tinhTrang === 'done') setDoneCount(c => Math.max(0, c - 1))
+      }
       parentOnSaved?.()
     } catch { message.error('Cập nhật tình trạng thất bại') }
     finally { setUpdatingTT(p => { const n = { ...p }; delete n[record.id]; return n }) }
@@ -2334,9 +2369,23 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         paddingLeft: 12,
       }}>
         {[
-          { key: 'list', label: 'Danh sách' },
+          { key: 'list', label: 'Danh sách', color: '#1677ff' },
+          {
+            key: 'done',
+            color: '#15803d',
+            label: (
+              <span>
+                <CheckCircleOutlined style={{ marginRight: 5, color: doneCount > 0 ? '#15803d' : undefined }} />
+                Lịch đã hoàn thiện
+                {doneCount > 0 && (
+                  <Badge count={doneCount} size="small" color="#15803d" style={{ marginLeft: 5 }} />
+                )}
+              </span>
+            )
+          },
           {
             key: 'hidden',
+            color: '#722ed1',
             label: (
               <span>
                 <EyeInvisibleOutlined style={{ marginRight: 5, color: hiddenCount > 0 ? '#722ed1' : undefined }} />
@@ -2356,9 +2405,9 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
               cursor: 'pointer',
               fontWeight: innerTab === tab.key ? 700 : 400,
               fontSize: 13,
-              color: innerTab === tab.key ? (tab.key === 'hidden' ? '#722ed1' : '#1677ff') : '#595959',
+              color: innerTab === tab.key ? tab.color : '#595959',
               borderBottom: innerTab === tab.key
-                ? `2px solid ${tab.key === 'hidden' ? '#722ed1' : '#1677ff'}`
+                ? `2px solid ${tab.color}`
                 : '2px solid transparent',
               marginBottom: -1,
               userSelect: 'none',
@@ -2475,7 +2524,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
           <Table
             className="ws-table"
             columns={columns}
-            dataSource={data}
+            dataSource={data.filter(r => r.tinhTrang !== 'done')}
             rowKey="id"
             loading={loading}
             scroll={{ x: 1600 + config.extraTableCols.length * 87 }}
@@ -2522,10 +2571,10 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
           {/* ── Mobile card list ── */}
           <div className="ws-mobile-view" style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {loading && <div style={{ textAlign: 'center', padding: 32 }}><Spin size="large" /></div>}
-            {!loading && data.length === 0 && (
+            {!loading && data.filter(r => r.tinhTrang !== 'done').length === 0 && (
               <div style={{ textAlign: 'center', color: '#94a3b8', padding: 40, fontSize: 14 }}>Không có dữ liệu</div>
             )}
-            {!loading && data.map(record => (
+            {!loading && data.filter(r => r.tinhTrang !== 'done').map(record => (
               <MobileScheduleCard
                 key={record.id}
                 record={record}
@@ -2534,7 +2583,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                 onClick={() => { setDetailSchedule(record); setDetailOpen(true) }}
               />
             ))}
-            {!loading && data.length > 0 && (
+            {!loading && data.filter(r => r.tinhTrang !== 'done').length > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 4px' }}>
                 <span style={{ fontSize: 12, color: '#94a3b8' }}>
                   {data.length} / {pagination.total} bản ghi — nhấn để xem chi tiết
@@ -2554,6 +2603,17 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
             )}
           </div>
         </>
+      )}
+
+      {/* ── Tab: Lịch đã hoàn thiện ── */}
+      {innerTab === 'done' && (
+        <DoneTab
+          congDoan={congDoan}
+          toNhom={forcedNhom}
+          onUndone={() => fetchData(0)}
+          onCountChange={setDoneCount}
+          onRowClick={r => { setDetailSchedule(r); setDetailOpen(true) }}
+        />
       )}
 
       {/* ── Tab: Đã ẩn ── */}
@@ -2585,6 +2645,161 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       />
 
     </>
+  )
+}
+
+// ── DoneTab ───────────────────────────────────────────────────────────────────
+function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
+  const [data, setData] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 50, total: 0 })
+  const [filters, setFilters] = useState({ dateRange: null, maSp: '', soLo: '' })
+
+  const fetchDone = useCallback(async (page = 0, size = 50, f = filters) => {
+    setLoading(true)
+    try {
+      const { data: res } = await api.get('/work-schedule', {
+        params: {
+          source: 'SCHEDULE', congDoan,
+          toNhom: toNhom || undefined,
+          tinhTrang: 'done', page, size,
+          fromDate: f.dateRange?.[0]?.format('YYYY-MM-DD') || undefined,
+          toDate: f.dateRange?.[1]?.format('YYYY-MM-DD') || undefined,
+          maSp: f.maSp || undefined,
+          soLo: f.soLo || undefined,
+        }
+      })
+      setData(res.content || [])
+      setPagination(p => ({ ...p, total: res.totalElements, current: page + 1, pageSize: size }))
+      onCountChange?.(res.totalElements)
+    } catch { message.error('Không thể tải lịch đã hoàn thiện') }
+    finally { setLoading(false) }
+  }, [congDoan, toNhom, filters])
+
+  useEffect(() => { fetchDone(0) }, [fetchDone])
+
+  const handleUndone = async (id) => {
+    try {
+      await api.patch(`/work-schedule/${id}/tinh-trang`, { tinhTrang: null })
+      const next = data.filter(r => r.id !== id)
+      setData(next)
+      onCountChange?.(next.length)
+      onUndone?.()
+      message.success('Đã chuyển lại về Danh sách')
+    } catch { message.error('Cập nhật thất bại') }
+  }
+
+  const columns = [
+    {
+      title: 'Ngày TH', dataIndex: 'ngayThucHien', key: 'ngay', width: 90, align: 'center',
+      render: v => v ? (
+        <div style={{ lineHeight: 1.3 }}>
+          <div style={{ fontWeight: 600 }}>{dayjs(v).format('DD/MM')}</div>
+          <div style={{ color: '#8c8c8c', fontSize: 11 }}>{dayjs(v).format('YYYY')}</div>
+        </div>
+      ) : '—'
+    },
+    {
+      title: 'Tổ/Nhóm', dataIndex: 'toNhom', key: 'toNhom', width: 85,
+      render: (v) => {
+        const display = v || toNhom || congDoan
+        return display ? <Tag color="green" style={{ marginRight: 0 }}>{display}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>
+      }
+    },
+    {
+      title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 105,
+      render: v => v ? <Tag color="blue" style={{ fontFamily: 'monospace', marginRight: 0 }}>{v}</Tag>
+        : <span style={{ color: '#d9d9d9' }}>—</span>
+    },
+    {
+      title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 80,
+      render: v => v ? <span style={{ fontWeight: 600, color: '#595959' }}>{v}</span> : '—'
+    },
+    {
+      title: 'Tiến trình', dataIndex: 'tenTrinh', key: 'tenTrinh',
+      render: v => <span style={{ wordBreak: 'break-word' }}>{v || '—'}</span>
+    },
+    {
+      title: 'Số lô', dataIndex: 'soLo', key: 'soLo', width: 90,
+      render: v => <span style={{ fontFamily: 'monospace', color: '#595959' }}>{v || '—'}</span>
+    },
+    {
+      title: 'Cỡ lô', dataIndex: 'coLo', key: 'coLo', width: 80, align: 'right',
+      render: v => fmtNum(v)
+    },
+    {
+      title: 'Ngày hoàn thiện', dataIndex: 'updatedAt', key: 'updatedAt', width: 120, align: 'center',
+      render: v => v ? <span style={{ fontSize: 12, color: '#15803d' }}>{dayjs(v).format('DD/MM/YYYY')}</span> : '—'
+    },
+    {
+      title: 'Thao tác', key: 'action', width: 115, fixed: 'right', align: 'center',
+      render: (_, record) => (
+        <Tooltip title="Chuyển lại về Danh sách (bỏ done)">
+          <Button size="small" icon={<ReloadOutlined />}
+            onClick={e => { e.stopPropagation(); handleUndone(record.id) }}>
+            Bỏ done
+          </Button>
+        </Tooltip>
+      )
+    }
+  ]
+
+  return (
+    <div style={{ padding: '8px 0' }}>
+      {/* Toolbar */}
+      <div style={{
+        position: 'sticky', top: 84, zIndex: 9,
+        background: '#f0fdf4', borderBottom: '2px solid #86efac',
+        padding: '7px 12px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap'
+      }}>
+        <CheckCircleOutlined style={{ color: '#15803d', fontSize: 15 }} />
+        <span style={{ fontSize: 13, color: '#15803d', fontWeight: 600 }}>
+          Lịch đã hoàn thiện — Tổng: {pagination.total}
+        </span>
+        <RangePicker size="small" style={{ width: 210 }} format="DD/MM/YYYY"
+          placeholder={['Từ ngày', 'Đến ngày']}
+          value={filters.dateRange}
+          onChange={v => setFilters(f => ({ ...f, dateRange: v }))} />
+        <Input size="small" style={{ width: 90 }} placeholder="Mã SP" allowClear
+          value={filters.maSp}
+          onChange={e => setFilters(f => ({ ...f, maSp: e.target.value }))}
+          onPressEnter={() => fetchDone(0)} />
+        <Input size="small" style={{ width: 100 }} placeholder="Số lô" allowClear
+          value={filters.soLo}
+          onChange={e => setFilters(f => ({ ...f, soLo: e.target.value }))}
+          onPressEnter={() => fetchDone(0)} />
+        <Button size="small" type="primary" icon={<SearchOutlined />}
+          style={{ background: '#15803d', borderColor: '#15803d' }}
+          onClick={() => fetchDone(0)}>Tìm</Button>
+        <Button size="small" icon={<ReloadOutlined />} onClick={() => fetchDone(0)} loading={loading}
+          style={{ marginLeft: 'auto' }} />
+      </div>
+
+      <Table
+        className="ws-table"
+        columns={columns}
+        dataSource={data}
+        rowKey="id"
+        loading={loading}
+        size="small"
+        scroll={{ x: 900 }}
+        sticky={{ offsetHeader: 46 }}
+        rowHoverable={false}
+        onRow={r => ({
+          onClick: () => onRowClick?.(r),
+          style: { cursor: onRowClick ? 'pointer' : 'default' },
+        })}
+        pagination={{
+          ...pagination,
+          showSizeChanger: true,
+          showTotal: t => `Tổng ${t} lịch đã hoàn thiện`,
+          onChange: (p, ps) => {
+            setPagination(prev => ({ ...prev, current: p, pageSize: ps }))
+            fetchDone(p - 1, ps)
+          }
+        }}
+      />
+    </div>
   )
 }
 

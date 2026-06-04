@@ -331,7 +331,7 @@ function EmployeeDetailDrawer({ open, employee, fromDate, toDate, periodStr, onC
         <Space size={2}>
           <Tooltip title="Sửa phiên">
             <Button size="small" type="text" icon={<EditOutlined />}
-              style={{ color: '#1D4ED8' }} onClick={() => openEdit(r)} />
+              style={{ color: '#1D4ED8' }} onClick={e => { e.stopPropagation(); openEdit(r) }} />
           </Tooltip>
           <Popconfirm
             title="Xóa phiên này?"
@@ -339,7 +339,7 @@ function EmployeeDetailDrawer({ open, employee, fromDate, toDate, periodStr, onC
             okText="Xóa" cancelText="Huỷ" okButtonProps={{ danger: true }}
             onConfirm={() => handleDelete(r.id)}>
             <Button size="small" type="text" icon={<DeleteOutlined />}
-              style={{ color: '#ef4444' }} />
+              style={{ color: '#ef4444' }} onClick={e => e.stopPropagation()} />
           </Popconfirm>
         </Space>
       )
@@ -449,6 +449,9 @@ function EmployeeDetailDrawer({ open, employee, fromDate, toDate, periodStr, onC
                       {ns != null && <span>NS: <b style={{ color: '#1D4ED8', fontSize: 13 }}>{ns.toLocaleString('vi-VN', { maximumFractionDigits: 0 })}</b></span>}
                       {nsTb != null && <span>NS TB: <b style={{ color: '#1677ff' }}>{nsTb.toLocaleString('vi-VN', { maximumFractionDigits: 0 })}</b></span>}
                     </div>
+                    {r.chuY && (
+                      <div style={{ fontSize: 12, color: '#d46b08', marginTop: 4 }}>⚠ {r.chuY}</div>
+                    )}
                     {isAdmin && (
                       <div style={{ display: 'flex', gap: 6, marginTop: 8, justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
                         <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(r)}>Sửa</Button>
@@ -565,6 +568,11 @@ function EmployeeDetailDrawer({ open, employee, fromDate, toDate, periodStr, onC
                   ? <Tag color={dat ? 'success' : 'error'} style={{ marginRight: 0, fontWeight: 700, fontSize: 13 }}>
                       {dat ? <><RiseOutlined /> Đạt</> : <><FallOutlined /> Không Đạt</>}
                     </Tag>
+                  : <span style={{ color: '#bbb' }}>—</span>}
+              </SField>
+              <SField label="Chú Ý">
+                {r.chuY
+                  ? <span style={{ color: '#d46b08', fontWeight: 500 }}>{r.chuY}</span>
                   : <span style={{ color: '#bbb' }}>—</span>}
               </SField>
             </div>

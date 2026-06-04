@@ -61,10 +61,10 @@ function SidebarInner({ collapsed, location, menuItems, onNavigate }) {
         {!collapsed && (
           <div style={{ lineHeight: 1.2, overflow: 'hidden' }}>
             <div style={{ fontWeight: 800, fontSize: 12, color: '#F1F5F9', letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>
-              Quản Lý Phòng SX
+              Quản Trị Sản Xuất
             </div>
-            <div style={{ fontSize: 10, color: '#94A3B8', fontWeight: 600, whiteSpace: 'nowrap' }}>
-              Song An
+            <div style={{ fontSize: 11, color: '#ffffff', fontWeight: 700, whiteSpace: 'nowrap', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              Song An 🍀
             </div>
           </div>
         )}
