@@ -70,9 +70,9 @@ export default function TongHopSanLuongPage() {
       if (!map[date]) map[date] = { ngay: date }
       let cd = r.congDoan?.toUpperCase()
       if (!cd) return
-      // Tách PC thành PCPL1 / PCPL2 dựa theo nhomThucHien
+      // Tách PC thành PCPL1 / PCPL2 dựa theo nhomThucHien (session) hoặc toNhom (schedule)
       if (cd === 'PC') {
-        const nhom = r.nhomThucHien?.toUpperCase()
+        const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
         cd = (nhom === 'PCPL1' || nhom === 'PCPL2') ? nhom : 'PCPL1'
       }
       if (!map[date][cd]) map[date][cd] = { sl: 0, cong: 0, soPhien: 0 }
