@@ -16,7 +16,9 @@ const viFormatter = v => {
 }
 const viParser = v => {
   if (!v) return ''
-  return v.replace(/\./g, '').replace(',', '.')
+  const cleaned = v.replace(/\./g, '').replace(',', '.')
+  const n = parseFloat(cleaned)
+  return isNaN(n) ? '' : n
 }
 
 export default function ProductMasterPage() {
@@ -77,14 +79,22 @@ export default function ProductMasterPage() {
     setModalOpen(true)
   }
 
+  const numFields = ['slTrungBinh', 'nangSuatPc', 'nangSuatPl', 'nangSuatBbc1']
   const onSave = async () => {
     try {
       const values = await form.validateFields()
+      const payload = { ...values }
+      numFields.forEach(k => {
+        if (payload[k] != null) {
+          const cleaned = String(payload[k]).replace(/\./g, '').replace(',', '.')
+          payload[k] = parseFloat(cleaned) || 0
+        }
+      })
       if (editItem) {
-        await api.put(`/product-master/${editItem.id}`, values)
+        await api.put(`/product-master/${editItem.id}`, payload)
         message.success('Cập nhật thành công')
       } else {
-        await api.post('/product-master', values)
+        await api.post('/product-master', payload)
         message.success('Thêm mới thành công')
       }
       setModalOpen(false)
