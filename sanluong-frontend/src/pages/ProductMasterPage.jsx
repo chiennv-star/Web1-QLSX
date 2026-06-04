@@ -8,6 +8,17 @@ import {
 } from '@ant-design/icons'
 import api from '../api/axios'
 
+const viFormatter = v => {
+  if (v == null || v === '') return ''
+  const [int, dec] = String(v).split('.')
+  const intFmt = int.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  return dec !== undefined ? `${intFmt},${dec}` : intFmt
+}
+const viParser = v => {
+  if (!v) return ''
+  return v.replace(/\./g, '').replace(',', '.')
+}
+
 export default function ProductMasterPage() {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
@@ -254,23 +265,23 @@ export default function ProductMasterPage() {
 
           <Form.Item label="SL Trung bình" name="slTrungBinh"
             rules={[{ required: true, message: 'Nhập SL Trung bình' }]}>
-            <InputNumber min={0} max={999999999} precision={2} style={{ width: '100%' }} placeholder="Mặc định: 1000" />
+            <InputNumber min={0} max={999999999} precision={2} formatter={viFormatter} parser={viParser} style={{ width: '100%' }} placeholder="Mặc định: 1000" />
           </Form.Item>
 
           <Row gutter={16}>
             <Col span={8}>
               <Form.Item label="Năng suất PC" name="nangSuatPc">
-                <InputNumber min={0} max={999999999} precision={2} style={{ width: '100%' }} placeholder="PC" />
+                <InputNumber min={0} max={999999999} precision={2} formatter={viFormatter} parser={viParser} style={{ width: '100%' }} placeholder="PC" />
               </Form.Item>
             </Col>
             <Col span={8}>
               <Form.Item label="Năng suất PL" name="nangSuatPl">
-                <InputNumber min={0} max={999999999} precision={2} style={{ width: '100%' }} placeholder="PL" />
+                <InputNumber min={0} max={999999999} precision={2} formatter={viFormatter} parser={viParser} style={{ width: '100%' }} placeholder="PL" />
               </Form.Item>
             </Col>
             <Col span={8}>
               <Form.Item label="Năng suất BBC1" name="nangSuatBbc1">
-                <InputNumber min={0} max={999999999} precision={2} style={{ width: '100%' }} placeholder="BBC1" />
+                <InputNumber min={0} max={999999999} precision={2} formatter={viFormatter} parser={viParser} style={{ width: '100%' }} placeholder="BBC1" />
               </Form.Item>
             </Col>
           </Row>
