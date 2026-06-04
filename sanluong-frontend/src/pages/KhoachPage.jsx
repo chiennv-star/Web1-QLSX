@@ -2904,13 +2904,31 @@ function KhoachContent({ miniPickerMode = false }) {
                   )}
 
                   <thead>
-                    {/* Team header */}
+                    {/* Team header — sticky group label + spanning content */}
                     <tr>
-                      <td colSpan={isGroupCollapsed ? 1 : totalCols + 2} style={{
-                        background: group.headerBg, color: group.headerText,
-                        fontWeight: 700, fontSize: 13, padding: '5px 12px', letterSpacing: 0.4,
-                        cursor: 'pointer', userSelect: 'none',
-                      }} onClick={toggleGroup}>
+                      <td
+                        onClick={toggleGroup}
+                        style={{
+                          position: 'sticky', left: 0, zIndex: 5,
+                          background: group.headerBg, color: group.headerText,
+                          fontWeight: 800, fontSize: 10, textAlign: 'center',
+                          padding: '5px 2px', cursor: 'pointer', userSelect: 'none',
+                          borderRight: '1px solid rgba(255,255,255,0.25)',
+                          whiteSpace: 'nowrap', minWidth: 36,
+                          boxShadow: '2px 0 6px rgba(0,0,0,0.15)',
+                        }}
+                      >
+                        {group.key}
+                      </td>
+                      <td
+                        colSpan={isGroupCollapsed ? 1 : totalCols + 1}
+                        style={{
+                          background: group.headerBg, color: group.headerText,
+                          fontWeight: 700, fontSize: 13, padding: '5px 12px', letterSpacing: 0.4,
+                          cursor: 'pointer', userSelect: 'none',
+                        }}
+                        onClick={toggleGroup}
+                      >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <span style={{
                             display: 'inline-block', width: 18, textAlign: 'center',
@@ -2931,8 +2949,10 @@ function KhoachContent({ miniPickerMode = false }) {
                     {!isGroupCollapsed && <>
                     <tr>
                       <th rowSpan={2} style={{
-                        ...baseCell, background: '#f0f0f0',
+                        ...baseCell, background: '#e8e8e8',
                         textAlign: 'center', verticalAlign: 'middle',
+                        position: 'sticky', left: 0, zIndex: 4,
+                        boxShadow: '2px 0 6px rgba(0,0,0,0.08)',
                       }}>#</th>
 
                       {weekChunks.map(wk => {
@@ -3062,9 +3082,11 @@ function KhoachContent({ miniPickerMode = false }) {
                       <tr key={rowIdx}>
                         <td style={{
                           ...baseCell,
-                          background: rowIdx === displayRows - 1 ? '#f5f5f5' : '#fafafa',
-                          textAlign: 'center', color: '#bfbfbf', fontWeight: 600,
+                          background: rowIdx === displayRows - 1 ? '#f0f0f0' : '#f5f5f5',
+                          textAlign: 'center', color: '#8c8c8c', fontWeight: 700,
                           fontSize: 11,
+                          position: 'sticky', left: 0, zIndex: 2,
+                          boxShadow: '2px 0 6px rgba(0,0,0,0.06)',
                         }}>
                           {(rowIdx === displayRows - 1 && dates.every(d => !dateMap[d]?.[rowIdx])) ? '+' : rowIdx + 1}
                         </td>
