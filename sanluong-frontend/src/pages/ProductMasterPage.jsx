@@ -85,10 +85,12 @@ export default function ProductMasterPage() {
       const values = await form.validateFields()
       const payload = { ...values }
       numFields.forEach(k => {
-        if (payload[k] != null) {
-          const cleaned = String(payload[k]).replace(/\./g, '').replace(',', '.')
-          payload[k] = parseFloat(cleaned) || 0
-        }
+        const raw = payload[k]
+        if (raw == null) return
+        if (typeof raw === 'number' && !isNaN(raw)) return
+        // fallback: Ant Design trả về chuỗi định dạng Việt Nam
+        const cleaned = String(raw).replace(/\./g, '').replace(',', '.')
+        payload[k] = parseFloat(cleaned) || 0
       })
       if (editItem) {
         await api.put(`/product-master/${editItem.id}`, payload)
