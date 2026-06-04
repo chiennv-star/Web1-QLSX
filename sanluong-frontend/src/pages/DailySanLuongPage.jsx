@@ -17,22 +17,24 @@ const { RangePicker } = DatePicker
 
 // ─── Shared constants ────────────────────────────────────────────────────────
 
-const CONG_DOAN_COLOR = { PC: 'blue', PL: 'green', DG: 'gold', BBC1: 'purple', CC: 'volcano' }
+const CONG_DOAN_COLOR = { PCPL1: 'blue', PCPL2: 'geekblue', PL: 'green', DG: 'gold', BBC1: 'purple', CC: 'volcano', PC: 'blue' }
 
 const CONG_DOAN_OPTIONS = [
   { value: '', label: 'Tất cả công đoạn' },
-  { value: 'PC', label: 'PC' },
+  { value: 'PCPL1', label: 'PCPL 1' },
+  { value: 'PCPL2', label: 'PCPL 2' },
   { value: 'PL', label: 'PL' },
   { value: 'DG', label: 'ĐG' },
   { value: 'BBC1', label: 'BBC1' },
 ]
 
 const STAGES = [
-  { key: 'PC',   label: 'PC',   slColor: '#1D4ED8', congColor: '#60A5FA', bg: '#EFF6FF', border: '#BFDBFE', headerBg: '#1e5fa3' },
-  { key: 'PL',   label: 'PL',   slColor: '#0e7490', congColor: '#22d3ee', bg: '#ecfeff', border: '#67e8f9', headerBg: '#0e7490' },
-  { key: 'DG',   label: 'ĐG',   slColor: '#b45309', congColor: '#fbbf24', bg: '#fffbeb', border: '#fde68a', headerBg: '#b45309' },
-  { key: 'BBC1', label: 'BBC1', slColor: '#6d28d9', congColor: '#c084fc', bg: '#f5f3ff', border: '#c4b5fd', headerBg: '#6d28d9' },
-  { key: 'CC',   label: 'CC',   slColor: '#9d174d', congColor: '#f472b6', bg: '#fdf2f8', border: '#f9a8d4', headerBg: '#9d174d' },
+  { key: 'PCPL1', label: 'PCPL 1', slColor: '#1D4ED8', congColor: '#60A5FA', bg: '#EFF6FF', border: '#BFDBFE', headerBg: '#1e5fa3' },
+  { key: 'PCPL2', label: 'PCPL 2', slColor: '#0369a1', congColor: '#38bdf8', bg: '#e0f2fe', border: '#7dd3fc', headerBg: '#075985' },
+  { key: 'PL',    label: 'PL',     slColor: '#0e7490', congColor: '#22d3ee', bg: '#ecfeff', border: '#67e8f9', headerBg: '#0e7490' },
+  { key: 'DG',    label: 'ĐG',     slColor: '#b45309', congColor: '#fbbf24', bg: '#fffbeb', border: '#fde68a', headerBg: '#b45309' },
+  { key: 'BBC1',  label: 'BBC1',   slColor: '#6d28d9', congColor: '#c084fc', bg: '#f5f3ff', border: '#c4b5fd', headerBg: '#6d28d9' },
+  { key: 'CC',    label: 'CC',     slColor: '#9d174d', congColor: '#f472b6', bg: '#fdf2f8', border: '#f9a8d4', headerBg: '#9d174d' },
 ]
 
 const fmtSL   = v => (v || 0).toLocaleString('vi-VN')
@@ -170,7 +172,7 @@ function DailyDetailTab() {
   }
 
   const summary = useMemo(() => {
-    const totals = { PC: 0, PL: 0, DG: 0, BBC1: 0, total: 0, pending: 0, inProgress: 0 }
+    const totals = { PCPL1: 0, PCPL2: 0, PL: 0, DG: 0, BBC1: 0, total: 0, pending: 0, inProgress: 0 }
     data.forEach(r => {
       if (r.status === 'PENDING') { totals.pending++; return }
       if (r.status === 'IN_PROGRESS') { totals.inProgress++; return }
@@ -197,10 +199,11 @@ function DailyDetailTab() {
   const pendingCount = data.filter(r => r.status === 'PENDING').length
 
   const SUMMARY_CARDS = [
-    { label: 'Tổng SL PC',   key: 'PC',   color: '#1677ff', bg: '#e6f4ff', border: '#91caff' },
-    { label: 'Tổng SL PL',   key: 'PL',   color: '#389e0d', bg: '#f6ffed', border: '#b7eb8f' },
-    { label: 'Tổng SL ĐG',   key: 'DG',   color: '#d48806', bg: '#fffbe6', border: '#ffe58f' },
-    { label: 'Tổng SL BBC1', key: 'BBC1', color: '#531dab', bg: '#f9f0ff', border: '#d3adf7' },
+    { label: 'Tổng SL PCPL1', key: 'PCPL1', color: '#1677ff', bg: '#e6f4ff', border: '#91caff' },
+    { label: 'Tổng SL PCPL2', key: 'PCPL2', color: '#0369a1', bg: '#e0f2fe', border: '#7dd3fc' },
+    { label: 'Tổng SL PL',    key: 'PL',    color: '#389e0d', bg: '#f6ffed', border: '#b7eb8f' },
+    { label: 'Tổng SL ĐG',    key: 'DG',    color: '#d48806', bg: '#fffbe6', border: '#ffe58f' },
+    { label: 'Tổng SL BBC1',  key: 'BBC1',  color: '#531dab', bg: '#f9f0ff', border: '#d3adf7' },
   ]
 
   const columns = [

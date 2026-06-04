@@ -533,8 +533,20 @@ public class WorkScheduleSessionService {
             WorkScheduleSession rep = group.get(0);
             WorkSchedule w = scheduleMap.get(rep.getWorkScheduleId());
             if (w == null) continue;
-            if (congDoan != null && !congDoan.isBlank()
-                    && !congDoan.equalsIgnoreCase(w.getCongDoan())) continue;
+            // Tính congDoan hiệu dụng (PC → PCPL1/PCPL2 theo toNhom)
+            String effectiveCd = w.getCongDoan();
+            if ("PC".equalsIgnoreCase(effectiveCd) && w.getToNhom() != null) {
+                String tn = w.getToNhom().toUpperCase();
+                if ("PCPL1".equals(tn) || "PCPL2".equals(tn)) effectiveCd = tn;
+            }
+            if (congDoan != null && !congDoan.isBlank()) {
+                // "PC" filter khớp với tất cả PC (PCPL1, PCPL2, PC thuần)
+                if ("PC".equalsIgnoreCase(congDoan)) {
+                    if (!"PC".equalsIgnoreCase(w.getCongDoan())) continue;
+                } else {
+                    if (!congDoan.equalsIgnoreCase(effectiveCd)) continue;
+                }
+            }
 
             String ngayStr = rep.getNgay() != null ? rep.getNgay().toString() : null;
             String pendingKey = rep.getWorkScheduleId() + "|" + ngayStr;
@@ -571,7 +583,7 @@ public class WorkScheduleSessionService {
             DailyProductionDto dto = new DailyProductionDto();
             dto.setWorkScheduleId(w.getId());
             dto.setNgay(ngayStr);
-            dto.setCongDoan(w.getCongDoan());
+            dto.setCongDoan(effectiveCd);
             dto.setMaSp(w.getMaSp());
             dto.setTenTrinh(w.getTenTrinh());
             dto.setSoLo(w.getSoLo());
