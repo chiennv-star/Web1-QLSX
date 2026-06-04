@@ -949,13 +949,13 @@ function TongHopTab() {
           padding: 7px 10px !important; font-size: 12px;
           border-bottom: 1px solid #f1f5f9 !important; vertical-align: middle;
         }
-        .tonghop-table .ant-table-tbody > tr:nth-child(odd) > td  { background: #ffffff; }
-        .tonghop-table .ant-table-tbody > tr:nth-child(even) > td { background: #f8faff; }
-        .tonghop-table .ant-table-tbody > tr:hover > td { background: #eff6ff !important; }
+        .tonghop-table .ant-table-tbody > tr:nth-child(odd) > td  { background: #e6f5f5; }
+        .tonghop-table .ant-table-tbody > tr:nth-child(even) > td { background: #cce8e8; }
+        .tonghop-table .ant-table-tbody > tr:hover > td { background: #99CCCC !important; }
         .tonghop-table .ant-table-summary > tr > td {
-          background: #FFCC99 !important; color: #fff !important;
+          background: #99CCCC !important; color: #1e3a5f !important;
           font-weight: 700; font-size: 12px; padding: 8px 10px !important;
-          border-top: 2px solid #FFCC99 !important;
+          border-top: 2px solid #66b3b3 !important;
         }
       `}</style>
 
