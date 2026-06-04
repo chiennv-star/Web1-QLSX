@@ -11,6 +11,7 @@ public class UserDto {
     private String fullName;
     @NotNull private User.Role role;
     private boolean enabled;
+    private String maNhanVien;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -24,4 +25,6 @@ public class UserDto {
     public void setRole(User.Role role) { this.role = role; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public String getMaNhanVien() { return maNhanVien; }
+    public void setMaNhanVien(String maNhanVien) { this.maNhanVien = maNhanVien; }
 }

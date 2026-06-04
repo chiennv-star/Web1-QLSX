@@ -49,10 +49,9 @@ public class LenhSanXuatService {
     }
 
 
-    public List<LenhSanXuatDto> findAll(String tinhTrang, String toThucHien) {
-        List<LenhSanXuat> list = (tinhTrang == null && toThucHien == null)
-                ? repo.findAllByOrderByThuTuAscCreatedAtDesc()
-                : repo.findFiltered(tinhTrang, toThucHien);
+    public List<LenhSanXuatDto> findAll(String tinhTrang, String toThucHien,
+                                        java.time.LocalDate fromDate, java.time.LocalDate toDate) {
+        List<LenhSanXuat> list = repo.findFiltered(tinhTrang, toThucHien, fromDate, toDate);
         return list.stream().map(this::toDto).collect(Collectors.toList());
     }
 
@@ -104,6 +103,10 @@ public class LenhSanXuatService {
         String oldMaDonHang = e.getMaDonHang();
         String oldSoLo      = e.getSoLo();
         applyDto(e, dto);
+        // Auto-mark daBanHanh when lệnh is linked to Sản lượng (has maBravo + soLo)
+        if (e.getMaBravo() != null && e.getSoLo() != null && !Boolean.TRUE.equals(e.getDaBanHanh())) {
+            e.setDaBanHanh(true);
+        }
         e.setUpdatedBy(username);
         LenhSanXuat saved = repo.save(e);
         if (saved.getMaBravo() != null && saved.getSoLo() != null) {
@@ -132,11 +135,20 @@ public class LenhSanXuatService {
                 .collect(Collectors.toList());
         int count = 0;
         for (LenhSanXuat lenh : all) {
+            boolean changed = false;
             if (!productionRepo.existsByMaBravoAndLsxAndMaDonHang(
                     lenh.getMaBravo(), lenh.getSoLo(), lenh.getMaDonHang())) {
                 autoCreateSanLuong(lenh, username);
                 count++;
+                changed = true;
             }
+            // Mark daBanHanh for all lệnh that are linked to Sản lượng
+            if (!Boolean.TRUE.equals(lenh.getDaBanHanh())) {
+                lenh.setDaBanHanh(true);
+                lenh.setUpdatedBy(username);
+                changed = true;
+            }
+            if (changed) repo.save(lenh);
         }
         return count;
     }

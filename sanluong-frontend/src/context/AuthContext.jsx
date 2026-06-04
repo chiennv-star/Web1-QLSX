@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState } from 'react'
 const AuthContext = createContext(null)
 
 const STAGE_ROLES = ['ADMIN_PC', 'ADMIN_BBC1', 'ADMIN_PL', 'ADMIN_DG', 'ADMIN_PCPL1', 'ADMIN_PCPL2', 'ADMIN_PCPL3']
+const NV_ROLES = ['NHAN_VIEN', 'NHAN_VIEN_PCPL1', 'NHAN_VIEN_PCPL2', 'NHAN_VIEN_PCPL3', 'NHAN_VIEN_BBC1', 'NHAN_VIEN_DG']
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
@@ -28,6 +29,12 @@ export function AuthProvider({ children }) {
   // Admin kế hoạch: sản lượng, kế hoạch, danh mục mã SP, hàng dở dang
   const isAdminKH = () => user?.role === 'ADMIN_KH'
 
+  // Nhân viên thường: chỉ xem lịch tổ và tab Nhân Viên của chính mình
+  const isNhanVien = () => NV_ROLES.includes(user?.role)
+
+  const getMaNhanVien = () => user?.maNhanVien || null
+  const getToNhom = () => user?.toNhom || null
+
   // Tài khoản sản xuất: tương đương ADMIN trừ write Lệnh Sản Xuất
   const isTKSX = () => user?.role === 'TKSX'
 
@@ -41,7 +48,7 @@ export function AuthProvider({ children }) {
   const canEditLenh = () => ['ADMIN', 'ADMIN_KH'].includes(user?.role)
 
   // Có thể tạo/sửa/xóa bản ghi Sản lượng và WIP
-  const canEditProduction = () => ['ADMIN', 'TKSX', 'NHAN_VIEN', 'ADMIN_KH'].includes(user?.role)
+  const canEditProduction = () => ['ADMIN', 'TKSX', 'ADMIN_KH', ...NV_ROLES].includes(user?.role)
 
   // Có thể thêm/sửa/xóa Danh mục Mã SP — tất cả ADMIN_* roles
   const canEditProductMaster = () => ['ADMIN', 'TKSX', 'ADMIN_KH', ...STAGE_ROLES].includes(user?.role)
@@ -79,7 +86,13 @@ export function AuthProvider({ children }) {
     if (role === 'ADMIN_PCPL2') return ['PCPL2']
     if (role === 'ADMIN_PCPL3') return ['PCPL3']
     if (role === 'ADMIN_KH') return []
-    return null // ADMIN → tất cả
+    // NV roles — tabs không dùng vì isNhanVien() filter riêng
+    if (role === 'NHAN_VIEN_PCPL1') return ['PCPL1']
+    if (role === 'NHAN_VIEN_PCPL2') return ['PCPL2']
+    if (role === 'NHAN_VIEN_PCPL3') return ['PCPL3']
+    if (role === 'NHAN_VIEN_BBC1')  return ['BBC1']
+    if (role === 'NHAN_VIEN_DG')    return ['ĐG']
+    return null // ADMIN, NHAN_VIEN → tất cả
   }
 
   // Nhóm thực hiện được phép xem/sửa (chỉ áp dụng tab PC)
@@ -115,11 +128,25 @@ export function AuthProvider({ children }) {
     if (role === 'ADMIN_DG')   return ['DG']
     if (['ADMIN_PCPL1', 'ADMIN_PCPL2'].includes(role)) return ['PC']
     if (role === 'ADMIN_PCPL3') return ['PL']
-    return null // ADMIN, ADMIN_KH, NHAN_VIEN → tất cả
+    // Nhân viên theo nhóm cụ thể
+    if (role === 'NHAN_VIEN_PCPL1' || role === 'NHAN_VIEN_PCPL2') return ['PC']
+    if (role === 'NHAN_VIEN_PCPL3') return ['PL']
+    if (role === 'NHAN_VIEN_DG')    return ['DG']
+    if (role === 'NHAN_VIEN_BBC1')  return ['BBC1']
+    if (role === 'NHAN_VIEN') {
+      const toNhom = user?.toNhom
+      if (!toNhom) return null
+      if (toNhom === 'PCPL1' || toNhom === 'PCPL2') return ['PC']
+      if (toNhom === 'PCPL3') return ['PL']
+      if (toNhom === 'ĐG')   return ['DG']
+      if (toNhom === 'BBC1') return ['BBC1']
+      return null
+    }
+    return null // ADMIN, ADMIN_KH → tất cả
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAdmin, isAdminKH, isTKSX, isQuanDoc, canEditProduction, canEditProductMaster, canEditPlan, canEditLenh, canEditStage, isStageAdmin, canEditHangLoi, allowedEfficiencyTabs, getAllowedNhom, getAllowedStages, getAllowedEmployeeGroups }}>
+    <AuthContext.Provider value={{ user, login, logout, isAdmin, isAdminKH, isTKSX, isQuanDoc, isNhanVien, getMaNhanVien, getToNhom, canEditProduction, canEditProductMaster, canEditPlan, canEditLenh, canEditStage, isStageAdmin, canEditHangLoi, allowedEfficiencyTabs, getAllowedNhom, getAllowedStages, getAllowedEmployeeGroups }}>
       {children}
     </AuthContext.Provider>
   )

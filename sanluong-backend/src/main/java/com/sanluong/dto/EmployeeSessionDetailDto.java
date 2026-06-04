@@ -15,6 +15,8 @@ public class EmployeeSessionDetailDto {
     private String maNhanVien;
     private String nguoiThucHien;
     private String nhomThucHien;
+    private String caSanXuat;
+    private String phongThucHien;
     private BigDecimal congThucHien;
     private BigDecimal sanLuong;
     private BigDecimal nangSuat;
@@ -42,6 +44,10 @@ public class EmployeeSessionDetailDto {
     public void setSoLo(String soLo) { this.soLo = soLo; }
     public String getVaiTro() { return vaiTro; }
     public void setVaiTro(String vaiTro) { this.vaiTro = vaiTro; }
+    public String getCaSanXuat() { return caSanXuat; }
+    public void setCaSanXuat(String caSanXuat) { this.caSanXuat = caSanXuat; }
+    public String getPhongThucHien() { return phongThucHien; }
+    public void setPhongThucHien(String phongThucHien) { this.phongThucHien = phongThucHien; }
     public String getThoiGianBatDau() { return thoiGianBatDau; }
     public void setThoiGianBatDau(String thoiGianBatDau) { this.thoiGianBatDau = thoiGianBatDau; }
     public BigDecimal getCongThucHien() { return congThucHien; }

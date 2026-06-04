@@ -9,13 +9,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface ProductMasterRepository extends JpaRepository<ProductMaster, Long> {
 
     Optional<ProductMaster> findByMaTpIgnoreCase(String maTp);
 
-    Optional<ProductMaster> findByMaBravoIgnoreCase(String maBravo);
+    List<ProductMaster> findByMaBravoIgnoreCase(String maBravo);
 
     boolean existsByMaTpIgnoreCase(String maTp);
 

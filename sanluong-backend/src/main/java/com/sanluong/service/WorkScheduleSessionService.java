@@ -474,6 +474,8 @@ public class WorkScheduleSessionService {
             dto.setSoLo(ws != null ? ws.getSoLo() : null);
             dto.setVaiTro(s.getVaiTro());
             dto.setThoiGianBatDau(s.getThoiGianBatDau());
+            dto.setCaSanXuat(s.getCaSanXuat());
+            dto.setPhongThucHien(ws != null ? ws.getPhongThucHien() : null);
             dto.setMaNhanVien(s.getMaNhanVien());
             dto.setNguoiThucHien(s.getNguoiThucHien());
             dto.setNhomThucHien(s.getNhomThucHien());

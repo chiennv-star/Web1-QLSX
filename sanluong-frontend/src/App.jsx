@@ -28,6 +28,12 @@ function PrivateRoute({ children, adminOnly = false, allowedRoles = null }) {
   return children
 }
 
+function HomeRoute() {
+  const { user } = useAuth()
+  if (user?.role === 'NHAN_VIEN') return <Navigate to="/work-schedule" replace />
+  return <DashboardPage />
+}
+
 export default function App() {
   return (
     <Routes>
@@ -37,7 +43,7 @@ export default function App() {
           <MainLayout />
         </PrivateRoute>
       }>
-        <Route index element={<DashboardPage />} />
+        <Route index element={<HomeRoute />} />
         <Route path="work-schedule" element={<WorkSchedulePage />} />
         <Route path="record/new" element={<RecordFormPage />} />
         <Route path="record/edit/:id" element={<RecordFormPage />} />
@@ -55,7 +61,7 @@ export default function App() {
         } />
         <Route path="employees" element={<EmployeePage />} />
         <Route path="work-efficiency" element={
-          <PrivateRoute adminOnly>
+          <PrivateRoute allowedRoles={['ADMIN', 'NHAN_VIEN', 'ADMIN_PC', 'ADMIN_BBC1', 'ADMIN_PL', 'ADMIN_DG', 'ADMIN_PCPL1', 'ADMIN_PCPL2', 'ADMIN_PCPL3']}>
             <WorkEfficiencyPage />
           </PrivateRoute>
         } />

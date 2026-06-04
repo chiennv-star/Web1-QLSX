@@ -2,13 +2,15 @@
 import {
   Table, Button, Space, Input, Typography, message,
   Tag, Drawer, Spin, Tooltip, Progress, DatePicker, Select, Badge,
-  Modal, Form, AutoComplete, InputNumber, Popconfirm
+  Modal, Form, AutoComplete, InputNumber, Popconfirm, Tabs, Avatar
 } from 'antd'
 import {
   SearchOutlined, ReloadOutlined, SyncOutlined,
   UserOutlined, TrophyOutlined, BarChartOutlined,
   RiseOutlined, FallOutlined, CalendarOutlined, EditOutlined,
-  PlusOutlined, DeleteOutlined, ExclamationCircleOutlined
+  PlusOutlined, DeleteOutlined, ExclamationCircleOutlined,
+  IdcardOutlined, PhoneOutlined, HomeOutlined, TeamOutlined,
+  LockOutlined, EyeInvisibleOutlined, EyeTwoTone
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
@@ -97,15 +99,15 @@ const GROUP_COLOR = Object.fromEntries(ALL_GROUPS.filter(g => g.color).map(g => 
 function KpiCard({ label, value, sub, accent }) {
   return (
     <div style={{
-      flex: '1 1 160px', minWidth: 140,
-      background: '#fff', borderRadius: 10,
+      flex: '1 1 130px', minWidth: 120,
+      background: '#fff', borderRadius: 8,
       border: `1.5px solid ${accent}22`,
-      padding: '10px 18px',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
+      padding: '6px 12px',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
     }}>
-      <div style={{ fontSize: 11, color: '#888', fontWeight: 500, marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 800, color: accent, lineHeight: 1.2 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>{sub}</div>}
+      <div style={{ fontSize: 10, color: '#888', fontWeight: 500, marginBottom: 1 }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 800, color: accent, lineHeight: 1.2 }}>{value}</div>
+      {sub && <div style={{ fontSize: 10, color: '#aaa', marginTop: 1 }}>{sub}</div>}
     </div>
   )
 }
@@ -121,6 +123,8 @@ function EmployeeDetailDrawer({ open, employee, fromDate, toDate, periodStr, onC
   const [editingSession,   setEditingSession]   = useState(null) // null = add
   const [sessionSaving,    setSessionSaving]    = useState(false)
   const [sessionForm] = Form.useForm()
+  const [sessionDetailOpen, setSessionDetailOpen] = useState(false)
+  const [selectedSession,   setSelectedSession]   = useState(null)
 
   const loadSessions = useCallback(async () => {
     if (!employee) return
@@ -223,7 +227,7 @@ function EmployeeDetailDrawer({ open, employee, fromDate, toDate, periodStr, onC
       render: v => v ? <Tag color="blue" style={{ marginRight: 0 }}>{v}</Tag> : <span style={{ color: '#bbb' }}>—</span>
     },
     {
-      title: 'Tiến Trình', dataIndex: 'tenTrinh', key: 'tenTrinh',
+      title: 'Tiến Trình', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 180,
       render: (v, r) => {
         if (!v) return <span style={{ color: '#bbb' }}>—</span>
         const nhom = employee?.toNhom || ''
@@ -260,6 +264,14 @@ function EmployeeDetailDrawer({ open, employee, fromDate, toDate, periodStr, onC
     {
       title: 'Số Lô', dataIndex: 'soLo', key: 'soLo', width: 88,
       render: v => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#595959' }}>{v || '—'}</span>
+    },
+    {
+      title: 'Ca', dataIndex: 'caSanXuat', key: 'caSanXuat', width: 72, align: 'center',
+      render: v => v ? <Tag color="blue" style={{ marginRight: 0, fontSize: 11 }}>{v}</Tag> : <span style={{ color: '#bbb' }}>—</span>
+    },
+    {
+      title: 'Phòng TH', dataIndex: 'phongThucHien', key: 'phongThucHien', width: 110, align: 'center',
+      render: v => v ? <span style={{ fontSize: 12 }}>{v}</span> : <span style={{ color: '#bbb' }}>—</span>
     },
     {
       title: 'Vai Trò', dataIndex: 'vaiTro', key: 'vaiTro', width: 115, align: 'center',
@@ -333,6 +345,7 @@ function EmployeeDetailDrawer({ open, employee, fromDate, toDate, periodStr, onC
       <Drawer
         open={open}
         onClose={onClose}
+        rootClassName="eff-detail-drawer"
         width={1300}
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -353,7 +366,7 @@ function EmployeeDetailDrawer({ open, employee, fromDate, toDate, periodStr, onC
         styles={{ body: { padding: '16px', background: '#fafafe' } }}
       >
         {/* Mini KPI strip */}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+        <div className="eff-detail-mini-kpi" style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
           {[
             { label: 'Số phiên làm việc', value: summary.total, accent: '#4db3d4' },
             { label: 'Số ca trưởng',       value: summary.truong, accent: '#f97316' },
@@ -377,18 +390,181 @@ function EmployeeDetailDrawer({ open, employee, fromDate, toDate, periodStr, onC
         {loading ? (
           <Spin style={{ display: 'block', margin: '60px auto' }} size="large" />
         ) : (
-          <Table
-            className="eff-detail-table"
-            columns={detailColumns}
-            dataSource={sessions}
-            rowKey="id"
-            size="small"
-            scroll={{ x: 1260 }}
-            pagination={{ pageSize: 50, showTotal: t => `${t} phiên`, showSizeChanger: false }}
-            rowClassName={(_, i) => i % 2 === 0 ? '' : 'row-stripe'}
-          />
+          <>
+            <div className="eff-desktop-view">
+              <Table
+                className="eff-detail-table"
+                columns={detailColumns}
+                dataSource={sessions}
+                rowKey="id"
+                size="small"
+                scroll={{ x: 1370 }}
+                pagination={{ pageSize: 50, showTotal: t => `${t} phiên`, showSizeChanger: false }}
+                rowClassName={(_, i) => i % 2 === 0 ? '' : 'row-stripe'}
+                onRow={(record) => ({
+                  onClick: () => { setSelectedSession(record); setSessionDetailOpen(true) },
+                  style: { cursor: 'pointer' },
+                })}
+              />
+            </div>
+
+            {/* ── Mobile session cards ── */}
+            <div className="eff-mobile-view" style={{ flexDirection: 'column', gap: 8 }}>
+              {sessions.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '32px 0', color: '#94a3b8' }}>Không có phiên làm việc</div>
+              )}
+              {sessions.map(r => {
+                const d = r.ngay || r.ngayThucHien
+                const ns = r.nangSuat != null ? Number(r.nangSuat) : null
+                const nsTb = r.nangSuatTrungBinh != null ? Number(r.nangSuatTrungBinh) : null
+                const dat = ns != null && nsTb != null ? ns >= nsTb : null
+                return (
+                  <div key={r.id} onClick={() => { setSelectedSession(r); setSessionDetailOpen(true) }}
+                    style={{ background: '#fff', border: '1px solid #e0e7ff', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
+                      {d && <span style={{ fontWeight: 600, color: '#1677ff', fontSize: 13 }}>{dayjs(d).format('DD/MM/YYYY')}</span>}
+                      {r.maSp && <Tag color="blue" style={{ marginRight: 0 }}>{r.maSp}</Tag>}
+                      {r.soLo && <span style={{ fontFamily: 'monospace', color: '#595959', fontSize: 12 }}>{r.soLo}</span>}
+                      {dat != null && (
+                        <Tag color={dat ? 'success' : 'error'} style={{ marginRight: 0, marginLeft: 'auto', fontSize: 11 }}>
+                          {dat ? '✓ Đạt' : '✗ Không Đạt'}
+                        </Tag>
+                      )}
+                    </div>
+                    {r.tenTrinh && <div style={{ color: '#1677ff', fontSize: 13, fontWeight: 500, marginBottom: 4 }}>{r.tenTrinh}</div>}
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 12, marginBottom: 4, color: '#595959', alignItems: 'center' }}>
+                      {r.vaiTro && <Tag color={r.vaiTro.toLowerCase().includes('trưởng') ? 'gold' : 'geekblue'} style={{ marginRight: 0, fontSize: 11 }}>{r.vaiTro}</Tag>}
+                      {r.caSanXuat && <Tag color="blue" style={{ marginRight: 0, fontSize: 11 }}>{r.caSanXuat}</Tag>}
+                      {r.phongThucHien && <span>{r.phongThucHien}</span>}
+                    </div>
+                    <div style={{ display: 'flex', gap: 12, fontSize: 12, color: '#595959', flexWrap: 'wrap', alignItems: 'center' }}>
+                      {r.congThucHien != null && <span>Công: <b style={{ color: '#722ed1' }}>{Number(r.congThucHien).toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</b></span>}
+                      {r.sanLuong != null && <span>SL: <b style={{ color: '#389e0d' }}>{Number(r.sanLuong).toLocaleString('vi-VN')}</b></span>}
+                      {ns != null && <span>NS: <b style={{ color: '#1D4ED8', fontSize: 13 }}>{ns.toLocaleString('vi-VN', { maximumFractionDigits: 0 })}</b></span>}
+                      {nsTb != null && <span>NS TB: <b style={{ color: '#1677ff' }}>{nsTb.toLocaleString('vi-VN', { maximumFractionDigits: 0 })}</b></span>}
+                    </div>
+                    {isAdmin && (
+                      <div style={{ display: 'flex', gap: 6, marginTop: 8, justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
+                        <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(r)}>Sửa</Button>
+                        <Popconfirm title="Xóa phiên này?" okText="Xóa" cancelText="Huỷ" okButtonProps={{ danger: true }} onConfirm={() => handleDelete(r.id)}>
+                          <Button size="small" danger icon={<DeleteOutlined />}>Xóa</Button>
+                        </Popconfirm>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </>
         )}
       </Drawer>
+
+      {/* ── Session detail modal (mobile-friendly) ── */}
+      <Modal
+        open={sessionDetailOpen}
+        onCancel={() => setSessionDetailOpen(false)}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <CalendarOutlined style={{ color: '#1D4ED8' }} />
+            <span style={{ fontWeight: 700 }}>Chi tiết phiên làm việc</span>
+            {selectedSession?.ngay && (
+              <Tag color="blue">{dayjs(selectedSession.ngay || selectedSession.ngayThucHien).format('DD/MM/YYYY')}</Tag>
+            )}
+          </div>
+        }
+        footer={isAdmin ? [
+          <Button key="edit" type="primary" icon={<EditOutlined />}
+            onClick={() => { setSessionDetailOpen(false); openEdit(selectedSession) }}>
+            Sửa
+          </Button>,
+          <Popconfirm key="del" title="Xóa phiên này?" okText="Xóa" cancelText="Huỷ"
+            okButtonProps={{ danger: true }} onConfirm={() => { setSessionDetailOpen(false); handleDelete(selectedSession?.id) }}>
+            <Button danger icon={<DeleteOutlined />}>Xóa</Button>
+          </Popconfirm>,
+          <Button key="close" onClick={() => setSessionDetailOpen(false)}>Đóng</Button>,
+        ] : [
+          <Button key="close" type="primary" onClick={() => setSessionDetailOpen(false)}>Đóng</Button>,
+        ]}
+        width="min(480px, 96vw)"
+        centered
+        destroyOnClose
+        styles={{ body: { padding: '12px 16px' } }}
+      >
+        {selectedSession && (() => {
+          const r = selectedSession
+          const ns   = r.nangSuat != null ? Number(r.nangSuat) : null
+          const nsTb = r.nangSuatTrungBinh != null ? Number(r.nangSuatTrungBinh) : null
+          const dat  = ns != null && nsTb != null ? ns >= nsTb : null
+          const SField = ({ label, children }) => (
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '9px 12px', background: '#fafbff',
+              borderRadius: 8, border: '1px solid #e8eeff',
+            }}>
+              <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600, minWidth: 96, flexShrink: 0 }}>{label}</span>
+              <div style={{ textAlign: 'right', fontSize: 13 }}>{children}</div>
+            </div>
+          )
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              <SField label="Ngày TH">
+                <span style={{ fontWeight: 700, color: '#1677ff' }}>
+                  {r.ngay || r.ngayThucHien ? dayjs(r.ngay || r.ngayThucHien).format('DD/MM/YYYY') : '—'}
+                </span>
+              </SField>
+              <SField label="Mã SP">
+                {r.maSp ? <Tag color="blue" style={{ marginRight: 0 }}>{r.maSp}</Tag> : <span style={{ color: '#bbb' }}>—</span>}
+              </SField>
+              <SField label="Tiến Trình">
+                <span style={{ fontWeight: 500, color: '#374151', wordBreak: 'break-word', maxWidth: 220, display: 'inline-block', textAlign: 'right' }}>
+                  {r.tenTrinh || <span style={{ color: '#bbb' }}>—</span>}
+                </span>
+              </SField>
+              <SField label="Số Lô">
+                <span style={{ fontFamily: 'monospace', color: '#595959' }}>{r.soLo || '—'}</span>
+              </SField>
+              <SField label="Ca">
+                {r.caSanXuat ? <Tag color="blue" style={{ marginRight: 0 }}>{r.caSanXuat}</Tag> : <span style={{ color: '#bbb' }}>—</span>}
+              </SField>
+              <SField label="Phòng TH">
+                <span>{r.phongThucHien || <span style={{ color: '#bbb' }}>—</span>}</span>
+              </SField>
+              <SField label="Vai Trò">
+                {r.vaiTro
+                  ? <Tag color={r.vaiTro.toLowerCase().includes('trưởng') ? 'gold' : 'geekblue'} style={{ marginRight: 0 }}>{r.vaiTro}</Tag>
+                  : <span style={{ color: '#bbb' }}>—</span>}
+              </SField>
+              <SField label="Công TH">
+                {r.congThucHien != null
+                  ? <span style={{ fontWeight: 800, color: '#722ed1', fontSize: 16 }}>{Number(r.congThucHien).toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</span>
+                  : <span style={{ color: '#bbb' }}>—</span>}
+              </SField>
+              <SField label="Sản Lượng">
+                {r.sanLuong != null
+                  ? <span style={{ fontWeight: 700, color: '#389e0d', fontSize: 15 }}>{Number(r.sanLuong).toLocaleString('vi-VN')}</span>
+                  : <span style={{ color: '#bbb' }}>—</span>}
+              </SField>
+              <SField label="Năng Suất">
+                {ns != null
+                  ? <span style={{ fontWeight: 800, color: '#1D4ED8', fontSize: 16 }}>{ns.toLocaleString('vi-VN')}</span>
+                  : <span style={{ color: '#bbb' }}>—</span>}
+              </SField>
+              <SField label="NS Trung Bình">
+                {nsTb != null
+                  ? <span style={{ fontWeight: 600, color: '#1677ff' }}>{nsTb.toLocaleString('vi-VN')}</span>
+                  : <span style={{ color: '#bbb' }}>—</span>}
+              </SField>
+              <SField label="Kết Quả">
+                {dat != null
+                  ? <Tag color={dat ? 'success' : 'error'} style={{ marginRight: 0, fontWeight: 700, fontSize: 13 }}>
+                      {dat ? <><RiseOutlined /> Đạt</> : <><FallOutlined /> Không Đạt</>}
+                    </Tag>
+                  : <span style={{ color: '#bbb' }}>—</span>}
+              </SField>
+            </div>
+          )
+        })()}
+      </Modal>
 
       {/* ── Session add/edit modal ── */}
       <Modal
@@ -441,9 +617,352 @@ function EmployeeDetailDrawer({ open, employee, fromDate, toDate, periodStr, onC
   )
 }
 
+// ── Employee profile card ──────────────────────────────────────────────────────
+const TO_NHOM_COLOR = { BBC1: 'blue', ĐG: 'purple', PCPL1: 'cyan', PCPL2: 'geekblue', PCPL3: 'volcano' }
+
+function EmployeeProfileCard({ authUser, toNhom, onSaved }) {
+  const { login, logout } = useAuth()
+  const [inputMaNv, setInputMaNv] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  // Đổi mật khẩu
+  const [pwModal, setPwModal]   = useState(false)
+  const [pwForm]                = Form.useForm()
+  const [pwSaving, setPwSaving] = useState(false)
+
+  // Đổi tên đăng nhập
+  const [unModal, setUnModal]   = useState(false)
+  const [unForm]                = Form.useForm()
+  const [unSaving, setUnSaving] = useState(false)
+
+  const handleChangeUsername = async () => {
+    const values = await unForm.validateFields()
+    setUnSaving(true)
+    try {
+      await api.patch('/users/me/change-username', { newUsername: values.newUsername })
+      message.success('Đổi tên đăng nhập thành công — vui lòng đăng nhập lại')
+      setUnModal(false)
+      setTimeout(() => logout(), 1200)
+    } catch (err) {
+      message.error(err?.response?.data?.error || 'Đổi tên đăng nhập thất bại')
+    } finally {
+      setUnSaving(false)
+    }
+  }
+
+  // Ảnh đại diện
+  const avatarInputRef = useRef(null)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 3 * 1024 * 1024) return message.warning('Ảnh tối đa 3MB')
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      // Resize xuống max 256x256 qua canvas
+      const img = new Image()
+      img.onload = async () => {
+        const MAX = 256
+        const scale = Math.min(MAX / img.width, MAX / img.height, 1)
+        const canvas = document.createElement('canvas')
+        canvas.width  = Math.round(img.width  * scale)
+        canvas.height = Math.round(img.height * scale)
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+        setAvatarUploading(true)
+        try {
+          await api.patch('/users/me/avatar', { avatar: dataUrl })
+          login({ ...authUser, avatar: dataUrl })
+          message.success('Cập nhật ảnh đại diện thành công')
+        } catch {
+          message.error('Tải ảnh thất bại')
+        } finally {
+          setAvatarUploading(false)
+        }
+      }
+      img.src = ev.target.result
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  const handleChangePw = async () => {
+    const values = await pwForm.validateFields()
+    if (values.newPassword !== values.confirmPassword) {
+      return message.error('Mật khẩu xác nhận không khớp')
+    }
+    setPwSaving(true)
+    try {
+      await api.patch('/users/me/change-password', {
+        oldPassword: values.oldPassword,
+        newPassword: values.newPassword,
+      })
+      message.success('Đổi mật khẩu thành công')
+      setPwModal(false)
+      pwForm.resetFields()
+    } catch (err) {
+      message.error(err?.response?.data?.error || 'Đổi mật khẩu thất bại')
+    } finally {
+      setPwSaving(false)
+    }
+  }
+
+  const hasMaNv = !!authUser?.maNhanVien
+
+  const handleSave = async () => {
+    const val = inputMaNv.trim().toUpperCase()
+    if (!val) return message.warning('Vui lòng nhập mã nhân viên')
+    setSaving(true)
+    try {
+      const { data } = await api.patch('/users/me/ma-nhan-vien', { maNhanVien: val })
+      message.success('Đã liên kết mã nhân viên: ' + data.maNhanVien)
+      onSaved?.(data.maNhanVien)
+      setInputMaNv('')
+    } catch (err) {
+      const msg = err?.response?.data?.error || 'Lưu thất bại, vui lòng thử lại'
+      message.error(msg)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const InfoRow = ({ label, icon, children }) => (
+    <div className="eff-info-row" style={{
+      background: '#fff', border: '1px solid #e0e7ff',
+      borderRadius: 10, padding: '14px 18px',
+      display: 'flex', alignItems: 'center', gap: 14,
+      boxShadow: '0 1px 4px rgba(29,78,216,0.05)',
+    }}>
+      <div className="eff-info-row-icon" style={{
+        width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+        background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: '#1D4ED8', fontSize: 16,
+      }}>{icon}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>
+          {label}
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="eff-profile-wrapper" style={{ maxWidth: 600, margin: '24px auto', padding: '0 4px' }}>
+      {/* hidden file input cho avatar */}
+      <input ref={avatarInputRef} type="file" accept="image/*"
+        style={{ display: 'none' }} onChange={handleAvatarChange} />
+
+      {/* ── Header banner ── */}
+      <div className="eff-profile-header" style={{
+        background: 'linear-gradient(135deg, #1e4570 0%, #339999 100%)',
+        borderRadius: 14, padding: '24px 28px',
+        display: 'flex', alignItems: 'center', gap: 20,
+        marginBottom: 18, boxShadow: '0 4px 20px rgba(30,69,112,0.18)',
+      }}>
+        <Tooltip title="Nhấn để đổi ảnh đại diện">
+          <div style={{ position: 'relative', flexShrink: 0, cursor: 'pointer' }}
+            onClick={() => avatarInputRef.current?.click()}>
+            <Avatar
+              className="eff-profile-header-avatar"
+              size={72}
+              src={authUser?.avatar || undefined}
+              icon={!authUser?.avatar ? <UserOutlined /> : undefined}
+              style={{
+                background: 'rgba(255,255,255,0.18)',
+                border: '3px solid rgba(255,255,255,0.35)',
+                fontSize: 32,
+                opacity: avatarUploading ? 0.5 : 1,
+              }}
+            />
+            <div style={{
+              position: 'absolute', bottom: 0, right: 0,
+              background: '#00CC99', borderRadius: '50%',
+              width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: '2px solid #fff', fontSize: 11,
+            }}>
+              {avatarUploading ? <SyncOutlined spin style={{ color: '#fff' }} /> : <EditOutlined style={{ color: '#fff' }} />}
+            </div>
+          </div>
+        </Tooltip>
+        <div style={{ minWidth: 0 }}>
+          <div className="eff-profile-header-name" style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 6, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {authUser?.fullName || authUser?.username}
+          </div>
+          <Tag style={{
+            background: 'rgba(255,255,255,0.18)', border: 'none',
+            color: '#fff', fontFamily: 'monospace', fontWeight: 700, marginRight: 0,
+          }}>
+            {authUser?.username}
+          </Tag>
+        </div>
+      </div>
+
+      {/* ── Info fields ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <InfoRow label="Tên đăng nhập" icon={<IdcardOutlined />}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 14, color: '#1677ff' }}>
+              {authUser?.username || '—'}
+            </span>
+            <Tooltip title="Đổi tên đăng nhập">
+              <Button size="small" type="text" icon={<EditOutlined />}
+                style={{ color: '#00CC99' }}
+                onClick={() => { unForm.resetFields(); setUnModal(true) }} />
+            </Tooltip>
+          </div>
+        </InfoRow>
+
+        <InfoRow label="Họ và tên" icon={<UserOutlined />}>
+          <span style={{ fontWeight: 600, fontSize: 14, color: '#1E293B' }}>
+            {authUser?.fullName || '—'}
+          </span>
+        </InfoRow>
+
+        <InfoRow label="Mã nhân viên" icon={<TeamOutlined />}>
+          {hasMaNv ? (
+            <Tag color="cyan" style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 13, marginRight: 0 }}>
+              {authUser.maNhanVien}
+            </Tag>
+          ) : (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <Input
+                placeholder="VD: SA082"
+                value={inputMaNv}
+                onChange={e => setInputMaNv(e.target.value.toUpperCase())}
+                onPressEnter={handleSave}
+                style={{ maxWidth: 160, fontFamily: 'monospace', textTransform: 'uppercase' }}
+                maxLength={20}
+              />
+              <Button type="primary" size="small" loading={saving} onClick={handleSave}>
+                Lưu
+              </Button>
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>Nhập mã NV rồi nhấn Lưu</span>
+            </div>
+          )}
+        </InfoRow>
+
+        <InfoRow label="Tổ nhóm" icon={<TeamOutlined />}>
+          {toNhom
+            ? <Tag color={TO_NHOM_COLOR[toNhom] || 'default'} style={{ fontWeight: 700, fontSize: 13, marginRight: 0 }}>{toNhom}</Tag>
+            : <span style={{ color: '#94a3b8', fontSize: 13 }}>{authUser?.maNhanVien ? 'Đang tải…' : '—'}</span>
+          }
+        </InfoRow>
+
+        <InfoRow label="Mật khẩu" icon={<LockOutlined />}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ color: '#94a3b8', fontSize: 13, letterSpacing: 3 }}>••••••••</span>
+            <Button
+              size="small" type="primary" icon={<LockOutlined />}
+              style={{ background: '#00CC99', borderColor: '#00CC99' }}
+              onClick={() => { pwForm.resetFields(); setPwModal(true) }}
+            >
+              Đổi mật khẩu
+            </Button>
+          </div>
+        </InfoRow>
+      </div>
+
+      {/* Modal đổi tên đăng nhập */}
+      <Modal
+        open={unModal}
+        title={
+          <Space>
+            <IdcardOutlined style={{ color: '#00CC99' }} />
+            <span>Đổi tên đăng nhập</span>
+          </Space>
+        }
+        onOk={handleChangeUsername}
+        onCancel={() => { setUnModal(false); unForm.resetFields() }}
+        okText="Xác nhận"
+        cancelText="Huỷ"
+        confirmLoading={unSaving}
+        width={420}
+        destroyOnClose
+      >
+        <div style={{ background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 8, padding: '8px 14px', marginBottom: 16, fontSize: 12, color: '#874d00' }}>
+          ⚠️ Sau khi đổi tên đăng nhập, bạn sẽ được đăng xuất và cần đăng nhập lại bằng tên mới.
+        </div>
+        <Form form={unForm} layout="vertical">
+          <Form.Item label="Tên đăng nhập hiện tại">
+            <Input value={authUser?.username} disabled style={{ fontFamily: 'monospace' }} />
+          </Form.Item>
+          <Form.Item
+            label="Tên đăng nhập mới"
+            name="newUsername"
+            rules={[
+              { required: true, message: 'Vui lòng nhập tên đăng nhập mới' },
+              { min: 3, message: 'Tối thiểu 3 ký tự' },
+              { pattern: /^[a-zA-Z0-9._\- ]+$/, message: 'Chỉ chứa chữ, số, dấu chấm, gạch ngang' },
+            ]}
+          >
+            <Input placeholder="Nhập tên đăng nhập mới" autoFocus />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Modal đổi mật khẩu */}
+      <Modal
+        open={pwModal}
+        title={
+          <Space>
+            <LockOutlined style={{ color: '#00CC99' }} />
+            <span>Đổi mật khẩu</span>
+          </Space>
+        }
+        onOk={handleChangePw}
+        onCancel={() => { setPwModal(false); pwForm.resetFields() }}
+        okText="Xác nhận"
+        cancelText="Huỷ"
+        confirmLoading={pwSaving}
+        width={420}
+        destroyOnClose
+      >
+        <Form form={pwForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item
+            label="Mật khẩu hiện tại"
+            name="oldPassword"
+            rules={[{ required: true, message: 'Vui lòng nhập mật khẩu hiện tại' }]}
+          >
+            <Input.Password
+              placeholder="Nhập mật khẩu hiện tại"
+              iconRender={v => v ? <EyeTwoTone /> : <EyeInvisibleOutlined />}
+            />
+          </Form.Item>
+          <Form.Item
+            label="Mật khẩu mới"
+            name="newPassword"
+            rules={[
+              { required: true, message: 'Vui lòng nhập mật khẩu mới' },
+              { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự' },
+            ]}
+          >
+            <Input.Password
+              placeholder="Tối thiểu 6 ký tự"
+              iconRender={v => v ? <EyeTwoTone /> : <EyeInvisibleOutlined />}
+            />
+          </Form.Item>
+          <Form.Item
+            label="Xác nhận mật khẩu mới"
+            name="confirmPassword"
+            rules={[{ required: true, message: 'Vui lòng xác nhận mật khẩu mới' }]}
+          >
+            <Input.Password
+              placeholder="Nhập lại mật khẩu mới"
+              iconRender={v => v ? <EyeTwoTone /> : <EyeInvisibleOutlined />}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  )
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function WorkEfficiencyPage() {
-  const { isAdmin, allowedEfficiencyTabs } = useAuth()
+  const { user, login, isAdmin, isNhanVien, getMaNhanVien, allowedEfficiencyTabs } = useAuth()
+  const selfMaNv = getMaNhanVien()
 
   // Period state
   const [periodType,  setPeriodType]  = useState('month')
@@ -472,14 +991,14 @@ export default function WorkEfficiencyPage() {
   const [drawerOpen, setDrawerOpen]       = useState(false)
   const [drawerEmployee, setDrawerEmployee] = useState(null)
 
-  // Toolbar ref for sticky offset
-  const toolbarRef = useRef(null)
-  const [toolbarH, setToolbarH] = useState(0)
+  // Group tab bar ref for sticky offset
+  const groupTabRef = useRef(null)
+  const [groupTabH, setGroupTabH] = useState(0)
 
   useEffect(() => {
-    if (!toolbarRef.current) return
-    const obs = new ResizeObserver(() => setToolbarH(toolbarRef.current?.offsetHeight || 0))
-    obs.observe(toolbarRef.current)
+    if (!groupTabRef.current) return
+    const obs = new ResizeObserver(() => setGroupTabH(groupTabRef.current?.offsetHeight || 0))
+    obs.observe(groupTabRef.current)
     return () => obs.disconnect()
   }, [])
 
@@ -617,13 +1136,63 @@ export default function WorkEfficiencyPage() {
     finally { setFixingMaNv(false) }
   }
 
-  // KPI tổng hợp
+  // Profile tab (for NHAN_VIEN)
+  const [profileTab, setProfileTab] = useState('efficiency')
+
+  // All employees list (fetched once, for zero-row merging + profile)
+  const [employees, setEmployees] = useState([])
+  const [loadingEmployees, setLoadingEmployees] = useState(true)
+  const fetchAllEmployees = useCallback(async () => {
+    setLoadingEmployees(true)
+    try {
+      const { data: res } = await api.get('/employees', { params: { page: 0, size: 1000 } })
+      setEmployees(res.content || [])
+    } catch { /* non-blocking */ }
+    finally { setLoadingEmployees(false) }
+  }, [])
+  useEffect(() => { fetchAllEmployees() }, [fetchAllEmployees])
+
+  // Tự động cập nhật toNhom vào auth context nếu đã có maNhanVien nhưng chưa có toNhom
+  useEffect(() => {
+    if (!isNhanVien() || !selfMaNv || user?.toNhom || employees.length === 0) return
+    const emp = employees.find(e => e.maNhanVien === selfMaNv)
+    if (emp?.toNhom) login({ ...user, toNhom: emp.toNhom })
+  }, [employees, selfMaNv, user, isNhanVien, login])
+
+  // Self employee info + direct manager (tổ trưởng cùng nhóm)
+  const selfEmployee = useMemo(() => {
+    if (!isNhanVien() || !selfMaNv) return null
+    return employees.find(e => e.maNhanVien === selfMaNv) || null
+  }, [employees, selfMaNv, isNhanVien])
+
+  const toTruong = useMemo(() => {
+    if (!selfEmployee?.toNhom) return null
+    return (
+      employees.find(e =>
+        e.toNhom === selfEmployee.toNhom &&
+        e.viTri === 'Tổ trưởng' &&
+        e.maNhanVien !== selfEmployee.maNhanVien
+      ) ||
+      employees.find(e =>
+        e.toNhom === selfEmployee.toNhom &&
+        e.viTri?.toLowerCase().includes('trưởng') &&
+        e.maNhanVien !== selfEmployee.maNhanVien
+      ) ||
+      null
+    )
+  }, [employees, selfEmployee])
+
+  // KPI tổng hợp — chỉ tính trên dữ liệu hiển thị (NHAN_VIEN chỉ thấy của mình)
   const kpi = useMemo(() => {
-    const filtered = search
-      ? data.filter(r =>
-          r.hoVaTen?.toLowerCase().includes(search.toLowerCase()) ||
-          r.maNhanVien?.toLowerCase().includes(search.toLowerCase()))
-      : data
+    let filtered = data
+    if (isNhanVien()) {
+      filtered = selfMaNv ? data.filter(r => r.maNhanVien === selfMaNv) : []
+    } else {
+      if (activeGroup) filtered = filtered.filter(r => r.toNhom === activeGroup)
+      if (search) filtered = filtered.filter(r =>
+        r.hoVaTen?.toLowerCase().includes(search.toLowerCase()) ||
+        r.maNhanVien?.toLowerCase().includes(search.toLowerCase()))
+    }
     const tongCong = filtered.reduce((a, r) => a + (parseFloat(r.tongCong) || 0), 0)
     const totalDat = filtered.reduce((a, r) => a + (r.soLanDat || 0), 0)
     const totalKhongDat = filtered.reduce((a, r) => a + (r.soLanKhongDat || 0), 0)
@@ -631,10 +1200,38 @@ export default function WorkEfficiencyPage() {
       ? Math.round(totalDat / (totalDat + totalKhongDat) * 100) : null
     const top = [...filtered].sort((a, b) => (parseFloat(b.tongCong) || 0) - (parseFloat(a.tongCong) || 0))[0]
     return { count: filtered.length, tongCong, tyLe, top, filtered }
-  }, [data, search])
+  }, [data, search, activeGroup, isNhanVien, selfMaNv])
 
-  // Filtered + searched data
-  const displayData = kpi.filtered
+  // Merge report data with full employee list — every employee gets a row
+  const mergedData = useMemo(() => {
+    const reportMap = new Map(data.map(r => [r.maNhanVien, r]))
+    return employees.map(emp => reportMap.get(emp.maNhanVien) || {
+      maNhanVien: emp.maNhanVien,
+      hoVaTen: emp.hoVaTen,
+      toNhom: emp.toNhom,
+      viTri: emp.viTri || null,
+      soCa: 0,
+      soCaTruong: 0,
+      tongCong: 0,
+      tongSanLuong: 0,
+      nangSuatTB: null,
+      soLanDat: 0,
+      soLanKhongDat: 0,
+      weId: null,
+    })
+  }, [employees, data])
+
+  // displayData: merge → filter group → filter search → filter NHAN_VIEN
+  const displayData = useMemo(() => {
+    let rows = mergedData
+    if (activeGroup) rows = rows.filter(r => r.toNhom === activeGroup)
+    if (search) rows = rows.filter(r =>
+      r.hoVaTen?.toLowerCase().includes(search.toLowerCase()) ||
+      r.maNhanVien?.toLowerCase().includes(search.toLowerCase())
+    )
+    if (isNhanVien()) rows = selfMaNv ? rows.filter(r => r.maNhanVien === selfMaNv) : []
+    return rows
+  }, [mergedData, activeGroup, search, selfMaNv, isNhanVien])
 
   const GROUPS = allowedKeys
     ? ALL_GROUPS.filter(g => g.key !== '' && allowedKeys.includes(g.key))
@@ -766,6 +1363,60 @@ export default function WorkEfficiencyPage() {
 
   return (
     <>
+      {/* ── Profile tab nav (NHAN_VIEN only) ── */}
+      {isNhanVien() && (
+        <div className="eff-page-tabs" style={{
+          display: 'flex', borderBottom: '2px solid #e0e7ff',
+          marginBottom: 0, background: '#fff',
+          position: 'sticky', top: 0, zIndex: 21,
+        }}>
+          {[
+            { key: 'efficiency', label: 'Hiệu quả', icon: <BarChartOutlined /> },
+            { key: 'profile',    label: 'Hồ sơ',    icon: <IdcardOutlined /> },
+          ].map(t => (
+            <button key={t.key} onClick={() => setProfileTab(t.key)} style={{
+              padding: '10px 22px', border: 'none', cursor: 'pointer', background: 'transparent',
+              fontSize: 13, fontWeight: profileTab === t.key ? 700 : 500,
+              color: profileTab === t.key ? '#1D4ED8' : '#64748b',
+              borderBottom: profileTab === t.key ? '2.5px solid #1D4ED8' : '2.5px solid transparent',
+              marginBottom: -2, display: 'flex', alignItems: 'center', gap: 6, transition: 'all .15s',
+            }}>
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Profile view ── */}
+      {isNhanVien() && profileTab === 'profile' && (
+        <>
+        <style>{`
+          @media (max-width: 768px) {
+            .eff-profile-wrapper { max-width: 100% !important; padding: 0 10px !important; margin-top: 12px !important; }
+            .eff-profile-header { padding: 14px 14px !important; gap: 10px !important; border-radius: 10px !important; }
+            .eff-profile-header-avatar.ant-avatar { width: 52px !important; height: 52px !important; line-height: 52px !important; font-size: 22px !important; }
+            .eff-profile-header-name { font-size: 16px !important; }
+            .eff-info-row { padding: 10px 12px !important; gap: 10px !important; }
+            .eff-info-row-icon { width: 30px !important; height: 30px !important; min-width: 30px !important; font-size: 13px !important; }
+          }
+          @media (max-width: 400px) {
+            .eff-profile-header-name { font-size: 14px !important; }
+            .eff-info-row { padding: 8px 10px !important; }
+          }
+        `}</style>
+        <EmployeeProfileCard
+          authUser={user}
+          toNhom={selfEmployee?.toNhom || null}
+          onSaved={newMaNv => {
+            const emp = employees.find(e => e.maNhanVien === newMaNv)
+            login({ ...user, maNhanVien: newMaNv, toNhom: emp?.toNhom || null })
+          }}
+        />
+        </>
+      )}
+
+      {/* ── Efficiency view (hidden when profile tab active) ── */}
+      <div style={{ display: isNhanVien() && profileTab === 'profile' ? 'none' : 'block' }}>
       <style>{`
         /* ERP dark tab bar */
         .eff-tabs > .ant-tabs-nav { background: #1e4570 !important; padding: 0 12px; margin: 0 !important; }
@@ -781,163 +1432,84 @@ export default function WorkEfficiencyPage() {
         .eff-table .ant-table-tbody > tr:hover > td { background: #f5f3ff !important; }
         .eff-table .row-stripe td { background: #fafbff !important; }
         .eff-table .ant-table-column-sort { background: transparent !important; }
+
+        /* ── Desktop: show table, hide cards ── */
+        .eff-desktop-view { display: block; }
+        .eff-mobile-view  { display: none !important; }
+
+        /* ── Mobile responsive ── */
+        @media (max-width: 768px) {
+          /* Show cards, hide tables */
+          .eff-desktop-view { display: none !important; }
+          .eff-mobile-view  { display: flex !important; }
+
+          /* Toolbar: hide title text, compact row */
+          .eff-toolbar-title { display: none !important; }
+          .eff-toolbar-row1 { gap: 5px !important; padding: 0 8px !important; margin-bottom: 6px !important; }
+          .eff-period-toggle button { padding: 3px 9px !important; font-size: 12px !important; }
+          .eff-search-input { width: 100% !important; min-width: 0 !important; flex: 1 1 100% !important; order: 10; }
+          /* Hide Kỳ tag — date picker already shows it */
+          .eff-period-tag { display: none !important; }
+
+          /* KPI strip: horizontal scroll, 1 row */
+          .kpi-strip { flex-wrap: nowrap !important; overflow-x: auto !important; gap: 8px !important; padding: 0 8px !important; -webkit-overflow-scrolling: touch; padding-bottom: 4px !important; }
+          .kpi-strip > * { flex: 0 0 auto !important; min-width: 130px !important; max-width: 150px !important; padding: 7px 10px !important; }
+          .kpi-strip > * > div:first-child { font-size: 9px !important; }
+          .kpi-strip > * > div:nth-child(2) { font-size: 17px !important; }
+          .kpi-strip > * > div:nth-child(3) { font-size: 9px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+          /* Table: tighter on small screen */
+          .eff-table .ant-table-thead > tr > th { padding: 5px 5px !important; font-size: 10px !important; }
+          .eff-table .ant-table-tbody > tr > td { padding: 5px 5px !important; font-size: 11px !important; }
+          .eff-table .ant-table-pagination { padding: 8px !important; }
+
+          /* Detail drawer: full width */
+          .eff-detail-drawer .ant-drawer-content-wrapper { width: 100vw !important; }
+          .eff-detail-drawer .ant-drawer-body { padding: 10px !important; }
+          .eff-detail-mini-kpi { gap: 6px !important; }
+          .eff-detail-mini-kpi > * { flex: 1 1 calc(50% - 4px) !important; padding: 5px 8px !important; min-width: 0 !important; }
+          .eff-detail-mini-kpi > * > div:first-child { font-size: 9px !important; }
+          .eff-detail-mini-kpi > * > div:nth-child(2) { font-size: 15px !important; }
+
+          /* Period control row wrapping */
+          .eff-period-row { gap: 6px !important; }
+
+          /* Tab bar for NHAN_VIEN */
+          .eff-page-tabs button { padding: 10px 0 !important; flex: 1 !important; justify-content: center !important; font-size: 13px !important; }
+
+          /* Profile card mobile */
+          .eff-profile-wrapper { max-width: 100% !important; padding: 0 10px !important; margin-top: 14px !important; }
+          .eff-profile-header { padding: 16px 16px !important; gap: 12px !important; }
+          .eff-profile-header-avatar { width: 52px !important; height: 52px !important; min-width: 52px !important; font-size: 22px !important; }
+          .eff-profile-header-name { font-size: 17px !important; }
+          .eff-info-row { padding: 10px 12px !important; gap: 10px !important; }
+          .eff-info-row-icon { width: 30px !important; height: 30px !important; font-size: 14px !important; }
+          .eff-info-row input { max-width: 120px !important; }
+        }
+
+        @media (max-width: 480px) {
+          .eff-period-toggle { overflow-x: auto; max-width: 100%; }
+          .eff-period-toggle button { padding: 3px 7px !important; font-size: 11px !important; white-space: nowrap; }
+          .kpi-strip > * { min-width: 120px !important; padding: 6px 8px !important; }
+          .kpi-strip > * > div:nth-child(2) { font-size: 15px !important; }
+          /* Session detail modal: bottom-sheet style on small phones */
+          .ant-modal-centered .ant-modal { margin-bottom: 0 !important; border-radius: 16px 16px 0 0 !important; }
+          .ant-modal-centered .ant-modal-content { border-radius: 16px 16px 0 0 !important; }
+          .ant-modal-centered { align-items: flex-end !important; }
+        }
       `}</style>
 
-      {/* ── Sticky toolbar ── */}
-      <div ref={toolbarRef} style={{
-        position: 'sticky', top: 0, zIndex: 20,
-        background: '#fff', borderBottom: '2px solid #e0e7ff',
-        padding: '8px 0 10px',
-      }}>
-        {/* Row 1: title + period controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-          <span style={{ fontWeight: 800, fontSize: 16, color: '#1E3A5F', whiteSpace: 'nowrap' }}>
-            <BarChartOutlined style={{ marginRight: 6, color: '#4db3d4' }} />
-            Hiệu quả Công việc
-          </span>
-
-          {/* Period type toggle */}
-          <div style={{ display: 'flex', border: '1px solid #e0e7ff', borderRadius: 8, overflow: 'hidden' }}>
-            {PERIOD_TYPES.map(pt => (
-              <button key={pt.key} onClick={() => setPeriodType(pt.key)}
-                style={{
-                  padding: '4px 14px', border: 'none', cursor: 'pointer', fontSize: 13,
-                  background: periodType === pt.key ? '#1D4ED8' : '#fff',
-                  color: periodType === pt.key ? '#fff' : '#595959',
-                  fontWeight: periodType === pt.key ? 700 : 400,
-                  transition: 'all .15s',
-                }}>
-                {pt.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Period picker */}
-          {periodType === 'day' && (
-            <DatePicker value={dayValue} onChange={v => v && setDayValue(v)}
-              format="DD/MM/YYYY" allowClear={false} size="small" style={{ width: 130 }} />
-          )}
-          {periodType === 'week' && (
-            <DatePicker picker="week" value={weekValue} onChange={v => v && setWeekValue(v)}
-              allowClear={false} size="small" style={{ width: 150 }}
-              format={v => `${v.startOf('week').format('DD/MM')} – ${v.endOf('week').format('DD/MM/YYYY')}`} />
-          )}
-          {periodType === 'month' && (
-            <DatePicker picker="month" value={monthValue} onChange={v => v && setMonthValue(v)}
-              format="MM/YYYY" allowClear={false} size="small" style={{ width: 120 }} />
-          )}
-          {periodType === 'quarter' && (
-            <Space size={6}>
-              <DatePicker picker="year" value={dayjs().year(quarterYear)}
-                onChange={v => v && setQuarterYear(v.year())}
-                allowClear={false} size="small" style={{ width: 80 }} format="YYYY" />
-              <Select size="small" value={quarterQ} onChange={setQuarterQ} style={{ width: 120 }}>
-                {QUARTER_LABELS.map((lbl, i) => (
-                  <Option key={i + 1} value={i + 1}>{lbl}</Option>
-                ))}
-              </Select>
-            </Space>
-          )}
-          {periodType === 'year' && (
-            <DatePicker picker="year" value={yearValue} onChange={v => v && setYearValue(v)}
-              allowClear={false} size="small" style={{ width: 80 }} format="YYYY" />
-          )}
-
-          <Button size="small" type="primary" icon={<SearchOutlined />}
-            onClick={() => fetchData(fromDate, toDate, activeGroup)}>
-            Tra cứu
-          </Button>
-          <Button size="small" icon={<ReloadOutlined />}
-            onClick={() => fetchData(fromDate, toDate, activeGroup)} />
-
-          {/* Search */}
-          <Input size="small" style={{ width: 200 }} allowClear
-            placeholder="Tìm mã NV, họ tên..."
-            value={search}
-            prefix={<SearchOutlined style={{ color: '#bbb' }} />}
-            onChange={e => setSearch(e.target.value)} />
-
-          {isAdmin() && selectedRowKeys.length > 0 && (
-            <Button
-              size="small"
-              danger
-              icon={<DeleteOutlined />}
-              loading={bulkDeleting}
-              onClick={handleBulkDelete}
-            >
-              Xóa ({selectedRowKeys.length})
-            </Button>
-          )}
-
-          {isAdmin() && (
-            <Tooltip title="Tạo bản ghi cho nhân viên chưa có dữ liệu">
-              <Button size="small" icon={<SyncOutlined />} loading={syncing} onClick={handleSyncAll}>
-                Đồng bộ NV
-              </Button>
-            </Tooltip>
-          )}
-          {isAdmin() && (
-            <Tooltip title="Tính lại năng suất và kết quả đạt/không đạt cho tất cả ca làm việc">
-              <Button size="small" icon={<RiseOutlined />} loading={recalculating}
-                onClick={handleRecalculateNs} style={{ borderColor: '#1D4ED8', color: '#1D4ED8' }}>
-                Tính lại NS
-              </Button>
-            </Tooltip>
-          )}
-          {isAdmin() && (
-            <Tooltip title="Bổ sung nhóm thực hiện cho ca BBC1 / ĐG / PL còn thiếu (chạy 1 lần sau khi cập nhật)">
-              <Button size="small" icon={<SyncOutlined />} loading={fixingNhom}
-                onClick={handleFixNhomThucHien} style={{ borderColor: '#f97316', color: '#f97316' }}>
-                Đồng bộ Nhóm TH
-              </Button>
-            </Tooltip>
-          )}
-          {isAdmin() && (
-            <Tooltip title="Khôi phục Mã NV cho các ca bị thiếu (khớp theo tên + nhóm thực hiện)">
-              <Button size="small" icon={<SyncOutlined />} loading={fixingMaNv}
-                onClick={handleFixNullMaNhanVien} style={{ borderColor: '#dc2626', color: '#dc2626' }}>
-                Sửa Mã NV Null
-              </Button>
-            </Tooltip>
-          )}
-
-          {periodStr && (
-            <Tag color="purple" icon={<CalendarOutlined />} style={{ fontSize: 12, marginLeft: 'auto' }}>
-              Kỳ: {periodStr}
-            </Tag>
-          )}
-        </div>
-
-        {/* Row 2: KPI strip */}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <KpiCard label="Nhân sự có hoạt động" value={kpi.count} accent="#4db3d4"
-            sub={activeGroup || 'Tất cả nhóm'} />
-          <KpiCard label="Tổng công thực hiện" value={kpi.tongCong.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} accent="#722ed1"
-            sub="Σ công TH trong kỳ" />
-          <KpiCard
-            label="Tỷ lệ đạt NS trung bình"
-            value={kpi.tyLe != null ? `${kpi.tyLe}%` : '—'}
-            accent={kpi.tyLe != null ? (kpi.tyLe >= 70 ? '#748090' : '#f97316') : '#aaa'}
-            sub="Đạt / (Đạt + Không đạt)" />
-          {kpi.top && (
-            <KpiCard
-              label="Công nhiều nhất"
-              value={kpi.top.hoVaTen?.split(' ').slice(-1)[0] || kpi.top.maNhanVien}
-              accent="#f97316"
-              sub={`${Number(kpi.top.tongCong || 0).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} công — ${kpi.top.maNhanVien}`} />
-          )}
-        </div>
-      </div>
 
       {/* ── Group tabs + table ── */}
-      <div style={{ marginTop: 10 }}>
-        {/* Group tab bar */}
-        <div style={{
-          display: 'flex', gap: 4, background: '#1e4570',
+      <div style={{ marginTop: 0 }}>
+        {/* Group tab bar — ẩn với NHAN_VIEN */}
+        <div ref={groupTabRef} style={{
+          display: isNhanVien() ? 'none' : 'flex', gap: 4, background: '#1e4570',
           padding: '6px 12px 0', borderRadius: '8px 8px 0 0',
+          position: 'sticky', top: isNhanVien() ? 0 : 0, zIndex: 19,
         }}>
           {GROUPS.map(g => {
-            const cnt = g.key === '' ? data.length : data.filter(r => r.toNhom === g.key).length
+            const cnt = g.key === '' ? mergedData.length : mergedData.filter(r => r.toNhom === g.key).length
             const active = activeGroup === g.key
             return (
               <button key={g.key} onClick={() => setActiveGroup(g.key)}
@@ -958,15 +1530,29 @@ export default function WorkEfficiencyPage() {
           })}
         </div>
 
+        <div className="eff-desktop-view">
         <Table
           className="eff-table"
           columns={columns}
           dataSource={displayData}
           rowKey="maNhanVien"
           loading={loading}
+          onRow={(record) => ({
+            onClick: () => { setDrawerEmployee(record); setDrawerOpen(true) },
+            style: { cursor: 'pointer' },
+          })}
+          locale={isNhanVien() && !selfMaNv ? {
+            emptyText: (
+              <div style={{ padding: '32px 0', textAlign: 'center' }}>
+                <IdcardOutlined style={{ fontSize: 40, color: '#cbd5e1', marginBottom: 12, display: 'block' }} />
+                <div style={{ color: '#64748b', fontWeight: 600, fontSize: 14, marginBottom: 6 }}>Tài khoản chưa liên kết mã nhân viên</div>
+                <div style={{ color: '#94a3b8', fontSize: 12 }}>Vui lòng liên hệ admin để liên kết mã NV, sau đó đăng nhập lại</div>
+              </div>
+            )
+          } : undefined}
           size="small"
           scroll={{ x: 1200 }}
-          sticky={{ offsetHeader: toolbarH }}
+          sticky={{ offsetHeader: groupTabH }}
           rowHoverable={false}
           rowClassName={(_, i) => i % 2 !== 0 ? 'row-stripe' : ''}
           rowSelection={isAdmin() ? {
@@ -1013,7 +1599,42 @@ export default function WorkEfficiencyPage() {
             )
           }}
         />
+        </div>
+
+        {/* ── Mobile employee cards ── */}
+        <div className="eff-mobile-view" style={{ flexDirection: 'column', gap: 8, padding: '8px 10px' }}>
+          {loading && <div style={{ textAlign: 'center', padding: 32 }}><Spin /></div>}
+          {!loading && displayData.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '32px 0', color: '#94a3b8' }}>Không có dữ liệu</div>
+          )}
+          {displayData.map(r => {
+            const dat = r.soLanDat || 0
+            const kdat = r.soLanKhongDat || 0
+            const total = dat + kdat
+            const pct = total > 0 ? Math.round(dat / total * 100) : null
+            return (
+              <div key={r.maNhanVien} onClick={() => { setDrawerEmployee(r); setDrawerOpen(true) }}
+                style={{ background: '#fff', border: '1px solid #e0e7ff', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 700, color: '#1D4ED8', fontSize: 14 }}>{r.hoVaTen || r.maNhanVien}</span>
+                  <Tag color="cyan" style={{ marginRight: 0, fontWeight: 600, fontSize: 11 }}>{r.maNhanVien}</Tag>
+                  {r.toNhom && <Tag color="cyan" style={{ marginRight: 0 }}>{r.toNhom}</Tag>}
+                  {r.viTri && <Tag color={r.viTri.toLowerCase().includes('trưởng') ? 'gold' : 'geekblue'} style={{ marginRight: 0, fontSize: 11 }}>{r.viTri}</Tag>}
+                </div>
+                <div style={{ display: 'flex', gap: 12, fontSize: 12, flexWrap: 'wrap', alignItems: 'center', color: '#595959' }}>
+                  <span>Ca: <b style={{ color: '#1D4ED8' }}>{r.soCa || 0}</b></span>
+                  {(r.soCaTruong || 0) > 0 && <span>Trưởng: <b style={{ color: '#f97316' }}>{r.soCaTruong}</b></span>}
+                  <span>Công: <b style={{ color: '#722ed1', fontSize: 14 }}>{Number(r.tongCong || 0).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></span>
+                  {r.tongSanLuong != null && <span>SL: <b style={{ color: '#389e0d' }}>{Number(r.tongSanLuong).toLocaleString('vi-VN')}</b></span>}
+                  {r.nangSuatTB != null && <span>NS: <b style={{ color: '#1677ff' }}>{Number(r.nangSuatTB).toLocaleString('vi-VN', { maximumFractionDigits: 0 })}</b></span>}
+                  {pct != null && <Tag color={pct >= 70 ? 'success' : 'warning'} style={{ marginRight: 0 }}>{pct}% đạt</Tag>}
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
+      </div>{/* end efficiency view wrapper */}
 
       {/* ── Detail drawer ── */}
       <EmployeeDetailDrawer

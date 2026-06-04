@@ -117,7 +117,7 @@ export default function MainLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [unreadByType, setUnreadByType] = useState({})
-  const { user, logout, isAdmin, isAdminKH, isStageAdmin, canEditHangLoi } = useAuth()
+  const { user, logout, isAdmin, isAdminKH, isStageAdmin, canEditHangLoi, isNhanVien } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const screens = useBreakpoint()
@@ -182,60 +182,69 @@ export default function MainLayout() {
   const donHang   = unreadByType['DON_HANG_NEW']  || 0
   const lichSxNew = unreadByType['LICH_SX_NEW']   || 0
 
-  const menuItems = [
-    {
-      key: '/',
-      icon: mkBadgeIcon(<TableOutlined />, lenhNew + chuaPhatLenhCount),
-      label: canSeeChuaPhat && chuaPhatLenhCount > 0
-        ? (
-          <span>
-            Sản lượng
-            {lenhNew > 0 && <Badge count={lenhNew} size="small" style={{ background: '#e85d04', marginLeft: 6 }} />}
-            <Badge count={chuaPhatLenhCount} size="small"
-              style={{ background: '#008080', marginLeft: 6 }}
-              title={`${chuaPhatLenhCount} bản ghi chưa phát lệnh`}
-            />
-          </span>
-        )
-        : mkBadgeLabel('Sản lượng', lenhNew),
-    },
-    { key: '/daily-sl',        icon: <BarChartOutlined />, label: 'Sản lượng theo ngày' },
-    {
-      key: '/work-schedule',
-      icon: mkBadgeIcon(<ScheduleOutlined />, lichSxNew),
-      label: mkBadgeLabel('Lịch làm việc', lichSxNew),
-    },
-    { key: '/khoach',          icon: <CalendarOutlined />, label: 'Kế hoạch' },
-    ...(canEditHangLoi() ? [{
-      key: '/hang-loi',
-      icon: mkBadgeIcon(<WarningOutlined />, hangLoi),
-      label: mkBadgeLabel('Hàng Lỗi', hangLoi),
-    }] : []),
-    ...(isAdmin() ? [
-      { key: '/work-efficiency', icon: <TrophyOutlined />, label: 'Hiệu quả công việc' },
-    ] : []),
-    ...(isAdmin() ? [
-      { key: '/cham-cong', icon: <FileDoneOutlined />, label: 'Chấm công' },
-    ] : []),
-    { key: '/danh-muc',        icon: <AppstoreOutlined />, label: 'Quản Lý Danh Mục' },
-    {
-      key: '/notifications',
-      icon: (
-        <Badge count={unreadCount} size="small" style={{ background: '#008080' }} offset={[6, -2]}>
-          <BellOutlined />
-        </Badge>
-      ),
-      label: (
-        <span>
-          Thông báo
-          {unreadCount > 0 && (
-            <Badge count={unreadCount} size="small" style={{ background: '#008080', marginLeft: 6 }} />
-          )}
-        </span>
-      ),
-    },
-    ...(isAdmin() ? [{ key: '/trash', icon: <DeleteOutlined style={{ color: '#f87171' }} />, label: <span style={{ color: '#f87171' }}>Thùng Rác</span> }] : []),
-  ]
+  const menuItems = isNhanVien()
+    ? [
+        {
+          key: '/work-schedule',
+          icon: <ScheduleOutlined />,
+          label: 'Lịch làm việc',
+        },
+        { key: '/work-efficiency', icon: <TrophyOutlined />, label: 'Nhân Viên' },
+      ]
+    : [
+        {
+          key: '/',
+          icon: mkBadgeIcon(<TableOutlined />, lenhNew + chuaPhatLenhCount),
+          label: canSeeChuaPhat && chuaPhatLenhCount > 0
+            ? (
+              <span>
+                Sản lượng
+                {lenhNew > 0 && <Badge count={lenhNew} size="small" style={{ background: '#e85d04', marginLeft: 6 }} />}
+                <Badge count={chuaPhatLenhCount} size="small"
+                  style={{ background: '#008080', marginLeft: 6 }}
+                  title={`${chuaPhatLenhCount} bản ghi chưa phát lệnh`}
+                />
+              </span>
+            )
+            : mkBadgeLabel('Sản lượng', lenhNew),
+        },
+        { key: '/daily-sl',        icon: <BarChartOutlined />, label: 'Sản lượng theo ngày' },
+        {
+          key: '/work-schedule',
+          icon: mkBadgeIcon(<ScheduleOutlined />, lichSxNew),
+          label: mkBadgeLabel('Lịch làm việc', lichSxNew),
+        },
+        { key: '/khoach',          icon: <CalendarOutlined />, label: 'Kế hoạch' },
+        ...(canEditHangLoi() ? [{
+          key: '/hang-loi',
+          icon: mkBadgeIcon(<WarningOutlined />, hangLoi),
+          label: mkBadgeLabel('Hàng Lỗi', hangLoi),
+        }] : []),
+        ...(isAdmin() ? [
+          { key: '/work-efficiency', icon: <TrophyOutlined />, label: 'Nhân Viên' },
+        ] : []),
+        ...(isAdmin() ? [
+          { key: '/cham-cong', icon: <FileDoneOutlined />, label: 'Chấm công' },
+        ] : []),
+        { key: '/danh-muc',        icon: <AppstoreOutlined />, label: 'Quản Lý Danh Mục' },
+        {
+          key: '/notifications',
+          icon: (
+            <Badge count={unreadCount} size="small" style={{ background: '#008080' }} offset={[6, -2]}>
+              <BellOutlined />
+            </Badge>
+          ),
+          label: (
+            <span>
+              Thông báo
+              {unreadCount > 0 && (
+                <Badge count={unreadCount} size="small" style={{ background: '#008080', marginLeft: 6 }} />
+              )}
+            </span>
+          ),
+        },
+        ...(isAdmin() ? [{ key: '/trash', icon: <DeleteOutlined style={{ color: '#f87171' }} />, label: <span style={{ color: '#f87171' }}>Thùng Rác</span> }] : []),
+      ]
 
   const userMenu = {
     items: [{

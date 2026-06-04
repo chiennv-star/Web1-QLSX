@@ -114,6 +114,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/attendance/**").hasAnyRole(ALL_ROLES)
 
                 // ── Quản lý người dùng: ADMIN và TKSX ─────────────────────────
+                .requestMatchers(HttpMethod.PATCH, "/api/users/me/ma-nhan-vien").hasAnyRole(ALL_ROLES)
                 .requestMatchers("/api/users/**").hasAnyRole("ADMIN", "TKSX")
 
                 // ── Chat realtime ─────────────────────────────────────────────

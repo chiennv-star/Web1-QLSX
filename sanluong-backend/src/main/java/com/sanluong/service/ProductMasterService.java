@@ -62,7 +62,7 @@ public class ProductMasterService {
     }
 
     public Optional<ProductMaster> findByMaBravo(String maBravo) {
-        return repository.findByMaBravoIgnoreCase(maBravo);
+        return repository.findByMaBravoIgnoreCase(maBravo).stream().findFirst();
     }
 
     public ProductMaster create(ProductMasterDto dto) {
@@ -235,11 +235,14 @@ public class ProductMasterService {
                 r.put("newNangSuatPl",   newNsPl);
                 r.put("newNangSuatBbc1", newNsBbc);
 
-                Optional<ProductMaster> opt = repository.findByMaBravoIgnoreCase(maBravo);
-                if (opt.isEmpty()) {
+                List<ProductMaster> found = repository.findByMaBravoIgnoreCase(maBravo);
+                if (found.isEmpty()) {
                     r.put("status", "NOT_FOUND");
+                } else if (found.size() > 1) {
+                    r.put("status", "DUPLICATE");
+                    r.put("duplicateCount", found.size());
                 } else {
-                    ProductMaster p = opt.get();
+                    ProductMaster p = found.get(0);
                     r.put("existingId",      p.getId());
                     r.put("tienTrinh",       p.getTienTrinh());
                     r.put("oldSlTrungBinh",  p.getSlTrungBinh());
@@ -350,11 +353,14 @@ public class ProductMasterService {
                 r.put("maBravo",     maBravo);
                 r.put("newLoaiSanPham", newLoai);
 
-                Optional<ProductMaster> opt = repository.findByMaBravoIgnoreCase(maBravo);
-                if (opt.isEmpty()) {
+                List<ProductMaster> foundLoai = repository.findByMaBravoIgnoreCase(maBravo);
+                if (foundLoai.isEmpty()) {
                     r.put("status", "NOT_FOUND");
+                } else if (foundLoai.size() > 1) {
+                    r.put("status", "DUPLICATE");
+                    r.put("duplicateCount", foundLoai.size());
                 } else {
-                    ProductMaster p = opt.get();
+                    ProductMaster p = foundLoai.get(0);
                     r.put("existingId",    p.getId());
                     r.put("tienTrinh",     p.getTienTrinh());
                     r.put("oldLoaiSanPham", p.getLoaiSanPham());
@@ -458,7 +464,7 @@ public class ProductMasterService {
 
                 // Tra cứu: ưu tiên Mã Bravo
                 Optional<ProductMaster> existing = Optional.empty();
-                if (!isBlank(maBravo)) existing = repository.findByMaBravoIgnoreCase(maBravo);
+                if (!isBlank(maBravo)) existing = repository.findByMaBravoIgnoreCase(maBravo).stream().findFirst();
                 if (existing.isEmpty() && !isBlank(maTp)) existing = repository.findByMaTpIgnoreCase(maTp);
 
                 if (existing.isEmpty()) {

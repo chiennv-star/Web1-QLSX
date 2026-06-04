@@ -35,13 +35,16 @@ const TINH_TRANG_CFG = {
   gap:     { label: 'Gấp',     color: '#FF6600', bg: '#fff2e8', border: '#FF6600', icon: <ThunderboltOutlined /> },
 }
 
+const DONE_TAB = '__DONE__'
+
 const GROUP_TABS = [
-  { key: '',      label: 'Tất cả' },
-  { key: 'PCPL1', label: 'PCPL1' },
-  { key: 'PCPL2', label: 'PCPL2' },
-  { key: 'PCPL3', label: 'PCPL3' },
-  { key: 'BBC1',  label: 'BBC1'  },
-  { key: 'ĐG',    label: 'ĐG'    },
+  { key: '',       label: 'Chưa xếp' },
+  { key: 'PCPL1',  label: 'PCPL1' },
+  { key: 'PCPL2',  label: 'PCPL2' },
+  { key: 'PCPL3',  label: 'PCPL3' },
+  { key: 'BBC1',   label: 'BBC1'  },
+  { key: 'ĐG',     label: 'ĐG'    },
+  { key: DONE_TAB, label: 'Lệnh đã hoàn thiện' },
 ]
 
 const fmtNum = v => (v != null && v !== '') ? Number(v).toLocaleString('vi-VN') : '—'
@@ -1076,7 +1079,7 @@ export default function LenhSanXuatPage() {
     if (!silent) setLoading(true)
     try {
       const params = {}
-      if (activeTab)        params.toThucHien = activeTab
+      if (activeTab && activeTab !== DONE_TAB) params.toThucHien = activeTab
       if (filterTT)         params.tinhTrang  = filterTT
       if (dateRange[0])     params.fromDate   = dateRange[0].format('YYYY-MM-DD')
       if (dateRange[1])     params.toDate     = dateRange[1].format('YYYY-MM-DD')
@@ -1146,8 +1149,15 @@ export default function LenhSanXuatPage() {
     return () => window.removeEventListener('app:silent-refresh', handler)
   }, [load])
 
-  // ── Client-side extra filter (maSp, soLo) ────────────────────────────────
+  // ── Client-side extra filter (maSp, soLo, daLenLichLam) ─────────────────
   const displayData = data.filter(r => {
+    // Tab "Đã hoàn thiện": chỉ hiện lệnh daLenLichLam=true
+    if (activeTab === DONE_TAB) {
+      if (!r.daLenLichLam) return false
+    } else {
+      // Các tab bình thường: ẩn lệnh đã hoàn thiện
+      if (r.daLenLichLam) return false
+    }
     if (filterMaSp && !r.maSp?.toLowerCase().includes(filterMaSp.toLowerCase())
                    && !r.maBravo?.toLowerCase().includes(filterMaSp.toLowerCase())
                    && !r.tenSanPham?.toLowerCase().includes(filterMaSp.toLowerCase())) return false
@@ -1504,15 +1514,19 @@ export default function LenhSanXuatPage() {
 
   // ── Tab items ─────────────────────────────────────────────────────────────
   const tabItems = GROUP_TABS.map(g => {
-    const cnt = g.key === '' ? data.length : data.filter(r => r.toThucHien === g.key).length
+    let cnt
+    if (g.key === DONE_TAB)  cnt = data.filter(r =>  !!r.daLenLichLam).length
+    else if (g.key === '')   cnt = data.filter(r => !r.daLenLichLam).length
+    else                     cnt = data.filter(r => !r.daLenLichLam && r.toThucHien === g.key).length
+    const badgeColor = g.color || (g.key ? TO_COLOR[g.key] || '#1D4ED8' : '#1D4ED8')
     return {
       key: g.key,
       label: (
-        <span>
+        <span style={g.color ? { color: activeTab === g.key ? '#fff' : g.color, fontWeight: 700 } : {}}>
           {g.label}
           {cnt > 0 && (
             <Badge count={cnt} size="small"
-              style={{ marginLeft: 6, background: g.key ? TO_COLOR[g.key] || '#1D4ED8' : '#1D4ED8' }} />
+              style={{ marginLeft: 6, background: badgeColor }} />
           )}
         </span>
       ),
@@ -1723,6 +1737,18 @@ export default function LenhSanXuatPage() {
       render: v => v ? <span style={{ fontSize: 12, color: '#64748b' }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
     {
+      title: 'Đã xếp', key: 'daLich', width: 80, align: 'center',
+      render: (_, r) => (
+        <Tooltip title={r.daLenLichLam ? 'Đã xếp lịch — click để bỏ (chuyển về Chưa xếp)' : 'Chưa xếp — click để đánh dấu đã xếp'}>
+          <Checkbox
+            checked={!!r.daLenLichLam}
+            onClick={e => e.stopPropagation()}
+            onChange={() => toggleBool(r.id, 'daLenLichLam', r.daLenLichLam)}
+          />
+        </Tooltip>
+      ),
+    },
+    {
       title: 'Đã ĐG & lịch ĐG', key: 'daDg', width: 95, align: 'center',
       render: (_, r) => (
         <Tooltip title={r.daDgVaXepLichDg ? 'Đã ĐG & xếp lịch ĐG — click để bỏ' : 'Chưa — click để đánh dấu'}>
@@ -1798,6 +1824,8 @@ export default function LenhSanXuatPage() {
         }
         .lsx-tabs > .ant-tabs-nav .ant-tabs-tab:hover { color: #fff !important; background: rgba(59,130,246,0.15) !important; }
         .lsx-tabs > .ant-tabs-nav .ant-tabs-tab-active { color: #fff !important; font-weight: 700 !important; background: rgba(29,78,216,0.25) !important; box-shadow: 0 -3px 0 #60A5FA inset; }
+        .lsx-tabs > .ant-tabs-nav .ant-tabs-tab:last-child { border-left: 1px solid rgba(255,255,255,0.15) !important; margin-left: 8px !important; }
+        .lsx-tabs > .ant-tabs-nav .ant-tabs-tab:last-child.ant-tabs-tab-active { background: rgba(29,78,216,0.25) !important; box-shadow: 0 -3px 0 #60A5FA inset; }
         .lsx-tabs > .ant-tabs-nav .ant-tabs-ink-bar { background: #60A5FA !important; }
         .lsx-tabs > .ant-tabs-nav::before { border: none !important; }
         .lsx-tabs > .ant-tabs-nav .ant-tabs-nav-more { color: #CBD5E1 !important; }
@@ -1895,10 +1923,10 @@ export default function LenhSanXuatPage() {
       }}>
         <RangePicker
           size="small" format="DD/MM/YYYY"
-          placeholder={['Từ ngày', 'Đến ngày']}
+          placeholder={['Từ ngày PL', 'Đến ngày PL']}
           value={dateRange}
           onChange={v => setDateRange(v || [null, null])}
-          style={{ width: 220 }}
+          style={{ width: 230 }}
         />
         <Input size="small" allowClear style={{ width: 140 }}
           placeholder="Mã SP / Bravo / Tên"

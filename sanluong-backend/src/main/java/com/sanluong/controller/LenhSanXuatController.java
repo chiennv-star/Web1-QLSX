@@ -24,8 +24,12 @@ public class LenhSanXuatController {
     @GetMapping
     public ResponseEntity<List<LenhSanXuatDto>> getAll(
             @RequestParam(required = false) String tinhTrang,
-            @RequestParam(required = false) String toThucHien) {
-        return ResponseEntity.ok(service.findAll(tinhTrang, toThucHien));
+            @RequestParam(required = false) String toThucHien,
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate) {
+        java.time.LocalDate from = fromDate != null ? java.time.LocalDate.parse(fromDate) : null;
+        java.time.LocalDate to   = toDate   != null ? java.time.LocalDate.parse(toDate)   : null;
+        return ResponseEntity.ok(service.findAll(tinhTrang, toThucHien, from, to));
     }
 
     @PostMapping

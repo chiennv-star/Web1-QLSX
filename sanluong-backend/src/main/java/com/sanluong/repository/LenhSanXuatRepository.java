@@ -38,9 +38,16 @@ public interface LenhSanXuatRepository extends JpaRepository<LenhSanXuat, Long> 
     @Query("SELECT l FROM LenhSanXuat l WHERE " +
            "l.deletedAt IS NULL AND " +
            "(:tinhTrang IS NULL OR l.tinhTrang = :tinhTrang) AND " +
-           "(:toThucHien IS NULL OR l.toThucHien = :toThucHien) " +
+           "(:toThucHien IS NULL OR l.toThucHien = :toThucHien) AND " +
+           "(:fromDate IS NULL OR l.ngayPhatLenh >= :fromDate) AND " +
+           "(:toDate IS NULL OR l.ngayPhatLenh <= :toDate) " +
            "ORDER BY l.thuTu ASC, l.createdAt DESC")
-    List<LenhSanXuat> findFiltered(String tinhTrang, String toThucHien);
+    List<LenhSanXuat> findFiltered(
+            @org.springframework.data.repository.query.Param("tinhTrang")  String tinhTrang,
+            @org.springframework.data.repository.query.Param("toThucHien") String toThucHien,
+            @org.springframework.data.repository.query.Param("fromDate")   java.time.LocalDate fromDate,
+            @org.springframework.data.repository.query.Param("toDate")     java.time.LocalDate toDate
+    );
 
     @Query("SELECT COALESCE(MAX(l.thuTu), 0) FROM LenhSanXuat l WHERE l.deletedAt IS NULL")
     Integer findMaxThuTu();

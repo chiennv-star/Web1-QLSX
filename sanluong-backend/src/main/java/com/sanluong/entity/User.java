@@ -27,6 +27,12 @@ public class User {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    @Column(name = "ma_nhan_vien", length = 50)
+    private String maNhanVien;
+
+    @Column(name = "avatar", columnDefinition = "LONGTEXT")
+    private String avatar;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -37,7 +43,7 @@ public class User {
         createdAt = LocalDateTime.now();
     }
 
-    public enum Role { ADMIN, TKSX, QUAN_DOC, NHAN_VIEN, ADMIN_PC, ADMIN_BBC1, ADMIN_PL, ADMIN_DG, ADMIN_KH, ADMIN_PCPL1, ADMIN_PCPL2, ADMIN_PCPL3 }
+    public enum Role { ADMIN, TKSX, QUAN_DOC, NHAN_VIEN, NHAN_VIEN_PCPL1, NHAN_VIEN_PCPL2, NHAN_VIEN_PCPL3, NHAN_VIEN_BBC1, NHAN_VIEN_DG, ADMIN_PC, ADMIN_BBC1, ADMIN_PL, ADMIN_DG, ADMIN_KH, ADMIN_PCPL1, ADMIN_PCPL2, ADMIN_PCPL3 }
 
     // Getters & Setters
     public Long getId() { return id; }
@@ -57,6 +63,12 @@ public class User {
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+
+    public String getMaNhanVien() { return maNhanVien; }
+    public void setMaNhanVien(String maNhanVien) { this.maNhanVien = maNhanVien; }
+
+    public String getAvatar() { return avatar; }
+    public void setAvatar(String avatar) { this.avatar = avatar; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

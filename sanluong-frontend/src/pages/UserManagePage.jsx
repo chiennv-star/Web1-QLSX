@@ -3,22 +3,27 @@ import {
   Table, Button, Space, Modal, Form,
   Input, Select, Switch, Popconfirm, message, Tag, Tooltip
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, SafetyOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, SafetyOutlined, KeyOutlined } from '@ant-design/icons'
 import api from '../api/axios'
 
 const { Option } = Select
 
 const ROLE_MAP = {
-  ADMIN:       { color: 'blue',     label: 'Quản trị viên' },
-  NHAN_VIEN:   { color: 'green',    label: 'Nhân viên' },
-  ADMIN_KH:    { color: 'cyan',     label: 'Admin Kế hoạch' },
-  ADMIN_PC:    { color: 'purple',   label: 'Admin PC' },
-  ADMIN_BBC1:  { color: 'volcano',  label: 'Admin BBC1' },
-  ADMIN_PL:    { color: 'purple',   label: 'Admin PL' },
-  ADMIN_DG:    { color: 'gold',     label: 'Admin ĐG' },
-  ADMIN_PCPL1: { color: 'geekblue', label: 'Admin PCPL1' },
-  ADMIN_PCPL2: { color: 'geekblue', label: 'Admin PCPL2' },
-  ADMIN_PCPL3: { color: 'geekblue', label: 'Admin PCPL3' },
+  ADMIN:            { color: 'blue',     label: 'Quản trị viên' },
+  NHAN_VIEN:        { color: 'green',    label: 'Nhân viên' },
+  NHAN_VIEN_PCPL1:  { color: 'cyan',     label: 'NV PCPL1' },
+  NHAN_VIEN_PCPL2:  { color: 'cyan',     label: 'NV PCPL2' },
+  NHAN_VIEN_PCPL3:  { color: 'cyan',     label: 'NV PCPL3' },
+  NHAN_VIEN_BBC1:   { color: 'volcano',  label: 'NV BBC1' },
+  NHAN_VIEN_DG:     { color: 'gold',     label: 'NV ĐG' },
+  ADMIN_KH:         { color: 'cyan',     label: 'Admin Kế hoạch' },
+  ADMIN_PC:         { color: 'purple',   label: 'Admin PC' },
+  ADMIN_BBC1:       { color: 'volcano',  label: 'Admin BBC1' },
+  ADMIN_PL:         { color: 'purple',   label: 'Admin PL' },
+  ADMIN_DG:         { color: 'gold',     label: 'Admin ĐG' },
+  ADMIN_PCPL1:      { color: 'geekblue', label: 'Admin PCPL1' },
+  ADMIN_PCPL2:      { color: 'geekblue', label: 'Admin PCPL2' },
+  ADMIN_PCPL3:      { color: 'geekblue', label: 'Admin PCPL3' },
 }
 
 export default function UserManagePage() {
@@ -27,6 +32,39 @@ export default function UserManagePage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editUser, setEditUser] = useState(null)
   const [form] = Form.useForm()
+  const watchedRole = Form.useWatch('role', form)
+
+  const [pwModal, setPwModal] = useState(false)
+  const [pwUser, setPwUser] = useState(null)
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwForm] = Form.useForm()
+
+  const openChangePw = (user) => {
+    setPwUser(user)
+    pwForm.resetFields()
+    setPwModal(true)
+  }
+
+  const handleChangePw = async () => {
+    try {
+      const { newPassword } = await pwForm.validateFields()
+      setPwSaving(true)
+      await api.put(`/users/${pwUser.id}`, {
+        username: pwUser.username,
+        fullName: pwUser.fullName,
+        role: pwUser.role,
+        enabled: pwUser.enabled,
+        maNhanVien: pwUser.maNhanVien,
+        password: newPassword,
+      })
+      message.success(`Đã đổi mật khẩu cho "${pwUser.username}"`)
+      setPwModal(false)
+    } catch (err) {
+      if (err?.response) message.error(err.response.data?.message || 'Đổi mật khẩu thất bại')
+    } finally {
+      setPwSaving(false)
+    }
+  }
 
   const toolbarRef = useRef(null)
   const [toolbarH, setToolbarH] = useState(0)
@@ -101,6 +139,12 @@ export default function UserManagePage() {
       render: v => v ? <span style={{ fontWeight: 500 }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
     },
     {
+      title: 'Mã NV', dataIndex: 'maNhanVien', key: 'maNhanVien', width: 100,
+      render: (v, r) => r.role?.startsWith('NHAN_VIEN') && v
+        ? <Tag color="cyan" style={{ marginRight: 0, fontFamily: 'monospace' }}>{v}</Tag>
+        : <span style={{ color: '#d9d9d9' }}>—</span>
+    },
+    {
       title: 'Vai Trò', dataIndex: 'role', key: 'role', width: 160,
       render: r => {
         const { color, label } = ROLE_MAP[r] || { color: 'default', label: r }
@@ -112,11 +156,15 @@ export default function UserManagePage() {
       render: v => <Tag color={v ? 'green' : 'red'} style={{ marginRight: 0, fontWeight: 600 }}>{v ? 'Hoạt động' : 'Vô hiệu'}</Tag>
     },
     {
-      title: 'Thao Tác', key: 'action', width: 100, align: 'center',
+      title: 'Thao Tác', key: 'action', width: 120, align: 'center',
       render: (_, record) => (
         <Space size={4}>
           <Tooltip title="Sửa">
             <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+          </Tooltip>
+          <Tooltip title="Đổi mật khẩu">
+            <Button size="small" icon={<KeyOutlined />} onClick={() => openChangePw(record)}
+              style={{ color: '#d48806', borderColor: '#d48806' }} />
           </Tooltip>
           <Popconfirm title="Xóa người dùng?" onConfirm={() => handleDelete(record.id)}
             okText="Xóa" cancelText="Hủy">
@@ -178,6 +226,45 @@ export default function UserManagePage() {
       />
 
       <Modal
+        title={
+          <span>
+            <KeyOutlined style={{ color: '#d48806', marginRight: 8 }} />
+            Đổi mật khẩu — <span style={{ fontFamily: 'monospace', color: '#1677ff' }}>{pwUser?.username}</span>
+          </span>
+        }
+        open={pwModal}
+        onOk={handleChangePw}
+        onCancel={() => setPwModal(false)}
+        okText="Đổi mật khẩu"
+        cancelText="Hủy"
+        confirmLoading={pwSaving}
+        width={400}
+      >
+        <Form form={pwForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item label="Mật khẩu mới" name="newPassword"
+            rules={[
+              { required: true, message: 'Nhập mật khẩu mới' },
+              { min: 6, message: 'Ít nhất 6 ký tự' },
+            ]}>
+            <Input.Password placeholder="Nhập mật khẩu mới" autoComplete="new-password" />
+          </Form.Item>
+          <Form.Item label="Xác nhận mật khẩu" name="confirmPassword"
+            dependencies={['newPassword']}
+            rules={[
+              { required: true, message: 'Xác nhận mật khẩu' },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('newPassword') === value) return Promise.resolve()
+                  return Promise.reject(new Error('Mật khẩu xác nhận không khớp'))
+                },
+              }),
+            ]}>
+            <Input.Password placeholder="Nhập lại mật khẩu" autoComplete="new-password" />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
         title={editUser ? 'Chỉnh sửa người dùng' : 'Thêm người dùng mới'}
         open={modalOpen}
         onOk={onSave}
@@ -201,8 +288,14 @@ export default function UserManagePage() {
           <Form.Item label="Vai trò" name="role"
             rules={[{ required: true, message: 'Chọn vai trò' }]}>
             <Select>
-              <Option value="ADMIN">Quản trị viên</Option>
-              <Option value="NHAN_VIEN">Nhân viên</Option>
+              <Option value="ADMIN">Quản trị viên (toàn quyền)</Option>
+              <optgroup label="── Nhân viên ──" />
+              <Option value="NHAN_VIEN">Nhân viên (tất cả nhóm)</Option>
+              <Option value="NHAN_VIEN_PCPL1">Nhân viên PCPL1</Option>
+              <Option value="NHAN_VIEN_PCPL2">Nhân viên PCPL2</Option>
+              <Option value="NHAN_VIEN_PCPL3">Nhân viên PCPL3</Option>
+              <Option value="NHAN_VIEN_BBC1">Nhân viên BBC1</Option>
+              <Option value="NHAN_VIEN_DG">Nhân viên ĐG</Option>
               <Option value="ADMIN_KH">Admin Kế hoạch (sản lượng, kế hoạch, danh mục, WIP)</Option>
               <Option value="ADMIN_PC">Admin PC (Lịch làm việc PC, xem toàn bộ Hiệu quả)</Option>
               <Option value="ADMIN_BBC1">Admin BBC1 (Lịch làm việc BBC1, chỉ xem Hiệu quả BBC1)</Option>
@@ -213,6 +306,14 @@ export default function UserManagePage() {
               <Option value="ADMIN_PCPL3">Admin PCPL3 (Lịch làm việc, chỉ xem Hiệu quả PCPL3)</Option>
             </Select>
           </Form.Item>
+          {watchedRole?.startsWith('NHAN_VIEN') && (
+            <Form.Item label="Mã nhân viên" name="maNhanVien"
+              rules={[{ required: true, message: 'Nhập mã NV (VD: SA150)' }]}
+              extra="Nhập đúng mã NV trong danh sách nhân sự để liên kết dữ liệu">
+              <Input placeholder="VD: SA150" style={{ textTransform: 'uppercase' }}
+                onChange={e => form.setFieldValue('maNhanVien', e.target.value.toUpperCase())} />
+            </Form.Item>
+          )}
           {editUser && (
             <Form.Item label="Trạng thái" name="enabled" valuePropName="checked">
               <Switch checkedChildren="Hoạt động" unCheckedChildren="Vô hiệu" />

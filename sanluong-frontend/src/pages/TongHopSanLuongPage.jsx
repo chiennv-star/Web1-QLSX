@@ -15,11 +15,11 @@ const fmtSL   = v => (v || 0).toLocaleString('vi-VN')
 const fmtCong = (v, d = 4) => (v || 0).toLocaleString('vi-VN', { minimumFractionDigits: d, maximumFractionDigits: d })
 
 const STAGES = [
-  { key: 'PC',   label: 'PC',   slColor: '#4ca4fb', congColor: '#4db3d4', bg: '#EAECF2', border: '#4db3d4' },
-  { key: 'PL',   label: 'PL',   slColor: '#1677ff', congColor: '#69b1ff', bg: '#e6f4ff', border: '#91caff' },
-  { key: 'DG',   label: 'ĐG',   slColor: '#d48806', congColor: '#ffc53d', bg: '#fffbe6', border: '#ffe58f' },
-  { key: 'BBC1', label: 'BBC1', slColor: '#531dab', congColor: '#b37feb', bg: '#f9f0ff', border: '#d3adf7' },
-  { key: 'CC',   label: 'CC',   slColor: '#c41d7f', congColor: '#ff85c2', bg: '#fff0f6', border: '#ffadd2' },
+  { key: 'PC',   label: 'PC',   slColor: '#1D4ED8', congColor: '#60a5fa', bg: '#eff6ff', border: '#93c5fd', headerBg: '#1e5fa3' },
+  { key: 'PL',   label: 'PL',   slColor: '#0e7490', congColor: '#22d3ee', bg: '#ecfeff', border: '#67e8f9', headerBg: '#0e7490' },
+  { key: 'DG',   label: 'ĐG',   slColor: '#b45309', congColor: '#fbbf24', bg: '#fffbeb', border: '#fde68a', headerBg: '#b45309' },
+  { key: 'BBC1', label: 'BBC1', slColor: '#6d28d9', congColor: '#c084fc', bg: '#f5f3ff', border: '#c4b5fd', headerBg: '#6d28d9' },
+  { key: 'CC',   label: 'CC',   slColor: '#9d174d', congColor: '#f472b6', bg: '#fdf2f8', border: '#f9a8d4', headerBg: '#9d174d' },
 ]
 
 export default function TongHopSanLuongPage() {
@@ -97,10 +97,11 @@ export default function TongHopSanLuongPage() {
   /* ── Cột bảng ── */
   const columns = [
     {
-      title: 'Ngày', dataIndex: 'ngay', key: 'ngay',
+      title: 'NGÀY', dataIndex: 'ngay', key: 'ngay',
       width: 110, fixed: 'left', align: 'center',
+      onHeaderCell: () => ({ style: { background: '#1e3a5f', color: '#e0f2fe', fontSize: 11 } }),
       render: v => (
-        <span style={{ fontWeight: 700, color: '#1677ff' }}>
+        <span style={{ fontWeight: 700, color: '#1D4ED8' }}>
           {dayjs(v).format('DD/MM/YYYY')}
         </span>
       ),
@@ -108,17 +109,20 @@ export default function TongHopSanLuongPage() {
       defaultSortOrder: 'descend',
     },
     ...STAGES.map(s => ({
-      title: <span style={{ letterSpacing: 1 }}>{s.label}</span>,
+      title: <span style={{ fontWeight: 800, letterSpacing: 1.5, fontSize: 12 }}>{s.label}</span>,
       key: s.key,
+      align: 'center',
+      onHeaderCell: () => ({ style: { background: s.headerBg, color: '#fff', textAlign: 'center', borderLeft: '2px solid rgba(255,255,255,0.2)' } }),
       children: [
         {
           title: 'SL',
           key: `${s.key}_sl`,
           width: 95,
           align: 'right',
+          onHeaderCell: () => ({ style: { background: s.headerBg + 'dd', color: '#fff', fontSize: 10, opacity: 0.9 } }),
           render: (_, r) => {
             const val = r[s.key]?.sl
-            if (!val) return <span style={{ color: '#e0e0e0' }}>—</span>
+            if (!val) return <span style={{ color: '#d1d5db' }}>—</span>
             return (
               <Tooltip title={`${r[s.key]?.soPhien || 0} phiên làm việc`}>
                 <span style={{ fontWeight: 700, color: s.slColor }}>
@@ -132,43 +136,46 @@ export default function TongHopSanLuongPage() {
         {
           title: 'Công',
           key: `${s.key}_cong`,
-          width: 90,
+          width: 88,
           align: 'right',
+          onHeaderCell: () => ({ style: { background: s.headerBg + 'dd', color: '#fff', fontSize: 10, opacity: 0.9 } }),
           render: (_, r) => {
             const val = r[s.key]?.cong
-            if (!val) return <span style={{ color: '#e0e0e0' }}>—</span>
-            return <span style={{ color: s.congColor }}>{fmtCong(val)}</span>
+            if (!val) return <span style={{ color: '#d1d5db' }}>—</span>
+            return <span style={{ color: s.congColor, fontWeight: 600 }}>{fmtCong(val)}</span>
           },
         },
       ],
     })),
     {
-      title: 'Tổng SL',
+      title: 'TỔNG SL',
       key: 'grandSl',
       width: 110,
       align: 'right',
       fixed: 'right',
+      onHeaderCell: () => ({ style: { background: '#1e3a5f', color: '#7dd3fc', fontSize: 11 } }),
       render: (_, r) => {
         const total = STAGES.reduce((sum, s) => sum + (r[s.key]?.sl || 0), 0)
         return total
-          ? <strong style={{ color: '#248be6', fontSize: 13 }}>{fmtSL(total)}</strong>
-          : <span style={{ color: '#e0e0e0' }}>—</span>
+          ? <strong style={{ color: '#1D4ED8', fontSize: 13 }}>{fmtSL(total)}</strong>
+          : <span style={{ color: '#d1d5db' }}>—</span>
       },
       sorter: (a, b) =>
         STAGES.reduce((s, st) => s + (a[st.key]?.sl || 0), 0) -
         STAGES.reduce((s, st) => s + (b[st.key]?.sl || 0), 0),
     },
     {
-      title: 'Tổng Công',
+      title: 'TỔNG CÔNG',
       key: 'grandCong',
       width: 105,
       align: 'right',
       fixed: 'right',
+      onHeaderCell: () => ({ style: { background: '#1e3a5f', color: '#7dd3fc', fontSize: 11 } }),
       render: (_, r) => {
         const total = STAGES.reduce((sum, s) => sum + (r[s.key]?.cong || 0), 0)
         return total
-          ? <strong style={{ color: '#248be6' }}>{fmtCong(total, 2)}</strong>
-          : <span style={{ color: '#e0e0e0' }}>—</span>
+          ? <strong style={{ color: '#0e7490' }}>{fmtCong(total, 2)}</strong>
+          : <span style={{ color: '#d1d5db' }}>—</span>
       },
     },
   ]
@@ -180,19 +187,19 @@ export default function TongHopSanLuongPage() {
         ref={stickyRef}
         style={{
           position: 'sticky', top: 0, zIndex: 20,
-          background: '#fff',
-          borderBottom: '2px solid #D0D5DC',
-          padding: '8px 0 10px',
-          marginBottom: 10,
+          background: 'linear-gradient(135deg, #1e3a5f 0%, #1e4e7a 100%)',
+          borderBottom: '3px solid #3b82f6',
+          padding: '10px 14px 8px',
+          boxShadow: '0 3px 12px rgba(30,58,95,0.25)',
         }}
       >
         {/* Row 1: Tiêu đề + bộ lọc */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-          <span style={{ fontWeight: 700, color: '#63abea', fontSize: 15, whiteSpace: 'nowrap' }}>
-            <BarChartOutlined style={{ marginRight: 6, color: '#6dadec' }} />
-            Bảng Tổng Hợp Sản Lượng
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+          <span style={{ fontWeight: 800, color: '#7dd3fc', fontSize: 14, whiteSpace: 'nowrap', letterSpacing: 0.3 }}>
+            <BarChartOutlined style={{ marginRight: 6 }} />
+            Tổng Hợp Sản Lượng
           </span>
-          <Typography.Text type="secondary" style={{ fontSize: 11 }}>Khoảng thời gian:</Typography.Text>
+          <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.2)', margin: '0 2px' }} />
           <RangePicker
             size="small"
             value={dateRange}
@@ -200,73 +207,88 @@ export default function TongHopSanLuongPage() {
             format="DD/MM/YYYY"
             allowClear
             placeholder={['Từ ngày', 'Đến ngày']}
+            style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.25)' }}
           />
           <Button size="small" type="primary" icon={<SearchOutlined />}
-            style={{ background: '#6dadec', borderColor: '#6dadec' }}
+            style={{ background: '#3b82f6', borderColor: '#3b82f6', fontWeight: 600 }}
             onClick={() => fetchData()}>
             Truy xuất
           </Button>
-          <Button size="small" icon={<ReloadOutlined />} onClick={handleReset} />
-          <span style={{ marginLeft: 'auto', fontSize: 11, color: '#888', whiteSpace: 'nowrap' }}>
-            <strong style={{ color: '#1D4ED8' }}>{pivotData.length}</strong> ngày ·{' '}
-            Tổng SL: <strong style={{ color: '#1D4ED8' }}>{fmtSL(grandSL)}</strong> ·{' '}
-            Tổng Công: <strong style={{ color: '#4db3d4' }}>{fmtCong(grandCong, 2)}</strong>
-          </span>
+          <Button size="small" icon={<ReloadOutlined />} onClick={handleReset}
+            style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', color: '#cbd5e1' }} />
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>
+              <strong style={{ color: '#e2e8f0' }}>{pivotData.length}</strong> ngày
+            </span>
+            <span style={{ fontSize: 13, color: '#7dd3fc', fontWeight: 700, whiteSpace: 'nowrap' }}>
+              SL: <strong style={{ color: '#fff', fontSize: 15 }}>{fmtSL(grandSL)}</strong>
+            </span>
+            <span style={{ fontSize: 13, color: '#7dd3fc', fontWeight: 700, whiteSpace: 'nowrap' }}>
+              Công: <strong style={{ color: '#fff', fontSize: 15 }}>{fmtCong(grandCong, 2)}</strong>
+            </span>
+          </div>
         </div>
 
         {/* Row 2: KPI strip — mỗi công đoạn */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {STAGES.map(s => (
             <div key={s.key} style={{
-              background: s.bg, border: `1px solid ${s.border}`,
-              borderRadius: 10, padding: '5px 14px',
-              display: 'flex', flexDirection: 'column', minWidth: 140,
+              background: 'rgba(255,255,255,0.07)',
+              border: `1px solid ${s.border}55`,
+              borderLeft: `3px solid ${s.headerBg}`,
+              borderRadius: 8,
+              padding: '5px 12px',
+              display: 'flex', alignItems: 'center', gap: 10,
+              minWidth: 130,
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                <Tag color={s.slColor} style={{ margin: 0, fontWeight: 700, fontSize: 11 }}>{s.label}</Tag>
-                <span style={{ fontSize: 10, color: '#888' }}>
-                  <TeamOutlined style={{ marginRight: 2 }} />{kpi[s.key].soPhien} phiên
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: 14 }}>
-                <div>
-                  <div style={{ fontSize: 9, color: '#999', fontWeight: 600 }}>SẢN LƯỢNG</div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: s.slColor, lineHeight: 1.2 }}>
+              <div style={{
+                fontSize: 13, fontWeight: 800, color: '#fff',
+                background: s.headerBg,
+                borderRadius: 5, padding: '1px 7px', letterSpacing: 0.8,
+              }}>{s.label}</div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>SL</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: s.slColor === '#1D4ED8' ? '#60a5fa' : s.slColor, lineHeight: 1.1 }}>
                     {fmtSL(kpi[s.key].sl)}
                   </div>
                 </div>
-                <div>
-                  <div style={{ fontSize: 9, color: '#999', fontWeight: 600 }}>CÔNG TH</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: s.congColor, lineHeight: 1.2 }}>
+                <div style={{ width: 1, background: 'rgba(255,255,255,0.12)', alignSelf: 'stretch' }} />
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>Công</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: s.congColor, lineHeight: 1.1 }}>
                     {fmtCong(kpi[s.key].cong, 2)}
                   </div>
                 </div>
+                {kpi[s.key].soPhien > 0 && (
+                  <div style={{ fontSize: 9, color: '#64748b', alignSelf: 'flex-end', paddingBottom: 1 }}>
+                    {kpi[s.key].soPhien}p
+                  </div>
+                )}
               </div>
             </div>
           ))}
 
           {/* Tổng tất cả */}
           <div style={{
-            background: 'linear-gradient(135deg, #EAECF2, #DDE1E8)',
-            border: '2px solid #4db3d4',
-            borderRadius: 10, padding: '5px 14px',
-            display: 'flex', flexDirection: 'column', minWidth: 150,
+            background: 'rgba(59,130,246,0.15)',
+            border: '1.5px solid #3b82f6',
+            borderRadius: 8, padding: '5px 14px',
+            display: 'flex', alignItems: 'center', gap: 12,
+            minWidth: 150,
           }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#1D4ED8', marginBottom: 2 }}>
-              <RiseOutlined style={{ marginRight: 4 }} />TỔNG TẤT CẢ
+            <div style={{ fontSize: 10, fontWeight: 800, color: '#7dd3fc', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <RiseOutlined /> TỔNG
             </div>
-            <div style={{ display: 'flex', gap: 14 }}>
-              <div>
-                <div style={{ fontSize: 9, color: '#999', fontWeight: 600 }}>SẢN LƯỢNG</div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: '#1D4ED8', lineHeight: 1.2 }}>
-                  {fmtSL(grandSL)}
-                </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>SL</div>
+                <div style={{ fontSize: 16, fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>{fmtSL(grandSL)}</div>
               </div>
-              <div>
-                <div style={{ fontSize: 9, color: '#999', fontWeight: 600 }}>CÔNG TH</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#1D4ED8', lineHeight: 1.2 }}>
-                  {fmtCong(grandCong, 2)}
-                </div>
+              <div style={{ width: 1, background: 'rgba(255,255,255,0.15)', alignSelf: 'stretch' }} />
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>Công</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#7dd3fc', lineHeight: 1.1 }}>{fmtCong(grandCong, 2)}</div>
               </div>
             </div>
           </div>
@@ -276,37 +298,46 @@ export default function TongHopSanLuongPage() {
       {/* ── CSS ── */}
       <style>{`
         .tonghop-table .ant-table-thead > tr > th {
-          background: linear-gradient(90deg, #2980b3 0%, #3399CC 100%) !important;
           color: #ffffff !important;
           text-align: center !important;
           text-transform: uppercase;
           font-size: 11px !important;
-          letter-spacing: 0.4px;
-          padding: 7px 6px !important;
-          border-right: 1px solid #4db3d4 !important;
+          font-weight: 700 !important;
+          letter-spacing: 0.5px;
+          padding: 8px 6px !important;
+          border-right: 1px solid rgba(255,255,255,0.15) !important;
           white-space: nowrap;
         }
         .tonghop-table .ant-table-thead > tr > th::before { display: none !important; }
         .tonghop-table .ant-table-thead > tr:first-child > th {
-          background: linear-gradient(90deg, #3093e9 0%, #3093e9 100%) !important;
           font-size: 12px !important;
-          font-weight: 700 !important;
-          letter-spacing: 1px;
+          font-weight: 800 !important;
+          letter-spacing: 1.2px;
+          padding: 9px 8px !important;
         }
-        .tonghop-table .ant-table-thead > tr > th .ant-table-column-sorter { color: #a7f3d0 !important; }
+        .tonghop-table .ant-table-thead > tr > th .ant-table-column-sorter { color: rgba(255,255,255,0.6) !important; }
+        .tonghop-table .ant-table-thead > tr > th .ant-table-column-sorter-up.active,
+        .tonghop-table .ant-table-thead > tr > th .ant-table-column-sorter-down.active { color: #fbbf24 !important; }
         .tonghop-table .ant-table-tbody > tr > td {
-          padding: 6px 8px !important;
-          border-bottom: 1px solid #EAECF2 !important;
+          padding: 7px 10px !important;
+          border-bottom: 1px solid #f1f5f9 !important;
           vertical-align: middle;
+          font-size: 12px;
         }
-        .tonghop-table .ant-table-tbody > tr:nth-child(even) > td { background: #EAECF2; }
-        .tonghop-table .ant-table-tbody > tr:hover > td { background: #EFF6FF !important; }
+        .tonghop-table .ant-table-tbody > tr:nth-child(odd) > td { background: #ffffff; }
+        .tonghop-table .ant-table-tbody > tr:nth-child(even) > td { background: #f8faff; }
+        .tonghop-table .ant-table-tbody > tr:hover > td { background: #eff6ff !important; transition: background 0.15s; }
         .tonghop-table .ant-table-summary > tr > td {
-          background: linear-gradient(90deg, #1f6fa3 0%, #2980b3 100%) !important;
-          color: #ffffff !important;
+          background: #1e3a5f !important;
+          color: #e2e8f0 !important;
           font-weight: 700;
           font-size: 12px;
-          padding: 7px 8px !important;
+          padding: 8px 10px !important;
+          border-top: 2px solid #3b82f6 !important;
+        }
+        .tonghop-table .ant-table-fixed-left .ant-table-tbody > tr > td,
+        .tonghop-table .ant-table-fixed-right .ant-table-tbody > tr > td {
+          border-right: 1px solid #e2e8f0 !important;
         }
       `}</style>
 
@@ -342,21 +373,21 @@ export default function TongHopSanLuongPage() {
             <Table.Summary fixed="bottom">
               <Table.Summary.Row>
                 <Table.Summary.Cell index={0} align="center">
-                  <strong style={{ color: '#a7f3d0' }}>TỔNG TRANG</strong>
+                  <strong style={{ color: '#7dd3fc', fontSize: 11, letterSpacing: 0.5 }}>TỔNG TRANG</strong>
                 </Table.Summary.Cell>
                 {STAGES.flatMap((s, i) => [
                   <Table.Summary.Cell key={`sl${i}`} index={i * 2 + 1} align="right">
-                    <strong>{fmtSL(tot[s.key].sl)}</strong>
+                    <strong style={{ color: '#bfdbfe' }}>{fmtSL(tot[s.key].sl)}</strong>
                   </Table.Summary.Cell>,
                   <Table.Summary.Cell key={`cong${i}`} index={i * 2 + 2} align="right">
-                    <strong>{fmtCong(tot[s.key].cong, 2)}</strong>
+                    <strong style={{ color: '#93c5fd' }}>{fmtCong(tot[s.key].cong, 2)}</strong>
                   </Table.Summary.Cell>,
                 ])}
                 <Table.Summary.Cell index={11} align="right">
-                  <strong style={{ color: '#4db3d4', fontSize: 13 }}>{fmtSL(gSl)}</strong>
+                  <strong style={{ color: '#fff', fontSize: 13 }}>{fmtSL(gSl)}</strong>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={12} align="right">
-                  <strong style={{ color: '#4db3d4' }}>{fmtCong(gCong, 2)}</strong>
+                  <strong style={{ color: '#7dd3fc', fontSize: 13 }}>{fmtCong(gCong, 2)}</strong>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
             </Table.Summary>
