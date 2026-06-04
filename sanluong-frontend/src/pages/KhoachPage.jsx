@@ -2863,7 +2863,7 @@ function KhoachContent({ miniPickerMode = false }) {
         /* ══════════════════════════════════════════════════════════════
            V1 LAYOUT: Hàng ngang — rows = record slots, cols = dates
            ══════════════════════════════════════════════════════════════ */
-        <div style={{ overflowX: 'auto' }}>
+        <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 155px)' }}>
           {TO_GROUPS.map(group => {
             const groupRecs = data.filter(r => r.toNhom === group.key)
 
@@ -2951,8 +2951,8 @@ function KhoachContent({ miniPickerMode = false }) {
                       <th rowSpan={2} style={{
                         ...baseCell, background: '#e8e8e8',
                         textAlign: 'center', verticalAlign: 'middle',
-                        position: 'sticky', left: 0, zIndex: 4,
-                        boxShadow: '2px 0 6px rgba(0,0,0,0.08)',
+                        position: 'sticky', top: 0, left: 0, zIndex: 6,
+                        boxShadow: '2px 2px 6px rgba(0,0,0,0.1)',
                       }}>#</th>
 
                       {weekChunks.map(wk => {
@@ -2971,6 +2971,7 @@ function KhoachContent({ miniPickerMode = false }) {
                             textAlign: 'center',
                             padding: '2px 8px',
                             verticalAlign: 'middle',
+                            position: 'sticky', top: 0, zIndex: 3,
                           }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <span style={{ fontWeight: 700, color: '#bfdbfe', fontSize: 11, letterSpacing: 0.3 }}>
@@ -2995,6 +2996,7 @@ function KhoachContent({ miniPickerMode = false }) {
                         <th rowSpan={2} style={{
                           ...baseCell, background: '#f5f5f5',
                           textAlign: 'center', verticalAlign: 'middle',
+                          position: 'sticky', top: 0, zIndex: 3,
                         }}>
                           <Tooltip title="Thêm 7 ngày tiếp theo cho tất cả các tổ">
                             <Button
@@ -3008,7 +3010,7 @@ function KhoachContent({ miniPickerMode = false }) {
                           </Tooltip>
                         </th>
                       ) : (
-                        <th rowSpan={2} style={{ ...baseCell, background: '#f5f5f5' }} />
+                        <th rowSpan={2} style={{ ...baseCell, background: '#f5f5f5', position: 'sticky', top: 0, zIndex: 3 }} />
                       )}
                     </tr>
 
@@ -3055,6 +3057,7 @@ function KhoachContent({ miniPickerMode = false }) {
                                 outlineOffset: -2,
                                 userSelect: 'none',
                                 padding: '3px 6px',
+                                position: 'sticky', top: 28, zIndex: 2,
                               }}>
                               {isMultiSelectMode && hasRecs && (
                                 <span style={{ fontSize: 12, marginRight: 3, verticalAlign: 'middle' }}>
