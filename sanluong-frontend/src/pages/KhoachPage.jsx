@@ -2867,25 +2867,6 @@ function KhoachContent({ miniPickerMode = false }) {
            V1 LAYOUT: Hàng ngang — rows = record slots, cols = dates
            ══════════════════════════════════════════════════════════════ */
         <div style={{ position: 'relative' }}>
-        {/* Mirror scrollbar — luôn hiển thị ở đáy viewport */}
-        <div
-          ref={v1MirrorRef}
-          onScroll={(e) => {
-            if (v1SyncingRef.current) return
-            v1SyncingRef.current = true
-            if (v1ScrollRef.current) v1ScrollRef.current.scrollLeft = e.currentTarget.scrollLeft
-            v1SyncingRef.current = false
-          }}
-          style={{
-            position: 'sticky', bottom: 0, zIndex: 15,
-            overflowX: 'auto', overflowY: 'hidden',
-            height: 14, background: 'rgba(240,244,255,0.96)',
-            borderTop: '1px solid #d0d7f0',
-            boxShadow: '0 -2px 6px rgba(0,0,0,0.06)',
-          }}
-        >
-          <div style={{ height: 1, width: totalCols * 175 + 94 }} />
-        </div>
         <div
           ref={v1ScrollRef}
           onScroll={(e) => {
@@ -3387,6 +3368,25 @@ function KhoachContent({ miniPickerMode = false }) {
               </div>
             )
           })}
+        </div>
+        {/* Mirror scrollbar — nằm SAU content để luôn hiển thị ở đáy */}
+        <div
+          ref={v1MirrorRef}
+          onScroll={(e) => {
+            if (v1SyncingRef.current) return
+            v1SyncingRef.current = true
+            if (v1ScrollRef.current) v1ScrollRef.current.scrollLeft = e.currentTarget.scrollLeft
+            v1SyncingRef.current = false
+          }}
+          style={{
+            position: 'sticky', bottom: 0, zIndex: 15,
+            overflowX: 'auto', overflowY: 'hidden',
+            height: 14, background: 'rgba(240,244,255,0.96)',
+            borderTop: '1px solid #d0d7f0',
+            boxShadow: '0 -2px 6px rgba(0,0,0,0.06)',
+          }}
+        >
+          <div style={{ height: 1, width: totalCols * 175 + 94 }} />
         </div>
         </div>
       )}  {/* end V1 layout / end loading conditional */}
