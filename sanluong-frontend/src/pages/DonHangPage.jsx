@@ -1505,6 +1505,24 @@ export default function DonHangPage() {
                     onClick: () => openDetail(r),
                   },
                   { type: 'divider' },
+                  hiddenIds.has(r.id) ? {
+                    key: 'show',
+                    icon: <EyeOutlined style={{ color: '#22c55e' }} />,
+                    label: <span style={{ color: '#22c55e', fontWeight: 600 }}>Hiện đơn hàng</span>,
+                    onClick: () => {
+                      setHiddenIds(prev => { const n = new Set(prev); n.delete(r.id); return n })
+                      message.success('Đã hiện lại đơn hàng')
+                    },
+                  } : {
+                    key: 'hide',
+                    icon: <EyeInvisibleOutlined style={{ color: '#64748b' }} />,
+                    label: <span style={{ color: '#64748b', fontWeight: 600 }}>Ẩn đơn hàng</span>,
+                    onClick: () => {
+                      setHiddenIds(prev => new Set([...prev, r.id]))
+                      message.success('Đã ẩn đơn hàng')
+                    },
+                  },
+                  { type: 'divider' },
                   {
                     key: 'delete',
                     icon: <DeleteOutlined style={{ color: '#ef4444' }} />,
