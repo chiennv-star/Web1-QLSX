@@ -831,7 +831,7 @@ function TongHopTab() {
     {
       title: 'NGÀY', dataIndex: 'ngay', key: 'ngay',
       width: 110, fixed: 'left', align: 'center',
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff', fontSize: 11 } }),
+      onHeaderCell: () => ({ style: { background: '#FFCC99', color: '#1e3a5f', fontSize: 11 } }),
       render: v => (
         <span style={{ fontWeight: 700, color: '#1D4ED8' }}>
           {dayjs(v).format('DD/MM/YYYY')}
@@ -844,13 +844,13 @@ function TongHopTab() {
       title: <span style={{ fontWeight: 800, letterSpacing: 1.5, fontSize: 12 }}>{s.label}</span>,
       key: s.key,
       align: 'center',
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff', textAlign: 'center', borderLeft: '2px solid rgba(255,255,255,0.2)' } }),
+      onHeaderCell: () => ({ style: { background: '#FFCC99', color: '#1e3a5f', textAlign: 'center', borderLeft: '2px solid rgba(0,0,0,0.08)' } }),
       children: [
         {
           title: 'SL',
           key: `${s.key}_sl`,
           width: 95, align: 'right',
-          onHeaderCell: () => ({ style: { background: '#29b5b5', color: '#fff', fontSize: 10 } }),
+          onHeaderCell: () => ({ style: { background: '#FFCC99', color: '#1e3a5f', fontSize: 10 } }),
           render: (_, r) => {
             const val = r[s.key]?.sl
             if (!val) return <span style={{ color: '#d1d5db' }}>—</span>
@@ -866,7 +866,7 @@ function TongHopTab() {
           title: 'Công',
           key: `${s.key}_cong`,
           width: 88, align: 'right',
-          onHeaderCell: () => ({ style: { background: '#29b5b5', color: '#fff', fontSize: 10 } }),
+          onHeaderCell: () => ({ style: { background: '#FFCC99', color: '#1e3a5f', fontSize: 10 } }),
           render: (_, r) => {
             const val = r[s.key]?.cong
             if (!val) return <span style={{ color: '#d1d5db' }}>—</span>
@@ -877,7 +877,7 @@ function TongHopTab() {
     })),
     {
       title: 'TỔNG SL', key: 'grandSl', width: 110, align: 'right', fixed: 'right',
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff', fontSize: 11 } }),
+      onHeaderCell: () => ({ style: { background: '#FFCC99', color: '#1e3a5f', fontSize: 11 } }),
       render: (_, r) => {
         const total = STAGES.reduce((sum, s) => sum + (r[s.key]?.sl || 0), 0)
         return total
@@ -890,7 +890,7 @@ function TongHopTab() {
     },
     {
       title: 'TỔNG CÔNG', key: 'grandCong', width: 105, align: 'right', fixed: 'right',
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff', fontSize: 11 } }),
+      onHeaderCell: () => ({ style: { background: '#FFCC99', color: '#1e3a5f', fontSize: 11 } }),
       render: (_, r) => {
         const total = STAGES.reduce((sum, s) => sum + (r[s.key]?.cong || 0), 0)
         return total
@@ -934,10 +934,10 @@ function TongHopTab() {
 
       <style>{`
         .tonghop-table .ant-table-thead > tr > th {
-          color: #ffffff !important; text-align: center !important;
+          color: #1e3a5f !important; text-align: center !important;
           text-transform: uppercase; font-size: 11px !important; font-weight: 700 !important;
           letter-spacing: 0.5px; padding: 8px 6px !important;
-          border-right: 1px solid rgba(255,255,255,0.15) !important; white-space: nowrap;
+          border-right: 1px solid rgba(0,0,0,0.1) !important; white-space: nowrap;
         }
         .tonghop-table .ant-table-thead > tr > th::before { display: none !important; }
         .tonghop-table .ant-table-thead > tr:first-child > th {
@@ -953,9 +953,9 @@ function TongHopTab() {
         .tonghop-table .ant-table-tbody > tr:nth-child(even) > td { background: #f8faff; }
         .tonghop-table .ant-table-tbody > tr:hover > td { background: #eff6ff !important; }
         .tonghop-table .ant-table-summary > tr > td {
-          background: #33CCCC !important; color: #fff !important;
+          background: #FFCC99 !important; color: #fff !important;
           font-weight: 700; font-size: 12px; padding: 8px 10px !important;
-          border-top: 2px solid #29b5b5 !important;
+          border-top: 2px solid #FFCC99 !important;
         }
       `}</style>
 
