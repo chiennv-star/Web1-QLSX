@@ -306,6 +306,12 @@ function EmployeeDetailDrawer({ open, employee, fromDate, toDate, periodStr, onC
         : <span style={{ color: '#bbb' }}>—</span>
     },
     {
+      title: 'Chú Ý', dataIndex: 'chuY', key: 'chuY', width: 160,
+      render: v => v
+        ? <span style={{ color: '#d46b08', fontSize: 12 }}>{v}</span>
+        : <span style={{ color: '#bbb' }}>—</span>
+    },
+    {
       title: 'Kết Quả', key: 'ketQua', width: 105, align: 'center',
       render: (_, r) => {
         const ns   = r.nangSuat != null ? Number(r.nangSuat) : null

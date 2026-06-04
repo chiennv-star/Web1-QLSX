@@ -21,6 +21,7 @@ public class EmployeeSessionDetailDto {
     private BigDecimal sanLuong;
     private BigDecimal nangSuat;
     private BigDecimal nangSuatTrungBinh;
+    private String chuY;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -58,4 +59,6 @@ public class EmployeeSessionDetailDto {
     public void setNangSuat(BigDecimal nangSuat) { this.nangSuat = nangSuat; }
     public BigDecimal getNangSuatTrungBinh() { return nangSuatTrungBinh; }
     public void setNangSuatTrungBinh(BigDecimal nangSuatTrungBinh) { this.nangSuatTrungBinh = nangSuatTrungBinh; }
+    public String getChuY() { return chuY; }
+    public void setChuY(String chuY) { this.chuY = chuY; }
 }
