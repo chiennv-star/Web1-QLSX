@@ -905,28 +905,28 @@ function TongHopTab() {
       {/* Bộ lọc + KPI (sticky wrapper) */}
       <div ref={filterRef} style={{
         position: 'sticky', top: 0, zIndex: 20,
-        background: 'linear-gradient(135deg, #55bbbb 0%, #66CCCC 100%)',
-        borderBottom: '3px solid #44aaaa',
-        boxShadow: '0 3px 12px rgba(0,100,100,0.25)',
+        background: 'linear-gradient(135deg, #FF9933 0%, #FFBB55 100%)',
+        borderBottom: '3px solid #e07800',
+        boxShadow: '0 3px 12px rgba(200,100,0,0.25)',
       }}>
 
       {/* Row 1: Tiêu đề + filter + tổng */}
-      <div style={{ padding: '9px 16px 6px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <span style={{ fontWeight: 800, fontSize: 14, color: '#fff', whiteSpace: 'nowrap', letterSpacing: 0.3 }}>
+      <div style={{ padding: '9px 16px 8px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ fontWeight: 800, fontSize: 14, color: '#5c2e00', whiteSpace: 'nowrap', letterSpacing: 0.3 }}>
           <FundOutlined style={{ marginRight: 6 }} />Tổng Hợp Sản Lượng
         </span>
-        <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.3)' }} />
+        <div style={{ width: 1, height: 20, background: 'rgba(0,0,0,0.15)' }} />
         <RangePicker size="small" value={dateRange} onChange={setDateRange}
           format="DD/MM/YYYY" allowClear placeholder={['Từ ngày', 'Đến ngày']} />
         <Button size="small" type="primary" icon={<SearchOutlined />}
-          style={{ background: '#00CC99', borderColor: '#00CC99', fontWeight: 600 }}
+          style={{ background: '#d45f00', borderColor: '#d45f00', fontWeight: 600 }}
           onClick={() => fetchData()}>Truy xuất</Button>
         <Button size="small" icon={<ReloadOutlined />} onClick={handleReset}
-          style={{ background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.4)', color: '#fff' }} />
+          style={{ background: 'rgba(255,255,255,0.25)', borderColor: 'rgba(0,0,0,0.2)', color: '#5c2e00' }} />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)' }}><strong style={{ color: '#fff' }}>{pivotData.length}</strong> ngày</span>
-          <span style={{ fontSize: 13, color: '#fff', fontWeight: 700 }}>SL: <strong style={{ color: '#fff', fontSize: 15 }}>{fmtSL(grandSL)}</strong></span>
-          <span style={{ fontSize: 13, color: '#fff', fontWeight: 700 }}>Công: <strong style={{ color: '#fff', fontSize: 15 }}>{fmtCong(grandCong, 2)}</strong></span>
+          <span style={{ fontSize: 12, color: '#7a3900' }}><strong style={{ color: '#5c2e00' }}>{pivotData.length}</strong> ngày</span>
+          <span style={{ fontSize: 13, color: '#5c2e00', fontWeight: 700 }}>SL: <strong style={{ color: '#5c2e00', fontSize: 15 }}>{fmtSL(grandSL)}</strong></span>
+          <span style={{ fontSize: 13, color: '#5c2e00', fontWeight: 700 }}>Công: <strong style={{ color: '#5c2e00', fontSize: 15 }}>{fmtCong(grandCong, 2)}</strong></span>
         </div>
       </div>
 
