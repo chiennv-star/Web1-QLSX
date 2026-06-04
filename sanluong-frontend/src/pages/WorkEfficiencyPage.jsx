@@ -10,7 +10,7 @@ import {
   RiseOutlined, FallOutlined, CalendarOutlined, EditOutlined,
   PlusOutlined, DeleteOutlined, ExclamationCircleOutlined,
   IdcardOutlined, PhoneOutlined, HomeOutlined, TeamOutlined,
-  LockOutlined, EyeInvisibleOutlined, EyeTwoTone
+  LockOutlined, EyeInvisibleOutlined, EyeTwoTone, CameraOutlined
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
@@ -756,8 +756,8 @@ function EmployeeProfileCard({ authUser, toNhom, onSaved }) {
 
   return (
     <div className="eff-profile-wrapper" style={{ maxWidth: 600, margin: '24px auto', padding: '0 4px' }}>
-      {/* hidden file input cho avatar */}
-      <input ref={avatarInputRef} type="file" accept="image/*"
+      {/* hidden file input cho avatar — chấp nhận JPG/PNG/WEBP */}
+      <input ref={avatarInputRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp"
         style={{ display: 'none' }} onChange={handleAvatarChange} />
 
       {/* ── Header banner ── */}
@@ -767,31 +767,61 @@ function EmployeeProfileCard({ authUser, toNhom, onSaved }) {
         display: 'flex', alignItems: 'center', gap: 20,
         marginBottom: 18, boxShadow: '0 4px 20px rgba(30,69,112,0.18)',
       }}>
-        <Tooltip title="Nhấn để đổi ảnh đại diện">
-          <div style={{ position: 'relative', flexShrink: 0, cursor: 'pointer' }}
-            onClick={() => avatarInputRef.current?.click()}>
+        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+          <div
+            style={{ position: 'relative', cursor: 'pointer' }}
+            onClick={() => !avatarUploading && avatarInputRef.current?.click()}
+          >
             <Avatar
               className="eff-profile-header-avatar"
-              size={72}
+              size={80}
               src={authUser?.avatar || undefined}
               icon={!authUser?.avatar ? <UserOutlined /> : undefined}
               style={{
                 background: 'rgba(255,255,255,0.18)',
-                border: '3px solid rgba(255,255,255,0.35)',
-                fontSize: 32,
+                border: '3px solid rgba(255,255,255,0.55)',
+                fontSize: 36,
                 opacity: avatarUploading ? 0.5 : 1,
+                display: 'block',
               }}
             />
-            <div style={{
-              position: 'absolute', bottom: 0, right: 0,
-              background: '#00CC99', borderRadius: '50%',
-              width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: '2px solid #fff', fontSize: 11,
+            {/* Overlay camera khi hover */}
+            <div className="eff-avatar-overlay" style={{
+              position: 'absolute', inset: 0, borderRadius: '50%',
+              background: 'rgba(0,0,0,0.45)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              opacity: 0, transition: 'opacity 0.2s',
+              pointerEvents: 'none',
             }}>
-              {avatarUploading ? <SyncOutlined spin style={{ color: '#fff' }} /> : <EditOutlined style={{ color: '#fff' }} />}
+              <CameraOutlined style={{ color: '#fff', fontSize: 22 }} />
+              <span style={{ color: '#fff', fontSize: 9, fontWeight: 600, marginTop: 2 }}>Đổi ảnh</span>
+            </div>
+            {/* Badge trạng thái góc dưới */}
+            <div style={{
+              position: 'absolute', bottom: 2, right: 2,
+              background: avatarUploading ? '#faad14' : '#00CC99', borderRadius: '50%',
+              width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: '2px solid #fff', fontSize: 11, pointerEvents: 'none',
+            }}>
+              {avatarUploading
+                ? <SyncOutlined spin style={{ color: '#fff' }} />
+                : <CameraOutlined style={{ color: '#fff' }} />}
             </div>
           </div>
-        </Tooltip>
+          {/* Nút text rõ ràng phía dưới avatar */}
+          <button
+            onClick={() => !avatarUploading && avatarInputRef.current?.click()}
+            disabled={avatarUploading}
+            style={{
+              background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.4)',
+              borderRadius: 20, color: '#fff', fontSize: 11, fontWeight: 600,
+              padding: '2px 10px', cursor: avatarUploading ? 'not-allowed' : 'pointer',
+              letterSpacing: '0.02em', whiteSpace: 'nowrap',
+            }}
+          >
+            {avatarUploading ? 'Đang tải...' : 'Đổi ảnh'}
+          </button>
+        </div>
         <div style={{ minWidth: 0 }}>
           <div className="eff-profile-header-name" style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 6, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {authUser?.fullName || authUser?.username}
@@ -1397,10 +1427,12 @@ export default function WorkEfficiencyPage() {
       {isNhanVien() && profileTab === 'profile' && (
         <>
         <style>{`
+          .eff-avatar-overlay { opacity: 0; transition: opacity 0.2s; }
+          div:hover > .eff-avatar-overlay { opacity: 1 !important; }
           @media (max-width: 768px) {
             .eff-profile-wrapper { max-width: 100% !important; padding: 0 10px !important; margin-top: 12px !important; }
             .eff-profile-header { padding: 14px 14px !important; gap: 10px !important; border-radius: 10px !important; }
-            .eff-profile-header-avatar.ant-avatar { width: 52px !important; height: 52px !important; line-height: 52px !important; font-size: 22px !important; }
+            .eff-profile-header-avatar.ant-avatar { width: 60px !important; height: 60px !important; line-height: 60px !important; font-size: 26px !important; }
             .eff-profile-header-name { font-size: 16px !important; }
             .eff-info-row { padding: 10px 12px !important; gap: 10px !important; }
             .eff-info-row-icon { width: 30px !important; height: 30px !important; min-width: 30px !important; font-size: 13px !important; }
