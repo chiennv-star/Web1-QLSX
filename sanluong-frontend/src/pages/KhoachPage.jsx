@@ -1734,6 +1734,9 @@ function KhoachContent({ miniPickerMode = false }) {
   const [pickerCell,   setPickerCell]   = useState(null)
   const [pickerSearch, setPickerSearch] = useState('')
   const v2ScrollRef = useRef(null)
+  const v1ScrollRef = useRef(null)
+  const v1MirrorRef = useRef(null)
+  const v1SyncingRef = useRef(false)
 
   // V2: tự động load danh sách đơn hàng khi mount
   useEffect(() => {
@@ -2863,7 +2866,35 @@ function KhoachContent({ miniPickerMode = false }) {
         /* ══════════════════════════════════════════════════════════════
            V1 LAYOUT: Hàng ngang — rows = record slots, cols = dates
            ══════════════════════════════════════════════════════════════ */
-        <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 155px)' }}>
+        <div style={{ position: 'relative' }}>
+        {/* Mirror scrollbar — luôn hiển thị ở đáy viewport */}
+        <div
+          ref={v1MirrorRef}
+          onScroll={(e) => {
+            if (v1SyncingRef.current) return
+            v1SyncingRef.current = true
+            if (v1ScrollRef.current) v1ScrollRef.current.scrollLeft = e.currentTarget.scrollLeft
+            v1SyncingRef.current = false
+          }}
+          style={{
+            position: 'sticky', bottom: 0, zIndex: 15,
+            overflowX: 'auto', overflowY: 'hidden',
+            height: 14, background: 'rgba(240,244,255,0.96)',
+            borderTop: '1px solid #d0d7f0',
+            boxShadow: '0 -2px 6px rgba(0,0,0,0.06)',
+          }}
+        >
+          <div style={{ height: 1, width: totalCols * 175 + 94 }} />
+        </div>
+        <div
+          ref={v1ScrollRef}
+          onScroll={(e) => {
+            if (v1SyncingRef.current) return
+            v1SyncingRef.current = true
+            if (v1MirrorRef.current) v1MirrorRef.current.scrollLeft = e.currentTarget.scrollLeft
+            v1SyncingRef.current = false
+          }}
+          style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 155px)' }}>
           {TO_GROUPS.map(group => {
             const groupRecs = data.filter(r => r.toNhom === group.key)
 
@@ -3356,6 +3387,7 @@ function KhoachContent({ miniPickerMode = false }) {
             )
           })}
         </div>
+        </div> {/* end V1 relative wrapper */}
       )}  {/* end V1 layout / end loading conditional */}
 
       {/* ── Bảng ĐƠN HÀNG độc lập — chỉ admin/adminKH, ẩn ở V2 ── */}
