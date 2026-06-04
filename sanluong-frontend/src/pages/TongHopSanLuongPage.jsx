@@ -194,7 +194,7 @@ export default function TongHopSanLuongPage() {
         }}
       >
         {/* Row 1: Tiêu đề + bộ lọc */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 800, color: '#1e3a5f', fontSize: 15, whiteSpace: 'nowrap', letterSpacing: 0.3 }}>
             <BarChartOutlined style={{ marginRight: 6, color: '#3b82f6' }} />
             Tổng Hợp Sản Lượng
@@ -224,69 +224,6 @@ export default function TongHopSanLuongPage() {
           </div>
         </div>
 
-        {/* Row 2: KPI cards — mỗi công đoạn */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {STAGES.map(s => (
-            <div key={s.key} style={{
-              background: s.kpiBg,
-              borderRadius: 10,
-              padding: '7px 14px 7px 12px',
-              display: 'flex', alignItems: 'center', gap: 12,
-              minWidth: 140,
-              boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
-            }}>
-              <div style={{
-                fontSize: 14, fontWeight: 900, color: '#fff',
-                letterSpacing: 0.8, minWidth: 36, textAlign: 'center',
-                borderRight: '1px solid rgba(255,255,255,0.25)',
-                paddingRight: 10, marginRight: 2,
-              }}>{s.label}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 600, letterSpacing: 0.4 }}>SL</span>
-                  <span style={{ fontSize: 15, fontWeight: 900, color: '#fff', lineHeight: 1 }}>
-                    {fmtSL(kpi[s.key].sl)}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 600, letterSpacing: 0.4 }}>Công</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.92)', lineHeight: 1 }}>
-                    {fmtCong(kpi[s.key].cong, 2)}
-                  </span>
-                  {kpi[s.key].soPhien > 0 && (
-                    <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)', marginLeft: 2 }}>
-                      {kpi[s.key].soPhien}p
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {/* Tổng tất cả */}
-          <div style={{
-            background: 'linear-gradient(135deg, #1e3a5f 0%, #1e4e7a 100%)',
-            border: '2px solid #3b82f6',
-            borderRadius: 10, padding: '7px 16px',
-            display: 'flex', alignItems: 'center', gap: 14,
-            minWidth: 160,
-            boxShadow: '0 1px 4px rgba(30,58,95,0.25)',
-          }}>
-            <div style={{ fontSize: 11, fontWeight: 900, color: '#7dd3fc', letterSpacing: 0.8, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <RiseOutlined /> TỔNG
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>SL</span>
-                <span style={{ fontSize: 16, fontWeight: 900, color: '#fff', lineHeight: 1 }}>{fmtSL(grandSL)}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>Công</span>
-                <span style={{ fontSize: 13, fontWeight: 800, color: '#7dd3fc', lineHeight: 1 }}>{fmtCong(grandCong, 2)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* ── CSS ── */}
