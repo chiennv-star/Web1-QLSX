@@ -68,8 +68,13 @@ export default function TongHopSanLuongPage() {
       const date = r.ngay
       if (!date) return
       if (!map[date]) map[date] = { ngay: date }
-      const cd = r.congDoan?.toUpperCase()
+      let cd = r.congDoan?.toUpperCase()
       if (!cd) return
+      // Fallback: nếu BE cũ vẫn trả "PC", tách theo nhomThucHien / toNhom
+      if (cd === 'PC') {
+        const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
+        cd = (nhom === 'PCPL1' || nhom === 'PCPL2') ? nhom : 'PCPL1'
+      }
       if (!map[date][cd]) map[date][cd] = { sl: 0, cong: 0, soPhien: 0 }
       map[date][cd].sl      += Number(r.sanLuong      || 0)
       map[date][cd].cong    += Number(r.congThucHien  || 0)

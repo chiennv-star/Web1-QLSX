@@ -176,7 +176,11 @@ function DailyDetailTab() {
     data.forEach(r => {
       if (r.status === 'PENDING') { totals.pending++; return }
       if (r.status === 'IN_PROGRESS') { totals.inProgress++; return }
-      const cd = r.congDoan?.toUpperCase()
+      let cd = r.congDoan?.toUpperCase()
+      if (cd === 'PC') {
+        const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
+        cd = (nhom === 'PCPL1' || nhom === 'PCPL2') ? nhom : 'PCPL1'
+      }
       const sl = Number(r.sanLuong || 0)
       if (totals[cd] !== undefined) totals[cd] += sl
       totals.total += sl
@@ -229,9 +233,12 @@ function DailyDetailTab() {
     },
     {
       title: 'Công Đoạn', dataIndex: 'congDoan', key: 'congDoan', width: 100, align: 'center',
-      render: v => v
-        ? <Tag color={CONG_DOAN_COLOR[v] || 'default'} style={{ fontWeight: 700, marginRight: 0, minWidth: 40, textAlign: 'center' }}>{v}</Tag>
-        : '—',
+      render: (v, r) => {
+        if (!v) return '—'
+        // Fallback: nếu BE cũ trả "PC", dùng toNhom để hiển thị đúng
+        const label = v === 'PC' ? ((r.nhomThucHien || r.toNhom) || 'PC') : v
+        return <Tag color={CONG_DOAN_COLOR[label] || CONG_DOAN_COLOR[v] || 'default'} style={{ fontWeight: 700, marginRight: 0, minWidth: 40, textAlign: 'center' }}>{label}</Tag>
+      },
     },
     {
       title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 90, align: 'center',
@@ -804,8 +811,12 @@ function TongHopTab() {
       const date = r.ngay
       if (!date) return
       if (!map[date]) map[date] = { ngay: date }
-      const cd = r.congDoan?.toUpperCase()
+      let cd = r.congDoan?.toUpperCase()
       if (!cd) return
+      if (cd === 'PC') {
+        const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
+        cd = (nhom === 'PCPL1' || nhom === 'PCPL2') ? nhom : 'PCPL1'
+      }
       if (!map[date][cd]) map[date][cd] = { sl: 0, cong: 0, soPhien: 0 }
       map[date][cd].sl      += Number(r.sanLuong      || 0)
       map[date][cd].cong    += Number(r.congThucHien  || 0)
