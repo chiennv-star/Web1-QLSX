@@ -60,11 +60,11 @@ function SidebarInner({ collapsed, location, menuItems, onNavigate }) {
         </div>
         {!collapsed && (
           <div style={{ lineHeight: 1.2, overflow: 'hidden' }}>
-            <div style={{ fontWeight: 800, fontSize: 13, color: '#F1F5F9', letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>
-              Sản lượng SX
+            <div style={{ fontWeight: 800, fontSize: 12, color: '#F1F5F9', letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>
+              Quản Lý Phòng SX
             </div>
-            <div style={{ fontSize: 10, color: '#64748B', fontWeight: 500, whiteSpace: 'nowrap' }}>
-              Quản lý sản xuất
+            <div style={{ fontSize: 10, color: '#94A3B8', fontWeight: 600, whiteSpace: 'nowrap' }}>
+              Song An
             </div>
           </div>
         )}
