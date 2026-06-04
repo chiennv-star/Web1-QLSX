@@ -934,10 +934,14 @@ function TongHopTab() {
 
       <style>{`
         .tonghop-table .ant-table-thead > tr > th {
+          background: #99CCCC !important;
           color: #1e3a5f !important; text-align: center !important;
           text-transform: uppercase; font-size: 11px !important; font-weight: 700 !important;
           letter-spacing: 0.5px; padding: 8px 6px !important;
           border-right: 1px solid rgba(0,0,0,0.1) !important; white-space: nowrap;
+        }
+        .tonghop-table .ant-table-thead > tr:last-child > th {
+          background: #b3d9d9 !important;
         }
         .tonghop-table .ant-table-thead > tr > th::before { display: none !important; }
         .tonghop-table .ant-table-thead > tr:first-child > th {
