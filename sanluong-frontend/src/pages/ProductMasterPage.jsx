@@ -265,7 +265,7 @@ export default function ProductMasterPage() {
 
           <Form.Item label="SL Trung bình" name="slTrungBinh"
             rules={[{ required: true, message: 'Nhập SL Trung bình' }]}>
-            <InputNumber min={0} max={999999999} formatter={viFormatter} parser={viParser} style={{ width: '100%' }} placeholder="Mặc định: 1000" />
+            <InputNumber min={0} max={999999999} precision={4} decimalSeparator="," style={{ width: '100%' }} placeholder="Mặc định: 1000" />
           </Form.Item>
 
           <Row gutter={16}>
