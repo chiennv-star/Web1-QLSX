@@ -113,8 +113,12 @@ public class SecurityConfig {
                 // ── Chấm công: tất cả xem ──────────────────────────────────────
                 .requestMatchers(HttpMethod.GET, "/api/attendance/**").hasAnyRole(ALL_ROLES)
 
-                // ── Quản lý người dùng: ADMIN và TKSX ─────────────────────────
+                // ── Người dùng tự quản lý hồ sơ của mình: tất cả vai trò ────
+                .requestMatchers(HttpMethod.PATCH, "/api/users/me/avatar").hasAnyRole(ALL_ROLES)
+                .requestMatchers(HttpMethod.PATCH, "/api/users/me/change-password").hasAnyRole(ALL_ROLES)
+                .requestMatchers(HttpMethod.PATCH, "/api/users/me/change-username").hasAnyRole(ALL_ROLES)
                 .requestMatchers(HttpMethod.PATCH, "/api/users/me/ma-nhan-vien").hasAnyRole(ALL_ROLES)
+                // ── Quản lý người dùng: ADMIN và TKSX ─────────────────────────
                 .requestMatchers("/api/users/**").hasAnyRole("ADMIN", "TKSX")
 
                 // ── Chat realtime ─────────────────────────────────────────────
