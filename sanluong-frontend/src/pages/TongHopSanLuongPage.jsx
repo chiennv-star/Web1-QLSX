@@ -15,11 +15,12 @@ const fmtSL   = v => (v || 0).toLocaleString('vi-VN')
 const fmtCong = (v, d = 4) => (v || 0).toLocaleString('vi-VN', { minimumFractionDigits: d, maximumFractionDigits: d })
 
 const STAGES = [
-  { key: 'PC',   label: 'PC',   slColor: '#1d4ed8', congColor: '#2563eb', bg: '#eff6ff', border: '#93c5fd', headerBg: '#1d4ed8', kpiBg: '#1d4ed8', kpiBorder: '#93c5fd' },
-  { key: 'PL',   label: 'PL',   slColor: '#0e7490', congColor: '#0891b2', bg: '#ecfeff', border: '#67e8f9', headerBg: '#0e7490', kpiBg: '#0e7490', kpiBorder: '#67e8f9' },
-  { key: 'DG',   label: 'ĐG',   slColor: '#b45309', congColor: '#d97706', bg: '#fffbeb', border: '#fde68a', headerBg: '#b45309', kpiBg: '#b45309', kpiBorder: '#fde68a' },
-  { key: 'BBC1', label: 'BBC1', slColor: '#6d28d9', congColor: '#7c3aed', bg: '#f5f3ff', border: '#c4b5fd', headerBg: '#6d28d9', kpiBg: '#6d28d9', kpiBorder: '#c4b5fd' },
-  { key: 'CC',   label: 'CC',   slColor: '#be185d', congColor: '#db2777', bg: '#fdf2f8', border: '#f9a8d4', headerBg: '#be185d', kpiBg: '#be185d', kpiBorder: '#f9a8d4' },
+  { key: 'PCPL1', label: 'PCPL 1', slColor: '#1d4ed8', congColor: '#2563eb', bg: '#eff6ff', border: '#93c5fd', headerBg: '#1d4ed8', kpiBg: '#1d4ed8', kpiBorder: '#93c5fd' },
+  { key: 'PCPL2', label: 'PCPL 2', slColor: '#0369a1', congColor: '#0284c7', bg: '#e0f2fe', border: '#7dd3fc', headerBg: '#0369a1', kpiBg: '#0369a1', kpiBorder: '#7dd3fc' },
+  { key: 'PL',    label: 'PL',     slColor: '#0e7490', congColor: '#0891b2', bg: '#ecfeff', border: '#67e8f9', headerBg: '#0e7490', kpiBg: '#0e7490', kpiBorder: '#67e8f9' },
+  { key: 'DG',    label: 'ĐG',     slColor: '#b45309', congColor: '#d97706', bg: '#fffbeb', border: '#fde68a', headerBg: '#b45309', kpiBg: '#b45309', kpiBorder: '#fde68a' },
+  { key: 'BBC1',  label: 'BBC1',   slColor: '#6d28d9', congColor: '#7c3aed', bg: '#f5f3ff', border: '#c4b5fd', headerBg: '#6d28d9', kpiBg: '#6d28d9', kpiBorder: '#c4b5fd' },
+  { key: 'CC',    label: 'CC',     slColor: '#be185d', congColor: '#db2777', bg: '#fdf2f8', border: '#f9a8d4', headerBg: '#be185d', kpiBg: '#be185d', kpiBorder: '#f9a8d4' },
 ]
 
 export default function TongHopSanLuongPage() {
@@ -67,8 +68,13 @@ export default function TongHopSanLuongPage() {
       const date = r.ngay
       if (!date) return
       if (!map[date]) map[date] = { ngay: date }
-      const cd = r.congDoan?.toUpperCase()
+      let cd = r.congDoan?.toUpperCase()
       if (!cd) return
+      // Tách PC thành PCPL1 / PCPL2 dựa theo nhomThucHien
+      if (cd === 'PC') {
+        const nhom = r.nhomThucHien?.toUpperCase()
+        cd = (nhom === 'PCPL1' || nhom === 'PCPL2') ? nhom : 'PCPL1'
+      }
       if (!map[date][cd]) map[date][cd] = { sl: 0, cong: 0, soPhien: 0 }
       map[date][cd].sl      += Number(r.sanLuong      || 0)
       map[date][cd].cong    += Number(r.congThucHien  || 0)
@@ -280,7 +286,7 @@ export default function TongHopSanLuongPage() {
         rowKey="ngay"
         loading={loading}
         size="small"
-        scroll={{ x: 1300 }}
+        scroll={{ x: 1500 }}
         sticky={{ offsetHeader: stickyH }}
         pagination={{
           defaultPageSize: 31,
@@ -314,10 +320,10 @@ export default function TongHopSanLuongPage() {
                     <strong style={{ color: '#93c5fd' }}>{fmtCong(tot[s.key].cong, 2)}</strong>
                   </Table.Summary.Cell>,
                 ])}
-                <Table.Summary.Cell index={11} align="right">
+                <Table.Summary.Cell index={13} align="right">
                   <strong style={{ color: '#fff', fontSize: 13 }}>{fmtSL(gSl)}</strong>
                 </Table.Summary.Cell>
-                <Table.Summary.Cell index={12} align="right">
+                <Table.Summary.Cell index={14} align="right">
                   <strong style={{ color: '#7dd3fc', fontSize: 13 }}>{fmtCong(gCong, 2)}</strong>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
