@@ -930,48 +930,6 @@ function TongHopTab() {
         </div>
       </div>
 
-      {/* Row 2: Stage KPI pills */}
-      <div style={{ padding: '0 16px 8px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {STAGES.map(s => (
-          <div key={s.key} style={{
-            background: 'rgba(255,255,255,0.45)',
-            border: `1px solid ${s.border}`,
-            borderLeft: `3px solid ${s.headerBg}`,
-            borderRadius: 8, padding: '4px 10px',
-            display: 'flex', alignItems: 'center', gap: 8,
-          }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: '#fff', background: s.headerBg, borderRadius: 4, padding: '0 6px', letterSpacing: 0.8 }}>{s.label}</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.8)', fontWeight: 600, textTransform: 'uppercase' }}>SL</div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: s.slColor, lineHeight: 1.1 }}>{fmtSL(kpi[s.key].sl)}</div>
-              </div>
-              <div style={{ width: 1, background: 'rgba(255,255,255,0.3)', alignSelf: 'stretch' }} />
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.8)', fontWeight: 600, textTransform: 'uppercase' }}>Công</div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: s.congColor, lineHeight: 1.1 }}>{fmtCong(kpi[s.key].cong, 2)}</div>
-              </div>
-              {kpi[s.key].soPhien > 0 && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', alignSelf: 'flex-end' }}>{kpi[s.key].soPhien}p</div>}
-            </div>
-          </div>
-        ))}
-        {/* Tổng cộng pill */}
-        <div style={{
-          background: 'rgba(255,255,255,0.2)', border: '1.5px solid rgba(255,255,255,0.6)',
-          borderRadius: 8, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 10,
-        }}>
-          <div style={{ fontSize: 10, fontWeight: 800, color: '#fff' }}><RiseOutlined /> TỔNG</div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.8)', fontWeight: 600, textTransform: 'uppercase' }}>SL</div>
-            <div style={{ fontSize: 15, fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>{fmtSL(grandSL)}</div>
-          </div>
-          <div style={{ width: 1, background: 'rgba(255,255,255,0.3)', alignSelf: 'stretch' }} />
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.8)', fontWeight: 600, textTransform: 'uppercase' }}>Công</div>
-            <div style={{ fontSize: 12, fontWeight: 800, color: '#fff', lineHeight: 1.1 }}>{fmtCong(grandCong, 2)}</div>
-          </div>
-        </div>
-      </div>
       </div>{/* end sticky filter wrapper */}
 
       <style>{`
