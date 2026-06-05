@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Table, Button, Space, Input, Select, DatePicker, Modal, Form,
-  InputNumber, Tag, Popconfirm, message, Badge, Tooltip,
+  InputNumber, Tag, Popconfirm, message, Badge, Tooltip, Dropdown,
   Tabs, Checkbox, Drawer, Alert, List as AntList, Typography
 } from 'antd'
 import {
@@ -1790,25 +1790,29 @@ export default function LenhSanXuatPage() {
         </Popconfirm>
       ),
       render: (_, r) => (
-        <Space size={4} onClick={e => e.stopPropagation()}>
-          <Button
-            size="small" type="primary" icon={<EditOutlined />}
-            style={{
-              background: (r.daBanHanh || r.soLo) ? '#1D4ED8' : '#15803d',
-              borderColor: (r.daBanHanh || r.soLo) ? '#1D4ED8' : '#15803d',
-              fontWeight: 600,
-            }}
+        <div onClick={e => e.stopPropagation()}>
+          <Dropdown.Button
+            size="small"
+            type="primary"
+            style={{ '--btn-bg': (r.daBanHanh || r.soLo) ? '#1D4ED8' : '#15803d' }}
+            styles={{ button: { background: (r.daBanHanh || r.soLo) ? '#1D4ED8' : '#15803d', borderColor: (r.daBanHanh || r.soLo) ? '#1D4ED8' : '#15803d', fontWeight: 600 } }}
+            icon={<DownOutlined />}
             onClick={() => openEdit(r)}
+            menu={{
+              items: [{
+                key: 'delete',
+                label: (
+                  <Popconfirm title="Xóa lệnh này?" okText="Xóa" cancelText="Huỷ" okButtonProps={{ danger: true }}
+                    onConfirm={() => deleteRow(r.id)}>
+                    <span style={{ color: '#ef4444', fontWeight: 600 }}><DeleteOutlined /> Xóa lệnh</span>
+                  </Popconfirm>
+                ),
+              }],
+            }}
           >
-            {(r.daBanHanh || r.soLo) ? 'Cập nhật' : 'Ban hành'}
-          </Button>
-          <Popconfirm title="Xóa lệnh này?" okText="Xóa" cancelText="Huỷ" okButtonProps={{ danger: true }}
-            onConfirm={() => deleteRow(r.id)}>
-            <Tooltip title="Xóa lệnh">
-              <Button size="small" type="text" icon={<DeleteOutlined />} style={{ color: '#ef4444' }} />
-            </Tooltip>
-          </Popconfirm>
-        </Space>
+            <EditOutlined /> {(r.daBanHanh || r.soLo) ? 'Cập nhật' : 'Ban hành'}
+          </Dropdown.Button>
+        </div>
       ),
     }] : []),
   ]
@@ -1959,20 +1963,6 @@ export default function LenhSanXuatPage() {
         </Button>
         <Button size="small" icon={<ReloadOutlined />} onClick={load} loading={loading} />
 
-        {canEdit && selectedRowKeys.length > 0 && (
-          <Popconfirm
-            title={`Xóa ${selectedRowKeys.length} lệnh đã chọn?`}
-            description="Các lệnh sẽ chuyển vào Thùng Rác."
-            okText="Xóa" cancelText="Hủy"
-            okButtonProps={{ danger: true }}
-            onConfirm={() => handleBulkDelete(selectedRowKeys)}
-          >
-            <Button size="small" danger icon={<DeleteOutlined />} loading={bulkDeleting}
-              style={{ fontWeight: 700 }}>
-              Xóa đã chọn ({selectedRowKeys.length})
-            </Button>
-          </Popconfirm>
-        )}
 
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
           {/* KPI badges */}
@@ -2056,6 +2046,34 @@ export default function LenhSanXuatPage() {
           )
         }}
       />
+
+      {/* ── Bulk action bar (hiện khi chọn hàng) ── */}
+      {canEdit && selectedRowKeys.length > 0 && (
+        <div style={{
+          position: 'sticky', bottom: 0, zIndex: 30,
+          background: '#1e3a5f', borderTop: '2px solid #3b82f6',
+          padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 12,
+          boxShadow: '0 -4px 16px rgba(29,78,216,0.25)',
+        }}>
+          <span style={{ color: '#93c5fd', fontWeight: 700, fontSize: 13 }}>
+            Đã chọn {selectedRowKeys.length} lệnh
+          </span>
+          <Popconfirm
+            title={`Xóa ${selectedRowKeys.length} lệnh đã chọn?`}
+            description="Các lệnh sẽ chuyển vào Thùng Rác, có thể khôi phục sau."
+            okText="Xóa" cancelText="Hủy"
+            okButtonProps={{ danger: true }}
+            onConfirm={() => handleBulkDelete(selectedRowKeys)}
+          >
+            <Button danger icon={<DeleteOutlined />} loading={bulkDeleting} style={{ fontWeight: 700 }}>
+              Xóa đã chọn
+            </Button>
+          </Popconfirm>
+          <Button onClick={() => setSelectedRowKeys([])} style={{ marginLeft: 'auto' }}>
+            Bỏ chọn
+          </Button>
+        </div>
+      )}
 
       {/* ── Add/Edit Modal ── */}
       <LenhModal
