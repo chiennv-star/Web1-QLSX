@@ -58,7 +58,7 @@ export function AuthProvider({ children }) {
   // ADMIN_KH: chỉ xem, không sửa lịch sản xuất
   const canEditStage = (congDoan) => {
     if (user?.role === 'ADMIN') return true
-    if (congDoan === 'CC') return user?.role === 'ADMIN_PC'
+    if (congDoan === 'CC') return ['ADMIN_PC', 'ADMIN_PCPL2'].includes(user?.role)
     if (congDoan === 'PC') return ['ADMIN_PC', 'ADMIN_PCPL1', 'ADMIN_PCPL2'].includes(user?.role)
     if (congDoan === 'PL') return ['ADMIN_PL', 'ADMIN_PCPL3'].includes(user?.role)
     return user?.role === `ADMIN_${congDoan}`
@@ -126,7 +126,8 @@ export function AuthProvider({ children }) {
     if (role === 'ADMIN_BBC1') return ['BBC1']
     if (role === 'ADMIN_PL')   return ['PL']
     if (role === 'ADMIN_DG')   return ['DG']
-    if (['ADMIN_PCPL1', 'ADMIN_PCPL2'].includes(role)) return ['PC']
+    if (role === 'ADMIN_PCPL1') return ['PC']
+    if (role === 'ADMIN_PCPL2') return ['PC', 'CC']
     if (role === 'ADMIN_PCPL3') return ['PL']
     // Nhân viên theo nhóm cụ thể
     if (role === 'NHAN_VIEN_PCPL1' || role === 'NHAN_VIEN_PCPL2') return ['PC']

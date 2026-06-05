@@ -1,9 +1,9 @@
-﻿import React, { useState, useEffect, useRef } from 'react'
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Table, Button, Space, Modal, Form,
   Input, Select, Switch, Popconfirm, message, Tag, Tooltip
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, SafetyOutlined, KeyOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, SafetyOutlined, KeyOutlined, WifiOutlined } from '@ant-design/icons'
 import api from '../api/axios'
 
 const { Option } = Select
@@ -74,6 +74,20 @@ export default function UserManagePage() {
     obs.observe(toolbarRef.current)
     return () => obs.disconnect()
   }, [])
+
+  const [onlineSet, setOnlineSet] = useState(new Set())
+  const pollOnlineRef = useRef(null)
+  const fetchOnline = useCallback(async () => {
+    try {
+      const { data } = await api.get('/chat/online')
+      setOnlineSet(new Set(data.usernames || []))
+    } catch { /* non-blocking */ }
+  }, [])
+  useEffect(() => {
+    fetchOnline()
+    pollOnlineRef.current = setInterval(fetchOnline, 30000)
+    return () => clearInterval(pollOnlineRef.current)
+  }, [fetchOnline])
 
   const fetchUsers = async () => {
     setLoading(true)
@@ -152,8 +166,31 @@ export default function UserManagePage() {
       }
     },
     {
-      title: 'Trạng Thái', dataIndex: 'enabled', key: 'enabled', width: 120, align: 'center',
+      title: 'Trạng Thái', dataIndex: 'enabled', key: 'enabled', width: 110, align: 'center',
       render: v => <Tag color={v ? 'green' : 'red'} style={{ marginRight: 0, fontWeight: 600 }}>{v ? 'Hoạt động' : 'Vô hiệu'}</Tag>
+    },
+    {
+      title: 'Online', key: 'online', width: 90, align: 'center',
+      render: (_, record) => onlineSet.has(record.username)
+        ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <span style={{
+              width: 9, height: 9, borderRadius: '50%',
+              background: '#22c55e', boxShadow: '0 0 6px #22c55e',
+              display: 'inline-block', flexShrink: 0,
+            }} />
+            <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 700 }}>Online</span>
+          </span>
+        ) : (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <span style={{
+              width: 9, height: 9, borderRadius: '50%',
+              background: '#d1d5db', display: 'inline-block', flexShrink: 0,
+            }} />
+            <span style={{ fontSize: 11, color: '#9ca3af' }}>—</span>
+          </span>
+        ),
+      sorter: (a, b) => (onlineSet.has(b.username) ? 1 : 0) - (onlineSet.has(a.username) ? 1 : 0),
     },
     {
       title: 'Thao Tác', key: 'action', width: 120, align: 'center',
@@ -203,6 +240,18 @@ export default function UserManagePage() {
           <SafetyOutlined style={{ marginRight: 6, color: '#4db3d4' }} />
           Quản lý Người dùng
         </span>
+        {onlineSet.size > 0 && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            background: '#f0fdf4', border: '1px solid #86efac',
+            borderRadius: 20, padding: '3px 10px',
+          }}>
+            <WifiOutlined style={{ color: '#16a34a', fontSize: 12 }} />
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#15803d' }}>
+              {onlineSet.size} đang online
+            </span>
+          </span>
+        )}
         <Button type="primary" icon={<PlusOutlined />} size="small" onClick={openCreate}
           style={{ marginLeft: 'auto', background: '#1D4ED8', borderColor: '#1D4ED8' }}>
           Thêm người dùng

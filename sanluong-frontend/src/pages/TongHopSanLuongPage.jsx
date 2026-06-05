@@ -15,18 +15,27 @@ const fmtSL   = v => (v || 0).toLocaleString('vi-VN')
 const fmtCong = (v, d = 4) => (v || 0).toLocaleString('vi-VN', { minimumFractionDigits: d, maximumFractionDigits: d })
 
 const STAGES = [
-  { key: 'PCPL1', label: 'PCPL 1', slColor: '#0000FF', congColor: '#0000FF', bg: '#eff6ff', border: '#93c5fd', headerBg: '#1d4ed8', kpiBg: '#1d4ed8', kpiBorder: '#93c5fd' },
-  { key: 'PCPL2', label: 'PCPL 2', slColor: '#0000FF', congColor: '#0000FF', bg: '#e0f2fe', border: '#7dd3fc', headerBg: '#0369a1', kpiBg: '#0369a1', kpiBorder: '#7dd3fc' },
-  { key: 'PL',    label: 'PL',     slColor: '#0000FF', congColor: '#0000FF', bg: '#ecfeff', border: '#67e8f9', headerBg: '#0e7490', kpiBg: '#0e7490', kpiBorder: '#67e8f9' },
-  { key: 'DG',    label: 'ĐG',     slColor: '#0000FF', congColor: '#0000FF', bg: '#fffbeb', border: '#fde68a', headerBg: '#b45309', kpiBg: '#b45309', kpiBorder: '#fde68a' },
-  { key: 'BBC1',  label: 'BBC1',   slColor: '#0000FF', congColor: '#0000FF', bg: '#f5f3ff', border: '#c4b5fd', headerBg: '#6d28d9', kpiBg: '#6d28d9', kpiBorder: '#c4b5fd' },
-  { key: 'CC',    label: 'CC',     slColor: '#0000FF', congColor: '#0000FF', bg: '#fdf2f8', border: '#f9a8d4', headerBg: '#be185d', kpiBg: '#be185d', kpiBorder: '#f9a8d4' },
+  { key: 'PCPL1', label: 'PCPL 1', slColor: '#1D4ED8', congColor: '#1D4ED8', bg: '#eff6ff', border: '#93c5fd', headerBg: '#1d4ed8', kpiBg: '#1d4ed8', kpiBorder: '#93c5fd' },
+  { key: 'PCPL2', label: 'PCPL 2', slColor: '#1D4ED8', congColor: '#1D4ED8', bg: '#e0f2fe', border: '#7dd3fc', headerBg: '#0369a1', kpiBg: '#0369a1', kpiBorder: '#7dd3fc' },
+  { key: 'PL',    label: 'PL',     slColor: '#1D4ED8', congColor: '#1D4ED8', bg: '#ecfeff', border: '#67e8f9', headerBg: '#0e7490', kpiBg: '#0e7490', kpiBorder: '#67e8f9' },
+  { key: 'DG',    label: 'ĐG',     slColor: '#1D4ED8', congColor: '#1D4ED8', bg: '#fffbeb', border: '#fde68a', headerBg: '#b45309', kpiBg: '#b45309', kpiBorder: '#fde68a' },
+  { key: 'BBC1',  label: 'BBC1',   slColor: '#1D4ED8', congColor: '#1D4ED8', bg: '#f5f3ff', border: '#c4b5fd', headerBg: '#6d28d9', kpiBg: '#6d28d9', kpiBorder: '#c4b5fd' },
+  { key: 'CC',    label: 'CC',     slColor: '#1D4ED8', congColor: '#1D4ED8', bg: '#fdf2f8', border: '#f9a8d4', headerBg: '#be185d', kpiBg: '#be185d', kpiBorder: '#f9a8d4' },
 ]
 
 export default function TongHopSanLuongPage() {
   const [raw, setRaw]         = useState([])
   const [loading, setLoading] = useState(false)
-  const [dateRange, setDateRange] = useState([dayjs().subtract(13, 'day'), dayjs()])
+  const [dateRange, setDateRange] = useState(() => {
+    try {
+      const saved = localStorage.getItem('tonghop_dateRange')
+      if (saved) {
+        const [f, t] = JSON.parse(saved)
+        return [dayjs(f), dayjs(t)]
+      }
+    } catch {}
+    return [dayjs().subtract(13, 'day'), dayjs()]
+  })
 
   const stickyRef = useRef(null)
   const [stickyH, setStickyH] = useState(110)
@@ -36,6 +45,15 @@ export default function TongHopSanLuongPage() {
     obs.observe(stickyRef.current)
     return () => obs.disconnect()
   }, [])
+
+  useEffect(() => {
+    if (dateRange?.[0] && dateRange?.[1]) {
+      localStorage.setItem('tonghop_dateRange', JSON.stringify([
+        dateRange[0].format('YYYY-MM-DD'),
+        dateRange[1].format('YYYY-MM-DD'),
+      ]))
+    }
+  }, [dateRange])
 
   useEffect(() => { fetchData() }, []) // eslint-disable-line
 
@@ -55,6 +73,7 @@ export default function TongHopSanLuongPage() {
   }, [dateRange])
 
   const handleReset = () => {
+    localStorage.removeItem('tonghop_dateRange')
     const def = [dayjs().subtract(13, 'day'), dayjs()]
     setDateRange(def)
     fetchData(def)
@@ -107,7 +126,7 @@ export default function TongHopSanLuongPage() {
       width: 110, fixed: 'left', align: 'center',
       onHeaderCell: () => ({ style: { background: '#1e3a5f', color: '#e0f2fe', fontSize: 11 } }),
       render: v => (
-        <span style={{ fontWeight: 700, color: '#0000FF' }}>
+        <span style={{ fontWeight: 700, color: '#1D4ED8' }}>
           {dayjs(v).format('DD/MM/YYYY')}
         </span>
       ),
@@ -163,7 +182,7 @@ export default function TongHopSanLuongPage() {
       render: (_, r) => {
         const total = STAGES.reduce((sum, s) => sum + (r[s.key]?.sl || 0), 0)
         return total
-          ? <strong style={{ color: '#0000FF', fontSize: 13 }}>{fmtSL(total)}</strong>
+          ? <strong style={{ color: '#1D4ED8', fontSize: 13 }}>{fmtSL(total)}</strong>
           : <span style={{ color: '#d1d5db' }}>—</span>
       },
       sorter: (a, b) =>
@@ -180,7 +199,7 @@ export default function TongHopSanLuongPage() {
       render: (_, r) => {
         const total = STAGES.reduce((sum, s) => sum + (r[s.key]?.cong || 0), 0)
         return total
-          ? <strong style={{ color: '#0000FF' }}>{fmtCong(total, 2)}</strong>
+          ? <strong style={{ color: '#1D4ED8' }}>{fmtCong(total, 2)}</strong>
           : <span style={{ color: '#d1d5db' }}>—</span>
       },
     },
@@ -223,9 +242,9 @@ export default function TongHopSanLuongPage() {
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>
               <strong style={{ color: '#1e293b' }}>{pivotData.length}</strong> ngày &nbsp;·&nbsp;
-              SL: <strong style={{ color: '#0000FF', fontSize: 14 }}>{fmtSL(grandSL)}</strong>
+              SL: <strong style={{ color: '#1D4ED8', fontSize: 14 }}>{fmtSL(grandSL)}</strong>
               &nbsp;&nbsp;
-              Công: <strong style={{ color: '#0000FF', fontSize: 14 }}>{fmtCong(grandCong, 2)}</strong>
+              Công: <strong style={{ color: '#1D4ED8', fontSize: 14 }}>{fmtCong(grandCong, 2)}</strong>
             </span>
           </div>
         </div>
@@ -314,17 +333,17 @@ export default function TongHopSanLuongPage() {
                 </Table.Summary.Cell>
                 {STAGES.flatMap((s, i) => [
                   <Table.Summary.Cell key={`sl${i}`} index={i * 2 + 1} align="right">
-                    <strong style={{ color: '#0000FF' }}>{fmtSL(tot[s.key].sl)}</strong>
+                    <strong style={{ color: '#1D4ED8' }}>{fmtSL(tot[s.key].sl)}</strong>
                   </Table.Summary.Cell>,
                   <Table.Summary.Cell key={`cong${i}`} index={i * 2 + 2} align="right">
-                    <strong style={{ color: '#0000FF' }}>{fmtCong(tot[s.key].cong, 2)}</strong>
+                    <strong style={{ color: '#1D4ED8' }}>{fmtCong(tot[s.key].cong, 2)}</strong>
                   </Table.Summary.Cell>,
                 ])}
                 <Table.Summary.Cell index={13} align="right">
-                  <strong style={{ color: '#0000FF', fontSize: 13 }}>{fmtSL(gSl)}</strong>
+                  <strong style={{ color: '#1D4ED8', fontSize: 13 }}>{fmtSL(gSl)}</strong>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={14} align="right">
-                  <strong style={{ color: '#0000FF', fontSize: 13 }}>{fmtCong(gCong, 2)}</strong>
+                  <strong style={{ color: '#1D4ED8', fontSize: 13 }}>{fmtCong(gCong, 2)}</strong>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
             </Table.Summary>

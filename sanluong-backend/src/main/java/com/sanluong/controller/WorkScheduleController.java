@@ -48,7 +48,8 @@ public class WorkScheduleController {
             if ("ROLE_ADMIN_KH".equals(role) && "PLAN".equals(source)) return;
             if ("ROLE_NHAN_VIEN".equals(role) && !"CC".equals(congDoan)) return;
             if ("ROLE_ADMIN_PC".equals(role) && ("PC".equals(congDoan) || "CC".equals(congDoan))) return;
-            if (("ROLE_ADMIN_PCPL1".equals(role) || "ROLE_ADMIN_PCPL2".equals(role)) && "PC".equals(congDoan)) return;
+            if ("ROLE_ADMIN_PCPL1".equals(role) && "PC".equals(congDoan)) return;
+            if ("ROLE_ADMIN_PCPL2".equals(role) && ("PC".equals(congDoan) || "CC".equals(congDoan))) return;
             if ("ROLE_ADMIN_PCPL3".equals(role) && "PL".equals(congDoan)) return;
             if (congDoan != null && ("ROLE_ADMIN_" + congDoan).equals(role)) return;
         }

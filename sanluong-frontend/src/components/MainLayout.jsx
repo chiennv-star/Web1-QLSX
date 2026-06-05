@@ -218,7 +218,7 @@ export default function MainLayout() {
         ...(canEditHangLoi() ? [{
           key: '/hang-loi',
           icon: mkBadgeIcon(<WarningOutlined />, hangLoi),
-          label: mkBadgeLabel('Hàng Lỗi', hangLoi),
+          label: mkBadgeLabel('Hàng Xử Lý', hangLoi),
         }] : []),
         ...(isAdmin() ? [
           { key: '/work-efficiency', icon: <TrophyOutlined />, label: 'Nhân Viên' },

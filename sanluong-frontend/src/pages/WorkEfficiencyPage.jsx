@@ -634,6 +634,29 @@ function EmployeeDetailDrawer({ open, employee, fromDate, toDate, periodStr, onC
 // ── Employee profile card ──────────────────────────────────────────────────────
 const TO_NHOM_COLOR = { BBC1: 'blue', ĐG: 'purple', PCPL1: 'cyan', PCPL2: 'geekblue', PCPL3: 'volcano' }
 
+function InfoRow({ label, icon, children }) {
+  return (
+    <div className="eff-info-row" style={{
+      background: '#fff', border: '1px solid #e0e7ff',
+      borderRadius: 10, padding: '14px 18px',
+      display: 'flex', alignItems: 'center', gap: 14,
+      boxShadow: '0 1px 4px rgba(29,78,216,0.05)',
+    }}>
+      <div className="eff-info-row-icon" style={{
+        width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+        background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: '#1D4ED8', fontSize: 16,
+      }}>{icon}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>
+          {label}
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 function EmployeeProfileCard({ authUser, toNhom, onSaved }) {
   const { login, logout } = useAuth()
   const [inputMaNv, setInputMaNv] = useState('')
@@ -741,27 +764,6 @@ function EmployeeProfileCard({ authUser, toNhom, onSaved }) {
       setSaving(false)
     }
   }
-
-  const InfoRow = ({ label, icon, children }) => (
-    <div className="eff-info-row" style={{
-      background: '#fff', border: '1px solid #e0e7ff',
-      borderRadius: 10, padding: '14px 18px',
-      display: 'flex', alignItems: 'center', gap: 14,
-      boxShadow: '0 1px 4px rgba(29,78,216,0.05)',
-    }}>
-      <div className="eff-info-row-icon" style={{
-        width: 36, height: 36, borderRadius: 8, flexShrink: 0,
-        background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: '#1D4ED8', fontSize: 16,
-      }}>{icon}</div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>
-          {label}
-        </div>
-        {children}
-      </div>
-    </div>
-  )
 
   return (
     <div className="eff-profile-wrapper" style={{ maxWidth: 600, margin: '24px auto', padding: '0 4px' }}>

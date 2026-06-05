@@ -84,13 +84,14 @@ const CAN_EDIT_HANG_LOI = new Set([
 ])
 
 const HANG_LOI_TASK = {
-  id:    'hang_loi',
-  icon:  '⚠️',
-  label: 'Hàng lỗi chưa hoàn thành',
-  desc:  'Chưa xử lý + Đang xử lý (chưa Đã hoàn thành)',
-  route: '/hang-loi',
-  fetch: fetchHangLoiChuaXuLy,
-  color: '#f59e0b',
+  id:        'hang_loi',
+  icon:      '⚠️',
+  label:     'Hàng xử lý công đoạn',
+  desc:      'Chưa xử lý + Đang xử lý (chưa Đã hoàn thành)',
+  route:     '/hang-loi',
+  fetch:     fetchHangLoiChuaXuLy,
+  color:     '#f59e0b',
+  hideCount: true,
 }
 
 function buildTasks(role) {
@@ -394,7 +395,7 @@ export default function WorkChecklistWidget() {
                 {/* Count / Done indicator */}
                 {done ? (
                   <CheckCircleOutlined style={{ color: '#22c55e', fontSize: 15, flexShrink: 0 }} />
-                ) : (
+                ) : t.hideCount ? null : (
                   <div style={{
                     minWidth: 22, height: 22, borderRadius: 11,
                     background: t.color, color: '#fff',

@@ -48,8 +48,16 @@ function DailyDetailTab() {
 
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
-  const [dateRange, setDateRange] = useState([dayjs().subtract(6, 'day'), dayjs()])
-  const [congDoan, setCongDoan] = useState('')
+  const [dateRange, setDateRange] = useState(() => {
+    try {
+      const saved = localStorage.getItem('daily_dateRange')
+      if (saved) { const [f, t] = JSON.parse(saved); return [dayjs(f), dayjs(t)] }
+    } catch {}
+    return [dayjs().subtract(6, 'day'), dayjs()]
+  })
+  const [congDoan, setCongDoan] = useState(
+    () => localStorage.getItem('daily_congDoan') || ''
+  )
 
   const [selectedRowKeys, setSelectedRowKeys] = useState([])
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -70,6 +78,16 @@ function DailyDetailTab() {
   }, [])
 
   useEffect(() => { fetchData() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (dateRange?.[0] && dateRange?.[1]) {
+      localStorage.setItem('daily_dateRange', JSON.stringify([
+        dateRange[0].format('YYYY-MM-DD'), dateRange[1].format('YYYY-MM-DD'),
+      ]))
+    }
+  }, [dateRange])
+
+  useEffect(() => { localStorage.setItem('daily_congDoan', congDoan) }, [congDoan])
 
   // Lấy slTrungBinh từ ProductMaster cho các maSp xuất hiện trong data
   const fetchNsTb = useCallback(async (rows) => {
@@ -1050,15 +1068,22 @@ export default function DailySanLuongPage() {
   const canApprove = isAdmin() || isAdminKH()
   const location = useLocation()
 
-  // Đọc ?tab= từ URL để điều hướng đúng tab
+  // Đọc ?tab= từ URL, fallback localStorage, rồi mới default 'daily'
   const tabFromUrl = new URLSearchParams(location.search).get('tab')
-  const [activeTab, setActiveTab] = useState(tabFromUrl || 'daily')
+  const [activeTab, setActiveTab] = useState(
+    tabFromUrl || localStorage.getItem('dailysl_activeTab') || 'daily'
+  )
 
-  // Cập nhật activeTab khi URL thay đổi (ví dụ: navigate('/daily-sl?tab=daily'))
+  // Cập nhật activeTab khi URL thay đổi
   useEffect(() => {
     const t = new URLSearchParams(location.search).get('tab')
     if (t) setActiveTab(t)
   }, [location.search])
+
+  // Lưu tab đang active vào localStorage
+  useEffect(() => {
+    localStorage.setItem('dailysl_activeTab', activeTab)
+  }, [activeTab])
 
   // Đếm pending để hiển thị badge trên tab
   const [pendingCount, setPendingCount] = useState(0)
