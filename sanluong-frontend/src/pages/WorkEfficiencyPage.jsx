@@ -1432,7 +1432,7 @@ export default function WorkEfficiencyPage() {
           position: 'sticky', top: 0, zIndex: 21,
         }}>
           {[
-            { key: 'efficiency', label: 'Hiệu quả', icon: <BarChartOutlined /> },
+            { key: 'efficiency', label: 'Hồ Sơ Sản Xuất', icon: <BarChartOutlined /> },
             { key: 'profile',    label: 'Hồ sơ',    icon: <IdcardOutlined /> },
           ].map(t => (
             <button key={t.key} onClick={() => setProfileTab(t.key)} style={{
