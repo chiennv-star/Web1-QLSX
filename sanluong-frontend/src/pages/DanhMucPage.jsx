@@ -1114,6 +1114,7 @@ function ProductMasterTab() {
   const [deletingNoBravo,   setDeletingNoBravo]   = useState(false)
   const [history,           setHistory]           = useState([])
   const [historyLoading,    setHistoryLoading]    = useState(false)
+  const [newItemId,         setNewItemId]         = useState(null)
   const [form] = Form.useForm()
 
   const fetchData = useCallback(async (page = 0, size = 20, kw = keyword, { silent = false } = {}) => {
@@ -1147,8 +1148,15 @@ function ProductMasterTab() {
           .then(res => setHistory(res.data || []))
           .catch(() => {})
       } else {
-        await api.post('/product-master', values)
+        const { data: created } = await api.post('/product-master', values)
         message.success('Đã thêm')
+        setModalOpen(false)
+        // Prepend mã mới lên đầu trang 1 và highlight 4 giây
+        setData(prev => [created, ...prev.filter(r => r.id !== created.id)])
+        setPagination(p => ({ ...p, current: 1, total: p.total + 1 }))
+        setNewItemId(created.id)
+        setTimeout(() => setNewItemId(null), 4000)
+        return
       }
       setModalOpen(false); fetchData(pagination.current - 1)
     } catch { message.error('Lưu thất bại') }
@@ -1304,6 +1312,7 @@ function ProductMasterTab() {
       <Table className="dm-table" columns={columns} dataSource={data} rowKey="id"
         loading={loading} size="small" scroll={{ x: 1500 }}
         sticky={{ offsetHeader: 44 }}
+        rowClassName={r => r.id === newItemId ? 'row-new-highlight' : ''}
         onRow={record => ({
           style: { cursor: 'pointer' },
           onClick: () => canEdit ? openEdit(record) : (() => { setDetailItem(record); setDetailOpen(true) })(),

@@ -117,3 +117,13 @@ body {
   .ant-tabs-nav-wrap { overflow: unset !important; }
 }
 
+/* ── Hàng mới thêm vào danh mục — highlight xanh fade-out ───────────────── */
+@keyframes newRowPulse {
+  0%   { background-color: #bfdbfe; }
+  60%  { background-color: #dbeafe; }
+  100% { background-color: transparent; }
+}
+.row-new-highlight > td {
+  animation: newRowPulse 4s ease-out forwards !important;
+}
+
