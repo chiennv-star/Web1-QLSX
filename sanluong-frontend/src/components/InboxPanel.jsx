@@ -320,11 +320,12 @@ export default function InboxPanel({ open, onClose, onCountChange }) {
     try {
       await api.patch(`/production/${id}/phat-lenh`)
       message.success('Đã phát lệnh thành công!')
-      await syncHangLoi(record)
-      await syncWorkSchedule(record)
       setChuaPhat(p => p.filter(r => r.id !== id))
       setSelectedIds(p => { const n = new Set(p); n.delete(id); return n })
       onClose()
+      // Sync chạy background sau khi đóng
+      syncHangLoi(record)
+      syncWorkSchedule(record)
     } catch { message.error('Phát lệnh thất bại') }
     finally { setPhatLenhState(p => { const n = { ...p }; delete n[id]; return n }) }
   }
@@ -337,12 +338,12 @@ export default function InboxPanel({ open, onClose, onCountChange }) {
     const records = chuaPhat.filter(r => ids.includes(r.id))
     try {
       await Promise.all(ids.map(id => api.patch(`/production/${id}/phat-lenh`)))
-      await Promise.all(records.map(r => syncHangLoi(r)))
-      await Promise.all(records.map(r => syncWorkSchedule(r)))
       message.success(`Đã phát lệnh ${ids.length} bản ghi`)
       setChuaPhat(p => p.filter(r => !ids.includes(r.id)))
       setSelectedIds(new Set())
       onClose()
+      // Sync chạy background sau khi đóng
+      records.forEach(r => { syncHangLoi(r); syncWorkSchedule(r) })
     } catch { message.error('Phát lệnh thất bại') }
     finally { setBatchLoading(false) }
   }
