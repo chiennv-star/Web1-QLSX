@@ -217,8 +217,8 @@ export default function MainLayout() {
         { key: '/khoach',          icon: <CalendarOutlined />, label: 'Kế hoạch' },
         ...(canEditHangLoi() ? [{
           key: '/hang-loi',
-          icon: mkBadgeIcon(<WarningOutlined />, hangLoi),
-          label: mkBadgeLabel('Hàng Xử Lý', hangLoi),
+          icon: <WarningOutlined />,
+          label: 'Hàng Xử Lý',
         }] : []),
         ...(isAdmin() ? [
           { key: '/work-efficiency', icon: <TrophyOutlined />, label: 'Nhân Viên' },
