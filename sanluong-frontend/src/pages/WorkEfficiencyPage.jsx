@@ -1561,6 +1561,84 @@ export default function WorkEfficiencyPage() {
       `}</style>
 
 
+      {/* ── Toolbar: kỳ thời gian + tìm kiếm ── */}
+      <div className="eff-toolbar-row1" style={{
+        display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+        padding: '8px 14px', background: '#f8fafc',
+        borderBottom: '1px solid #e2e8f0',
+      }}>
+        {/* Period type toggle */}
+        <div className="eff-period-toggle" style={{
+          display: 'inline-flex', border: '1px solid #e2e8f0',
+          borderRadius: 7, overflow: 'hidden', background: '#fff', flexShrink: 0,
+        }}>
+          {PERIOD_TYPES.map(pt => (
+            <button key={pt.key} onClick={() => setPeriodType(pt.key)} style={{
+              padding: '5px 11px', border: 'none', cursor: 'pointer',
+              fontSize: 12, fontWeight: periodType === pt.key ? 700 : 400,
+              background: periodType === pt.key ? '#1D4ED8' : 'transparent',
+              color: periodType === pt.key ? '#fff' : '#475569',
+              transition: 'all .15s',
+            }}>
+              {pt.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Date picker theo kỳ */}
+        <div className="eff-period-row" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {periodType === 'day' && (
+            <DatePicker value={dayValue} onChange={v => v && setDayValue(v)}
+              format="DD/MM/YYYY" allowClear={false} size="small" style={{ width: 130 }} />
+          )}
+          {periodType === 'week' && (
+            <DatePicker value={weekValue} onChange={v => v && setWeekValue(v)}
+              picker="week" format="[Tuần] w - YYYY" allowClear={false} size="small" style={{ width: 150 }} />
+          )}
+          {periodType === 'month' && (
+            <DatePicker value={monthValue} onChange={v => v && setMonthValue(v)}
+              picker="month" format="MM/YYYY" allowClear={false} size="small" style={{ width: 110 }} />
+          )}
+          {periodType === 'quarter' && (
+            <Space size={4}>
+              <Select size="small" value={quarterQ} onChange={setQuarterQ} style={{ width: 68 }}>
+                {[1,2,3,4].map(q => <Option key={q} value={q}>Q{q}</Option>)}
+              </Select>
+              <Select size="small" value={quarterYear} onChange={setQuarterYear} style={{ width: 80 }}>
+                {Array.from({ length: 5 }, (_, i) => dayjs().year() - 2 + i).map(y =>
+                  <Option key={y} value={y}>{y}</Option>
+                )}
+              </Select>
+            </Space>
+          )}
+          {periodType === 'year' && (
+            <DatePicker value={yearValue} onChange={v => v && setYearValue(v)}
+              picker="year" format="YYYY" allowClear={false} size="small" style={{ width: 90 }} />
+          )}
+          <Tag className="eff-period-tag" color="blue" style={{ margin: 0, fontWeight: 600, fontSize: 11 }}>
+            {periodStr}
+          </Tag>
+        </div>
+
+        {/* Tìm kiếm */}
+        <Input
+          className="eff-search-input"
+          prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+          placeholder="Tìm mã NV, họ tên..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          allowClear
+          size="small"
+          style={{ width: 200, borderRadius: 7 }}
+        />
+
+        {/* Reload */}
+        <Button size="small" icon={<ReloadOutlined spin={loading} />}
+          onClick={() => fetchData(fromDate, toDate, activeGroup)}
+          style={{ marginLeft: 'auto', flexShrink: 0 }}
+        />
+      </div>
+
       {/* ── Group tabs + table ── */}
       <div style={{ marginTop: 0 }}>
         {/* Group tab bar — ẩn với NHAN_VIEN */}
