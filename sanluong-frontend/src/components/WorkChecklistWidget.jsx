@@ -315,7 +315,7 @@ export default function WorkChecklistWidget() {
 
   if (!shouldShow) return null
 
-  const totalPending = tasks.reduce((s, t) => s + (counts[t.id] || 0), 0)
+  const totalPending = tasks.reduce((s, t) => t.hideCount ? s : s + (counts[t.id] || 0), 0)
   const allDone      = totalPending === 0
 
   // ── Popover content ────────────────────────────────────────────────────────
