@@ -126,6 +126,16 @@ public class LenhSanXuatService {
         return toDto(saved);
     }
 
+    public int countPendingSync() {
+        return (int) repo.findAll().stream()
+                .filter(e -> e.getDeletedAt() == null
+                          && e.getMaBravo() != null
+                          && e.getSoLo() != null
+                          && !productionRepo.existsByMaBravoAndLsxAndMaDonHang(
+                                  e.getMaBravo(), e.getSoLo(), e.getMaDonHang()))
+                .count();
+    }
+
     @Transactional
     public int syncAllSanLuong(String username) {
         List<LenhSanXuat> all = repo.findAll().stream()

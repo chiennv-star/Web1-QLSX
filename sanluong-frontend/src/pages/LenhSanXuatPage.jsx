@@ -1132,16 +1132,17 @@ export default function LenhSanXuatPage() {
     } catch { /* silent */ }
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load(); fetchPendingSync() }, [load, fetchPendingSync])
 
   // Auto-refresh mỗi 60 giây + kiểm tra duplicate sau mỗi lần tải
   useEffect(() => {
     const interval = setInterval(async () => {
       const records = await load({ silent: true })
       if (records) deduplicateLenhSX(records)
+      fetchPendingSync()
     }, 60_000)
     return () => clearInterval(interval)
-  }, [load, deduplicateLenhSX])
+  }, [load, deduplicateLenhSX, fetchPendingSync])
 
   useEffect(() => {
     const handler = () => load({ silent: true })
@@ -1243,6 +1244,15 @@ export default function LenhSanXuatPage() {
   }
 
   const [syncingAll, setSyncingAll] = useState(false)
+  const [pendingSyncCount, setPendingSyncCount] = useState(0)
+
+  const fetchPendingSync = useCallback(async () => {
+    try {
+      const { data } = await api.get('/lenh-san-xuat/pending-sync-count')
+      setPendingSyncCount(data.count ?? 0)
+    } catch { /* silent */ }
+  }, [])
+
   const handleSyncAllSanLuong = async () => {
     setSyncingAll(true)
     try {
@@ -1252,6 +1262,7 @@ export default function LenhSanXuatPage() {
       } else {
         message.info('Tất cả Lệnh SX đã có bản ghi Sản Lượng tương ứng', 2)
       }
+      fetchPendingSync()
     } catch { message.error('Đồng bộ thất bại') }
     finally { setSyncingAll(false) }
   }
@@ -1984,8 +1995,13 @@ export default function LenhSanXuatPage() {
           {canEdit && (
             <Button size="small" icon={<SyncOutlined />} onClick={handleSyncAllSanLuong}
               loading={syncingAll}
-              style={{ fontWeight: 600, borderColor: '#339999', color: '#339999' }}>
-              Đồng bộ SL
+              style={{
+                fontWeight: 600,
+                borderColor: pendingSyncCount > 0 ? '#0033CC' : '#339999',
+                color: pendingSyncCount > 0 ? '#fff' : '#339999',
+                background: pendingSyncCount > 0 ? '#0033CC' : undefined,
+              }}>
+              Đồng bộ SL{pendingSyncCount > 0 ? ` (${pendingSyncCount})` : ''}
             </Button>
           )}
           {canEdit && (

@@ -119,6 +119,11 @@ public class LenhSanXuatController {
         return ResponseEntity.ok(service.getFieldHistory(id, field));
     }
 
+    @GetMapping("/pending-sync-count")
+    public ResponseEntity<Map<String, Integer>> pendingSyncCount() {
+        return ResponseEntity.ok(Map.of("count", service.countPendingSync()));
+    }
+
     @PostMapping("/sync-san-luong")
     public ResponseEntity<Map<String, Integer>> syncSanLuong(Authentication auth) {
         int created = service.syncAllSanLuong(auth.getName());
