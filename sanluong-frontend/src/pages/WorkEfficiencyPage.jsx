@@ -112,10 +112,112 @@ function KpiCard({ label, value, sub, accent }) {
   )
 }
 
+// ── Employee profile read-only (admin view) ───────────────────────────────────
+const TINH_TRANG_COLOR = { 'Đang làm': '#52c41a', 'Nghỉ việc': '#ff4d4f', 'Tạm nghỉ': '#faad14' }
+const GROUP_TAG_COLOR = { PCPL1: '#4db3d4', PCPL2: '#748090', PCPL3: '#f97316', ĐG: '#eab308', BBC1: '#ec4899' }
+
+function ProfileInfoRow({ icon, label, children }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 16px', borderBottom: '1px solid #f1f5f9' }}>
+      <div style={{ width: 32, height: 32, minWidth: 32, borderRadius: 8, background: '#f0f7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1D4ED8', fontSize: 14 }}>{icon}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500, marginBottom: 2 }}>{label}</div>
+        <div style={{ fontSize: 13, color: '#1e293b', fontWeight: 600 }}>{children}</div>
+      </div>
+    </div>
+  )
+}
+
+function EmployeeProfileReadOnly({ employee: emp }) {
+  if (!emp) return null
+  const fmtD = v => v ? dayjs(v).format('DD/MM/YYYY') : <span style={{ color: '#cbd5e1' }}>—</span>
+  const tinhTrang = emp.tinhTrang || 'Đang làm'
+  return (
+    <div style={{ maxWidth: 560, margin: '20px auto', padding: '0 12px' }}>
+      {/* Header banner */}
+      <div style={{
+        background: 'linear-gradient(135deg, #1e4570 0%, #339999 100%)',
+        borderRadius: 14, padding: '20px 24px',
+        display: 'flex', alignItems: 'center', gap: 18,
+        marginBottom: 16, boxShadow: '0 4px 20px rgba(30,69,112,0.18)',
+      }}>
+        <Avatar size={64} icon={<UserOutlined />}
+          style={{ background: 'rgba(255,255,255,0.22)', border: '3px solid rgba(255,255,255,0.5)', fontSize: 28, flexShrink: 0 }} />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {emp.hoVaTen || '—'}
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Tag style={{ background: 'rgba(255,255,255,0.18)', border: 'none', color: '#fff', fontFamily: 'monospace', fontWeight: 700, marginRight: 0 }}>
+              {emp.maNhanVien || '—'}
+            </Tag>
+            {emp.toNhom && (
+              <Tag style={{ background: GROUP_TAG_COLOR[emp.toNhom] || '#64748b', border: 'none', color: '#fff', fontWeight: 700, marginRight: 0 }}>
+                {emp.toNhom}
+              </Tag>
+            )}
+            <Tag style={{
+              background: (TINH_TRANG_COLOR[tinhTrang] || '#64748b') + '33',
+              border: `1px solid ${TINH_TRANG_COLOR[tinhTrang] || '#64748b'}55`,
+              color: TINH_TRANG_COLOR[tinhTrang] || '#fff',
+              fontWeight: 700, marginRight: 0, fontSize: 11,
+            }}>
+              {tinhTrang}
+            </Tag>
+          </div>
+        </div>
+      </div>
+
+      {/* Info rows */}
+      <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <ProfileInfoRow icon={<TeamOutlined />} label="Tổ / Nhóm">
+          {emp.toNhom
+            ? <Tag color="cyan" style={{ fontWeight: 700, marginRight: 0 }}>{emp.toNhom}</Tag>
+            : <span style={{ color: '#cbd5e1' }}>—</span>}
+        </ProfileInfoRow>
+        <ProfileInfoRow icon={<IdcardOutlined />} label="Vị trí">
+          {emp.viTri
+            ? <Tag color={emp.viTri?.toLowerCase().includes('trưởng') ? 'gold' : 'geekblue'} style={{ marginRight: 0 }}>{emp.viTri}</Tag>
+            : <span style={{ color: '#cbd5e1' }}>—</span>}
+        </ProfileInfoRow>
+        <ProfileInfoRow icon={<PhoneOutlined />} label="Số điện thoại">
+          {emp.sdt
+            ? <a href={`tel:${emp.sdt}`} style={{ color: '#1677ff', fontWeight: 600 }}>{emp.sdt}</a>
+            : <span style={{ color: '#cbd5e1' }}>—</span>}
+        </ProfileInfoRow>
+        <ProfileInfoRow icon={<HomeOutlined />} label="Địa chỉ">
+          {emp.diaChi || <span style={{ color: '#cbd5e1' }}>—</span>}
+        </ProfileInfoRow>
+        <ProfileInfoRow icon={<CalendarOutlined />} label="Ngày sinh">
+          {fmtD(emp.ngaySinh)}
+        </ProfileInfoRow>
+        <ProfileInfoRow icon={<CalendarOutlined />} label="Ngày vào công ty">
+          {fmtD(emp.thoiGianVaoCongTy)}
+        </ProfileInfoRow>
+        {emp.ngayNghiViec && (
+          <ProfileInfoRow icon={<CalendarOutlined />} label="Ngày nghỉ việc">
+            <span style={{ color: '#ef4444', fontWeight: 600 }}>{fmtD(emp.ngayNghiViec)}</span>
+          </ProfileInfoRow>
+        )}
+        {emp.hocVan && (
+          <ProfileInfoRow icon={<IdcardOutlined />} label="Học vấn">
+            {emp.hocVan}
+          </ProfileInfoRow>
+        )}
+        {emp.ghiChu && (
+          <ProfileInfoRow icon={<ExclamationCircleOutlined />} label="Ghi chú">
+            <span style={{ color: '#d46b08' }}>{emp.ghiChu}</span>
+          </ProfileInfoRow>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Employee detail drawer ─────────────────────────────────────────────────────
 const VAI_TRO_OPTIONS = ['Trưởng ca', 'Phụ máy', 'Công nhân', 'KCS', 'Kỹ thuật'].map(v => ({ value: v }))
 
-function EmployeeDetailDrawer({ open, employee, fromDate, toDate, periodStr, onClose, isAdmin, onRefreshMain }) {
+function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, periodStr, onClose, isAdmin, onRefreshMain }) {
   const navigate = useNavigate()
   const [sessions,  setSessions]  = useState([])
   const [loading,   setLoading]   = useState(false)
@@ -125,6 +227,14 @@ function EmployeeDetailDrawer({ open, employee, fromDate, toDate, periodStr, onC
   const [sessionForm] = Form.useForm()
   const [sessionDetailOpen, setSessionDetailOpen] = useState(false)
   const [selectedSession,   setSelectedSession]   = useState(null)
+  const [drawerTab, setDrawerTab] = useState('sx')
+
+  const fullEmp = useMemo(
+    () => employees?.find(e => e.maNhanVien === employee?.maNhanVien) || employee || {},
+    [employees, employee]
+  )
+
+  useEffect(() => { setDrawerTab('sx') }, [employee?.maNhanVien])
 
   const loadSessions = useCallback(async () => {
     if (!employee) return
@@ -369,8 +479,31 @@ function EmployeeDetailDrawer({ open, employee, fromDate, toDate, periodStr, onC
             )}
           </div>
         }
-        styles={{ body: { padding: '16px', background: '#fafafe' } }}
+        styles={{ body: { padding: 0, background: '#fafafe' } }}
       >
+        {/* ── Tab switcher ── */}
+        <div style={{ display: 'flex', borderBottom: '2px solid #e0e7ff', background: '#fff', paddingLeft: 16 }}>
+          {[
+            { key: 'sx',      label: 'Hồ Sơ Sản Xuất', icon: <BarChartOutlined /> },
+            { key: 'profile', label: 'Hồ Sơ Nhân Viên', icon: <IdcardOutlined /> },
+          ].map(t => (
+            <button key={t.key} onClick={() => setDrawerTab(t.key)} style={{
+              padding: '10px 20px', border: 'none', cursor: 'pointer', background: 'transparent',
+              fontSize: 13, fontWeight: drawerTab === t.key ? 700 : 500,
+              color: drawerTab === t.key ? '#1D4ED8' : '#64748b',
+              borderBottom: drawerTab === t.key ? '2.5px solid #1D4ED8' : '2.5px solid transparent',
+              marginBottom: -2, display: 'flex', alignItems: 'center', gap: 6, transition: 'all .15s',
+            }}>
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
+
+        {drawerTab === 'profile' ? (
+          <EmployeeProfileReadOnly employee={fullEmp} />
+        ) : (
+        <div style={{ padding: 16 }}>
+
         {/* Mini KPI strip */}
         <div className="eff-detail-mini-kpi" style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
           {[
@@ -465,6 +598,8 @@ function EmployeeDetailDrawer({ open, employee, fromDate, toDate, periodStr, onC
               })}
             </div>
           </>
+        )}
+        </div>
         )}
       </Drawer>
 
@@ -1779,6 +1914,7 @@ export default function WorkEfficiencyPage() {
       <EmployeeDetailDrawer
         open={drawerOpen}
         employee={drawerEmployee}
+        employees={employees}
         fromDate={fromDate}
         toDate={toDate}
         periodStr={periodStr}
