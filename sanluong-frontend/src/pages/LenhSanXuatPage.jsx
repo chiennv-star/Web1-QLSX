@@ -1545,6 +1545,19 @@ export default function LenhSanXuatPage() {
       ),
     },
     {
+      title: 'Phát Hành', key: 'trangThai', width: 110, align: 'center',
+      filters: [
+        { text: 'Chưa phát hành', value: 'chua' },
+        { text: 'Đã phát hành',   value: 'da'   },
+      ],
+      onFilter: (value, r) => value === 'da'
+        ? !!(r.daBanHanh || r.soLo)
+        : !(r.daBanHanh || r.soLo),
+      render: (_, r) => (r.daBanHanh || r.soLo)
+        ? <Tag color="success" style={{ fontWeight: 700, fontSize: 11, marginRight: 0 }}>✓ Đã phát hành</Tag>
+        : <Tag color="warning" style={{ fontWeight: 700, fontSize: 11, marginRight: 0, color: '#92400e' }}>⏳ Chưa phát hành</Tag>,
+    },
+    {
       title: 'Ngày TH', dataIndex: 'ngayThucHien', key: 'ngay', width: 88, align: 'center',
       sorter: (a, b) => (a.ngayThucHien || '').localeCompare(b.ngayThucHien || ''),
       render: v => v ? (
