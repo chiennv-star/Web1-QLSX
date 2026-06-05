@@ -337,7 +337,7 @@ function DonHangModal({ open, editItem, onClose, onSaved, existingMaDonHangs = [
             rules={[{ required: true, message: 'Nhập Mã Đơn Hàng' }]}>
             <Input placeholder="VD: DH-001" autoComplete="off" style={{ fontFamily: 'monospace' }} />
           </Form.Item>
-          <Form.Item label="Ngày Đặt Hàng" name="ngayDatHang" style={{ flex: 1 }}>
+          <Form.Item label="Ngày Đặt Hàng" name="ngayDatHang" style={{ flex: 1 }} rules={[{ required: true, message: 'Vui lòng chọn ngày đặt hàng' }]}>
             <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} />
           </Form.Item>
         </div>
