@@ -1940,7 +1940,7 @@ export default function WorkEfficiencyPage() {
         .eff-tabs > .ant-tabs-nav .ant-tabs-ink-bar { background: #60A5FA !important; }
         .eff-tabs > .ant-tabs-nav::before { border: none !important; }
         /* ERP blue table header */
-        .eff-table .ant-table-thead > tr > th { background: #3399CC !important; color: #ffffff !important; font-size: 11px !important; text-transform: uppercase; padding: 7px 8px !important; letter-spacing: 0.4px; border-right: 1px solid #4db3d4 !important; white-space: nowrap; }
+        .eff-table .ant-table-thead > tr > th { background: #99CCCC !important; color: #1a4a4a !important; font-size: 11px !important; text-transform: uppercase; padding: 7px 8px !important; letter-spacing: 0.4px; border-right: 1px solid #4db3d4 !important; white-space: nowrap; }
         .eff-table .ant-table-thead > tr > th::before { display: none !important; }
         .eff-table .ant-table-tbody > tr > td { padding: 6px 8px !important; font-size: 12px; vertical-align: middle; }
         .eff-table .ant-table-tbody > tr:hover > td { background: #f5f3ff !important; }
@@ -2019,6 +2019,7 @@ export default function WorkEfficiencyPage() {
         display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
         padding: '8px 14px', background: '#f8fafc',
         borderBottom: '1px solid #e2e8f0',
+        position: 'sticky', top: isNhanVien() ? 42 : 0, zIndex: 20,
       }}>
         {/* Period type toggle */}
         <div className="eff-period-toggle" style={{
