@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────
 # Stage 1 — Build (Maven + JDK 17)
 # ─────────────────────────────────────────
-FROM maven:3.9-eclipse-temurin-17-alpine AS builder
+FROM maven:3.9-eclipse-temurin-17 AS builder
 
 WORKDIR /app
 
@@ -17,12 +17,12 @@ RUN mvn package -DskipTests -B -q
 # ─────────────────────────────────────────
 # Stage 2 — Runtime (JRE 17 Alpine)
 # ─────────────────────────────────────────
-FROM eclipse-temurin:17-jre-alpine AS runner
+FROM eclipse-temurin:17-jre-jammy AS runner
 
 WORKDIR /app
 
 # Non-root user for security
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 USER appuser
 
 COPY --from=builder /app/target/*.jar app.jar
