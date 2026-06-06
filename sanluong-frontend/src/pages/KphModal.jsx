@@ -6,7 +6,7 @@ import {
 import {
   SaveOutlined, PlusOutlined, DeleteOutlined, FileTextOutlined,
 } from '@ant-design/icons'
-import api from '../api'
+import api from '../api/axios'
 import dayjs from 'dayjs'
 
 const { TextArea } = Input
