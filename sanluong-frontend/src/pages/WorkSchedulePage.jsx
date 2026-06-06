@@ -3109,6 +3109,7 @@ export default function WorkSchedulePage() {
     return allowedStages.includes(s) ? s : allowedStages[0]
   })()
   const [activeTab, setActiveTab] = useState(() => {
+    if (jumpInit?.stage) return defaultStage
     try {
       const saved = localStorage.getItem('ws_active_tab')
       if (saved && (!allowedStages || allowedStages.length === 0 ||
