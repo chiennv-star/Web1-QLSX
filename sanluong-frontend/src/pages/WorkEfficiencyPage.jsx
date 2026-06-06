@@ -710,7 +710,7 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
           ))}
         </div>
 
-        <style>{`.eff-detail-table .ant-table-thead > tr > th { background: linear-gradient(90deg, #2980b3 0%, #3399CC 100%) !important; color: #ffffff !important; font-size: 11px !important; text-transform: uppercase; padding: 6px 8px !important; border-right: 1px solid #4db3d4 !important; } .eff-detail-table .ant-table-thead > tr > th::before { display: none !important; }`}</style>
+        <style>{`.eff-detail-table .ant-table-thead > tr > th { background: #FFCC99 !important; color: #7c3a00 !important; font-size: 11px !important; text-transform: uppercase; padding: 6px 8px !important; border-right: 1px solid #f0a060 !important; } .eff-detail-table .ant-table-thead > tr > th::before { display: none !important; }`}</style>
 
         {loading ? (
           <Spin style={{ display: 'block', margin: '60px auto' }} size="large" />
