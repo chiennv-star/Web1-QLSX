@@ -73,7 +73,7 @@ export default function KphModal({ open, workScheduleRecord, onClose, onSaved })
           if (d.phuongAnKhacPhuc) {
             try {
               const rows = JSON.parse(d.phuongAnKhacPhuc)
-              setPhuongAnRows(rows.map((r, i) => ({ ...r, key: String(i + 1) })))
+              setPhuongAnRows(rows.map((row, i) => ({ ...row, key: String(i + 1) })))
             } catch { /* ignore parse error */ }
           }
         } else {

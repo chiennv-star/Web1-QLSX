@@ -11,7 +11,7 @@ public class KphRecord {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "work_schedule_id")
+    @Column(name = "work_schedule_id", unique = true)
     private Long workScheduleId;
 
     // ── Section 1: TRƯỜNG DỮ LIỆU KHI NHẬP MỚI ────────────────────────────
