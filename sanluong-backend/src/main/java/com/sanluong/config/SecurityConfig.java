@@ -99,6 +99,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/factory-plan/**").hasAnyRole(ALL_ROLES)
                 .requestMatchers("/api/factory-plan/**").hasAnyRole("ADMIN", "TKSX")
 
+                // ── KPH: tất cả xem, tất cả ADMIN_* + TKSX + NHAN_VIEN tạo/sửa ──
+                .requestMatchers(HttpMethod.GET, "/api/kph/**").hasAnyRole(ALL_ROLES)
+                .requestMatchers("/api/kph/**").hasAnyRole(ALL_ROLES)
+
                 // ── Hàng lỗi: tất cả xem, tất cả ADMIN_* + TKSX sửa ─────────────
                 .requestMatchers(HttpMethod.GET, "/api/hang-loi/**").hasAnyRole(ALL_ROLES)
                 .requestMatchers("/api/hang-loi/**").hasAnyRole(

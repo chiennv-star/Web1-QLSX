@@ -17,6 +17,7 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate, useLocation } from 'react-router-dom'
 import WipPage from './WipPage'
 import PhongThucHienSelect from '../components/PhongThucHienSelect'
+import KphModal from './KphModal'
 
 const { Option } = Select
 const { RangePicker } = DatePicker
@@ -3161,6 +3162,8 @@ export default function WorkSchedulePage() {
   const [devFilters, setDevFilters] = useState({ dateRange: null, maSp: '', tenTrinh: '', soLo: '' })
   const [devModalOpen, setDevModalOpen] = useState(false)
   const [devEditItem, setDevEditItem] = useState(null)
+  const [kphModalOpen, setKphModalOpen] = useState(false)
+  const [kphRecord, setKphRecord] = useState(null)
 
   const refreshDevCount = useCallback(async () => {
     try {
@@ -3263,10 +3266,17 @@ export default function WorkSchedulePage() {
       render: tinhTrangTag,
     },
     {
-      title: 'Thao tác', key: 'action', width: 130, align: 'center',
+      title: 'Thao tác', key: 'action', width: 160, align: 'center',
       render: (_, record) => (
         <Space size={4}>
-          <Tooltip title="Chỉnh sửa">
+          <Tooltip title="Mở hồ sơ KPH">
+            <Button size="small" type="primary" ghost
+              style={{ color: '#fa8c16', borderColor: '#fa8c16', fontWeight: 700, fontSize: 11 }}
+              onClick={() => { setKphRecord(record); setKphModalOpen(true) }}>
+              KPH
+            </Button>
+          </Tooltip>
+          <Tooltip title="Chỉnh sửa lịch">
             <Button size="small" icon={<EditOutlined />}
               onClick={() => { setDevEditItem(record); setDevModalOpen(true) }} />
           </Tooltip>
@@ -3415,6 +3425,13 @@ export default function WorkSchedulePage() {
             extraFormFields={STAGE_CONFIG[devEditItem?.congDoan]?.extraFormFields || []}
             onClose={() => setDevModalOpen(false)}
             onSaved={() => { fetchDeviations(0); refreshDevCount() }}
+          />
+
+          <KphModal
+            open={kphModalOpen}
+            workScheduleRecord={kphRecord}
+            onClose={() => setKphModalOpen(false)}
+            onSaved={() => fetchDeviations(0)}
           />
         </>
       )
