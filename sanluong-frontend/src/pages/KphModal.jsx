@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import {
-  Drawer, Form, Input, Button, Space, message, Divider,
+  Form, Input, Button, Space, message,
   DatePicker, Select, Table, Tooltip, Tag, Spin,
 } from 'antd'
 import {
-  SaveOutlined, PlusOutlined, DeleteOutlined, FileTextOutlined,
+  SaveOutlined, PlusOutlined, DeleteOutlined, FileTextOutlined, ArrowLeftOutlined,
 } from '@ant-design/icons'
 import api from '../api/axios'
 import dayjs from 'dayjs'
@@ -178,28 +178,39 @@ export default function KphModal({ open, workScheduleRecord, onClose, onSaved })
   // ── Render ────────────────────────────────────────────────────────────────
   const ws = workScheduleRecord || {}
 
+  if (!open) return null
+
   return (
-    <Drawer
-      open={open}
-      onClose={onClose}
-      width="min(95vw, 860px)"
-      title={
-        <Space>
-          <FileTextOutlined style={{ color: '#fa8c16' }} />
-          <span style={{ fontWeight: 800 }}>Hồ Sơ KPH</span>
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: '#f0f2f5', overflowY: 'auto', display: 'flex', flexDirection: 'column',
+    }}>
+      {/* Header */}
+      <div style={{
+        position: 'sticky', top: 0, zIndex: 10,
+        background: '#fff', borderBottom: '1px solid #e8e8e8',
+        padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+      }}>
+        <Button icon={<ArrowLeftOutlined />} onClick={onClose} style={{ fontWeight: 700 }}>
+          Quay lại
+        </Button>
+        <Space style={{ flex: 1 }}>
+          <FileTextOutlined style={{ color: '#fa8c16', fontSize: 16 }} />
+          <span style={{ fontWeight: 800, fontSize: 15 }}>Hồ Sơ KPH</span>
           {ws.maSp && <Tag color="blue">{ws.maSp}</Tag>}
           {ws.soLo && <Tag color="purple">Lô: {ws.soLo}</Tag>}
           {ws.congDoan && <Tag color="orange">{ws.congDoan}</Tag>}
           {kph?.id && <Tag color="green" style={{ fontSize: 10 }}>Đã lưu #{kph.id}</Tag>}
         </Space>
-      }
-      extra={
         <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={handleSave}>
           Lưu hồ sơ
         </Button>
-      }
-      styles={{ body: { padding: 0, background: '#f5f5f5' } }}
-    >
+      </div>
+
+      {/* Body */}
+      <div style={{ flex: 1, padding: '16px 0 40px', display: 'flex', justifyContent: 'center' }}>
+      <div style={{ width: '100%', maxWidth: 900 }}>
       <Spin spinning={loading}>
         <Form form={form} layout="vertical" style={{ padding: 0 }}>
           <style>{`
@@ -448,6 +459,8 @@ export default function KphModal({ open, workScheduleRecord, onClose, onSaved })
           </div>
         </Form>
       </Spin>
-    </Drawer>
+      </div>
+      </div>
+    </div>
   )
 }
