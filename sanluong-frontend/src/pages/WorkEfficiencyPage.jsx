@@ -2093,6 +2093,37 @@ export default function WorkEfficiencyPage() {
         />
       </div>
 
+      {/* ── Admin toolbar ── */}
+      {isAdmin() && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
+          padding: '6px 14px', background: '#fff7ed',
+          borderBottom: '1px solid #fed7aa',
+        }}>
+          <span style={{ fontSize: 11, color: '#92400e', fontWeight: 600, marginRight: 4 }}>Quản trị:</span>
+          <Button size="small" icon={<SyncOutlined spin={syncing} />} loading={syncing}
+            onClick={handleSyncAll}>
+            Đồng bộ NV
+          </Button>
+          <Button size="small" icon={<SyncOutlined spin={recalculating} />} loading={recalculating}
+            onClick={handleRecalculateNs}>
+            Tính lại NS
+          </Button>
+          <Button size="small" loading={fixingNhom} onClick={handleFixNhomThucHien}>
+            Sửa nhóm TH
+          </Button>
+          <Button size="small" loading={fixingMaNv} onClick={handleFixNullMaNhanVien}>
+            Sửa Mã NV null
+          </Button>
+          {selectedRowKeys.length > 0 && (
+            <Button size="small" danger icon={<DeleteOutlined />} loading={bulkDeleting}
+              onClick={handleBulkDelete}>
+              Xóa {selectedRowKeys.length} NV
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* ── Group tabs + table ── */}
       <div style={{ marginTop: 0 }}>
         {/* Group tab bar — ẩn với NHAN_VIEN */}
