@@ -1,9 +1,9 @@
 name: Build, Push & Deploy
 
 on:
-  # push:          # ⏸ TẠM TẮT — đang phát triển tính năng mới
-  #   branches:
-  #     - master
+  push:
+    branches:
+      - master
   workflow_dispatch:
 
 env:
