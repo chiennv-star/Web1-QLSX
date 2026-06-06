@@ -146,10 +146,13 @@ public class WorkScheduleService {
     }
 
     public Page<WorkSchedule> findDeviations(LocalDate fromDate, LocalDate toDate,
-                                              String maSp, int page, int size) {
+                                              String maSp, String tenTrinh, String soLo,
+                                              int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<WorkSchedule> result = repository.findDeviations(fromDate, toDate,
                 isEmpty(maSp) ? null : maSp,
+                isEmpty(tenTrinh) ? null : tenTrinh,
+                isEmpty(soLo) ? null : soLo,
                 pageable);
         enrichMaBravo(new ArrayList<>(result.getContent()));
         return result;

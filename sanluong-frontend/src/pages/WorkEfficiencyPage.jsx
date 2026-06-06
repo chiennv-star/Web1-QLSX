@@ -217,7 +217,7 @@ function EmployeeProfileReadOnly({ employee: emp }) {
 // ── Employee detail drawer ─────────────────────────────────────────────────────
 const VAI_TRO_OPTIONS = ['Trưởng ca', 'Phụ máy', 'Công nhân', 'KCS', 'Kỹ thuật'].map(v => ({ value: v }))
 
-function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, periodStr, onClose, isAdmin, onRefreshMain }) {
+function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, periodStr, onClose, isAdmin, canEdit, onRefreshMain }) {
   const navigate = useNavigate()
   const [sessions,  setSessions]  = useState([])
   const [loading,   setLoading]   = useState(false)
@@ -229,12 +229,70 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
   const [selectedSession,   setSelectedSession]   = useState(null)
   const [drawerTab, setDrawerTab] = useState('sx')
 
+  // Profile edit
+  const [profileEditOpen,   setProfileEditOpen]   = useState(false)
+  const [profileEditSaving, setProfileEditSaving] = useState(false)
+  const [profileEditForm]   = Form.useForm()
+
   const fullEmp = useMemo(
     () => employees?.find(e => e.maNhanVien === employee?.maNhanVien) || employee || {},
     [employees, employee]
   )
 
   useEffect(() => { setDrawerTab('sx') }, [employee?.maNhanVien])
+
+  const openProfileEdit = () => {
+    profileEditForm.setFieldsValue({
+      hoVaTen:            fullEmp.hoVaTen || '',
+      maNhanVien:         fullEmp.maNhanVien || '',
+      toNhom:             fullEmp.toNhom || '',
+      viTri:              fullEmp.viTri || '',
+      sdt:                fullEmp.sdt || '',
+      diaChi:             fullEmp.diaChi || '',
+      ngaySinh:           fullEmp.ngaySinh ? dayjs(fullEmp.ngaySinh) : null,
+      thoiGianVaoCongTy:  fullEmp.thoiGianVaoCongTy ? dayjs(fullEmp.thoiGianVaoCongTy) : null,
+      ngayNghiViec:       fullEmp.ngayNghiViec ? dayjs(fullEmp.ngayNghiViec) : null,
+      tinhTrang:          fullEmp.tinhTrang || 'Đang làm',
+      ghiChu:             fullEmp.ghiChu || '',
+      hocVan:             fullEmp.hocVan || '',
+    })
+    setProfileEditOpen(true)
+  }
+
+  const handleProfileEditSave = async () => {
+    const values = await profileEditForm.validateFields()
+    setProfileEditSaving(true)
+    try {
+      if (isAdmin) {
+        if (!fullEmp.id) { message.error('Không tìm thấy ID nhân viên'); return }
+        await api.put(`/employees/${fullEmp.id}`, {
+          maNhanVien:        values.maNhanVien,
+          hoVaTen:           values.hoVaTen,
+          toNhom:            values.toNhom,
+          viTri:             values.viTri || null,
+          sdt:               values.sdt || null,
+          diaChi:            values.diaChi || null,
+          ngaySinh:          values.ngaySinh ? values.ngaySinh.format('YYYY-MM-DD') : null,
+          thoiGianVaoCongTy: values.thoiGianVaoCongTy ? values.thoiGianVaoCongTy.format('YYYY-MM-DD') : null,
+          ngayNghiViec:      values.ngayNghiViec ? values.ngayNghiViec.format('YYYY-MM-DD') : null,
+          tinhTrang:         values.tinhTrang || 'Đang làm',
+          ghiChu:            values.ghiChu || null,
+          hocVan:            values.hocVan || null,
+        })
+      } else {
+        await api.put('/employees/me', {
+          sdt:      values.sdt || null,
+          diaChi:   values.diaChi || null,
+          ngaySinh: values.ngaySinh ? values.ngaySinh.format('YYYY-MM-DD') : null,
+          hocVan:   values.hocVan || null,
+        })
+      }
+      message.success('Cập nhật hồ sơ thành công')
+      setProfileEditOpen(false)
+      onRefreshMain()
+    } catch { message.error('Cập nhật hồ sơ thất bại') }
+    finally { setProfileEditSaving(false) }
+  }
 
   const loadSessions = useCallback(async () => {
     if (!employee) return
@@ -251,6 +309,13 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
 
   useEffect(() => { if (open) loadSessions() }, [open, loadSessions])
 
+  const calcSessionCong = (thoiGian, ca) => {
+    const t = parseFloat(thoiGian)
+    if (!t || !ca) return null
+    const divisor = ca === 'HC' ? 8 : 7
+    return parseFloat((t / divisor).toFixed(4))
+  }
+
   const openAdd = () => {
     setEditingSession(null)
     sessionForm.resetFields()
@@ -262,7 +327,9 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
     setEditingSession(record)
     sessionForm.setFieldsValue({
       ngay: record.ngay ? dayjs(record.ngay) : null,
-      vaiTro: record.vaiTro || '',
+      vaiTro: record.vaiTro || null,
+      caSanXuat: record.caSanXuat || null,
+      thoiGianBatDau: record.thoiGianBatDau ? Number(record.thoiGianBatDau) : null,
       congThucHien: record.congThucHien != null ? Number(record.congThucHien) : null,
       sanLuong: record.sanLuong != null ? Number(record.sanLuong) : null,
     })
@@ -279,6 +346,8 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
         nhomThucHien:  employee.toNhom,
         ngay: values.ngay ? values.ngay.format('YYYY-MM-DD') : null,
         vaiTro: values.vaiTro || null,
+        caSanXuat: values.caSanXuat || null,
+        thoiGianBatDau: values.thoiGianBatDau != null ? String(values.thoiGianBatDau) : null,
         congThucHien: values.congThucHien ?? null,
         sanLuong: values.sanLuong ?? null,
       }
@@ -320,6 +389,20 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
   const tyLe = summary.dat + summary.khongDat > 0
     ? Math.round(summary.dat / (summary.dat + summary.khongDat) * 100) : null
 
+  const dailyStats = useMemo(() => {
+    const map = {}
+    sessions.forEach(s => {
+      const d = s.ngay || s.ngayThucHien
+      if (!d) return
+      const key = dayjs(d).format('YYYY-MM-DD')
+      if (!map[key]) map[key] = { date: key, items: [], tongCong: 0, chuaNhap: 0 }
+      map[key].items.push(s)
+      map[key].tongCong += parseFloat(s.congThucHien) || 0
+      if (s.congThucHien == null) map[key].chuaNhap++
+    })
+    return Object.values(map).sort((a, b) => b.date.localeCompare(a.date))
+  }, [sessions])
+
   const detailColumns = [
     {
       title: '#', key: 'stt', width: 40, align: 'center',
@@ -345,30 +428,7 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
                     : nhom === 'ĐG'           ? 'DG'
                     : nhom === 'BBC1'          ? 'BBC1'
                     : null
-        if (!stage) return <span style={{ fontSize: 13 }}>{v}</span>
-        const stageLabel = stage === 'PC' ? 'PC' : stage === 'DG' ? 'ĐG' : 'BBC1'
-        return (
-          <Tooltip title={`Xem trên Lịch Sản Xuất ${stageLabel} →`}>
-            <Button
-              type="link"
-              style={{ padding: 0, height: 'auto', fontSize: 13, textAlign: 'left', whiteSpace: 'normal', color: '#1677ff', fontWeight: 500 }}
-              onClick={() => {
-                navigate('/work-schedule', {
-                  state: {
-                    jumpTo: {
-                      stage,
-                      tienTrinh: v,
-                      soLo: r.soLo || '',
-                      maSp: r.maSp || '',
-                    }
-                  }
-                })
-              }}
-            >
-              {v}
-            </Button>
-          </Tooltip>
-        )
+        return <span style={{ fontSize: 13, color: '#1677ff', fontWeight: 500 }}>{v}</span>
       }
     },
     {
@@ -435,23 +495,14 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
         )
       }
     },
-    ...(isAdmin ? [{
-      title: 'Thao Tác', key: 'action', width: 80, align: 'center', fixed: 'right',
+    ...(canEdit ? [{
+      title: 'Thao Tác', key: 'action', width: 90, align: 'center', fixed: 'right',
       render: (_, r) => (
-        <Space size={2}>
-          <Tooltip title="Sửa phiên">
-            <Button size="small" type="text" icon={<EditOutlined />}
-              style={{ color: '#1D4ED8' }} onClick={e => { e.stopPropagation(); openEdit(r) }} />
-          </Tooltip>
-          <Popconfirm
-            title="Xóa phiên này?"
-            description="Dữ liệu công và năng suất sẽ được tính lại."
-            okText="Xóa" cancelText="Huỷ" okButtonProps={{ danger: true }}
-            onConfirm={() => handleDelete(r.id)}>
-            <Button size="small" type="text" icon={<DeleteOutlined />}
-              style={{ color: '#ef4444' }} onClick={e => e.stopPropagation()} />
-          </Popconfirm>
-        </Space>
+        <Button size="small" type="primary" icon={<EditOutlined />}
+          style={{ background: '#1D4ED8', borderColor: '#1D4ED8', fontSize: 12 }}
+          onClick={e => { e.stopPropagation(); openEdit(r) }}>
+          Cập nhật
+        </Button>
       )
     }] : []),
   ]
@@ -470,7 +521,7 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
             <Tag color="blue" style={{ fontWeight: 700 }}>{employee?.maNhanVien}</Tag>
             {employee?.toNhom && <Tag color="cyan">{employee.toNhom}</Tag>}
             {periodStr && <Tag color="purple" icon={<CalendarOutlined />}>{periodStr}</Tag>}
-            {isAdmin && (
+            {canEdit && (
               <Button size="small" type="primary" icon={<PlusOutlined />}
                 style={{ marginLeft: 8, background: '#1D4ED8', borderColor: '#1D4ED8' }}
                 onClick={openAdd}>
@@ -484,8 +535,9 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
         {/* ── Tab switcher ── */}
         <div style={{ display: 'flex', borderBottom: '2px solid #e0e7ff', background: '#fff', paddingLeft: 16 }}>
           {[
-            { key: 'sx',      label: 'Hồ Sơ Sản Xuất', icon: <BarChartOutlined /> },
-            { key: 'profile', label: 'Hồ Sơ Nhân Viên', icon: <IdcardOutlined /> },
+            { key: 'sx',      label: 'Hồ Sơ Sản Xuất',  icon: <BarChartOutlined /> },
+            { key: 'daily',   label: 'Ngày Sản Xuất',    icon: <CalendarOutlined /> },
+            { key: 'profile', label: 'Hồ Sơ Nhân Viên',  icon: <IdcardOutlined /> },
           ].map(t => (
             <button key={t.key} onClick={() => setDrawerTab(t.key)} style={{
               padding: '10px 20px', border: 'none', cursor: 'pointer', background: 'transparent',
@@ -500,7 +552,141 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
         </div>
 
         {drawerTab === 'profile' ? (
-          <EmployeeProfileReadOnly employee={fullEmp} />
+          <div>
+            {canEdit && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px 0' }}>
+                <Button
+                  type="primary" icon={<EditOutlined />}
+                  style={{ background: '#1D4ED8', borderColor: '#1D4ED8' }}
+                  onClick={openProfileEdit}
+                >
+                  Chỉnh sửa hồ sơ
+                </Button>
+              </div>
+            )}
+            <EmployeeProfileReadOnly employee={fullEmp} />
+          </div>
+        ) : drawerTab === 'daily' ? (
+          <div style={{ padding: 16 }}>
+            {loading ? (
+              <Spin style={{ display: 'block', margin: '60px auto' }} size="large" />
+            ) : dailyStats.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '48px 0', color: '#94a3b8' }}>Không có dữ liệu</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {dailyStats.map(day => {
+                  const pct = day.items.length > 0
+                    ? Math.round(((day.items.length - day.chuaNhap) / day.items.length) * 100) : 0
+                  return (
+                    <div key={day.date} style={{
+                      background: '#fff', border: '1px solid #e0e7ff',
+                      borderRadius: 12, overflow: 'hidden',
+                      boxShadow: '0 1px 4px rgba(29,78,216,0.06)',
+                    }}>
+                      {/* Header ngày */}
+                      <div style={{
+                        background: 'linear-gradient(90deg, #1e4570 0%, #2980b3 100%)',
+                        padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      }}>
+                        <span style={{ fontWeight: 700, color: '#fff', fontSize: 14 }}>
+                          <CalendarOutlined style={{ marginRight: 6 }} />
+                          {dayjs(day.date).format('dddd, DD/MM/YYYY').replace(/^\w/, c => c.toUpperCase())}
+                        </span>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <Tag style={{ background: 'rgba(255,255,255,0.18)', border: 'none', color: '#fff', fontWeight: 700, marginRight: 0 }}>
+                            {day.items.length} phiên
+                          </Tag>
+                          {day.chuaNhap > 0 && (
+                            <Tag color="warning" style={{ marginRight: 0, fontWeight: 600 }}>
+                              {day.chuaNhap} chưa nhập công
+                            </Tag>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* KPI row */}
+                      <div style={{ display: 'flex', padding: '10px 16px', gap: 16, flexWrap: 'wrap', borderBottom: '1px solid #f0f4ff' }}>
+                        <div style={{ textAlign: 'center', minWidth: 80 }}>
+                          <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>Tổng công TH</div>
+                          <div style={{ fontSize: 22, fontWeight: 800, color: '#722ed1', lineHeight: 1.1 }}>
+                            {day.tongCong.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'center', minWidth: 80 }}>
+                          <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>Đã nhập công</div>
+                          <div style={{ fontSize: 22, fontWeight: 800, color: '#389e0d', lineHeight: 1.1 }}>
+                            {day.items.length - day.chuaNhap}
+                            <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>/{day.items.length}</span>
+                          </div>
+                        </div>
+                        {day.chuaNhap > 0 && (
+                          <div style={{ textAlign: 'center', minWidth: 80 }}>
+                            <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>Chưa nhập</div>
+                            <div style={{ fontSize: 22, fontWeight: 800, color: '#f97316', lineHeight: 1.1 }}>
+                              {day.chuaNhap}
+                            </div>
+                          </div>
+                        )}
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', minWidth: 120 }}>
+                          <div style={{ width: '100%' }}>
+                            <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600, marginBottom: 4 }}>Tiến độ nhập công</div>
+                            <Progress
+                              percent={pct} size="small"
+                              strokeColor={pct === 100 ? '#389e0d' : '#f97316'}
+                              format={p => <span style={{ fontSize: 11 }}>{p}%</span>}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Session list of that day */}
+                      <div style={{ padding: '8px 16px 10px' }}>
+                        <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', marginBottom: 6 }}>Chi tiết phiên</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                          {day.items.map((s, i) => {
+                            const ns = s.nangSuat != null ? Number(s.nangSuat) : null
+                            const nsTb = s.nangSuatTrungBinh != null ? Number(s.nangSuatTrungBinh) : null
+                            const dat = ns != null && nsTb != null ? ns >= nsTb : null
+                            return (
+                              <div key={s.id} style={{
+                                display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+                                background: '#fafbff', borderRadius: 7, padding: '6px 10px',
+                                border: s.congThucHien == null ? '1px solid #fed7aa' : '1px solid #e0e7ff',
+                                cursor: 'pointer',
+                              }}
+                                onClick={() => { setSelectedSession(s); setSessionDetailOpen(true) }}
+                              >
+                                <span style={{ color: '#94a3b8', fontSize: 11, minWidth: 16 }}>{i + 1}</span>
+                                {s.maSp && <Tag color="blue" style={{ marginRight: 0, fontSize: 11 }}>{s.maSp}</Tag>}
+                                <span style={{ fontSize: 12, color: '#374151', flex: 1, minWidth: 100 }}>{s.tenTrinh || '—'}</span>
+                                {s.vaiTro && (
+                                  <Tag color={s.vaiTro.toLowerCase().includes('trưởng') ? 'gold' : 'geekblue'}
+                                    style={{ marginRight: 0, fontSize: 11 }}>{s.vaiTro}</Tag>
+                                )}
+                                {s.caSanXuat && <Tag color="cyan" style={{ marginRight: 0, fontSize: 11 }}>{s.caSanXuat}</Tag>}
+                                {s.congThucHien != null ? (
+                                  <span style={{ fontWeight: 700, color: '#722ed1', fontSize: 13, minWidth: 60, textAlign: 'right' }}>
+                                    {Number(s.congThucHien).toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
+                                  </span>
+                                ) : (
+                                  <Tag color="warning" style={{ marginRight: 0, fontSize: 11 }}>Chưa nhập</Tag>
+                                )}
+                                {dat != null && (
+                                  <Tag color={dat ? 'success' : 'error'} style={{ marginRight: 0, fontSize: 11 }}>
+                                    {dat ? '✓ Đạt' : '✗ Không đạt'}
+                                  </Tag>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         ) : (
         <div style={{ padding: 16 }}>
 
@@ -616,15 +802,11 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
             )}
           </div>
         }
-        footer={isAdmin ? [
+        footer={canEdit ? [
           <Button key="edit" type="primary" icon={<EditOutlined />}
             onClick={() => { setSessionDetailOpen(false); openEdit(selectedSession) }}>
-            Sửa
+            Cập nhật
           </Button>,
-          <Popconfirm key="del" title="Xóa phiên này?" okText="Xóa" cancelText="Huỷ"
-            okButtonProps={{ danger: true }} onConfirm={() => { setSessionDetailOpen(false); handleDelete(selectedSession?.id) }}>
-            <Button danger icon={<DeleteOutlined />}>Xóa</Button>
-          </Popconfirm>,
           <Button key="close" onClick={() => setSessionDetailOpen(false)}>Đóng</Button>,
         ] : [
           <Button key="close" type="primary" onClick={() => setSessionDetailOpen(false)}>Đóng</Button>,
@@ -735,19 +917,51 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
         destroyOnClose
       >
         <Form form={sessionForm} layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item label="Ngày thực hiện" name="ngay"
-            rules={[{ required: true, message: 'Vui lòng chọn ngày' }]}>
-            <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item label="Vai Trò" name="vaiTro"
-            rules={[{ required: true, message: 'Vui lòng chọn vai trò' }]}>
-            <AutoComplete options={VAI_TRO_OPTIONS} placeholder="Trưởng ca / Phụ máy / Công nhân..." allowClear />
-          </Form.Item>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <Form.Item label="Ngày thực hiện" name="ngay" style={{ flex: 1 }}
+              rules={[{ required: true, message: 'Vui lòng chọn ngày' }]}>
+              <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item label="Vai Trò" name="vaiTro" style={{ flex: 1 }}
+              rules={[{ required: true, message: 'Vui lòng chọn vai trò' }]}>
+              <AutoComplete
+                placeholder="Chọn hoặc nhập vai trò"
+                allowClear
+                notFoundContent={null}
+                options={['Trưởng ca', 'Phụ máy', 'Công nhân', 'KCS', 'Kỹ thuật', 'Kiểm hàng', 'Đóng gói', 'Vận hành', 'Bảo trì'].map(v => ({ value: v }))}
+                filterOption={(input, option) =>
+                  (option?.value ?? '').toLowerCase().includes(input.toLowerCase())
+                }
+              />
+            </Form.Item>
+          </div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <Form.Item label="Ca làm việc" name="caSanXuat" style={{ flex: 1 }}>
+              <Select placeholder="Chọn ca" allowClear
+                onChange={ca => {
+                  const tg = sessionForm.getFieldValue('thoiGianBatDau')
+                  const cong = calcSessionCong(tg, ca)
+                  if (cong != null) sessionForm.setFieldValue('congThucHien', cong)
+                }}>
+                <Option value="Ca 1">Ca 1</Option>
+                <Option value="Ca 2">Ca 2</Option>
+                <Option value="HC">Hành Chính</Option>
+              </Select>
+            </Form.Item>
+            <Form.Item label="Thời gian TH (giờ)" name="thoiGianBatDau" style={{ flex: 1 }}>
+              <InputNumber min={0} max={24} step={0.5} style={{ width: '100%' }} placeholder="VD: 8"
+                onChange={tg => {
+                  const ca = sessionForm.getFieldValue('caSanXuat')
+                  const cong = calcSessionCong(tg, ca)
+                  if (cong != null) sessionForm.setFieldValue('congThucHien', cong)
+                }} />
+            </Form.Item>
+          </div>
           <div style={{ display: 'flex', gap: 12 }}>
             <Form.Item label="Công thực hiện" name="congThucHien" style={{ flex: 1 }}
               rules={[{ required: true, message: 'Nhập công TH' }]}>
-              <InputNumber min={0} step={0.5} precision={4} style={{ width: '100%' }}
-                placeholder="VD: 1.0000" />
+              <InputNumber min={0} step={0.0001} precision={4} style={{ width: '100%' }}
+                placeholder="Tự tính theo thời gian + ca" />
             </Form.Item>
             <Form.Item label="Sản lượng nhóm" name="sanLuong" style={{ flex: 1 }}>
               <InputNumber min={0} step={100} precision={0} style={{ width: '100%' }}
@@ -760,6 +974,103 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
               {editingSession.tenTrinh && <span>{editingSession.tenTrinh}</span>}
             </div>
           )}
+        </Form>
+      </Modal>
+
+      {/* ── Profile edit modal ── */}
+      <Modal
+        open={profileEditOpen}
+        onCancel={() => setProfileEditOpen(false)}
+        onOk={handleProfileEditSave}
+        okText="Lưu"
+        cancelText="Huỷ"
+        confirmLoading={profileEditSaving}
+        title={
+          <Space>
+            <EditOutlined style={{ color: '#1D4ED8' }} />
+            <span>Chỉnh sửa hồ sơ nhân viên</span>
+            {fullEmp?.hoVaTen && <span style={{ fontWeight: 700, color: '#1D4ED8' }}>{fullEmp.hoVaTen}</span>}
+          </Space>
+        }
+        width={600}
+        destroyOnClose
+      >
+        <Form form={profileEditForm} layout="vertical" style={{ marginTop: 16 }}>
+          {isAdmin && (
+            <>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <Form.Item label="Họ và tên" name="hoVaTen" style={{ flex: 2 }}
+                  rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}>
+                  <Input placeholder="Nguyễn Văn A" />
+                </Form.Item>
+                <Form.Item label="Mã nhân viên" name="maNhanVien" style={{ flex: 1 }}
+                  rules={[{ required: true, message: 'Vui lòng nhập mã NV' }]}>
+                  <Input placeholder="SA082" style={{ fontFamily: 'monospace', textTransform: 'uppercase' }} />
+                </Form.Item>
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <Form.Item label="Tổ / Nhóm" name="toNhom" style={{ flex: 1 }}
+                  rules={[{ required: true, message: 'Vui lòng chọn tổ nhóm' }]}>
+                  <AutoComplete
+                    options={ALL_GROUPS.filter(g => g.key).map(g => ({ value: g.key }))}
+                    placeholder="VD: ĐG"
+                    allowClear
+                    filterOption={(input, opt) => opt.value.toLowerCase().includes(input.toLowerCase())}
+                  />
+                </Form.Item>
+                <Form.Item label="Vị trí" name="viTri" style={{ flex: 1 }}>
+                  <AutoComplete
+                    options={['Công nhân', 'Trưởng ca', 'Phó ca', 'Tổ trưởng', 'KCS', 'Kỹ thuật'].map(v => ({ value: v }))}
+                    placeholder="VD: Công nhân"
+                    allowClear notFoundContent={null}
+                    filterOption={(input, opt) => opt.value.toLowerCase().includes(input.toLowerCase())}
+                  />
+                </Form.Item>
+              </div>
+            </>
+          )}
+          <div style={{ display: 'flex', gap: 12 }}>
+            <Form.Item label="Số điện thoại" name="sdt" style={{ flex: 1 }}>
+              <Input placeholder="0901234567" />
+            </Form.Item>
+            {isAdmin && (
+              <Form.Item label="Tình trạng" name="tinhTrang" style={{ flex: 1 }}>
+                <Select>
+                  <Option value="Đang làm">Đang làm</Option>
+                  <Option value="Nghỉ việc">Nghỉ việc</Option>
+                  <Option value="Tạm nghỉ">Tạm nghỉ</Option>
+                </Select>
+              </Form.Item>
+            )}
+          </div>
+          <Form.Item label="Địa chỉ" name="diaChi">
+            <Input placeholder="Số nhà, đường, phường/xã, quận/huyện..." />
+          </Form.Item>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <Form.Item label="Ngày sinh" name="ngaySinh" style={{ flex: 1 }}>
+              <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="DD/MM/YYYY" />
+            </Form.Item>
+            {isAdmin && (
+              <>
+                <Form.Item label="Ngày vào công ty" name="thoiGianVaoCongTy" style={{ flex: 1 }}>
+                  <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="DD/MM/YYYY" />
+                </Form.Item>
+                <Form.Item label="Ngày nghỉ việc" name="ngayNghiViec" style={{ flex: 1 }}>
+                  <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="DD/MM/YYYY" />
+                </Form.Item>
+              </>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <Form.Item label="Học vấn" name="hocVan" style={{ flex: 1 }}>
+              <Input placeholder="VD: Trung cấp, Cao đẳng..." />
+            </Form.Item>
+            {isAdmin && (
+              <Form.Item label="Ghi chú" name="ghiChu" style={{ flex: 2 }}>
+                <Input placeholder="Ghi chú nội bộ..." />
+              </Form.Item>
+            )}
+          </div>
         </Form>
       </Modal>
     </>
@@ -1361,6 +1672,13 @@ export default function WorkEfficiencyPage() {
     return employees.find(e => e.maNhanVien === selfMaNv) || null
   }, [employees, selfMaNv, isNhanVien])
 
+  // Tự động mở drawer khi nhân viên vào trang (sau khi load xong danh sách)
+  useEffect(() => {
+    if (!isNhanVien() || !selfEmployee || drawerOpen) return
+    setDrawerEmployee(selfEmployee)
+    setDrawerOpen(true)
+  }, [selfEmployee])
+
   const toTruong = useMemo(() => {
     if (!selfEmployee?.toNhom) return null
     return (
@@ -1920,7 +2238,8 @@ export default function WorkEfficiencyPage() {
         periodStr={periodStr}
         onClose={() => setDrawerOpen(false)}
         isAdmin={isAdmin()}
-        onRefreshMain={() => fetchData(fromDate, toDate, activeGroup)}
+        canEdit={isAdmin() || isNhanVien()}
+        onRefreshMain={() => { fetchData(fromDate, toDate, activeGroup); fetchAllEmployees() }}
       />
 
       {/* ── Edit modal ── */}

@@ -82,12 +82,16 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
           AND (:fromDate IS NULL OR w.ngayThucHien >= :fromDate)
           AND (:toDate IS NULL OR w.ngayThucHien <= :toDate)
           AND (:maSp IS NULL OR w.maSp LIKE %:maSp%)
+          AND (:tenTrinh IS NULL OR LOWER(w.tenTrinh) LIKE LOWER(CONCAT('%', :tenTrinh, '%')))
+          AND (:soLo IS NULL OR w.soLo LIKE %:soLo%)
         ORDER BY w.ngayThucHien DESC, w.id DESC
         """)
     Page<WorkSchedule> findDeviations(
             @Param("fromDate") LocalDate fromDate,
             @Param("toDate") LocalDate toDate,
             @Param("maSp") String maSp,
+            @Param("tenTrinh") String tenTrinh,
+            @Param("soLo") String soLo,
             Pageable pageable
     );
 

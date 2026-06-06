@@ -117,7 +117,7 @@ export default function MainLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [unreadByType, setUnreadByType] = useState({})
-  const { user, logout, isAdmin, isAdminKH, isStageAdmin, canEditHangLoi, isNhanVien } = useAuth()
+  const { user, logout, isAdmin, isAdminKH, isTKSX, isQuanDoc, isStageAdmin, canEditHangLoi, isNhanVien, isHCNS, isKeToan } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const screens = useBreakpoint()
@@ -191,6 +191,16 @@ export default function MainLayout() {
         },
         { key: '/work-efficiency', icon: <TrophyOutlined />, label: 'Nhân Viên' },
       ]
+    : isHCNS()
+    ? [
+        { key: '/employees', icon: <UserOutlined />, label: 'Nhân viên' },
+      ]
+    : isKeToan()
+    ? [
+        { key: '/',           icon: <TableOutlined />,  label: 'Sản lượng' },
+        { key: '/daily-sl',   icon: <BarChartOutlined />, label: 'Sản lượng theo ngày' },
+        { key: '/cham-cong',  icon: <FileDoneOutlined />, label: 'Chấm công' },
+      ]
     : [
         {
           key: '/',
@@ -220,7 +230,7 @@ export default function MainLayout() {
           icon: <WarningOutlined />,
           label: 'Hàng Xử Lý',
         }] : []),
-        ...(isAdmin() ? [
+        ...(isAdmin() || isTKSX() || isQuanDoc() ? [
           { key: '/work-efficiency', icon: <TrophyOutlined />, label: 'Nhân Viên' },
         ] : []),
         ...(isAdmin() ? [
@@ -256,16 +266,25 @@ export default function MainLayout() {
   }
 
   const ROLE_LABELS = {
-    ADMIN:       'Quản trị viên',
-    ADMIN_KH:    'Admin Kế hoạch',
-    ADMIN_PC:    'Admin PC',
-    ADMIN_BBC1:  'Admin BBC1',
-    ADMIN_PL:    'Admin PL',
-    ADMIN_DG:    'Admin ĐG',
-    ADMIN_PCPL1: 'Admin PCPL1',
-    ADMIN_PCPL2: 'Admin PCPL2',
-    ADMIN_PCPL3: 'Admin PCPL3',
-    NHAN_VIEN:   'Nhân viên',
+    ADMIN:              'Quản trị viên',
+    TKSX:               'Tài khoản SX',
+    QUAN_DOC:           'Quản lý (đọc)',
+    ADMIN_KH:           'Admin Kế hoạch',
+    ADMIN_PC:           'Admin PC',
+    ADMIN_BBC1:         'Admin BBC1',
+    ADMIN_PL:           'Admin PL',
+    ADMIN_DG:           'Admin ĐG',
+    ADMIN_PCPL1:        'Admin PCPL1',
+    ADMIN_PCPL2:        'Admin PCPL2',
+    ADMIN_PCPL3:        'Admin PCPL3',
+    NHAN_VIEN:          'Nhân viên',
+    NHAN_VIEN_PCPL1:    'Nhân viên PCPL1',
+    NHAN_VIEN_PCPL2:    'Nhân viên PCPL2',
+    NHAN_VIEN_PCPL3:    'Nhân viên PCPL3',
+    NHAN_VIEN_BBC1:     'Nhân viên BBC1',
+    NHAN_VIEN_DG:       'Nhân viên ĐG',
+    HCNS:               'HCNS',
+    KE_TOAN:            'Kế toán',
   }
 
   const handleNavigate = (key) => {

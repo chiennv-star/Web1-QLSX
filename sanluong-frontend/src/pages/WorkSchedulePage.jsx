@@ -3133,7 +3133,7 @@ export default function WorkSchedulePage() {
   const [devData, setDevData] = useState([])
   const [devLoading, setDevLoading] = useState(false)
   const [devPagination, setDevPagination] = useState({ current: 1, pageSize: 20, total: 0 })
-  const [devFilters, setDevFilters] = useState({ dateRange: null, maSp: '' })
+  const [devFilters, setDevFilters] = useState({ dateRange: null, maSp: '', tenTrinh: '', soLo: '' })
   const [devModalOpen, setDevModalOpen] = useState(false)
   const [devEditItem, setDevEditItem] = useState(null)
 
@@ -3170,6 +3170,8 @@ export default function WorkSchedulePage() {
         fromDate: f.dateRange?.[0]?.format('YYYY-MM-DD') || undefined,
         toDate: f.dateRange?.[1]?.format('YYYY-MM-DD') || undefined,
         maSp: f.maSp || undefined,
+        tenTrinh: f.tenTrinh || undefined,
+        soLo: f.soLo || undefined,
       }
       const { data: res } = await api.get('/work-schedule/deviations', { params })
       setDevData(res.content)
@@ -3184,33 +3186,57 @@ export default function WorkSchedulePage() {
   const deviationColumns = [
     {
       title: 'Ngày', dataIndex: 'ngayThucHien', key: 'ngayThucHien', width: 110,
-      render: v => v ? dayjs(v).format('DD/MM/YYYY') : '-'
+      sorter: (a, b) => (a.ngayThucHien || '').localeCompare(b.ngayThucHien || ''),
+      render: v => v ? dayjs(v).format('DD/MM/YYYY') : '-',
     },
     {
-      title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 100,
-      render: v => v ? <Tag color="blue" style={{ fontFamily: 'monospace' }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>
+      title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 110,
+      ...colSearch('maBravo'),
+      render: v => v ? <Tag color="blue" style={{ fontFamily: 'monospace' }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
     {
       title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 80,
-      render: v => v ? <span style={{ fontWeight: 600, color: '#595959', fontSize: 12 }}>{v}</span> : '-'
+      ...colSearch('maSp'),
+      render: v => v ? <span style={{ fontWeight: 600, color: '#595959', fontSize: 12 }}>{v}</span> : '-',
     },
     {
       title: 'Công đoạn', dataIndex: 'congDoan', key: 'congDoan', width: 95,
-      render: v => v ? <Tag color="purple">{v}</Tag> : '-'
+      filters: [
+        { text: 'PC', value: 'PC' },
+        { text: 'PL', value: 'PL' },
+        { text: 'BBC1', value: 'BBC1' },
+        { text: 'ĐG', value: 'DG' },
+        { text: 'CC', value: 'CC' },
+      ],
+      onFilter: (value, record) => record.congDoan === value,
+      render: v => v ? <Tag color="purple">{v}</Tag> : '-',
     },
     {
       title: 'TIẾN TRÌNH', dataIndex: 'tenTrinh', key: 'tenTrinh',
-      render: v => <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{v || '-'}</span>
+      ...colSearch('tenTrinh'),
+      render: v => <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{v || '-'}</span>,
     },
-    { title: 'Số lô', dataIndex: 'soLo', key: 'soLo', width: 90 },
-    { title: 'Cỡ lô', dataIndex: 'coLo', key: 'coLo', width: 80, align: 'right' },
+    {
+      title: 'Số lô', dataIndex: 'soLo', key: 'soLo', width: 90,
+      ...colSearch('soLo'),
+    },
+    {
+      title: 'Cỡ lô', dataIndex: 'coLo', key: 'coLo', width: 80, align: 'right',
+      sorter: (a, b) => (a.coLo ?? 0) - (b.coLo ?? 0),
+    },
     {
       title: 'Nội dung sai lệch', dataIndex: 'saiLech', key: 'saiLech',
+      ...colSearch('saiLech'),
       render: v => (
         <Typography.Text style={{ color: '#d46b08', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{v}</Typography.Text>
-      )
+      ),
     },
-    { title: 'Tình trạng', dataIndex: 'tinhTrang', key: 'tinhTrang', width: 100, render: tinhTrangTag },
+    {
+      title: 'Tình trạng', dataIndex: 'tinhTrang', key: 'tinhTrang', width: 100,
+      filters: TINH_TRANG_OPTIONS.map(o => ({ text: o.label, value: o.value })),
+      onFilter: (value, record) => record.tinhTrang === value,
+      render: tinhTrangTag,
+    },
     {
       title: 'Thao tác', key: 'action', width: 130, align: 'center',
       render: (_, record) => (
@@ -3312,18 +3338,24 @@ export default function WorkSchedulePage() {
                 Công việc <strong>có sai lệch</strong> — tổng hợp từ tất cả công đoạn
               </Typography.Text>
             </Space>
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
               <RangePicker size="small" style={{ width: 224 }} format="DD/MM/YYYY"
                 placeholder={['Từ ngày', 'Đến ngày']}
                 value={devFilters.dateRange}
                 onChange={v => setDevFilters(f => ({ ...f, dateRange: v }))} />
-              <Input size="small" style={{ width: 96 }} placeholder="Mã SP" value={devFilters.maSp} allowClear
+              <Input size="small" style={{ width: 88 }} placeholder="Mã SP" value={devFilters.maSp} allowClear
                 onChange={e => setDevFilters(f => ({ ...f, maSp: e.target.value }))}
+                onPressEnter={() => fetchDeviations(0)} />
+              <Input size="small" style={{ width: 140 }} placeholder="Tiến trình" value={devFilters.tenTrinh} allowClear
+                onChange={e => setDevFilters(f => ({ ...f, tenTrinh: e.target.value }))}
+                onPressEnter={() => fetchDeviations(0)} />
+              <Input size="small" style={{ width: 100 }} placeholder="Số lô" value={devFilters.soLo} allowClear
+                onChange={e => setDevFilters(f => ({ ...f, soLo: e.target.value }))}
                 onPressEnter={() => fetchDeviations(0)} />
               <Button size="small" type="primary" icon={<SearchOutlined />}
                 onClick={() => fetchDeviations(0)}>Tìm</Button>
               <Button size="small" icon={<ReloadOutlined />} onClick={() => {
-                const reset = { dateRange: null, maSp: '' }
+                const reset = { dateRange: null, maSp: '', tenTrinh: '', soLo: '' }
                 setDevFilters(reset)
                 fetchDeviations(0, 20, reset)
               }} />
@@ -3331,7 +3363,7 @@ export default function WorkSchedulePage() {
           </div>
 
           <Table
-            className="ws-table"
+            className="ws-table ws-dev-table"
             columns={deviationColumns}
             dataSource={devData}
             rowKey="id"
@@ -3378,9 +3410,10 @@ export default function WorkSchedulePage() {
         .ant-table-tbody > tr.row-ns-high > td { background: #fafff7 !important; }
         .ant-table-tbody > tr.row-ns-low > td { background: #fffaf9 !important; }
         .ant-table-tbody > tr.row-sl-exceed > td { background: #fdfaff !important; }
-        /* ERP table headers – emerald gradient */
+        /* ERP table headers */
         .ws-table .ant-table-thead > tr > th {
-          background: linear-gradient(90deg, #2980b3 0%, #3399CC 100%) !important;
+          background: #0099CC !important;
+          background-image: none !important;
           color: #ffffff !important;
           text-align: center !important;
           text-transform: uppercase;
@@ -3388,13 +3421,13 @@ export default function WorkSchedulePage() {
           letter-spacing: 0.5px;
           padding: 7px 8px !important;
           white-space: nowrap;
-          border-right: 1px solid #4db3d4 !important;
+          border-right: 1px solid #007aa3 !important;
         }
         .ws-table .ant-table-thead > tr > th::before { display: none !important; }
         .ws-table .ant-table-thead > tr > th .ant-table-column-sorter { color: rgba(255,255,255,0.7) !important; }
         .ws-table .ant-table-thead > tr > th .ant-table-column-sorter-up.active .anticon,
         .ws-table .ant-table-thead > tr > th .ant-table-column-sorter-down.active .anticon { color: #fff !important; }
-        .ws-table .ant-table-thead > tr > th.ant-table-column-sort { background: linear-gradient(90deg, #1f6fa3 0%, #2980b3 100%) !important; }
+        .ws-table .ant-table-thead > tr > th.ant-table-column-sort { background: #007aa3 !important; background-image: none !important; }
         .ws-table .ant-table-thead .ant-table-filter-trigger { color: rgba(255,255,255,0.7) !important; }
         .ws-table .ant-table-thead .ant-table-filter-trigger:hover,
         .ws-table .ant-table-thead .ant-table-filter-trigger.active { color: #fff !important; background: rgba(255,255,255,0.18) !important; }
@@ -3403,6 +3436,17 @@ export default function WorkSchedulePage() {
         .ws-table .ant-table-tbody > tr:hover > td { background: #DDE1E8 !important; }
         .ws-table .ant-table-tbody > tr:nth-child(even) > td { background: #EAECF2; }
         .ws-table .ant-table-tbody > tr:nth-child(even):hover > td { background: #DDE1E8 !important; }
+        /* ── Deviation table: lighter header ── */
+        .ws-dev-table .ant-table-thead > tr > th {
+          background: #898989 !important;
+          background-image: none !important;
+          border-right: 1px solid #a0a0a0 !important;
+        }
+        .ws-dev-table .ant-table-thead > tr > th.ant-table-column-sort {
+          background: #757575 !important;
+          background-image: none !important;
+        }
+
         /* Navy tab bar */
         .ws-tabs > .ant-tabs-nav { margin: 0 !important; background: #1e4570; padding: 0 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.25); }
         .ws-tabs > .ant-tabs-nav .ant-tabs-tab { color: #ffffff !important; border: none !important; background: transparent !important; padding: 9px 18px !important; font-size: 13px; margin: 0 2px !important; border-radius: 6px 6px 0 0 !important; transition: all 0.2s; }

@@ -1,6 +1,7 @@
 package com.sanluong.controller;
 
 import com.sanluong.dto.EmployeeDto;
+import com.sanluong.dto.EmployeeSelfUpdateDto;
 import com.sanluong.entity.Employee;
 import com.sanluong.service.EmployeeService;
 import jakarta.validation.Valid;
@@ -47,6 +48,12 @@ public class EmployeeController {
                                             @Valid @RequestBody EmployeeDto dto,
                                             Authentication auth) {
         return ResponseEntity.ok(service.update(id, dto, auth.getName()));
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<Employee> updateSelf(@RequestBody EmployeeSelfUpdateDto dto,
+                                               Authentication auth) {
+        return ResponseEntity.ok(service.updateSelf(auth.getName(), dto));
     }
 
     @DeleteMapping("/{id}")

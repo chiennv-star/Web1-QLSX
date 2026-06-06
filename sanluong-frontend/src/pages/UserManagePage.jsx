@@ -10,6 +10,8 @@ const { Option } = Select
 
 const ROLE_MAP = {
   ADMIN:            { color: 'blue',     label: 'Quản trị viên' },
+  TKSX:             { color: 'blue',     label: 'Tài khoản SX' },
+  QUAN_DOC:         { color: 'default',  label: 'Quản lý (đọc)' },
   NHAN_VIEN:        { color: 'green',    label: 'Nhân viên' },
   NHAN_VIEN_PCPL1:  { color: 'cyan',     label: 'NV PCPL1' },
   NHAN_VIEN_PCPL2:  { color: 'cyan',     label: 'NV PCPL2' },
@@ -24,6 +26,8 @@ const ROLE_MAP = {
   ADMIN_PCPL1:      { color: 'geekblue', label: 'Admin PCPL1' },
   ADMIN_PCPL2:      { color: 'geekblue', label: 'Admin PCPL2' },
   ADMIN_PCPL3:      { color: 'geekblue', label: 'Admin PCPL3' },
+  HCNS:             { color: 'magenta',  label: 'HCNS' },
+  KE_TOAN:          { color: 'orange',   label: 'Kế toán' },
 }
 
 export default function UserManagePage() {
@@ -338,6 +342,8 @@ export default function UserManagePage() {
             rules={[{ required: true, message: 'Chọn vai trò' }]}>
             <Select>
               <Option value="ADMIN">Quản trị viên (toàn quyền)</Option>
+              <Option value="TKSX">Tài khoản SX (như ADMIN, trừ Lệnh Sản Xuất)</Option>
+              <Option value="QUAN_DOC">Quản lý đọc (chỉ xem, không sửa)</Option>
               <optgroup label="── Nhân viên ──" />
               <Option value="NHAN_VIEN">Nhân viên (tất cả nhóm)</Option>
               <Option value="NHAN_VIEN_PCPL1">Nhân viên PCPL1</Option>
@@ -345,6 +351,7 @@ export default function UserManagePage() {
               <Option value="NHAN_VIEN_PCPL3">Nhân viên PCPL3</Option>
               <Option value="NHAN_VIEN_BBC1">Nhân viên BBC1</Option>
               <Option value="NHAN_VIEN_DG">Nhân viên ĐG</Option>
+              <optgroup label="── Admin công đoạn ──" />
               <Option value="ADMIN_KH">Admin Kế hoạch (sản lượng, kế hoạch, danh mục, WIP)</Option>
               <Option value="ADMIN_PC">Admin PC (Lịch làm việc PC, xem toàn bộ Hiệu quả)</Option>
               <Option value="ADMIN_BBC1">Admin BBC1 (Lịch làm việc BBC1, chỉ xem Hiệu quả BBC1)</Option>
@@ -353,6 +360,9 @@ export default function UserManagePage() {
               <Option value="ADMIN_PCPL1">Admin PCPL1 (Lịch làm việc, chỉ xem Hiệu quả PCPL1)</Option>
               <Option value="ADMIN_PCPL2">Admin PCPL2 (Lịch làm việc, chỉ xem Hiệu quả PCPL2)</Option>
               <Option value="ADMIN_PCPL3">Admin PCPL3 (Lịch làm việc, chỉ xem Hiệu quả PCPL3)</Option>
+              <optgroup label="── Bộ phận hỗ trợ ──" />
+              <Option value="HCNS">HCNS (chỉ xem nhân viên)</Option>
+              <Option value="KE_TOAN">Kế toán (sản lượng, sản lượng theo ngày, chấm công)</Option>
             </Select>
           </Form.Item>
           {watchedRole?.startsWith('NHAN_VIEN') && (

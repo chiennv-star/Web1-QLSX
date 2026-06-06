@@ -123,6 +123,9 @@ function LenhModal({ open, editItem, defaultTo, onClose, onSaved, allRecords = [
   }
 
   const [isDirty, setIsDirty] = useState(false)
+  const [isLocked, setIsLocked] = useState(false)
+  const [hasSavedOnce, setHasSavedOnce] = useState(false)
+  const [savedAt, setSavedAt] = useState(null)
 
   // Đã ban hành nếu flag daBanHanh=true HOẶC đã có số lô
   const isBanHanh = !!(editItem?.daBanHanh || editItem?.soLo)
@@ -145,8 +148,11 @@ function LenhModal({ open, editItem, defaultTo, onClose, onSaved, allRecords = [
   }
 
   useEffect(() => {
-    if (!open) { setDoiLoMode(false); setSoLoMoi(''); setLyDoDoiLo(''); setLoHistory([]); setDoiLoPreview(null); setApplyLoToAll(false); setIsDirty(false); return }
+    if (!open) { setDoiLoMode(false); setSoLoMoi(''); setLyDoDoiLo(''); setLoHistory([]); setDoiLoPreview(null); setApplyLoToAll(false); setIsDirty(false); setIsLocked(false); setHasSavedOnce(false); setSavedAt(null); return }
     setIsDirty(false)
+    setIsLocked(!!(editItem?.daBanHanh || editItem?.soLo))
+    setHasSavedOnce(false)
+    setSavedAt(null)
     if (editItem) {
       form.setFieldsValue({
         ...editItem,
@@ -213,6 +219,7 @@ function LenhModal({ open, editItem, defaultTo, onClose, onSaved, allRecords = [
   }
 
   const onOk = async () => {
+    if (isLocked) { setIsLocked(false); return }
     setSaving(true)
     try {
       // ── Chế độ đổi lô ──
@@ -279,41 +286,28 @@ function LenhModal({ open, editItem, defaultTo, onClose, onSaved, allRecords = [
             }
 
             setIsDirty(false)
-            onSaved(saved || { ...editItem, ...finalPayload }, editItem)
+            setIsLocked(true)
+            setHasSavedOnce(true)
+            setSavedAt(new Date())
+            onSaved(saved || { ...editItem, ...finalPayload }, editItem, {})
           } catch { message.error('Lưu thất bại') }
           finally { setSaving(false) }
         }
 
         if (!isBanHanh) {
-          // ── Chưa ban hành: hiện hộp xác nhận ────────────────────────────
-          setSaving(false)
-          Modal.confirm({
-            title: 'Xác nhận ban hành lệnh sản xuất',
-            icon: <CheckCircleOutlined style={{ color: '#16a34a' }} />,
-            content: (
-              <div style={{ fontSize: 14 }}>
-                <div style={{ marginBottom: 6 }}>
-                  Lệnh: <b style={{ color: '#1D4ED8' }}>{payload.maBravo}</b>
-                  {payload.soLo && (
-                    <> — Số lô: <b style={{ fontFamily: 'monospace', color: '#d97706' }}>{payload.soLo}</b></>
-                  )}
-                </div>
-                <div style={{ color: '#64748b', fontSize: 13 }}>
-                  Sau khi ban hành, số lô sẽ bị <b>khóa</b> và chỉ có thể đổi qua chức năng Đổi Lô.
-                </div>
-              </div>
-            ),
-            okText: '✓ Ban hành',
-            cancelText: 'Chỉ lưu',
-            okButtonProps: { style: { background: '#16a34a', borderColor: '#16a34a', fontWeight: 700 } },
-            cancelButtonProps: { style: { fontWeight: 600 } },
-            onOk: () => executeSave(true),
-            onCancel: () => executeSave(false),
-          })
+          executeSave(true)
           return
         }
 
         // ── Đã ban hành: cập nhật thông thường ──────────────────────────────
+        // Log lịch sử chỉnh sửa cho các field text thay đổi
+        const HISTORY_FIELDS = ['maBravo', 'maSp', 'tenSanPham', 'maDonHang']
+        const changedFields = HISTORY_FIELDS.filter(f => String(payload[f] ?? '') !== String(editItem[f] ?? ''))
+        if (changedFields.length > 0) {
+          await Promise.all(changedFields.map(f =>
+            api.post(`/lenh-san-xuat/${editItem.id}/doi-field`, { fieldName: f, newValue: payload[f] ?? null, lyDo: null }).catch(() => {})
+          ))
+        }
         const { data: saved } = await api.put(`/lenh-san-xuat/${editItem.id}`, payload)
         message.success('Đã cập nhật lệnh')
         if (applyLoToAll && sameOrderPending.length > 0 && payload.soLo) {
@@ -325,7 +319,10 @@ function LenhModal({ open, editItem, defaultTo, onClose, onSaved, allRecords = [
           } catch { /* best-effort */ }
         }
         setIsDirty(false)
-        onSaved(saved || { ...editItem, ...payload }, editItem)
+        setIsLocked(true)
+        setHasSavedOnce(true)
+        setSavedAt(new Date())
+        onSaved(saved || { ...editItem, ...payload }, editItem, {})
       } else {
         const { data: saved } = await api.post('/lenh-san-xuat', payload)
         message.success('Đã thêm lệnh mới')
@@ -339,7 +336,10 @@ function LenhModal({ open, editItem, defaultTo, onClose, onSaved, allRecords = [
           } catch { /* best-effort */ }
         }
         setIsDirty(false)
-        onSaved(saved || payload, null)
+        setIsLocked(true)
+        setHasSavedOnce(true)
+        setSavedAt(new Date())
+        onSaved(saved || payload, null, {})
       }
     } catch { message.error('Lưu thất bại') }
     finally { setSaving(false) }
@@ -353,9 +353,9 @@ function LenhModal({ open, editItem, defaultTo, onClose, onSaved, allRecords = [
   }
 
   const okText = doiLoMode ? 'Xác nhận đổi lô'
+    : isLocked ? 'Cập nhật'
     : !editItem ? 'Thêm'
-    : isBanHanh ? 'Cập nhật'
-    : 'Ban hành'
+    : 'Cập nhật'
 
   const histCols = [
     { title: 'Thời gian', dataIndex: 'changedAt', key: 'at', width: 140,
@@ -374,16 +374,15 @@ function LenhModal({ open, editItem, defaultTo, onClose, onSaved, allRecords = [
     if (doiLoMode) { setDoiLoMode(false); return }
     if (isDirty) {
       Modal.confirm({
-        title: 'Có thay đổi chưa lưu',
-        content: 'Bạn chưa nhấn "Cập nhật". Thoát sẽ mất các thay đổi vừa nhập.',
-        okText: 'Thoát không lưu',
-        okType: 'danger',
-        cancelText: 'Quay lại',
-        onOk: () => { setIsDirty(false); onClose() },
+        title: 'Thoát không lưu?',
+        content: 'Các thay đổi chưa được lưu sẽ bị mất.',
+        okText: 'Thoát',
+        cancelText: 'Ở lại',
+        onOk: onClose,
       })
-    } else {
-      onClose()
+      return
     }
+    onClose()
   }
 
   return (
@@ -407,16 +406,42 @@ function LenhModal({ open, editItem, defaultTo, onClose, onSaved, allRecords = [
         </Space>
       }
       okText={okText}
-      okButtonProps={{
-        style: doiLoMode ? { background: '#d46b08', borderColor: '#d46b08' }
-          : !editItem || isBanHanh
-            ? (isDirty ? { boxShadow: '0 0 0 3px rgba(22,119,255,0.45)', fontWeight: 700 } : {})
-            : { background: '#15803d', borderColor: '#15803d',
-                ...(isDirty ? { boxShadow: '0 0 0 3px rgba(22,163,74,0.5)', fontWeight: 700 } : {}) }
-      }}
+      cancelButtonProps={{  }}
       cancelText={doiLoMode ? 'Quay lại' : 'Huỷ'}
       width={doiLoMode ? 720 : 680}
       destroyOnClose
+      footer={(_, { CancelBtn }) => (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ minHeight: 22 }}>
+            {hasSavedOnce && !isDirty && !doiLoMode && (
+              <span style={{ color: '#16a34a', fontWeight: 600, fontSize: 13 }}>
+                ✓ Đã phát hành{savedAt ? ` — lưu lúc ${savedAt.getHours().toString().padStart(2,'0')}:${savedAt.getMinutes().toString().padStart(2,'0')}:${savedAt.getSeconds().toString().padStart(2,'0')}` : ''}
+              </span>
+            )}
+            {editItem && isDirty && !doiLoMode && (
+              <span style={{ color: '#d97706', fontWeight: 600, fontSize: 13 }}>
+                ⚠ Có thay đổi chưa lưu
+              </span>
+            )}
+          </div>
+          <Space>
+            <CancelBtn />
+            <Button
+              type="primary"
+              loading={saving}
+              onClick={onOk}
+              style={
+                doiLoMode ? { background: '#d46b08', borderColor: '#d46b08' }
+                : isLocked ? { background: '#BBBBBB', borderColor: '#BBBBBB', color: '#fff' }
+                : isDirty ? { boxShadow: '0 0 0 3px rgba(22,119,255,0.45)', fontWeight: 700 }
+                : {}
+              }
+            >
+              {okText}
+            </Button>
+          </Space>
+        </div>
+      )}
     >
       {/* ── Chế độ đổi lô ─────────────────────────────────────────────────── */}
       {doiLoMode ? (
@@ -498,7 +523,7 @@ function LenhModal({ open, editItem, defaultTo, onClose, onSaved, allRecords = [
         </div>
       ) : (
       /* ── Form chỉnh sửa thường ─────────────────────────────────────────── */
-      <Form form={form} layout="vertical" style={{ marginTop: 12 }} onValuesChange={() => setIsDirty(true)}>
+      <Form form={form} layout="vertical" style={{ marginTop: 12 }} onValuesChange={() => setIsDirty(true)} disabled={isLocked}>
         {/* Banner đã ban hành */}
         {isBanHanh && (
           <div style={{
@@ -521,55 +546,16 @@ function LenhModal({ open, editItem, defaultTo, onClose, onSaved, allRecords = [
         <div style={{ display: 'flex', gap: 12 }}>
           <Form.Item label={<span>Mã Bravo {!isBanHanh && lookupIcon()}</span>} name="maBravo" style={{ flex: 1 }}
             rules={[{ required: true, message: 'Nhập Mã Bravo' }]}>
-            {isBanHanh ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', flex: 1 }}>
-                  {form.getFieldValue('maBravo') || '—'}
-                </span>
-                <Button size="small" icon={<EditOutlined />}
-                  style={{ color: '#4338ca', borderColor: '#818cf8', fontSize: 11 }}
-                  onClick={() => openDoiField('maBravo', form.getFieldValue('maBravo'))}>
-                  Sửa
-                </Button>
-              </div>
-            ) : (
-              <Input placeholder="VD: 10602153" onChange={handleBravoChange}
-                style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }} />
-            )}
+            <Input placeholder="VD: 10602153" onChange={isBanHanh ? undefined : handleBravoChange}
+              style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }} />
           </Form.Item>
           <Form.Item label="Mã SP" name="maSp" style={{ flex: 1 }}>
-            {isBanHanh ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontWeight: 700, color: '#1D4ED8', flex: 1 }}>
-                  {form.getFieldValue('maSp') || '—'}
-                </span>
-                <Button size="small" icon={<EditOutlined />}
-                  style={{ color: '#4338ca', borderColor: '#818cf8', fontSize: 11 }}
-                  onClick={() => openDoiField('maSp', form.getFieldValue('maSp'))}>
-                  Sửa
-                </Button>
-              </div>
-            ) : (
-              <Input placeholder="Tự động điền" style={{ color: '#1D4ED8', fontWeight: 600 }} />
-            )}
+            <Input placeholder="Tự động điền" style={{ color: '#1D4ED8', fontWeight: 600 }} />
           </Form.Item>
         </div>
         {/* Tên Sản Phẩm */}
         <Form.Item label="Tên Sản Phẩm / Tiến Trình" name="tenSanPham">
-          {isBanHanh ? (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-              <span style={{ flex: 1, fontSize: 13, color: '#1e293b' }}>
-                {form.getFieldValue('tenSanPham') || '—'}
-              </span>
-              <Button size="small" icon={<EditOutlined />}
-                style={{ color: '#4338ca', borderColor: '#818cf8', fontSize: 11, flexShrink: 0 }}
-                onClick={() => openDoiField('tenSanPham', form.getFieldValue('tenSanPham'))}>
-                Sửa
-              </Button>
-            </div>
-          ) : (
-            <Input.TextArea autoSize={{ minRows: 1, maxRows: 3 }} placeholder="Tự động điền khi tra Mã Bravo" />
-          )}
+          <Input.TextArea autoSize={{ minRows: 1, maxRows: 3 }} placeholder="Tự động điền khi tra Mã Bravo" />
         </Form.Item>
         {/* Row 2: Số Lô (locked khi đã ban hành) + Mã Đơn Hàng + Số Lượng + Tình Trạng */}
         <div style={{ display: 'flex', gap: 12 }}>
@@ -603,24 +589,10 @@ function LenhModal({ open, editItem, defaultTo, onClose, onSaved, allRecords = [
             )}
           </Form.Item>
           <Form.Item label="Mã Đơn Hàng" name="maDonHang" style={{ flex: 1 }}>
-            {isBanHanh ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontFamily: 'monospace', color: '#7c3aed', fontWeight: 600, flex: 1 }}>
-                  {form.getFieldValue('maDonHang') || '—'}
-                </span>
-                <Button size="small" icon={<EditOutlined />}
-                  style={{ color: '#4338ca', borderColor: '#818cf8', fontSize: 11 }}
-                  onClick={() => openDoiField('maDonHang', form.getFieldValue('maDonHang'))}>
-                  Sửa
-                </Button>
-              </div>
-            ) : (
-              <Input placeholder="VD: DH-001" style={{ fontFamily: 'monospace' }} />
-            )}
+            <Input placeholder="VD: DH-001" style={{ fontFamily: 'monospace', color: '#7c3aed', fontWeight: 600 }} />
           </Form.Item>
           <Form.Item label="Cỡ Lô" name="soLuong" style={{ flex: 1 }}>
-            <InputNumber style={{ width: '100%', background: isBanHanh ? '#f5f5f5' : undefined }} min={0}
-              disabled={isBanHanh}
+            <InputNumber style={{ width: '100%' }} min={0}
               formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
               parser={v => v ? v.replace(/[^\d]/g, '') : ''} />
           </Form.Item>
@@ -1132,6 +1104,16 @@ export default function LenhSanXuatPage() {
     } catch { /* silent */ }
   }, [])
 
+  const [syncingAll, setSyncingAll] = useState(false)
+  const [pendingSyncCount, setPendingSyncCount] = useState(0)
+
+  const fetchPendingSync = useCallback(async () => {
+    try {
+      const { data } = await api.get('/lenh-san-xuat/pending-sync-count')
+      setPendingSyncCount(data.count ?? 0)
+    } catch { /* silent */ }
+  }, [])
+
   useEffect(() => { load(); fetchPendingSync() }, [load, fetchPendingSync])
 
   // Auto-refresh mỗi 60 giây + kiểm tra duplicate sau mỗi lần tải
@@ -1152,12 +1134,11 @@ export default function LenhSanXuatPage() {
 
   // ── Client-side extra filter (maSp, soLo, daLenLichLam) ─────────────────
   const displayData = data.filter(r => {
-    // Tab "Đã hoàn thiện": chỉ hiện lệnh daLenLichLam=true
+    const daPhatHanh = !!(r.daBanHanh && r.soLo)
     if (activeTab === DONE_TAB) {
-      if (!r.daLenLichLam) return false
+      if (!daPhatHanh) return false
     } else {
-      // Các tab bình thường: ẩn lệnh đã hoàn thiện
-      if (r.daLenLichLam) return false
+      if (daPhatHanh) return false
     }
     if (filterMaSp && !r.maSp?.toLowerCase().includes(filterMaSp.toLowerCase())
                    && !r.maBravo?.toLowerCase().includes(filterMaSp.toLowerCase())
@@ -1242,16 +1223,6 @@ export default function LenhSanXuatPage() {
     } catch { message.error('Xóa thất bại') }
     finally { setBulkDeleting(false) }
   }
-
-  const [syncingAll, setSyncingAll] = useState(false)
-  const [pendingSyncCount, setPendingSyncCount] = useState(0)
-
-  const fetchPendingSync = useCallback(async () => {
-    try {
-      const { data } = await api.get('/lenh-san-xuat/pending-sync-count')
-      setPendingSyncCount(data.count ?? 0)
-    } catch { /* silent */ }
-  }, [])
 
   const handleSyncAllSanLuong = async () => {
     setSyncingAll(true)
@@ -1485,7 +1456,7 @@ export default function LenhSanXuatPage() {
   const openEdit = (r) => { setEditItem(r);   setModalOpen(true) }
 
   const onSaved = (savedRecord, prevRecord = null, opts = {}) => {
-    setModalOpen(false)
+    if (!opts.noClose) setModalOpen(false)
     if (savedRecord && detailRecord?.id === savedRecord.id) {
       setDetailRecord(savedRecord)
     }
@@ -1526,9 +1497,9 @@ export default function LenhSanXuatPage() {
   // ── Tab items ─────────────────────────────────────────────────────────────
   const tabItems = GROUP_TABS.map(g => {
     let cnt
-    if (g.key === DONE_TAB)  cnt = data.filter(r =>  !!r.daLenLichLam).length
-    else if (g.key === '')   cnt = data.filter(r => !r.daLenLichLam).length
-    else                     cnt = data.filter(r => !r.daLenLichLam && r.toThucHien === g.key).length
+    if (g.key === DONE_TAB)  cnt = data.filter(r =>  !!(r.daBanHanh && r.soLo)).length
+    else if (g.key === '')   cnt = data.filter(r => !(r.daBanHanh && r.soLo)).length
+    else                     cnt = data.filter(r => !(r.daBanHanh && r.soLo) && r.toThucHien === g.key).length
     const badgeColor = g.color || (g.key ? TO_COLOR[g.key] || '#1D4ED8' : '#1D4ED8')
     return {
       key: g.key,

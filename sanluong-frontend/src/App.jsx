@@ -29,8 +29,9 @@ function PrivateRoute({ children, adminOnly = false, allowedRoles = null }) {
 }
 
 function HomeRoute() {
-  const { user } = useAuth()
-  if (user?.role === 'NHAN_VIEN') return <Navigate to="/work-schedule" replace />
+  const { user, isNhanVien } = useAuth()
+  if (isNhanVien()) return <Navigate to="/work-schedule" replace />
+  if (user?.role === 'HCNS') return <Navigate to="/employees" replace />
   return <DashboardPage />
 }
 
@@ -61,13 +62,13 @@ export default function App() {
         } />
         <Route path="employees" element={<EmployeePage />} />
         <Route path="work-efficiency" element={
-          <PrivateRoute allowedRoles={['ADMIN', 'NHAN_VIEN', 'ADMIN_PC', 'ADMIN_BBC1', 'ADMIN_PL', 'ADMIN_DG', 'ADMIN_PCPL1', 'ADMIN_PCPL2', 'ADMIN_PCPL3']}>
+          <PrivateRoute allowedRoles={['ADMIN', 'TKSX', 'QUAN_DOC', 'NHAN_VIEN', 'NHAN_VIEN_PCPL1', 'NHAN_VIEN_PCPL2', 'NHAN_VIEN_PCPL3', 'NHAN_VIEN_BBC1', 'NHAN_VIEN_DG', 'ADMIN_PC', 'ADMIN_BBC1', 'ADMIN_PL', 'ADMIN_DG', 'ADMIN_PCPL1', 'ADMIN_PCPL2', 'ADMIN_PCPL3']}>
             <WorkEfficiencyPage />
           </PrivateRoute>
         } />
         <Route path="daily-sl" element={<DailySanLuongPage />} />
         <Route path="cham-cong" element={
-          <PrivateRoute adminOnly>
+          <PrivateRoute allowedRoles={['ADMIN', 'KE_TOAN']}>
             <ChamCongPage />
           </PrivateRoute>
         } />

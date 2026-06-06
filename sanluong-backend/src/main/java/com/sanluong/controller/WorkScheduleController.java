@@ -119,9 +119,11 @@ public class WorkScheduleController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
             @RequestParam(required = false) String maSp,
+            @RequestParam(required = false) String tenTrinh,
+            @RequestParam(required = false) String soLo,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(service.findDeviations(fromDate, toDate, maSp, page, size));
+        return ResponseEntity.ok(service.findDeviations(fromDate, toDate, maSp, tenTrinh, soLo, page, size));
     }
 
     @GetMapping("/new-today/count")

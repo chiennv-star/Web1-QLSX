@@ -32,13 +32,19 @@ public class SecurityConfig {
     };
     // TKSX: tương đương ADMIN (trừ write lenh-san-xuat)
     // QUAN_DOC: chỉ đọc (GET), không write
+    private static final String[] NV_VARIANT_ROLES = {
+        "NHAN_VIEN_PCPL1", "NHAN_VIEN_PCPL2", "NHAN_VIEN_PCPL3", "NHAN_VIEN_BBC1", "NHAN_VIEN_DG"
+    };
     private static final String[] ALL_WRITE_ROLES = {
-        "ADMIN", "TKSX", "NHAN_VIEN", "ADMIN_PC", "ADMIN_BBC1", "ADMIN_PL", "ADMIN_DG", "ADMIN_KH",
+        "ADMIN", "TKSX", "NHAN_VIEN", "NHAN_VIEN_PCPL1", "NHAN_VIEN_PCPL2", "NHAN_VIEN_PCPL3", "NHAN_VIEN_BBC1", "NHAN_VIEN_DG",
+        "ADMIN_PC", "ADMIN_BBC1", "ADMIN_PL", "ADMIN_DG", "ADMIN_KH",
         "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3"
     };
     private static final String[] ALL_ROLES = {
-        "ADMIN", "TKSX", "QUAN_DOC", "NHAN_VIEN", "ADMIN_PC", "ADMIN_BBC1", "ADMIN_PL", "ADMIN_DG", "ADMIN_KH",
-        "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3"
+        "ADMIN", "TKSX", "QUAN_DOC",
+        "NHAN_VIEN", "NHAN_VIEN_PCPL1", "NHAN_VIEN_PCPL2", "NHAN_VIEN_PCPL3", "NHAN_VIEN_BBC1", "NHAN_VIEN_DG",
+        "ADMIN_PC", "ADMIN_BBC1", "ADMIN_PL", "ADMIN_DG", "ADMIN_KH",
+        "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3", "HCNS", "KE_TOAN"
     };
 
     public SecurityConfig(JwtFilter jwtFilter) {
@@ -102,8 +108,9 @@ public class SecurityConfig {
                     "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3"
                 )
 
-                // ── Nhân sự: tất cả xem, ADMIN + TKSX + ADMIN_KH thêm/sửa/xóa ──
+                // ── Nhân sự: tất cả xem, nhân viên tự cập nhật hồ sơ cá nhân ──
                 .requestMatchers(HttpMethod.GET, "/api/employees/**").hasAnyRole(ALL_ROLES)
+                .requestMatchers(HttpMethod.PUT, "/api/employees/me").hasAnyRole(ALL_ROLES)
                 .requestMatchers("/api/employees/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH")
 
                 // ── Hiệu quả công việc: tất cả xem, ADMIN và TKSX cập nhật ───

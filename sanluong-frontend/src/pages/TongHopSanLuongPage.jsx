@@ -15,12 +15,12 @@ const fmtSL   = v => (v || 0).toLocaleString('vi-VN')
 const fmtCong = (v, d = 4) => (v || 0).toLocaleString('vi-VN', { minimumFractionDigits: d, maximumFractionDigits: d })
 
 const STAGES = [
-  { key: 'PCPL1', label: 'PCPL 1', slColor: '#1d4ed8', congColor: '#3b82f6', bg: '#eff6ff', border: '#93c5fd', headerBg: '#1d4ed8', kpiBg: '#1d4ed8', kpiBorder: '#93c5fd' },
-  { key: 'PCPL2', label: 'PCPL 2', slColor: '#0369a1', congColor: '#0ea5e9', bg: '#e0f2fe', border: '#7dd3fc', headerBg: '#0369a1', kpiBg: '#0369a1', kpiBorder: '#7dd3fc' },
-  { key: 'PL',    label: 'PL',     slColor: '#0e7490', congColor: '#06b6d4', bg: '#ecfeff', border: '#67e8f9', headerBg: '#0e7490', kpiBg: '#0e7490', kpiBorder: '#67e8f9' },
-  { key: 'DG',    label: 'ĐG',     slColor: '#b45309', congColor: '#f59e0b', bg: '#fffbeb', border: '#fde68a', headerBg: '#b45309', kpiBg: '#b45309', kpiBorder: '#fde68a' },
-  { key: 'BBC1',  label: 'BBC1',   slColor: '#6d28d9', congColor: '#8b5cf6', bg: '#f5f3ff', border: '#c4b5fd', headerBg: '#6d28d9', kpiBg: '#6d28d9', kpiBorder: '#c4b5fd' },
-  { key: 'CC',    label: 'CC',     slColor: '#be185d', congColor: '#ec4899', bg: '#fdf2f8', border: '#f9a8d4', headerBg: '#be185d', kpiBg: '#be185d', kpiBorder: '#f9a8d4' },
+  { key: 'PCPL1', label: 'PCPL 1', slColor: '#389e0d', congColor: '#722ed1', bg: '#eff6ff', border: '#93c5fd', headerBg: '#1d4ed8', kpiBg: '#1d4ed8', kpiBorder: '#93c5fd' },
+  { key: 'PCPL2', label: 'PCPL 2', slColor: '#389e0d', congColor: '#722ed1', bg: '#e0f2fe', border: '#7dd3fc', headerBg: '#0369a1', kpiBg: '#0369a1', kpiBorder: '#7dd3fc' },
+  { key: 'PL',    label: 'PL',     slColor: '#389e0d', congColor: '#722ed1', bg: '#ecfeff', border: '#67e8f9', headerBg: '#0e7490', kpiBg: '#0e7490', kpiBorder: '#67e8f9' },
+  { key: 'DG',    label: 'ĐG',     slColor: '#389e0d', congColor: '#722ed1', bg: '#fffbeb', border: '#fde68a', headerBg: '#b45309', kpiBg: '#b45309', kpiBorder: '#fde68a' },
+  { key: 'BBC1',  label: 'BBC1',   slColor: '#389e0d', congColor: '#722ed1', bg: '#f5f3ff', border: '#c4b5fd', headerBg: '#6d28d9', kpiBg: '#6d28d9', kpiBorder: '#c4b5fd' },
+  { key: 'CC',    label: 'CC',     slColor: '#389e0d', congColor: '#722ed1', bg: '#fdf2f8', border: '#f9a8d4', headerBg: '#be185d', kpiBg: '#be185d', kpiBorder: '#f9a8d4' },
 ]
 
 export default function TongHopSanLuongPage() {
@@ -144,7 +144,7 @@ export default function TongHopSanLuongPage() {
           key: `${s.key}_sl`,
           width: 95,
           align: 'right',
-          onHeaderCell: () => ({ style: { background: s.headerBg + 'dd', color: '#fff', fontSize: 10, opacity: 0.9 } }),
+          onHeaderCell: () => ({ style: { background: s.headerBg + 'dd', fontSize: 10, opacity: 0.9 } }),
           render: (_, r) => {
             const val = r[s.key]?.sl
             if (!val) return <span style={{ color: '#d1d5db' }}>—</span>
@@ -163,7 +163,7 @@ export default function TongHopSanLuongPage() {
           key: `${s.key}_cong`,
           width: 88,
           align: 'right',
-          onHeaderCell: () => ({ style: { background: s.headerBg + 'dd', color: '#fff', fontSize: 10, opacity: 0.9 } }),
+          onHeaderCell: () => ({ style: { background: s.headerBg + 'dd', fontSize: 10, opacity: 0.9 } }),
           render: (_, r) => {
             const val = r[s.key]?.cong
             if (!val) return <span style={{ color: '#d1d5db' }}>—</span>
@@ -182,7 +182,7 @@ export default function TongHopSanLuongPage() {
       render: (_, r) => {
         const total = STAGES.reduce((sum, s) => sum + (r[s.key]?.sl || 0), 0)
         return total
-          ? <strong style={{ color: '#1D4ED8', fontSize: 13 }}>{fmtSL(total)}</strong>
+          ? <strong style={{ color: '#389e0d', fontSize: 13 }}>{fmtSL(total)}</strong>
           : <span style={{ color: '#d1d5db' }}>—</span>
       },
       sorter: (a, b) =>
@@ -199,7 +199,7 @@ export default function TongHopSanLuongPage() {
       render: (_, r) => {
         const total = STAGES.reduce((sum, s) => sum + (r[s.key]?.cong || 0), 0)
         return total
-          ? <strong style={{ color: '#1D4ED8' }}>{fmtCong(total, 2)}</strong>
+          ? <strong style={{ color: '#722ed1' }}>{fmtCong(total, 2)}</strong>
           : <span style={{ color: '#d1d5db' }}>—</span>
       },
     },
@@ -220,7 +220,7 @@ export default function TongHopSanLuongPage() {
       >
         {/* Row 1: Tiêu đề + bộ lọc */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 800, color: '#1e3a5f', fontSize: 15, whiteSpace: 'nowrap', letterSpacing: 0.3 }}>
+          <span style={{ fontWeight: 800, color: '#339999', fontSize: 15, whiteSpace: 'nowrap', letterSpacing: 0.3 }}>
             <BarChartOutlined style={{ marginRight: 6, color: '#3b82f6' }} />
             Tổng Hợp Sản Lượng
           </span>
@@ -280,8 +280,9 @@ export default function TongHopSanLuongPage() {
           vertical-align: middle;
           font-size: 13px;
         }
-        .tonghop-table .ant-table-tbody > tr:nth-child(odd) > td  { background: #ffffff; }
-        .tonghop-table .ant-table-tbody > tr:nth-child(even) > td { background: #f8faff; }
+        .tonghop-table .ant-table-thead > tr:nth-child(2) > th { color: #ffffff !important; background: rgba(0,0,0,0.25) !important; font-weight: 800 !important; letter-spacing: 1px; }
+        .tonghop-table .ant-table-tbody > tr:nth-child(odd) > td  { background: #ffffff !important; }
+        .tonghop-table .ant-table-tbody > tr:nth-child(even) > td { background: #ffffff !important; }
         .tonghop-table .ant-table-tbody > tr:hover > td { background: #eff6ff !important; transition: background 0.12s; }
         .tonghop-table .ant-table-summary > tr > td {
           background: #1e3a5f !important;
@@ -333,17 +334,17 @@ export default function TongHopSanLuongPage() {
                 </Table.Summary.Cell>
                 {STAGES.flatMap((s, i) => [
                   <Table.Summary.Cell key={`sl${i}`} index={i * 2 + 1} align="right">
-                    <strong style={{ color: '#1D4ED8' }}>{fmtSL(tot[s.key].sl)}</strong>
+                    <strong style={{ color: '#389e0d' }}>{fmtSL(tot[s.key].sl)}</strong>
                   </Table.Summary.Cell>,
                   <Table.Summary.Cell key={`cong${i}`} index={i * 2 + 2} align="right">
-                    <strong style={{ color: '#1D4ED8' }}>{fmtCong(tot[s.key].cong, 2)}</strong>
+                    <strong style={{ color: '#722ed1' }}>{fmtCong(tot[s.key].cong, 2)}</strong>
                   </Table.Summary.Cell>,
                 ])}
                 <Table.Summary.Cell index={13} align="right">
-                  <strong style={{ color: '#1D4ED8', fontSize: 13 }}>{fmtSL(gSl)}</strong>
+                  <strong style={{ color: '#389e0d', fontSize: 13 }}>{fmtSL(gSl)}</strong>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={14} align="right">
-                  <strong style={{ color: '#1D4ED8', fontSize: 13 }}>{fmtCong(gCong, 2)}</strong>
+                  <strong style={{ color: '#722ed1', fontSize: 13 }}>{fmtCong(gCong, 2)}</strong>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
             </Table.Summary>

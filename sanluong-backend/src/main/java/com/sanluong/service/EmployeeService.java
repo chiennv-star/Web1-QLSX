@@ -1,8 +1,10 @@
 package com.sanluong.service;
 
 import com.sanluong.dto.EmployeeDto;
+import com.sanluong.dto.EmployeeSelfUpdateDto;
 import com.sanluong.entity.Employee;
 import com.sanluong.repository.EmployeeRepository;
+import com.sanluong.repository.UserRepository;
 import com.sanluong.repository.WorkEfficiencyRepository;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddressList;
@@ -22,11 +24,14 @@ public class EmployeeService {
 
     private final EmployeeRepository repository;
     private final WorkEfficiencyRepository workEfficiencyRepository;
+    private final UserRepository userRepository;
 
     public EmployeeService(EmployeeRepository repository,
-                           WorkEfficiencyRepository workEfficiencyRepository) {
+                           WorkEfficiencyRepository workEfficiencyRepository,
+                           UserRepository userRepository) {
         this.repository = repository;
         this.workEfficiencyRepository = workEfficiencyRepository;
+        this.userRepository = userRepository;
     }
 
     public Page<Employee> search(String search, String toNhom, int page, int size) {
@@ -63,6 +68,22 @@ public class EmployeeService {
 
     public void delete(Long id) {
         repository.deleteById(id);
+    }
+
+    public Employee updateSelf(String username, EmployeeSelfUpdateDto dto) {
+        String maNhanVien = userRepository.findByUsername(username)
+            .map(u -> u.getMaNhanVien())
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản: " + username));
+        if (maNhanVien == null || maNhanVien.isBlank())
+            throw new RuntimeException("Tài khoản chưa liên kết mã nhân viên");
+        Employee e = repository.findByMaNhanVien(maNhanVien)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên: " + maNhanVien));
+        e.setSdt(dto.getSdt());
+        e.setDiaChi(dto.getDiaChi());
+        e.setNgaySinh(dto.getNgaySinh());
+        e.setHocVan(dto.getHocVan());
+        e.setUpdatedBy(username);
+        return repository.save(e);
     }
 
     private void syncToWorkEfficiency(Employee emp, String oldMaNhanVien) {
