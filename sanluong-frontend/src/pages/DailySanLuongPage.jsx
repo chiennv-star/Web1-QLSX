@@ -58,6 +58,7 @@ function DailyDetailTab() {
   const [congDoan, setCongDoan] = useState(
     () => localStorage.getItem('daily_congDoan') || ''
   )
+  const [filterTienTrinh, setFilterTienTrinh] = useState('')
 
   const [selectedRowKeys, setSelectedRowKeys] = useState([])
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -135,6 +136,7 @@ function DailyDetailTab() {
     const def = [dayjs().subtract(6, 'day'), dayjs()]
     setDateRange(def)
     setCongDoan('')
+    setFilterTienTrinh('')
     fetchData(def, '')
   }
 
@@ -411,6 +413,10 @@ function DailyDetailTab() {
     }] : []),
   ]
 
+  const filteredData = filterTienTrinh.trim()
+    ? data.filter(r => (r.tenTrinh || '').toLowerCase().includes(filterTienTrinh.trim().toLowerCase()))
+    : data
+
   return (
     <>
       {/* Bộ lọc + KPI (sticky wrapper) */}
@@ -453,6 +459,11 @@ function DailyDetailTab() {
           format="DD/MM/YYYY" allowClear placeholder={['Từ ngày', 'Đến ngày']} />
         <Select size="small" value={congDoan} onChange={setCongDoan}
           options={CONG_DOAN_OPTIONS} style={{ width: 160 }} />
+        <Input
+          size="small" allowClear placeholder="Tiến trình..."
+          value={filterTienTrinh} onChange={e => setFilterTienTrinh(e.target.value)}
+          style={{ width: 200 }}
+        />
         <Button size="small" type="primary" icon={<SearchOutlined />} onClick={() => fetchData()}
           style={{ background: '#00CC99', borderColor: '#00CC99' }}>Truy xuất</Button>
         <Button size="small" icon={<ReloadOutlined />} onClick={handleReset} />
@@ -515,7 +526,7 @@ function DailyDetailTab() {
       <Table
         className="daily-sl-table"
         columns={columns}
-        dataSource={data}
+        dataSource={filteredData}
         rowKey={r => r.status === 'PENDING' ? `req-${r.requestId}` : `s-${r.sessionId}`}
         rowSelection={{
           selectedRowKeys,
