@@ -281,12 +281,15 @@ export default function TongHopSanLuongPage() {
           font-size: 13px;
         }
         .tonghop-table .ant-table-thead > tr:nth-child(2) > th { color: #ffffff !important; background: rgba(0,0,0,0.25) !important; font-weight: 800 !important; letter-spacing: 1px; }
-        .tonghop-table .ant-table-tbody > tr > td  { background: #ffffff !important; }
-        .tonghop-table .ant-table-tbody > tr:hover > td { background: #eff6ff !important; transition: background 0.12s; }
+        .tonghop-table .ant-table-tbody > tr:nth-child(odd) > td  { background: #e6f5f5 !important; }
+        .tonghop-table .ant-table-tbody > tr:nth-child(even) > td { background: #cce8e8 !important; }
+        .tonghop-table .ant-table-tbody > tr:hover > td { background: #99CCCC !important; transition: background 0.12s; }
         .tonghop-table .ant-table-cell-fix-left,
-        .tonghop-table .ant-table-cell-fix-right { background: #ffffff !important; }
+        .tonghop-table .ant-table-cell-fix-right { background: #e6f5f5 !important; }
+        .tonghop-table .ant-table-tbody > tr:nth-child(even) .ant-table-cell-fix-left,
+        .tonghop-table .ant-table-tbody > tr:nth-child(even) .ant-table-cell-fix-right { background: #cce8e8 !important; }
         .tonghop-table .ant-table-tbody > tr:hover .ant-table-cell-fix-left,
-        .tonghop-table .ant-table-tbody > tr:hover .ant-table-cell-fix-right { background: #eff6ff !important; }
+        .tonghop-table .ant-table-tbody > tr:hover .ant-table-cell-fix-right { background: #99CCCC !important; }
         .tonghop-table .ant-table-summary > tr > td {
           background: #e8f4fd !important;
           color: #0000AA !important;
