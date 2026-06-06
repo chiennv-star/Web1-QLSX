@@ -607,7 +607,7 @@ public class WorkScheduleService {
         List<WorkSchedule> allWs = repository.searchAll(
                 fromDate, toDate,
                 isEmpty(maSp) ? null : maSp,
-                null, null, null, null, "SCHEDULE", null);
+                null, null, null, null, null, "SCHEDULE", null);
         if (allWs.isEmpty()) return List.of();
 
         List<Long> wsIds = allWs.stream().map(WorkSchedule::getId).collect(Collectors.toList());
