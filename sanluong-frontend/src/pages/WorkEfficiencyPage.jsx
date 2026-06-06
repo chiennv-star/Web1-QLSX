@@ -723,7 +723,7 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
                 dataSource={sessions}
                 rowKey="id"
                 size="small"
-                scroll={{ x: 1370 }}
+                scroll={{ x: 1370, y: 'calc(100vh - 280px)' }}
                 pagination={{ pageSize: 50, showTotal: t => `${t} phiên`, showSizeChanger: false }}
                 rowClassName={(_, i) => i % 2 === 0 ? '' : 'row-stripe'}
                 onRow={(record) => ({
