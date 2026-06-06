@@ -1940,7 +1940,7 @@ export default function WorkEfficiencyPage() {
         .eff-tabs > .ant-tabs-nav .ant-tabs-ink-bar { background: #60A5FA !important; }
         .eff-tabs > .ant-tabs-nav::before { border: none !important; }
         /* ERP blue table header */
-        .eff-table .ant-table-thead > tr > th { background: linear-gradient(90deg, #2980b3 0%, #3399CC 100%) !important; color: #ffffff !important; font-size: 11px !important; text-transform: uppercase; padding: 7px 8px !important; letter-spacing: 0.4px; border-right: 1px solid #4db3d4 !important; white-space: nowrap; }
+        .eff-table .ant-table-thead > tr > th { background: #3399CC !important; color: #ffffff !important; font-size: 11px !important; text-transform: uppercase; padding: 7px 8px !important; letter-spacing: 0.4px; border-right: 1px solid #4db3d4 !important; white-space: nowrap; }
         .eff-table .ant-table-thead > tr > th::before { display: none !important; }
         .eff-table .ant-table-tbody > tr > td { padding: 6px 8px !important; font-size: 12px; vertical-align: middle; }
         .eff-table .ant-table-tbody > tr:hover > td { background: #f5f3ff !important; }
