@@ -75,6 +75,7 @@ export default function RecordFormPage() {
   const watchPc      = Form.useWatch('pcChiPhi',      form) || 0
   const watchPl      = Form.useWatch('plChiPhi',      form) || 0
   const watchDg      = Form.useWatch('dgChiPhi',      form) || 0
+  const watchGnnl    = Form.useWatch('temDb',         form) || 0
   const watchPcStatus   = Form.useWatch('pcTrangThai',   form)
   const watchPlStatus   = Form.useWatch('plTrangThai',   form)
   const watchDgStatus   = Form.useWatch('dgTrangThai',   form)
@@ -248,7 +249,7 @@ export default function RecordFormPage() {
     }
   }
 
-  const sigmaCong    = (watchBbc1 + watchPc + watchPl + watchDg).toFixed(4)
+  const sigmaCong    = (watchGnnl + watchBbc1 + watchPc + watchPl + watchDg).toFixed(4)
   const chenhLechBtp = (parseInt(watchDg2) || 0) - (parseInt(watchPcPl) || 0)
   const doDangDgCalc = (parseInt(watchSoLuong) || 0) - (parseInt(watchDg2) || 0)
   const spCong       = (() => {
@@ -819,6 +820,24 @@ export default function RecordFormPage() {
                                 </tr>
                               )
                             })}
+                            <tr style={{ borderBottom: '1px solid #f5e6ff', background: '#fdf4ff' }}>
+                              <td style={{ padding: '6px 14px', whiteSpace: 'nowrap' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                    width: 48, height: 22, borderRadius: 4,
+                                    background: '#c41d7f', color: '#fff', fontWeight: 800, fontSize: 11, letterSpacing: 0.5,
+                                  }}>GNNL</span>
+                                  <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 500 }}>Giao nhận nguyên liệu</span>
+                                </div>
+                              </td>
+                              <td colSpan={2} style={{ padding: '4px 10px', color: '#bbb', fontSize: 11 }}>—</td>
+                              <td style={{ padding: '4px 10px' }}>
+                                <Form.Item name="temDb" style={{ marginBottom: 0 }}>
+                                  <InputNumber size="small" style={{ width: '100%' }} step={0.0001} precision={4} placeholder="0.0000" disabled={ro} />
+                                </Form.Item>
+                              </td>
+                            </tr>
                             <tr style={{ borderTop: '1px dashed #e2e8f0', background: '#f8fafc' }}>
                               <td colSpan={2} style={{ padding: '6px 14px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -852,7 +871,6 @@ export default function RecordFormPage() {
                                 {[
                                   { label: 'SP Trung gian', name: 'spTrungGian', type: 'num' },
                                   { label: 'TP Nhập kho',   name: 'tpNhapKho',   type: 'num' },
-                                  { label: 'TEM ĐB',        name: 'temDb',        type: 'dec' },
                                   { label: 'QA Lấy mẫu',   name: 'qaLayMau',     type: 'num' },
                                   { label: 'SL Trung bình', name: 'slTrungBinh',  type: 'dec2' },
                                 ].map(f => (
@@ -904,9 +922,14 @@ export default function RecordFormPage() {
                             <div className="sec-h">⚙ Chi phí tổng hợp (Công)</div>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                               <tbody>
-                                {STAGES.map(s => {
-                                  const val = s.key === 'pc' ? watchPc : s.key === 'pl' ? watchPl : s.key === 'dg' ? watchDg : watchBbc1
-                                  const pct = parseFloat(sigmaCong) > 0 ? (val / parseFloat(sigmaCong) * 100).toFixed(1) : 0
+                                {[
+                                  { key: 'gnnl', label: 'GNNL', color: '#c41d7f', val: watchGnnl },
+                                  ...STAGES.map(s => ({
+                                    key: s.key, label: s.label, color: s.color,
+                                    val: s.key === 'pc' ? watchPc : s.key === 'pl' ? watchPl : s.key === 'dg' ? watchDg : watchBbc1,
+                                  })),
+                                ].map(s => {
+                                  const pct = parseFloat(sigmaCong) > 0 ? (s.val / parseFloat(sigmaCong) * 100).toFixed(1) : 0
                                   return (
                                     <tr key={s.key} style={{ borderBottom: '1px solid #f0f2f5' }}>
                                       <td style={{ padding: '7px 12px', background: '#f8fafc', fontWeight: 700, fontSize: 12, color: s.color, width: '28%', whiteSpace: 'nowrap' }}>
@@ -915,7 +938,7 @@ export default function RecordFormPage() {
                                       <td style={{ padding: '7px 12px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                           <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#007700', fontSize: 12, minWidth: 70 }}>
-                                            {Number(val).toFixed(4)}
+                                            {Number(s.val).toFixed(4)}
                                           </span>
                                           <div style={{ flex: 1, height: 5, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
                                             <div style={{ width: `${pct}%`, height: '100%', background: s.color, borderRadius: 4, transition: 'width .3s' }} />

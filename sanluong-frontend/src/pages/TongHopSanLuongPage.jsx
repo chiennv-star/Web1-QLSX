@@ -281,17 +281,22 @@ export default function TongHopSanLuongPage() {
           font-size: 13px;
         }
         .tonghop-table .ant-table-thead > tr:nth-child(2) > th { color: #ffffff !important; background: rgba(0,0,0,0.25) !important; font-weight: 800 !important; letter-spacing: 1px; }
-        .tonghop-table .ant-table-tbody > tr:nth-child(odd) > td  { background: #ffffff !important; }
-        .tonghop-table .ant-table-tbody > tr:nth-child(even) > td { background: #ffffff !important; }
+        .tonghop-table .ant-table-tbody > tr > td  { background: #ffffff !important; }
         .tonghop-table .ant-table-tbody > tr:hover > td { background: #eff6ff !important; transition: background 0.12s; }
+        .tonghop-table .ant-table-cell-fix-left,
+        .tonghop-table .ant-table-cell-fix-right { background: #ffffff !important; }
+        .tonghop-table .ant-table-tbody > tr:hover .ant-table-cell-fix-left,
+        .tonghop-table .ant-table-tbody > tr:hover .ant-table-cell-fix-right { background: #eff6ff !important; }
         .tonghop-table .ant-table-summary > tr > td {
-          background: #1e3a5f !important;
-          color: #e2e8f0 !important;
+          background: #e8f4fd !important;
+          color: #0000AA !important;
           font-weight: 700 !important;
           font-size: 13px !important;
           padding: 9px 12px !important;
           border-top: 2px solid #3b82f6 !important;
         }
+        .tonghop-table .ant-table-summary .ant-table-cell-fix-left,
+        .tonghop-table .ant-table-summary .ant-table-cell-fix-right { background: #e8f4fd !important; }
         .tonghop-table .ant-table-fixed-left .ant-table-tbody > tr > td,
         .tonghop-table .ant-table-fixed-right .ant-table-tbody > tr > td {
           border-right: 1px solid #e2e8f0 !important;
@@ -330,21 +335,21 @@ export default function TongHopSanLuongPage() {
             <Table.Summary fixed="bottom">
               <Table.Summary.Row>
                 <Table.Summary.Cell index={0} align="center">
-                  <strong style={{ color: '#7dd3fc', fontSize: 11, letterSpacing: 0.5 }}>TỔNG TRANG</strong>
+                  <strong style={{ color: '#0000AA', fontSize: 11, letterSpacing: 0.5 }}>TỔNG TRANG</strong>
                 </Table.Summary.Cell>
                 {STAGES.flatMap((s, i) => [
                   <Table.Summary.Cell key={`sl${i}`} index={i * 2 + 1} align="right">
-                    <strong style={{ color: '#389e0d' }}>{fmtSL(tot[s.key].sl)}</strong>
+                    <strong style={{ color: '#0000AA' }}>{fmtSL(tot[s.key].sl)}</strong>
                   </Table.Summary.Cell>,
                   <Table.Summary.Cell key={`cong${i}`} index={i * 2 + 2} align="right">
-                    <strong style={{ color: '#722ed1' }}>{fmtCong(tot[s.key].cong, 2)}</strong>
+                    <strong style={{ color: '#0000AA' }}>{fmtCong(tot[s.key].cong, 2)}</strong>
                   </Table.Summary.Cell>,
                 ])}
                 <Table.Summary.Cell index={13} align="right">
-                  <strong style={{ color: '#389e0d', fontSize: 13 }}>{fmtSL(gSl)}</strong>
+                  <strong style={{ color: '#0000AA', fontSize: 13 }}>{fmtSL(gSl)}</strong>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={14} align="right">
-                  <strong style={{ color: '#722ed1', fontSize: 13 }}>{fmtCong(gCong, 2)}</strong>
+                  <strong style={{ color: '#0000AA', fontSize: 13 }}>{fmtCong(gCong, 2)}</strong>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
             </Table.Summary>

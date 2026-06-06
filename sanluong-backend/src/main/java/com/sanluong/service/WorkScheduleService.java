@@ -86,13 +86,14 @@ public class WorkScheduleService {
     }
 
     public Page<WorkSchedule> search(LocalDate fromDate, LocalDate toDate,
-                                      String maSp, String tenTrinh, String soLo,
+                                      String maSp, String tenTrinh, String soLo, String maBravo,
                                       String tinhTrang, String congDoan, String source,
                                       String toNhom, int page, int size) {
         List<WorkSchedule> all = repository.searchAll(fromDate, toDate,
                 isEmpty(maSp) ? null : maSp,
                 isEmpty(tenTrinh) ? null : tenTrinh,
                 isEmpty(soLo) ? null : soLo,
+                isEmpty(maBravo) ? null : maBravo,
                 isEmpty(tinhTrang) ? null : tinhTrang,
                 isEmpty(congDoan) ? null : congDoan,
                 isEmpty(source) ? null : source,
@@ -638,7 +639,30 @@ public class WorkScheduleService {
                 List<WorkScheduleSession> sessions = sessionMap.getOrDefault(ws.getId(), List.of());
                 StageTimelineDto.StageInfo info = buildStageInfo(sessions, ws.getTinhTrang());
                 switch (stage) {
-                    case "PC"   -> dto.setPc(info);
+                    case "PC", "PCPL1", "PCPL2" -> {
+                        StageTimelineDto.StageInfo existing = dto.getPc();
+                        if (existing == null) {
+                            dto.setPc(info);
+                        } else {
+                            // merge nhiều bản ghi PC/PCPL1/PCPL2 vào một ô
+                            String merged;
+                            if ("done".equals(existing.getTinhTrang()) && "done".equals(info.getTinhTrang())) {
+                                merged = "done";
+                            } else if ("doing".equals(existing.getTinhTrang()) || "doing".equals(info.getTinhTrang())) {
+                                merged = "doing";
+                            } else {
+                                merged = existing.getTinhTrang() != null ? existing.getTinhTrang() : info.getTinhTrang();
+                            }
+                            existing.setTinhTrang(merged);
+                            existing.setSoDays(existing.getSoDays() + info.getSoDays());
+                            if (info.getStartDate() != null && (existing.getStartDate() == null || info.getStartDate().isBefore(existing.getStartDate()))) {
+                                existing.setStartDate(info.getStartDate());
+                            }
+                            if (info.getEndDate() != null && (existing.getEndDate() == null || info.getEndDate().isAfter(existing.getEndDate()))) {
+                                existing.setEndDate(info.getEndDate());
+                            }
+                        }
+                    }
                     case "BBC1" -> dto.setBbc1(info);
                     case "PL"   -> dto.setPl(info);
                     case "DG"   -> dto.setDg(info);

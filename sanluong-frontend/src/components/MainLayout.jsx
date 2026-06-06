@@ -43,28 +43,17 @@ function SidebarInner({ collapsed, location, menuItems, onNavigate }) {
         height: 56,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: collapsed ? 'center' : 'flex-start',
+        justifyContent: 'center',
         gap: 10,
-        padding: collapsed ? 0 : '0 18px',
+        padding: '0 8px',
         background: NAV.logo,
         borderBottom: `1px solid ${NAV.border}`,
         flexShrink: 0,
       }}>
-        <div style={{
-          width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-          background: 'linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 15, boxShadow: '0 2px 8px rgba(29,78,216,0.5)',
-        }}>
-          📋
-        </div>
         {!collapsed && (
-          <div style={{ lineHeight: 1.2, overflow: 'hidden' }}>
-            <div style={{ fontWeight: 800, fontSize: 12, color: '#F1F5F9', letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>
-              Quản Trị Sản Xuất
-            </div>
-            <div style={{ fontSize: 11, color: '#ffffff', fontWeight: 700, whiteSpace: 'nowrap', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              Song An 🍀
+          <div style={{ lineHeight: 1.3, overflow: 'hidden', textAlign: 'center' }}>
+            <div style={{ fontWeight: 800, fontSize: 14, color: '#F1F5F9', letterSpacing: '0.04em', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>
+              QTSX SONG AN 🍀
             </div>
           </div>
         )}

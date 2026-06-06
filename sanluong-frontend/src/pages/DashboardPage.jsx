@@ -9,6 +9,7 @@ import {
   DeleteOutlined, FileExcelOutlined, ReloadOutlined,
   WarningOutlined, BarChartOutlined, DownOutlined, CalendarOutlined,
   EyeInvisibleOutlined, EyeOutlined, BellOutlined, ExclamationCircleOutlined,
+  AccountBookOutlined,
 } from '@ant-design/icons'
 import InboxPanel from '../components/InboxPanel'
 import dayjs from 'dayjs'
@@ -118,6 +119,7 @@ function StageTimelineTab({ filtersRef, searchTick, headerOffset = 120 }) {
   const [innerView, setInnerView] = useState('bang1')
   const [selectedRowKeys, setSelectedRowKeys] = useState([])
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [statusFilter, setStatusFilter] = useState('all')
 
   const fetchTimeline = async () => {
     const f = filtersRef?.current || {}
@@ -155,6 +157,16 @@ function StageTimelineTab({ filtersRef, searchTick, headerOffset = 120 }) {
   const STAGES = ['pc', 'bbc1', 'pl', 'dg', 'cc']
   const STAGE_LABELS = { pc: 'PC', bbc1: 'BBC1', pl: 'PL', dg: 'ĐG', cc: 'CC' }
   const fmtDate = d => d ? dayjs(d).format('DD/MM') : '—'
+
+  // Hoàn thành: cả 4 công đoạn chính (PC/BBC1/PL/ĐG) đều done — CC không tính
+  const DONE_STAGES = ['pc', 'bbc1', 'pl', 'dg']
+  const filterByStatus = (row, sf) => {
+    if (sf === 'all') return true
+    if (sf === 'doing') return STAGES.some(s => row[s]?.tinhTrang === 'doing')
+    if (sf === 'done')  return DONE_STAGES.every(s => row[s]?.tinhTrang === 'done')
+    return true
+  }
+  const filteredData = data.filter(r => filterByStatus(r, statusFilter))
 
   const stageColumns = STAGES.map(s => ({
     title: <span style={{ fontWeight: 700 }}>{STAGE_LABELS[s]}</span>,
@@ -290,16 +302,28 @@ function StageTimelineTab({ filtersRef, searchTick, headerOffset = 120 }) {
             </Popconfirm>
           )}
         </Space>
-        <Typography.Text style={{ color: '#64748b', fontSize: 12 }}>
-          {data.length} sản phẩm
-        </Typography.Text>
+        <Space size={8}>
+          <Segmented
+            size="small"
+            value={statusFilter}
+            onChange={v => { setStatusFilter(v); setSelectedRowKeys([]) }}
+            options={[
+              { label: 'Tất cả', value: 'all' },
+              { label: <span style={{ color: '#d46b08' }}>Đang sản xuất</span>, value: 'doing' },
+              { label: <span style={{ color: '#389e0d' }}>Hoàn thành</span>, value: 'done' },
+            ]}
+          />
+          <Typography.Text style={{ color: '#64748b', fontSize: 12 }}>
+            {filteredData.length} / {data.length} sản phẩm
+          </Typography.Text>
+        </Space>
       </div>
 
       {innerView === 'bang1' ? (
         <Table
           className="prod-table"
           columns={columns}
-          dataSource={data}
+          dataSource={filteredData}
           rowKey={rowKey}
           loading={loading}
           size="small"
@@ -314,7 +338,7 @@ function StageTimelineTab({ filtersRef, searchTick, headerOffset = 120 }) {
         <Table
           className="prod-table"
           columns={bang2Columns}
-          dataSource={data}
+          dataSource={filteredData}
           rowKey={rowKey}
           loading={loading}
           size="small"
@@ -326,6 +350,290 @@ function StageTimelineTab({ filtersRef, searchTick, headerOffset = 120 }) {
           rowSelection={canDelete ? { selectedRowKeys, onChange: setSelectedRowKeys } : undefined}
         />
       )}
+    </div>
+  )
+}
+
+// ── TienDoTab — bảng tiến độ rút gọn ─────────────────────────────────────────
+function TienDoTab({ filtersRef, searchTick, headerOffset = 120 }) {
+  const [data, setData] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [statusFilter, setStatusFilter] = useState('all')
+
+  const STAGES = ['pc', 'bbc1', 'pl', 'dg', 'cc']
+  const STAGE_LABELS = { pc: 'PC', bbc1: 'BBC1', pl: 'PL', dg: 'ĐG', cc: 'CC' }
+
+  // Hoàn thành: cả 4 công đoạn chính (PC/BBC1/PL/ĐG) đều done — CC không tính
+  const DONE_STAGES = ['pc', 'bbc1', 'pl', 'dg']
+  const filterByStatus = (row, sf) => {
+    if (sf === 'all') return true
+    if (sf === 'doing') return STAGES.some(s => row[s]?.tinhTrang === 'doing')
+    if (sf === 'done')  return DONE_STAGES.every(s => row[s]?.tinhTrang === 'done')
+    return true
+  }
+
+  const fetchData = async () => {
+    const f = filtersRef?.current || {}
+    setLoading(true)
+    try {
+      const params = {}
+      if (f.maSp) params.maSp = f.maSp
+      if (f.dateRange?.[0]) params.fromDate = f.dateRange[0].format('YYYY-MM-DD')
+      if (f.dateRange?.[1]) params.toDate = f.dateRange[1].format('YYYY-MM-DD')
+      const { data: res } = await api.get('/work-schedule/stage-timeline', { params })
+      setData(res)
+    } catch { message.error('Lỗi tải dữ liệu tiến độ') }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { fetchData() }, [searchTick])
+
+  const rowKey = r => `${r.maSp}|${r.soLo}|${r.tenTrinh || ''}`
+
+  const stageGroups = STAGES.map(s => ({
+    title: <span style={{ fontWeight: 700 }}>{STAGE_LABELS[s]}</span>,
+    key: s,
+    align: 'center',
+    onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff', textAlign: 'center' } }),
+    children: [
+      {
+        title: 'Ngày', key: `${s}_days`, width: 62, align: 'center',
+        onHeaderCell: () => ({ style: { background: '#4dd9d9', color: '#fff' } }),
+        render: (_, r) => {
+          const days = r[s]?.soDays
+          const tt = r[s]?.tinhTrang
+          if (!days) return <span style={{ color: '#d9d9d9' }}>—</span>
+          return (
+            <Tag color={tt === 'done' ? 'success' : tt === 'doing' ? 'processing' : 'default'}
+              style={{ fontSize: 11, padding: '0 5px', margin: 0, minWidth: 28, textAlign: 'center' }}>
+              {days}
+            </Tag>
+          )
+        },
+      },
+      {
+        title: 'TT', key: `${s}_tt`, width: 62, align: 'center',
+        onHeaderCell: () => ({ style: { background: '#4dd9d9', color: '#fff' } }),
+        render: (_, r) => {
+          const tt = r[s]?.tinhTrang
+          if (!tt) return <span style={{ color: '#d9d9d9' }}>—</span>
+          return (
+            <Tag color={tt === 'done' ? 'success' : 'processing'}
+              style={{ fontSize: 10, padding: '0 4px', margin: 0, lineHeight: '18px' }}>
+              {tt === 'done' ? 'Done' : 'Doing'}
+            </Tag>
+          )
+        },
+      },
+    ],
+  }))
+
+  const columns = [
+    { title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', fixed: 'left', width: 88,
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      render: v => <b style={{ color: '#1d4ed8', fontSize: 12 }}>{v}</b> },
+    { title: 'Tên sản phẩm', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 190, ellipsis: true,
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      render: v => <span style={{ fontSize: 12 }}>{v || '—'}</span> },
+    { title: 'Số Lô', dataIndex: 'soLo', key: 'soLo', width: 80,
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v}</span> },
+    { title: 'Cỡ Lô', dataIndex: 'coLo', key: 'coLo', width: 76, align: 'center',
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff', textTransform: 'none' } }),
+      render: v => <span>{fmtNum(v)}</span> },
+    ...stageGroups,
+    {
+      title: 'Tổng ngày', key: 'tongNgay', width: 88, align: 'center', fixed: 'right',
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      render: (_, r) => {
+        const total = STAGES.reduce((acc, s) => acc + (r[s]?.soDays || 0), 0)
+        return total > 0
+          ? <Tag color="blue" style={{ fontWeight: 700, fontSize: 12 }}>{total}</Tag>
+          : <span style={{ color: '#d9d9d9' }}>—</span>
+      },
+    },
+  ]
+
+  const filteredData = data.filter(r => filterByStatus(r, statusFilter))
+  const stageTotals = STAGES.reduce((acc, s) => {
+    acc[s] = filteredData.reduce((sum, r) => sum + (r[s]?.soDays || 0), 0)
+    return acc
+  }, {})
+  const grandTotal = STAGES.reduce((sum, s) => sum + stageTotals[s], 0)
+
+  return (
+    <div>
+      <style>{`
+        .tiendo-table .ant-table-thead > tr > th { background: #33CCCC !important; color: #fff !important; font-weight: 700 !important; font-size: 11px !important; padding: 6px 6px !important; text-align: center !important; text-transform: none !important; border-right: 1px solid rgba(255,255,255,0.35) !important; }
+        .tiendo-table .ant-table-thead > tr > th::before { display: none !important; }
+        .tiendo-table .ant-table-tbody > tr > td { border-right: 1px solid #e2e8f0 !important; border-bottom: 1px solid #e8edf3 !important; }
+        .tiendo-table .ant-table-tbody > tr:nth-child(even) > td { background: #f8fffe !important; }
+        .tiendo-table .ant-table-tbody > tr:hover > td { background: #e0f7fa !important; }
+        .tiendo-table .ant-table-summary > tr > td { background: #e6f7f7 !important; font-weight: 700; border-right: 1px solid #b2dfdb !important; }
+      `}</style>
+      <div style={{ padding: '6px 10px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Segmented
+          size="small"
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={[
+            { label: 'Tất cả', value: 'all' },
+            { label: <span style={{ color: '#d46b08' }}>Đang sản xuất</span>, value: 'doing' },
+            { label: <span style={{ color: '#389e0d' }}>Hoàn thành</span>, value: 'done' },
+          ]}
+        />
+        <Typography.Text style={{ color: '#64748b', fontSize: 12 }}>{filteredData.length} / {data.length} sản phẩm</Typography.Text>
+      </div>
+      <Table
+        className="tiendo-table"
+        columns={columns}
+        dataSource={filteredData}
+        rowKey={rowKey}
+        loading={loading}
+        size="small"
+        scroll={{ x: 900 }}
+        bordered
+        sticky={{ offsetHeader: headerOffset + 36 }}
+        pagination={{ pageSize: 50, showSizeChanger: true, showTotal: t => `Tổng ${t} sản phẩm`, size: 'small' }}
+        summary={() => (
+          <Table.Summary.Row style={{ fontWeight: 700 }}>
+            <Table.Summary.Cell index={0} colSpan={4} align="center">
+              <b style={{ color: '#0d7377' }}>TỔNG THỜI GIAN</b>
+            </Table.Summary.Cell>
+            {STAGES.flatMap((s, i) => [
+              <Table.Summary.Cell key={`${s}_d`} index={4 + i * 2} align="center">
+                <Tag color="cyan" style={{ fontWeight: 700 }}>{stageTotals[s] || '—'}</Tag>
+              </Table.Summary.Cell>,
+              <Table.Summary.Cell key={`${s}_t`} index={5 + i * 2} align="center">
+                <span style={{ color: '#888', fontSize: 11 }}>—</span>
+              </Table.Summary.Cell>,
+            ])}
+            <Table.Summary.Cell index={4 + STAGES.length * 2} align="center">
+              <Tag color="blue" style={{ fontWeight: 700, fontSize: 12 }}>{grandTotal || '—'}</Tag>
+            </Table.Summary.Cell>
+          </Table.Summary.Row>
+        )}
+      />
+    </div>
+  )
+}
+
+// ── SanLuongKeToanTab ──────────────────────────────────────────────────────────
+function SanLuongKeToanTab({ data = [], loading = false, pagination = {}, onPaginationChange, headerOffset = 120 }) {
+
+  const fmtCong = v => v != null ? Number(v).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—'
+  const fmtN = v => (v != null && v !== '') ? Number(v).toLocaleString('vi-VN') : '—'
+
+  const stageTag = (val) => {
+    if (!val) return <span style={{ color: '#d9d9d9' }}>—</span>
+    const done = val === 'done'
+    return (
+      <span style={{ display: 'inline-block', padding: '1px 7px', borderRadius: 10, fontSize: 11, fontWeight: 700,
+        color: done ? '#389e0d' : '#d46b08',
+        background: done ? '#f0fdf4' : '#fff7e6',
+        border: `1px solid ${done ? '#b7eb8f' : '#ffd591'}`,
+      }}>
+        {done ? 'done' : 'doing'}
+      </span>
+    )
+  }
+
+  const columns = [
+    { title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 105, fixed: 'left',
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      render: v => v ? <span style={{ color: '#1d4ed8' }}>{v}</span> : '—' },
+    { title: 'Mã SP', dataIndex: 'maTp', key: 'maTp', width: 95, fixed: 'left',
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      render: v => v ? <span style={{ color: '#595959' }}>{v}</span> : '—' },
+    { title: 'Tên sản phẩm', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 210,
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      render: v => <span>{v || '—'}</span> },
+    { title: 'Mã lô SP', dataIndex: 'lsx', key: 'lsx', width: 145, align: 'center',
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      render: v => v ? <span style={{ fontFamily: 'monospace', color: '#595959' }}>{v}</span> : '—' },
+    { title: 'Ngày SX', dataIndex: 'createdAt', key: 'ngaySx', width: 90, align: 'center',
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      render: v => v ? <span style={{ fontSize: 11 }}>{dayjs(v).format('DD/MM/YYYY')}</span> : '—' },
+    { title: 'Số Lượng', dataIndex: 'soLuong', key: 'soLuong', width: 90, align: 'center',
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      render: v => <span style={{ color: '#1d4ed8' }}>{fmtN(v)}</span> },
+    { title: 'GIAI ĐOẠN', align: 'center',
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff', textAlign: 'center' } }),
+      children: [
+        { title: 'PC',   dataIndex: 'pcTrangThai',   key: 'pc_tt',   width: 80, align: 'center',
+          onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }), render: stageTag },
+        { title: 'PL',   dataIndex: 'plTrangThai',   key: 'pl_tt',   width: 80, align: 'center',
+          onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }), render: stageTag },
+        { title: 'ĐG',   dataIndex: 'dgTrangThai',   key: 'dg_tt',   width: 80, align: 'center',
+          onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }), render: stageTag },
+        { title: 'BBC1', dataIndex: 'bbc1TrangThai', key: 'bbc1_tt', width: 80, align: 'center',
+          onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }), render: stageTag },
+      ] },
+    { title: 'SP Trung Gian', dataIndex: 'spTrungGian', key: 'spTrungGian', width: 100, align: 'center',
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      render: fmtN },
+    { title: 'Tổng BTP', dataIndex: 'tongBtp', key: 'tongBtp', width: 90, align: 'center',
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      render: v => <span style={{ color: '#389e0d' }}>{fmtN(v)}</span> },
+    { title: 'CÔNG CÁC CÔNG ĐOẠN', align: 'center',
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff', textAlign: 'center' } }),
+      children: [
+        { title: 'GNNL', dataIndex: 'temDb',     key: 'temDb',     width: 75, align: 'center',
+          onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }), render: fmtCong },
+        { title: 'BBC1', dataIndex: 'bbc1_3',    key: 'bbc1_3c',   width: 75, align: 'center',
+          onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }), render: fmtCong },
+        { title: 'PC',   dataIndex: 'pcChiPhi',  key: 'pcChiPhi',  width: 75, align: 'center',
+          onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }), render: fmtCong },
+        { title: 'PL',   dataIndex: 'plChiPhi',  key: 'plChiPhi',  width: 75, align: 'center',
+          onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }), render: fmtCong },
+        { title: 'ĐG',   dataIndex: 'dgChiPhi',  key: 'dgChiPhi',  width: 75, align: 'center',
+          onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }), render: fmtCong },
+      ] },
+    { title: 'BTP Chờ ĐG', dataIndex: 'doDangDg', key: 'doDangDg', width: 100, align: 'center',
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      render: fmtN },
+    { title: 'TP Nhập Kho', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 100, align: 'center',
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      render: v => <span style={{ color: '#389e0d' }}>{fmtN(v)}</span> },
+    { title: 'Chênh lệch BTP/Nhập kho', key: 'chenhLech', width: 140, align: 'center', fixed: 'right',
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      render: (_, r) => {
+        const cl = (r.tongBtp || 0) - (r.tpNhapKho || 0)
+        return <span style={{ color: cl !== 0 ? '#cf1322' : '#389e0d' }}>{fmtN(cl)}</span>
+      } },
+  ]
+
+  return (
+    <div>
+      <style>{`
+        .ketoan-table .ant-table-thead > tr > th { background: #33CCCC !important; color: #fff !important; font-weight: 700 !important; font-size: 11px !important; padding: 7px 8px !important; text-align: center !important; border-right: 1px solid rgba(255,255,255,0.35) !important; border-bottom: 1px solid rgba(255,255,255,0.35) !important; }
+        .ketoan-table .ant-table-thead > tr > th::before { display: none !important; }
+        .ketoan-table .ant-table-tbody > tr:nth-child(odd) > td  { background: #fff !important; }
+        .ketoan-table .ant-table-tbody > tr:nth-child(even) > td { background: #f8faff !important; }
+        .ketoan-table .ant-table-tbody > tr:hover > td { background: #e0f2fe !important; }
+        .ketoan-table .ant-table-tbody > tr > td { border-right: 1px solid #e2e8f0 !important; border-bottom: 1px solid #e8edf3 !important; font-weight: 400 !important; font-size: 12px !important; }
+        .ketoan-table .ant-table-tbody > tr:hover .ant-table-cell-fix-left,
+        .ketoan-table .ant-table-tbody > tr:hover .ant-table-cell-fix-right { background: #e0f2fe !important; }
+      `}</style>
+
+      <Table
+        className="ketoan-table"
+        columns={columns}
+        dataSource={data}
+        rowKey="id"
+        loading={loading}
+        size="small"
+        scroll={{ x: 1900 }}
+        sticky={{ offsetHeader: headerOffset }}
+        pagination={{
+          ...pagination,
+          size: 'small',
+          showSizeChanger: true,
+          pageSizeOptions: ['20', '50', '100'],
+          showTotal: t => `Tổng ${t} bản ghi`,
+          onChange: onPaginationChange,
+        }}
+      />
     </div>
   )
 }
@@ -642,13 +950,13 @@ export default function DashboardPage() {
       ...colSearch('lsx'),
     },
     {
-      title: 'KH', dataIndex: 'soLuong', key: 'soLuong', width: 80, align: 'right',
-      render: v => <span style={{ fontWeight: 600, color: '#000011' }}>{v != null ? Number(v).toLocaleString('vi-VN') : '—'}</span>,
+      title: 'KH', dataIndex: 'soLuong', key: 'soLuong', width: 80, align: 'center',
+      render: v => <span style={{ color: '#000011' }}>{v != null ? Number(v).toLocaleString('vi-VN') : '—'}</span>,
     },
     {
       title: 'Mã ĐH', dataIndex: 'maDonHang', key: 'maDonHang', width: 90, align: 'center',
       render: v => v
-        ? <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#7c3aed', fontWeight: 600 }}>{v}</span>
+        ? <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#7c3aed' }}>{v}</span>
         : <span style={{ color: '#d9d9d9' }}>—</span>,
       ...colSearch('maDonHang'),
     },
@@ -691,38 +999,39 @@ export default function DashboardPage() {
     {
       title: <span style={{ color: '#ffffff', fontSize: 11 }}>SẢN LƯỢNG</span>,
       children: [
-        { title: 'PC',   dataIndex: 'slPc',   key: 'slPc',   width: 88, align: 'right', render: slCellRender('slPc') },
-        { title: 'PL',   dataIndex: 'pcPl',   key: 'pcPl',   width: 88, align: 'right', render: slCellRender('pcPl'),   ...colSearch('pcPl') },
-        { title: 'ĐG',   dataIndex: 'dg2',    key: 'dg2',    width: 88, align: 'right', render: slCellRender('dg2'),    ...colSearch('dg2') },
-        { title: 'BBC1', dataIndex: 'bbc1_2', key: 'bbc1_2', width: 88, align: 'right', render: slCellRender('bbc1_2'), ...colSearch('bbc1_2') },
+        { title: 'PC',   dataIndex: 'slPc',   key: 'slPc',   width: 88, align: 'center', render: slCellRender('slPc') },
+        { title: 'PL',   dataIndex: 'pcPl',   key: 'pcPl',   width: 88, align: 'center', render: slCellRender('pcPl'),   ...colSearch('pcPl') },
+        { title: 'ĐG',   dataIndex: 'dg2',    key: 'dg2',    width: 88, align: 'center', render: slCellRender('dg2'),    ...colSearch('dg2') },
+        { title: 'BBC1', dataIndex: 'bbc1_2', key: 'bbc1_2', width: 88, align: 'center', render: slCellRender('bbc1_2'), ...colSearch('bbc1_2') },
       ],
     },
     {
-      title: 'SP TG', dataIndex: 'spTrungGian', key: 'spTrungGian', width: 72, align: 'right',
+      title: 'SP TG', dataIndex: 'spTrungGian', key: 'spTrungGian', width: 72, align: 'center',
       render: v => <span style={{ color: '#000011' }}>{v ?? '—'}</span>,
     },
     {
-      title: 'CL BTP', key: 'clBtp', width: 90, align: 'right',
+      title: 'CL BTP', key: 'clBtp', width: 90, align: 'center',
       render: (_, r) => {
         const val = (parseInt(r.dg2 || 0) || 0) - (parseInt(r.pcPl || 0) || 0)
         const color = val > 0 ? '#cf1322' : val < 0 ? '#389e0d' : '#595959'
         const prefix = val > 0 ? '+' : ''
-        return <span style={{ fontWeight: val !== 0 ? 700 : 400, color }}>{val !== 0 ? `${prefix}${val}` : '—'}</span>
+        return <span style={{ color }}>{val !== 0 ? `${prefix}${val}` : '—'}</span>
       }
     },
     // ── Nhóm: Công ────────────────────────────────────────────────
     {
       title: <span style={{ color: '#ffffff', fontSize: 11 }}>CÔNG</span>,
       children: [
-        { title: 'BBC1',  dataIndex: 'bbc1_3',   key: 'bbc1_3',   width: 72, align: 'right', render: v => v ? <span style={{ color: '#722ed1' }}>{v}</span> : '—' },
-        { title: 'PC',    dataIndex: 'pcChiPhi', key: 'pcChiPhi', width: 72, align: 'right', render: v => v ? <span style={{ color: '#1677ff' }}>{v}</span> : '—' },
-        { title: 'PL',    dataIndex: 'plChiPhi', key: 'plChiPhi', width: 72, align: 'right', render: v => v ? <span style={{ color: '#389e0d' }}>{v}</span> : '—' },
-        { title: 'ĐG',    dataIndex: 'dgChiPhi', key: 'dgChiPhi', width: 72, align: 'right', render: v => v ? <span style={{ color: '#d48806' }}>{v}</span> : '—' },
+        { title: 'GNNL',  dataIndex: 'temDb',    key: 'temDb_c',  width: 72, align: 'center', render: v => v ? <span style={{ color: '#c41d7f' }}>{Number(v).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> : '—' },
+        { title: 'BBC1',  dataIndex: 'bbc1_3',   key: 'bbc1_3',   width: 72, align: 'center', render: v => v ? <span style={{ color: '#722ed1' }}>{v}</span> : '—' },
+        { title: 'PC',    dataIndex: 'pcChiPhi', key: 'pcChiPhi', width: 72, align: 'center', render: v => v ? <span style={{ color: '#1677ff' }}>{v}</span> : '—' },
+        { title: 'PL',    dataIndex: 'plChiPhi', key: 'plChiPhi', width: 72, align: 'center', render: v => v ? <span style={{ color: '#389e0d' }}>{v}</span> : '—' },
+        { title: 'ĐG',    dataIndex: 'dgChiPhi', key: 'dgChiPhi', width: 72, align: 'center', render: v => v ? <span style={{ color: '#d48806' }}>{v}</span> : '—' },
         {
-          title: 'Σ', key: 'sigmaCong', width: 80, align: 'right',
+          title: 'Σ', key: 'sigmaCong', width: 88, align: 'center',
           render: (_, r) => {
-            const s = (r.bbc1_3 || 0) + (r.pcChiPhi || 0) + (r.plChiPhi || 0) + (r.dgChiPhi || 0)
-            return s ? <strong style={{ color: '#1D4ED8' }}>{s.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> : <span style={{ color: '#bbb' }}>—</span>
+            const s = (r.temDb || 0) + (r.bbc1_3 || 0) + (r.pcChiPhi || 0) + (r.plChiPhi || 0) + (r.dgChiPhi || 0)
+            return s ? <span style={{ color: '#1D4ED8' }}>{s.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> : <span style={{ color: '#bbb' }}>—</span>
           }
         },
       ],
@@ -731,25 +1040,25 @@ export default function DashboardPage() {
     {
       title: <span style={{ color: '#ffffff', fontSize: 11 }}>DỞ DANG</span>,
       children: [
-        { title: 'PC',   key: 'ddPc',   width: 80, align: 'right', render: (_, r) => { const v = (r.soLuong || 0) - (parseInt(r.slPc) || 0); return <span style={{ color: v > 0 ? '#1677ff' : '#aaa' }}>{v}</span> } },
-        { title: 'PL',   key: 'ddPl',   width: 80, align: 'right', render: (_, r) => { const v = (parseInt(r.slPc) || 0) - (parseInt(r.pcPl) || 0); return <span style={{ color: v > 0 ? '#389e0d' : '#aaa' }}>{v}</span> } },
-        { title: 'BBC1', key: 'ddBbc1', width: 80, align: 'right', render: (_, r) => { const v = (r.soLuong || 0) - (parseInt(r.bbc1_2) || 0); return <span style={{ color: v > 0 ? '#722ed1' : '#aaa' }}>{v}</span> } },
-        { title: 'ĐG',   key: 'ddDg',   width: 80, align: 'right', render: (_, r) => { const v = (parseInt(r.pcPl) || 0) - (parseInt(r.dg2) || 0); return <span style={{ color: v > 0 ? '#d48806' : '#aaa' }}>{v}</span> } },
+        { title: 'PC',   key: 'ddPc',   width: 80, align: 'center', render: (_, r) => { const v = (r.soLuong || 0) - (parseInt(r.slPc) || 0); return <span style={{ color: v > 0 ? '#1677ff' : '#aaa' }}>{v}</span> } },
+        { title: 'PL',   key: 'ddPl',   width: 80, align: 'center', render: (_, r) => { const v = (parseInt(r.slPc) || 0) - (parseInt(r.pcPl) || 0); return <span style={{ color: v > 0 ? '#389e0d' : '#aaa' }}>{v}</span> } },
+        { title: 'BBC1', key: 'ddBbc1', width: 80, align: 'center', render: (_, r) => { const v = (r.soLuong || 0) - (parseInt(r.bbc1_2) || 0); return <span style={{ color: v > 0 ? '#722ed1' : '#aaa' }}>{v}</span> } },
+        { title: 'ĐG',   key: 'ddDg',   width: 80, align: 'center', render: (_, r) => { const v = (parseInt(r.pcPl) || 0) - (parseInt(r.dg2) || 0); return <span style={{ color: v > 0 ? '#d48806' : '#aaa' }}>{v}</span> } },
       ],
     },
-    { title: 'TP NKho', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 88, align: 'right', render: v => v ?? '—' },
-    { title: 'TEM ĐB',  dataIndex: 'temDb',      key: 'temDb',      width: 76, align: 'right', render: v => v ?? '—' },
+    { title: 'TP NKho', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 88, align: 'center', render: v => v ?? '—' },
+    { title: 'TEM ĐB',  dataIndex: 'temDb',      key: 'temDb',      width: 76, align: 'center', render: v => v ?? '—' },
     {
-      title: 'QA Lấy mẫu', dataIndex: 'qaLayMau', key: 'qaLayMau', width: 90, align: 'right',
-      render: v => v != null ? <span style={{ fontWeight: 600, color: '#0891b2' }}>{Number(v).toLocaleString('vi-VN')}</span> : <span style={{ color: '#d9d9d9' }}>—</span>,
+      title: 'QA Lấy mẫu', dataIndex: 'qaLayMau', key: 'qaLayMau', width: 90, align: 'center',
+      render: v => v != null ? <span style={{ color: '#0891b2' }}>{Number(v).toLocaleString('vi-VN')}</span> : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
     {
-      title: 'SP/Công', key: 'spCong', width: 88, align: 'right',
+      title: 'SP/Công', key: 'spCong', width: 88, align: 'center',
       render: (_, r) => {
         const sc = (r.bbc1_3 || 0) + (r.pcChiPhi || 0) + (r.plChiPhi || 0) + (r.dgChiPhi || 0)
         const slDg = parseFloat(r.dg2)
         if (!sc || !slDg) return <span style={{ color: '#bbb' }}>—</span>
-        return <span style={{ fontWeight: 600, color: '#1677ff' }}>{(slDg / sc).toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</span>
+        return <span style={{ color: '#1677ff' }}>{(slDg / sc).toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</span>
       }
     },
     // ── Nhóm: Xử lý hàng lỗi ─────────────────────────────────────
@@ -903,7 +1212,7 @@ export default function DashboardPage() {
           color: #ffffff !important;
           font-size: 11px; font-weight: 700; text-align: center !important;
           text-transform: uppercase; letter-spacing: 0.05em;
-          padding: 7px 6px !important; border-right: 1px solid #29b8b8 !important;
+          padding: 7px 6px !important; border-right: 1px solid rgba(255,255,255,0.4) !important; border-bottom: 1px solid rgba(255,255,255,0.4) !important;
           white-space: nowrap;
         }
         .prod-table .ant-table-thead > tr > th::before { display: none !important; }
@@ -919,7 +1228,7 @@ export default function DashboardPage() {
         .prod-table .ant-table-thead .ant-table-column-sorter-up.active .anticon,
         .prod-table .ant-table-thead .ant-table-column-sorter-down.active .anticon { color: #ffffff !important; }
         .prod-table .ant-table-thead .anticon { color: #ffffff !important; }
-        .prod-table .ant-table-tbody > tr > td { padding: 4px 6px !important; font-size: 12px; border-right: 1px solid #f0f0f0; border-bottom: 1px solid #EAECF2 !important; }
+        .prod-table .ant-table-tbody > tr > td { padding: 4px 6px !important; font-size: 12px; font-weight: 400 !important; border-right: 1px solid #f0f0f0; border-bottom: 1px solid #EAECF2 !important; }
         .prod-table .ant-table-tbody > tr:hover > td { background: #EFF6FF !important; }
         .prod-table .row-alt > td { background: #F8FAFF !important; }
         .prod-table .row-highlight > td { background: #f0fff4 !important; outline: 1px solid #86EFAC; }
@@ -1059,7 +1368,7 @@ export default function DashboardPage() {
           padding: '7px 12px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
           minHeight: 42,
         }}>
-          {activeTab !== 'tiendo' ? (
+          {activeTab !== 'tiendo' && activeTab !== 'tiendogon' ? (
             /* Filter cho tab Danh sách / Đã hoàn thành */
             <>
               <Input placeholder="Mã Bravo" value={filters.maBravo} allowClear
@@ -1084,7 +1393,7 @@ export default function DashboardPage() {
                 style={{ background: '#1D4ED8', borderColor: '#1D4ED8' }}>Tìm</Button>
               <Button size="small" icon={<ReloadOutlined />} onClick={handleReset} />
             </>
-          ) : (
+          ) : (activeTab === 'tiendo' || activeTab === 'tiendogon') ? (
             /* Filter cho tab Tiến độ */
             <>
               <Input placeholder="Mã SP" value={timelineFilters.maSp} allowClear
@@ -1099,7 +1408,7 @@ export default function DashboardPage() {
                 style={{ background: '#1D4ED8', borderColor: '#1D4ED8' }}>Tìm</Button>
               <Button size="small" icon={<ReloadOutlined />} onClick={handleTimelineReset} />
             </>
-          )}
+          ) : null}
         </div>
 
         {/* ── Thống kê tháng (collapsible) ── */}
@@ -1257,8 +1566,19 @@ export default function DashboardPage() {
             )
           },
           {
-            key: 'tiendo',
+            key: 'tiendogon',
             label: <Space size={4}><CalendarOutlined />Tiến độ</Space>,
+            children: (
+              <TienDoTab
+                filtersRef={timelineFiltersRef}
+                searchTick={timelineSearchTick}
+                headerOffset={headerOffset}
+              />
+            ),
+          },
+          {
+            key: 'tiendo',
+            label: <Space size={4}><CalendarOutlined />Chi tiết tiến độ</Space>,
             children: (
               <StageTimelineTab
                 filtersRef={timelineFiltersRef}
@@ -1266,6 +1586,21 @@ export default function DashboardPage() {
                 headerOffset={headerOffset}
               />
             ),
+          },
+          {
+            key: 'ketoan',
+            label: <Space size={4}><AccountBookOutlined />Sản Lượng Kế Toán</Space>,
+            children: <SanLuongKeToanTab
+              data={data}
+              loading={loading}
+              pagination={pagination}
+              onPaginationChange={(page, pageSize) => {
+                setPagination(p => ({ ...p, current: page, pageSize }))
+                paginationRef.current = { current: page, pageSize }
+                fetchData(page - 1, pageSize)
+              }}
+              headerOffset={headerOffset}
+            />,
           }
         ]}
       />

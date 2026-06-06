@@ -1949,7 +1949,21 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
     try {
       await api.patch(`/work-schedule/${record.id}/tinh-trang`, { tinhTrang: newTT || null })
       if (newTT === 'done') {
-        setData(prev => prev.filter(r => r.id !== record.id))
+        setData(prev => {
+          const next = prev.filter(r => r.id !== record.id)
+          // Nếu trang hiện tại trống và không phải trang đầu → quay về trang trước
+          setPagination(p => {
+            const newTotal = Math.max(0, p.total - 1)
+            const maxPage = Math.ceil(newTotal / p.pageSize) || 1
+            const newCurrent = p.current > maxPage ? maxPage : p.current
+            if (newCurrent !== p.current) {
+              paginationRef.current = { ...paginationRef.current, current: newCurrent }
+              setTimeout(() => fetchData(newCurrent - 1), 0)
+            }
+            return { ...p, total: newTotal, current: newCurrent }
+          })
+          return next
+        })
         setDoneCount(c => c + 1)
       } else {
         setData(prev => prev.map(r => r.id === record.id ? { ...r, tinhTrang: newTT || null } : r))
@@ -2653,7 +2667,7 @@ function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 50, total: 0 })
-  const [filters, setFilters] = useState({ dateRange: null, maSp: '', soLo: '' })
+  const [filters, setFilters] = useState({ dateRange: null, maSp: '', soLo: '', tenTrinh: '', maBravo: '' })
 
   const fetchDone = useCallback(async (page = 0, size = 50, f = filters) => {
     setLoading(true)
@@ -2667,6 +2681,8 @@ function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
           toDate: f.dateRange?.[1]?.format('YYYY-MM-DD') || undefined,
           maSp: f.maSp || undefined,
           soLo: f.soLo || undefined,
+          tenTrinh: f.tenTrinh || undefined,
+          maBravo: f.maBravo || undefined,
         }
       })
       setData(res.content || [])
@@ -2767,6 +2783,14 @@ function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
         <Input size="small" style={{ width: 100 }} placeholder="Số lô" allowClear
           value={filters.soLo}
           onChange={e => setFilters(f => ({ ...f, soLo: e.target.value }))}
+          onPressEnter={() => fetchDone(0)} />
+        <Input size="small" style={{ width: 160 }} placeholder="Tên sản phẩm" allowClear
+          value={filters.tenTrinh}
+          onChange={e => setFilters(f => ({ ...f, tenTrinh: e.target.value }))}
+          onPressEnter={() => fetchDone(0)} />
+        <Input size="small" style={{ width: 110 }} placeholder="Mã Bravo" allowClear
+          value={filters.maBravo}
+          onChange={e => setFilters(f => ({ ...f, maBravo: e.target.value }))}
           onPressEnter={() => fetchDone(0)} />
         <Button size="small" type="primary" icon={<SearchOutlined />}
           style={{ background: '#15803d', borderColor: '#15803d' }}
