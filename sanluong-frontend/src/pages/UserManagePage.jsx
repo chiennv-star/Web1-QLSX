@@ -222,10 +222,10 @@ export default function UserManagePage() {
     <>
       <style>{`
         .um-table .ant-table-thead > tr > th {
-          background: linear-gradient(90deg, #2980b3 0%, #3399CC 100%) !important; color: #ffffff !important;
+          background: #009999 !important; color: #ffffff !important;
           font-size: 11px !important; text-transform: uppercase;
           padding: 7px 12px !important; letter-spacing: 0.4px;
-          border-right: 1px solid #4db3d4 !important;
+          border-right: 1px solid #007a7a !important;
         }
         .um-table .ant-table-thead > tr > th::before { display: none !important; }
         .um-table .ant-table-tbody > tr > td { padding: 8px 12px !important; vertical-align: middle; }
