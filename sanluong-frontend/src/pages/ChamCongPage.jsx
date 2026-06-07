@@ -435,12 +435,19 @@ export default function ChamCongPage() {
   }
 
   const [deptActiveTab, setDeptActiveTab] = useState('all')
+  const [timeActiveTab, setTimeActiveTab] = useState('all')
 
   const empByDept = useMemo(() => {
     const map = { all: empRows }
     DEPTS.forEach(d => { map[d] = empRows.filter(r => r.toNhom === d) })
     return map
   }, [empRows])
+
+  const timeByDept = useMemo(() => {
+    const map = { all: timeEmpRows }
+    DEPTS.forEach(d => { map[d] = timeEmpRows.filter(r => r.toNhom === d) })
+    return map
+  }, [timeEmpRows])
 
   const deptSubTabs = useMemo(() => [
     {
@@ -493,6 +500,57 @@ export default function ChamCongPage() {
     }),
   ], [empRows, empByDept, empColumns, loading, dateList, stickyH, tabBarH, empSummary])
 
+  const timeSubTabs = useMemo(() => [
+    {
+      key: 'all',
+      label: <span>Tất Cả ({timeEmpRows.length})</span>,
+      children: (
+        <Table
+          className="chamcong-table"
+          loading={timeLoading}
+          dataSource={timeEmpRows}
+          rowKey="maNhanVien"
+          size="small"
+          scroll={{ x: Math.max(340 + dateList.length * 90, 700) }}
+          sticky={{ offsetHeader: stickyH + tabBarH + 40 }}
+          pagination={{ pageSize: 50, showSizeChanger: true, pageSizeOptions: ['50','100','200'], showTotal: t => `${t} nhân viên` }}
+          rowClassName={(_, i) => i % 2 !== 0 ? 'row-alt' : ''}
+          locale={{ emptyText: 'Chưa có dữ liệu giờ ra/vào' }}
+          columns={timeColumns}
+        />
+      ),
+    },
+    ...DEPTS.map(dept => {
+      const rows = timeByDept[dept] || []
+      return {
+        key: dept,
+        label: (
+          <span>
+            <Tag color={DEPT_COLOR[dept] || 'default'} style={{ margin: 0, marginRight: 4, fontSize: 11 }}>{dept}</Tag>
+            <small style={{ color: '#666' }}>({rows.length})</small>
+          </span>
+        ),
+        children: rows.length === 0 ? (
+          <div style={{ padding: '32px 24px', color: '#bbb', textAlign: 'center' }}>Không có dữ liệu</div>
+        ) : (
+          <Table
+            className="chamcong-table"
+            loading={timeLoading}
+            dataSource={rows}
+            rowKey="maNhanVien"
+            size="small"
+            scroll={{ x: Math.max(340 + dateList.length * 90, 700) }}
+            sticky={{ offsetHeader: stickyH + tabBarH + 40 }}
+            pagination={{ pageSize: 50, showSizeChanger: true, pageSizeOptions: ['50','100','200'], showTotal: t => `${t} nhân viên` }}
+            rowClassName={(_, i) => i % 2 !== 0 ? 'row-alt' : ''}
+            locale={{ emptyText: 'Chưa có dữ liệu giờ ra/vào' }}
+            columns={timeColumns}
+          />
+        ),
+      }
+    }),
+  ], [timeEmpRows, timeByDept, timeColumns, timeLoading, dateList, stickyH, tabBarH])
+
   const tabItems = [
     {
       key: 'nhanvien',
@@ -543,19 +601,26 @@ export default function ChamCongPage() {
       key: 'congravao',
       label: <span><LoginOutlined style={{ marginRight: 4 }} />Công Ra Vào</span>,
       children: (
-        <Table
-          className="chamcong-table"
-          loading={timeLoading}
-          dataSource={timeEmpRows}
-          rowKey="maNhanVien"
-          size="small"
-          scroll={{ x: Math.max(340 + dateList.length * 90, 700) }}
-          sticky={{ offsetHeader: stickyH + tabBarH }}
-          pagination={{ pageSize: 50, showSizeChanger: true, pageSizeOptions: ['50','100','200'], showTotal: t => `${t} nhân viên` }}
-          rowClassName={(_, i) => i % 2 !== 0 ? 'row-alt' : ''}
-          locale={{ emptyText: 'Chưa có dữ liệu giờ ra/vào' }}
-          columns={timeColumns}
-        />
+        <>
+          <style>{`
+            .time-sub-tabs > .ant-tabs-nav { background: #f7fdfd; border-bottom: 2px solid #33CCCC; padding: 0 8px; }
+            .time-sub-tabs > .ant-tabs-nav .ant-tabs-tab { font-size: 12px; padding: 6px 14px !important; margin: 0 2px !important; }
+            .time-sub-tabs > .ant-tabs-nav .ant-tabs-tab:hover { color: #FFFF00 !important; }
+            .time-sub-tabs > .ant-tabs-nav .ant-tabs-tab:hover small { color: #FFFF00 !important; }
+            .time-sub-tabs > .ant-tabs-nav .ant-tabs-tab-active { background: #FFCC33 !important; border-radius: 4px 4px 0 0; }
+            .time-sub-tabs > .ant-tabs-nav .ant-tabs-ink-bar { background: #33CCCC !important; height: 2px !important; }
+            .time-sub-tabs > .ant-tabs-nav::before { border-bottom: none !important; }
+            .time-sub-tabs > .ant-tabs-content-holder { padding-top: 0; }
+          `}</style>
+          <Tabs
+            className="time-sub-tabs"
+            activeKey={timeActiveTab}
+            onChange={setTimeActiveTab}
+            size="small"
+            items={timeSubTabs}
+            tabBarStyle={{ position: 'sticky', top: stickyH + tabBarH, zIndex: 8, margin: 0 }}
+          />
+        </>
       ),
     },
   ]
