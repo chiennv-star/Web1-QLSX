@@ -266,8 +266,8 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
     timeForm.setFieldsValue({
       ngay: record.ngay ? dayjs(record.ngay) : null,
       caThucHien: record.caThucHien || undefined,
-      gioVao: record.gioVao ? dayjs(record.gioVao, 'HH:mm:ss') : null,
-      gioRa: record.gioRa ? dayjs(record.gioRa, 'HH:mm:ss') : null,
+      gioVao: record.gioVao ? dayjs(`2000-01-01T${record.gioVao}`) : null,
+      gioRa: record.gioRa ? dayjs(`2000-01-01T${record.gioRa}`) : null,
       ghiChu: record.ghiChu || '',
     })
     setTimeModalOpen(true)
