@@ -246,13 +246,13 @@ public class WorkScheduleService {
                     w.setMaBravo(maBravoParam);
                     changed = true;
                 }
-                // PC: gán toNhom từ ProductMaster nếu chưa có
-                if ("PC".equals(stage) && finalPcplNhom != null && isEmpty(w.getToNhom())) {
+                // PC: luôn cập nhật toNhom từ LenhSanXuat khi phát lệnh (override giá trị sai cũ)
+                if ("PC".equals(stage) && finalPcplNhom != null && !finalPcplNhom.equals(w.getToNhom())) {
                     w.setToNhom(finalPcplNhom);
                     changed = true;
                 }
-                // Phát lệnh PCPL1/PCPL2: đặt tinhTrang="doing" cho PC/PL/BBC1/DG nếu chưa có
-                if (activateDoing && !"CC".equals(stage) && isEmpty(w.getTinhTrang())) {
+                // Phát lệnh PCPL1/PCPL2: đặt tinhTrang="doing" cho PC/PL/BBC1/DG (override nếu sai)
+                if (activateDoing && !"CC".equals(stage) && !"doing".equals(w.getTinhTrang())) {
                     w.setTinhTrang("doing");
                     changed = true;
                 }
@@ -268,7 +268,7 @@ public class WorkScheduleService {
                 w.setMaDonHang(maDonHangParam);
                 w.setCoLo(coLo);
                 w.setNgayThucHien(today);
-                // PC: gán toNhom từ ProductMaster
+                // PC: gán toNhom từ LenhSanXuat
                 if ("PC".equals(stage) && finalPcplNhom != null) {
                     w.setToNhom(finalPcplNhom);
                 }
