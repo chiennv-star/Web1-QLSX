@@ -60,6 +60,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/files/upload").hasAnyRole(ALL_ROLES)
+                .requestMatchers(HttpMethod.GET, "/api/files/**").hasAnyRole(ALL_ROLES)
 
                 // ── Sản lượng: ADMIN_KH có toàn quyền như ADMIN ───────────────
                 .requestMatchers(HttpMethod.DELETE, "/api/production/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH")

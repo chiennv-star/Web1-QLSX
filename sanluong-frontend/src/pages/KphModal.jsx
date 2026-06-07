@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import {
   Form, Input, Button, Space, message,
-  DatePicker, Select, Table, Tooltip, Tag, Spin,
+  DatePicker, Select, Table, Tooltip, Tag, Spin, Upload,
 } from 'antd'
 import {
-  SaveOutlined, PlusOutlined, DeleteOutlined, FileTextOutlined, ArrowLeftOutlined,
+  SaveOutlined, PlusOutlined, DeleteOutlined, FileTextOutlined,
+  ArrowLeftOutlined, UploadOutlined, PaperClipOutlined,
 } from '@ant-design/icons'
 import api from '../api/axios'
 import dayjs from 'dayjs'
@@ -32,6 +33,27 @@ const SubHeader = ({ label, direction = '→' }) => (
   </div>
 )
 
+const FileUploadField = ({ fileList, onChange, multiple = true, action, headers, accept }) => (
+  <Upload
+    action={action}
+    headers={headers}
+    accept={accept}
+    multiple={multiple}
+    fileList={fileList}
+    onChange={({ fileList: next }) => onChange(next)}
+    onRemove={(file) => { onChange(fileList.filter(f => f.uid !== file.uid)); return false }}
+    showUploadList={{ showPreviewIcon: true, showRemoveIcon: true, showDownloadIcon: true }}
+    onPreview={(file) => { if (file.url) window.open(file.url, '_blank') }}
+  >
+    <Button icon={<UploadOutlined />} size="small">
+      Chọn file
+    </Button>
+    <span style={{ marginLeft: 8, fontSize: 11, color: '#8c8c8c' }}>
+      Ảnh · PDF · Word · Excel · Video (tối đa 100MB/file)
+    </span>
+  </Upload>
+)
+
 const FieldRow = ({ num, label, required, children }) => (
   <div style={{ borderBottom: '1px solid #f0f0f0', padding: '10px 14px' }}>
     <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>
@@ -56,6 +78,24 @@ export default function KphModal({ workScheduleRecord, onClose, onSaved }) {
   const [phuongAnRows, setPhuongAnRows] = useState([
     { key: '1', stt: '01', phanKhacPhuc: '', phuongAnDanhGia: '', phongBan: '', thoiGian: '' },
   ])
+  const [fileList1, setFileList1] = useState([])
+  const [fileListNhieu, setFileListNhieu] = useState([])
+  const [fileListQA, setFileListQA] = useState([])
+
+  const uploadAction = '/api/files/upload'
+  const uploadHeaders = { Authorization: `Bearer ${localStorage.getItem('token')}` }
+  const acceptTypes = '.jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.mp4,.mov,.avi,.mkv,.webm'
+
+  const parseFileList = (json) => {
+    try {
+      const arr = JSON.parse(json || '[]')
+      return arr.map((f, i) => ({ uid: f.uid || String(-i - 1), name: f.name, status: 'done', url: f.url }))
+    } catch { return [] }
+  }
+  const serializeFileList = (list) =>
+    JSON.stringify(list.filter(f => f.status === 'done').map(f => ({
+      uid: f.uid, name: f.name, url: f.url || f.response?.url,
+    })))
 
   // ── Load existing KPH khi mở modal ────────────────────────────────────────
   useEffect(() => {
@@ -70,6 +110,9 @@ export default function KphModal({ workScheduleRecord, onClose, onSaved }) {
             ...d,
             ngayGioPhatHien: d.ngayGioPhatHien ? dayjs(d.ngayGioPhatHien) : null,
           })
+          setFileList1(parseFileList(d.fileDinhKem1))
+          setFileListNhieu(parseFileList(d.fileDinhKemNhieu))
+          setFileListQA(parseFileList(d.fileDinhKem2))
           if (d.phuongAnKhacPhuc) {
             try {
               const rows = JSON.parse(d.phuongAnKhacPhuc)
@@ -77,10 +120,10 @@ export default function KphModal({ workScheduleRecord, onClose, onSaved }) {
             } catch { /* ignore parse error */ }
           }
         } else {
-          // Pre-fill từ WorkSchedule record
           form.resetFields()
           setKph(null)
           setPhuongAnRows([{ key: '1', stt: '01', phanKhacPhuc: '', phuongAnDanhGia: '', phongBan: '', thoiGian: '' }])
+          setFileList1([]); setFileListNhieu([]); setFileListQA([])
           form.setFieldsValue({
             tenSanPhamNguyenLieu: workScheduleRecord.tenTrinh || '',
             maVatTu: workScheduleRecord.maSp || '',
@@ -93,6 +136,7 @@ export default function KphModal({ workScheduleRecord, onClose, onSaved }) {
         form.resetFields()
         setKph(null)
         setPhuongAnRows([{ key: '1', stt: '01', phanKhacPhuc: '', phuongAnDanhGia: '', phongBan: '', thoiGian: '' }])
+        setFileList1([]); setFileListNhieu([]); setFileListQA([])
         form.setFieldsValue({
           tenSanPhamNguyenLieu: workScheduleRecord.tenTrinh || '',
           maVatTu: workScheduleRecord.maSp || '',
@@ -116,6 +160,9 @@ export default function KphModal({ workScheduleRecord, onClose, onSaved }) {
         phuongAnKhacPhuc: JSON.stringify(
           phuongAnRows.filter(r => r.phanKhacPhuc || r.phongBan)
         ),
+        fileDinhKem1: serializeFileList(fileList1),
+        fileDinhKemNhieu: serializeFileList(fileListNhieu),
+        fileDinhKem2: serializeFileList(fileListQA),
       }
       if (kph?.id) {
         await api.put(`/kph/${kph.id}`, payload)
@@ -320,15 +367,17 @@ export default function KphModal({ workScheduleRecord, onClose, onSaved }) {
                 </FieldRow>
 
                 <FieldRow num={14} label="File đính kèm">
-                  <Form.Item name="fileDinhKem1" noStyle>
-                    <Input placeholder="Đường dẫn hoặc tên file đính kèm..." />
-                  </Form.Item>
+                  <FileUploadField
+                    fileList={fileList1} onChange={setFileList1} multiple={false}
+                    action={uploadAction} headers={uploadHeaders} accept={acceptTypes}
+                  />
                 </FieldRow>
 
                 <FieldRow num={15} label="File đính kèm (có thể tải nhiều file)">
-                  <Form.Item name="fileDinhKemNhieu" noStyle>
-                    <TextArea rows={1} placeholder="Các file đính kèm, cách nhau bởi dấu phẩy..." />
-                  </Form.Item>
+                  <FileUploadField
+                    fileList={fileListNhieu} onChange={setFileListNhieu}
+                    action={uploadAction} headers={uploadHeaders} accept={acceptTypes}
+                  />
                 </FieldRow>
 
                 <FieldRow num={16} label="Ghi chú">
@@ -438,10 +487,11 @@ export default function KphModal({ workScheduleRecord, onClose, onSaved }) {
                   </div>
                 </FieldRow>
 
-                <FieldRow num={27} label="File đính kèm 2">
-                  <Form.Item name="fileDinhKem2" noStyle>
-                    <Input placeholder="File đính kèm QA..." />
-                  </Form.Item>
+                <FieldRow num={27} label="File đính kèm (QA)">
+                  <FileUploadField
+                    fileList={fileListQA} onChange={setFileListQA}
+                    action={uploadAction} headers={uploadHeaders} accept={acceptTypes}
+                  />
                 </FieldRow>
 
                 <FieldRow num={28} label="QA ghi chú">
