@@ -52,10 +52,11 @@ public class ProductMasterService {
         this.historyRepository = historyRepository;
     }
 
-    public Page<ProductMaster> search(String keyword, int page, int size) {
+    public Page<ProductMaster> search(String keyword, String toNhomPcpl, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("maTp").ascending());
-        String kw = (keyword == null || keyword.isBlank()) ? null : keyword;
-        return repository.search(kw, pageable);
+        String kw   = (keyword    == null || keyword.isBlank())    ? null : keyword.trim();
+        String pcpl = (toNhomPcpl == null || toNhomPcpl.isBlank()) ? null : toNhomPcpl.trim();
+        return repository.search(kw, pcpl, pageable);
     }
 
     public Optional<ProductMaster> findByMaTp(String maTp) {

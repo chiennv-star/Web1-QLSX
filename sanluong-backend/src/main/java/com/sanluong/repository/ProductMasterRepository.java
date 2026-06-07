@@ -26,8 +26,11 @@ public interface ProductMasterRepository extends JpaRepository<ProductMaster, Lo
             OR p.maTp LIKE %:keyword%
             OR p.maBravo LIKE %:keyword%
             OR p.tienTrinh LIKE %:keyword%)
+        AND (:toNhomPcpl IS NULL OR p.toNhomPcpl = :toNhomPcpl)
         """)
-    Page<ProductMaster> search(@Param("keyword") String keyword, Pageable pageable);
+    Page<ProductMaster> search(@Param("keyword") String keyword,
+                               @Param("toNhomPcpl") String toNhomPcpl,
+                               Pageable pageable);
 
     @Query("SELECT COUNT(p) FROM ProductMaster p WHERE p.maBravo IS NULL OR p.maBravo = ''")
     long countByMaBravoNullOrEmpty();

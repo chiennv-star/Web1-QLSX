@@ -26,9 +26,10 @@ public class ProductMasterController {
     @GetMapping
     public ResponseEntity<Page<ProductMaster>> search(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String toNhomPcpl,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(service.search(keyword, page, size));
+        return ResponseEntity.ok(service.search(keyword, toNhomPcpl, page, size));
     }
 
     private Map<String, Object> buildLookupBody(ProductMaster p) {

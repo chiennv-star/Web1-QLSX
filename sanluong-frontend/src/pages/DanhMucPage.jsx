@@ -1103,6 +1103,7 @@ function ProductMasterTab() {
   const [loading,     setLoading]     = useState(false)
   const [pagination,  setPagination]  = useState({ current: 1, pageSize: 20, total: 0 })
   const [keyword,     setKeyword]     = useState('')
+  const [filterPcpl, setFilterPcpl]  = useState(null)
   const [modalOpen,   setModalOpen]   = useState(false)
   const [detailOpen,  setDetailOpen]  = useState(false)
   const [detailItem,  setDetailItem]  = useState(null)
@@ -1118,17 +1119,18 @@ function ProductMasterTab() {
   const [newItemId,         setNewItemId]         = useState(null)
   const [form] = Form.useForm()
 
-  const fetchData = useCallback(async (page = 0, size = 20, kw = keyword, { silent = false } = {}) => {
+  const fetchData = useCallback(async (page = 0, size = 20, kw = keyword, pcpl = filterPcpl, { silent = false } = {}) => {
     if (!silent) setLoading(true)
     try {
       const params = { page, size }
       if (kw?.trim()) params.keyword = kw.trim()
+      if (pcpl) params.toNhomPcpl = pcpl
       const { data: res } = await api.get('/product-master', { params })
       setData(res.content)
       setPagination(p => ({ ...p, total: res.totalElements }))
     } catch { message.error('Không thể tải danh mục') }
     finally { if (!silent) setLoading(false) }
-  }, [keyword])
+  }, [keyword, filterPcpl])
 
   useEffect(() => { fetchData() }, [])
 
@@ -1289,6 +1291,13 @@ function ProductMasterTab() {
         <Input.Search size="small" placeholder="Tìm Mã TP / Tên..." style={{ width: 240 }}
           value={keyword} onChange={e => setKeyword(e.target.value)}
           onSearch={() => fetchData(0)} allowClear />
+        <Select size="small" allowClear placeholder="Tất cả tổ PCPL" style={{ width: 150 }}
+          value={filterPcpl}
+          onChange={v => { setFilterPcpl(v ?? null); fetchData(0, pagination.pageSize, keyword, v ?? null) }}
+          options={[
+            { value: 'PCPL1', label: <><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#2f54eb', marginRight: 6 }} />PCPL1</> },
+            { value: 'PCPL2', label: <><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#13c2c2', marginRight: 6 }} />PCPL2</> },
+          ]} />
         <Button size="small" icon={<ReloadOutlined />} onClick={() => fetchData(0)} />
         {canEdit && (
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
@@ -1324,7 +1333,7 @@ function ProductMasterTab() {
           ...pagination, size: 'small', showSizeChanger: true,
           pageSizeOptions: ['20', '50', '100'],
           showTotal: t => `Tổng ${t} mã TP`,
-          onChange: (p, ps) => { setPagination(prev => ({ ...prev, current: p, pageSize: ps })); fetchData(p - 1, ps) }
+          onChange: (p, ps) => { setPagination(prev => ({ ...prev, current: p, pageSize: ps })); fetchData(p - 1, ps, keyword, filterPcpl) }
         }} />
 
       <ProductMasterDrawer
