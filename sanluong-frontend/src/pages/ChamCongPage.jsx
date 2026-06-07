@@ -1,7 +1,7 @@
 ﻿import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import {
   Table, Button, Typography, message, DatePicker, Select,
-  Tabs, Tag, Tooltip, Badge, Statistic
+  Tabs, Tag, Tooltip, Badge, Statistic, Drawer
 } from 'antd'
 import {
   SearchOutlined, ReloadOutlined, FileDoneOutlined,
@@ -21,6 +21,13 @@ const DEPT_COLOR = { PC: '#1D4ED8', PL: '#1677ff', ĐG: '#d48806', BBC1: '#531da
 
 const fmt4 = v => (v || 0).toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 })
 const fmt2 = v => (v || 0).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+const calcCong = r => {
+  if (!r.gioVao || !r.gioRa || !r.caThucHien) return 0
+  const soGio = (dayjs(`2000-01-01T${r.gioRa}`).diff(dayjs(`2000-01-01T${r.gioVao}`), 'minute') - 60) / 60
+  if (soGio <= 0) return 0
+  return r.caThucHien === 'HC' ? soGio / 8 : soGio <= 7 ? soGio / 7 : 1 + (soGio - 7) / 8
+}
 
 const PERIOD_OPTS = [
   { key: 'week',   label: 'Tuần này' },
@@ -170,12 +177,6 @@ export default function ChamCongPage() {
 
   // ── Cột bảng Công Ra Vào ─────────────────────────────────────────
   const timeColumns = useMemo(() => {
-    const calcCong = r => {
-      if (!r.gioVao || !r.gioRa || !r.caThucHien) return 0
-      const soGio = (dayjs(`2000-01-01T${r.gioRa}`).diff(dayjs(`2000-01-01T${r.gioVao}`), 'minute') - 60) / 60
-      if (soGio <= 0) return 0
-      return r.caThucHien === 'HC' ? soGio / 8 : soGio <= 7 ? soGio / 7 : 1 + (soGio - 7) / 8
-    }
     const fixedCols = [
       {
         title: 'Mã NV', dataIndex: 'maNhanVien', key: 'ma', width: 80, fixed: 'left',
@@ -445,6 +446,12 @@ export default function ChamCongPage() {
   const [deptActiveTab, setDeptActiveTab] = useState('all')
   const [timeActiveTab, setTimeActiveTab] = useState('all')
 
+  const [timeDetailOpen, setTimeDetailOpen] = useState(false)
+  const [timeDetailEmp, setTimeDetailEmp] = useState(null)
+  const [timeDetailMonth, setTimeDetailMonth] = useState(dayjs())
+  const [timeDetailEntries, setTimeDetailEntries] = useState([])
+  const [timeDetailLoading, setTimeDetailLoading] = useState(false)
+
   // Toàn bộ nhân viên, điền dữ liệu công nếu có
   const allEmpRows = useMemo(() => {
     if (!allEmps.length) return empRows
@@ -467,6 +474,30 @@ export default function ChamCongPage() {
     TIME_DEPTS.forEach(d => { map[d] = timeEmpRows.filter(r => r.toNhom === d) })
     return map
   }, [timeEmpRows])
+
+  const fetchDetailEntries = useCallback(async (maNhanVien, month) => {
+    if (!maNhanVien) return
+    setTimeDetailLoading(true)
+    try {
+      const from = month.startOf('month').format('YYYY-MM-DD')
+      const to   = month.endOf('month').format('YYYY-MM-DD')
+      const r = await api.get('/attendance/time-entries', { params: { maNhanVien, fromDate: from, toDate: to } })
+      setTimeDetailEntries(r.data)
+    } catch {
+      message.error('Không thể tải chi tiết giờ ra/vào')
+    } finally {
+      setTimeDetailLoading(false)
+    }
+  }, [])
+
+  const openTimeDetail = useCallback((record) => {
+    const month = dayjs()
+    setTimeDetailEmp(record)
+    setTimeDetailMonth(month)
+    setTimeDetailEntries([])
+    setTimeDetailOpen(true)
+    fetchDetailEntries(record.maNhanVien, month)
+  }, [fetchDetailEntries])
 
   const deptSubTabs = useMemo(() => [
     {
@@ -537,6 +568,7 @@ export default function ChamCongPage() {
           rowClassName={(_, i) => i % 2 !== 0 ? 'row-alt' : ''}
           locale={{ emptyText: 'Chưa có dữ liệu giờ ra/vào' }}
           columns={timeColumns}
+          onRow={record => ({ onClick: () => openTimeDetail(record), style: { cursor: 'pointer' } })}
         />
       ),
     },
@@ -566,11 +598,12 @@ export default function ChamCongPage() {
             rowClassName={(_, i) => i % 2 !== 0 ? 'row-alt' : ''}
             locale={{ emptyText: 'Chưa có dữ liệu giờ ra/vào' }}
             columns={timeColumns}
+            onRow={record => ({ onClick: () => openTimeDetail(record), style: { cursor: 'pointer' } })}
           />
         ),
       }
     }),
-  ], [timeEmpRows, timeByDept, timeColumns, timeLoading, dateList, stickyH, tabBarH])
+  ], [timeEmpRows, timeByDept, timeColumns, timeLoading, dateList, stickyH, tabBarH, openTimeDetail])
 
   const tabItems = [
     {
@@ -753,6 +786,189 @@ export default function ChamCongPage() {
           </span>
         }
       />
+
+      {/* ── Drawer chi tiết giờ ra/vào từng nhân viên ── */}
+      <Drawer
+        open={timeDetailOpen}
+        onClose={() => setTimeDetailOpen(false)}
+        width={680}
+        styles={{ body: { padding: '12px 16px' } }}
+        title={
+          timeDetailEmp && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700, fontSize: 15 }}>{timeDetailEmp.hoVaTen}</span>
+              <span style={{ fontFamily: 'monospace', color: '#888', fontSize: 12 }}>({timeDetailEmp.maNhanVien})</span>
+              {timeDetailEmp.toNhom && (
+                <Tag color={DEPT_COLOR[timeDetailEmp.toNhom] || 'default'} style={{ margin: 0 }}>{timeDetailEmp.toNhom}</Tag>
+              )}
+            </div>
+          )
+        }
+        destroyOnClose
+      >
+        {/* Month navigation */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+          <Button
+            size="small"
+            onClick={() => {
+              const m = timeDetailMonth.subtract(1, 'month')
+              setTimeDetailMonth(m)
+              if (timeDetailEmp) fetchDetailEntries(timeDetailEmp.maNhanVien, m)
+            }}
+          >‹ Tháng trước</Button>
+          <DatePicker
+            picker="month"
+            value={timeDetailMonth}
+            format="MM/YYYY"
+            allowClear={false}
+            size="small"
+            onChange={m => {
+              if (!m) return
+              setTimeDetailMonth(m)
+              if (timeDetailEmp) fetchDetailEntries(timeDetailEmp.maNhanVien, m)
+            }}
+          />
+          <Button
+            size="small"
+            onClick={() => {
+              const m = timeDetailMonth.add(1, 'month')
+              setTimeDetailMonth(m)
+              if (timeDetailEmp) fetchDetailEntries(timeDetailEmp.maNhanVien, m)
+            }}
+          >Tháng sau ›</Button>
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: '#888' }}>
+            {timeDetailMonth.format('MM/YYYY')}
+          </span>
+        </div>
+
+        {/* KPI tổng tháng */}
+        {(() => {
+          const tongCong = timeDetailEntries.reduce((s, t) => s + calcCong(t), 0)
+          const tongGio = timeDetailEntries.reduce((r, t) => {
+            if (!t.gioVao || !t.gioRa) return r
+            return r + dayjs(`2000-01-01T${t.gioRa}`).diff(dayjs(`2000-01-01T${t.gioVao}`), 'minute') / 60
+          }, 0)
+          return (
+            <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+              <div style={{ background: '#f0f7ff', border: '1.5px solid #1D4ED822', borderLeft: '4px solid #1D4ED8', borderRadius: 8, padding: '6px 14px', minWidth: 110 }}>
+                <div style={{ fontSize: 10, color: '#888' }}>Ngày chấm công</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#1D4ED8', lineHeight: 1.2 }}>{timeDetailEntries.length}</div>
+              </div>
+              <div style={{ background: '#f0fdf4', border: '1.5px solid #05966922', borderLeft: '4px solid #059669', borderRadius: 8, padding: '6px 14px', minWidth: 110 }}>
+                <div style={{ fontSize: 10, color: '#888' }}>Tổng giờ làm</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#059669', lineHeight: 1.2 }}>{tongGio.toFixed(1)}h</div>
+              </div>
+              <div style={{ background: '#fffbeb', border: '1.5px solid #d4880622', borderLeft: '4px solid #d48806', borderRadius: 8, padding: '6px 14px', minWidth: 110 }}>
+                <div style={{ fontSize: 10, color: '#888' }}>Tổng công</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#d48806', lineHeight: 1.2 }}>{fmt2(tongCong)}</div>
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* Calendar grid */}
+        {timeDetailLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px 0', color: '#aaa' }}>Đang tải...</div>
+        ) : (() => {
+          const DOW_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+          const firstDay = timeDetailMonth.startOf('month')
+          const totalDays = timeDetailMonth.daysInMonth()
+          // dayjs: 0=Sun → convert to Mon-start index (Mon=0,Sun=6)
+          const startDow = (firstDay.day() + 6) % 7
+          const entryMap = {}
+          timeDetailEntries.forEach(t => { entryMap[dayjs(t.ngay).date()] = t })
+          const today = dayjs()
+          const isCurrentMonth = timeDetailMonth.isSame(today, 'month')
+
+          // Build weeks
+          const weeks = []
+          let dayNum = 1
+          let firstWeek = new Array(7).fill(null)
+          for (let i = startDow; i < 7 && dayNum <= totalDays; i++) firstWeek[i] = dayNum++
+          weeks.push(firstWeek)
+          while (dayNum <= totalDays) {
+            const w = new Array(7).fill(null)
+            for (let i = 0; i < 7 && dayNum <= totalDays; i++) w[i] = dayNum++
+            weeks.push(w)
+          }
+
+          return (
+            <div style={{ overflowX: 'auto' }}>
+              {/* Day-of-week header */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 3 }}>
+                {DOW_LABELS.map((d, i) => (
+                  <div key={d} style={{
+                    textAlign: 'center', padding: '5px 2px',
+                    fontWeight: 700, fontSize: 12,
+                    color: i === 6 ? '#cf1322' : '#0000CC',
+                    background: '#66CCCC', borderRadius: 4,
+                  }}>{d}</div>
+                ))}
+              </div>
+              {/* Week rows */}
+              {weeks.map((week, wi) => (
+                <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 3 }}>
+                  {week.map((day, di) => {
+                    if (!day) return (
+                      <div key={di} style={{ minHeight: 78, background: '#f5f5f5', borderRadius: 4, border: '1px solid #eee' }} />
+                    )
+                    const entry = entryMap[day]
+                    const isToday = isCurrentMonth && today.date() === day
+                    const isSun = di === 6
+                    const cong = entry ? calcCong(entry) : 0
+                    return (
+                      <div key={di} style={{
+                        minHeight: 78,
+                        background: entry ? '#EBF5FF' : '#fafafa',
+                        border: isToday ? '2px solid #1D4ED8' : '1px solid #E5E7EB',
+                        borderRadius: 4, padding: '4px 5px',
+                      }}>
+                        {/* Date number */}
+                        <div style={{
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          width: 22, height: 22, borderRadius: '50%', marginBottom: 3,
+                          background: isToday ? '#1D4ED8' : 'transparent',
+                          fontSize: 11, fontWeight: 700,
+                          color: isToday ? '#fff' : isSun ? '#cf1322' : '#374151',
+                        }}>{day}</div>
+                        {entry ? (
+                          <div style={{ lineHeight: 1.5 }}>
+                            {entry.caThucHien && (
+                              <div>
+                                <Tag style={{ margin: '0 0 2px', fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>
+                                  {entry.caThucHien}
+                                </Tag>
+                              </div>
+                            )}
+                            <div style={{ fontSize: 11, color: '#1D4ED8', fontWeight: 600 }}>
+                              ↑ {entry.gioVao ? entry.gioVao.slice(0, 5) : '—'}
+                            </div>
+                            <div style={{ fontSize: 11, color: '#059669', fontWeight: 600 }}>
+                              ↓ {entry.gioRa ? entry.gioRa.slice(0, 5) : '—'}
+                            </div>
+                            {cong > 0 && (
+                              <div style={{ fontSize: 11, fontWeight: 700, color: '#d48806' }}>
+                                {fmt2(cong)} công
+                              </div>
+                            )}
+                            {entry.ghiChu && (
+                              <div style={{ fontSize: 10, color: '#888', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {entry.ghiChu}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 10, color: '#ddd', marginTop: 4 }}>—</div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+          )
+        })()}
+      </Drawer>
     </>
   )
 }

@@ -604,6 +604,19 @@ export default function WipPage() {
         .wip-table .ant-table-thead > tr > th::before { display: none !important; }
         .wip-table .ant-table-tbody > tr > td { padding: 5px 8px !important; font-size: 12px; vertical-align: middle; border-bottom: 1px solid #f0f0f0 !important; }
         .wip-table .ant-table-tbody > tr:hover > td { background: #EFF6FF !important; }
+        .wip-table .ant-table-body::-webkit-scrollbar,
+        .wip-table .ant-table-content::-webkit-scrollbar,
+        .wip-table .ant-table-wrapper::-webkit-scrollbar,
+        .wip-table *::-webkit-scrollbar { height: 1.5px !important; width: 1.5px !important; }
+        .wip-table .ant-table-body::-webkit-scrollbar-track,
+        .wip-table .ant-table-content::-webkit-scrollbar-track,
+        .wip-table *::-webkit-scrollbar-track { background: #f0f4f8; border-radius: 4px; }
+        .wip-table .ant-table-body::-webkit-scrollbar-thumb,
+        .wip-table .ant-table-content::-webkit-scrollbar-thumb,
+        .wip-table *::-webkit-scrollbar-thumb { background: #66FFCC; border-radius: 4px; }
+        .wip-table .ant-table-body::-webkit-scrollbar-thumb:hover,
+        .wip-table .ant-table-content::-webkit-scrollbar-thumb:hover,
+        .wip-table *::-webkit-scrollbar-thumb:hover { background: #33e6aa; }
         /* ERP navy tab bar */
         .wip-tabs > .ant-tabs-nav { margin: 0 !important; background: #1e4570; padding: 0 12px; }
         .wip-tabs > .ant-tabs-nav .ant-tabs-tab { color: #CBD5E1 !important; border: none !important; background: transparent !important; padding: 8px 16px !important; font-size: 13px; margin: 0 2px !important; border-radius: 4px 4px 0 0 !important; }
