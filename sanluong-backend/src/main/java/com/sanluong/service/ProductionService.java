@@ -269,6 +269,11 @@ public class ProductionService {
             toNhomPcpl = productMasterRepository.findByMaTpIgnoreCase(r.getMaTp())
                     .map(pm -> isEmpty(pm.getToNhomPcpl()) ? null : pm.getToNhomPcpl())
                     .orElse(null);
+            // Đồng bộ toNhom lên record nếu chưa có (để cột PCPL1/PCPL2 trên Dashboard hiển thị đúng)
+            if (!isEmpty(toNhomPcpl)) {
+                saveFieldHistory(changes, id, "toNhom", str(r.getToNhom()), toNhomPcpl, username, now);
+                r.setToNhom(toNhomPcpl);
+            }
         }
         // Khi phát lệnh PCPL1 hoặc PCPL2: đặt tinhTrang="doing" cho tất cả công đoạn (nếu chưa có)
         if ("PCPL1".equals(toNhomPcpl) || "PCPL2".equals(toNhomPcpl)) {
