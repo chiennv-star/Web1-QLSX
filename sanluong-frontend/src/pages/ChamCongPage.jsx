@@ -542,7 +542,7 @@ export default function ChamCongPage() {
     },
     ...TIME_DEPTS.map(dept => {
       const rows = timeByDept[dept] || []
-      const label = TIME_DEPT_LABEL[dept] || dept
+      const label = dept
       return {
         key: dept,
         label: (
