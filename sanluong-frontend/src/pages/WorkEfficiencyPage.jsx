@@ -1224,6 +1224,22 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
         confirmLoading={timeSaving}
         width={400}
         destroyOnClose
+        footer={(_, { OkBtn, CancelBtn }) => (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              {editingTime && (
+                <Popconfirm
+                  title="Xoá bản ghi này?"
+                  okText="Xoá" cancelText="Huỷ" okButtonProps={{ danger: true }}
+                  onConfirm={() => { setTimeModalOpen(false); handleTimeDelete(editingTime.id) }}
+                >
+                  <Button danger icon={<DeleteOutlined />}>Xóa</Button>
+                </Popconfirm>
+              )}
+            </div>
+            <Space><CancelBtn /><OkBtn /></Space>
+          </div>
+        )}
       >
         <Form form={timeForm} layout="vertical" style={{ marginTop: 16 }}>
           <div style={{ display: 'flex', gap: 12 }}>
