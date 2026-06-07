@@ -16,6 +16,8 @@ dayjs.extend(isoWeek)
 const { RangePicker } = DatePicker
 
 const DEPTS = ['PC', 'PL', 'DG', 'BBC1', 'PCPL1', 'PCPL2', 'PCPL3']
+const TIME_DEPTS = ['DG', 'BBC1', 'PCPL1', 'PCPL2', 'PCPL3']
+const TIME_DEPT_LABEL = { DG: 'ĐG' }
 const DEPT_COLOR = { PC: '#1D4ED8', PL: '#1677ff', DG: '#d48806', BBC1: '#531dab', PCPL1: '#c41d7f', PCPL2: '#08979c', PCPL3: '#d46b08' }
 
 const fmt4 = v => (v || 0).toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 })
@@ -452,7 +454,7 @@ export default function ChamCongPage() {
 
   const timeByDept = useMemo(() => {
     const map = { all: timeEmpRows }
-    DEPTS.forEach(d => { map[d] = timeEmpRows.filter(r => r.toNhom === d) })
+    TIME_DEPTS.forEach(d => { map[d] = timeEmpRows.filter(r => r.toNhom === d) })
     return map
   }, [timeEmpRows])
 
@@ -527,13 +529,14 @@ export default function ChamCongPage() {
         />
       ),
     },
-    ...DEPTS.map(dept => {
+    ...TIME_DEPTS.map(dept => {
       const rows = timeByDept[dept] || []
+      const label = TIME_DEPT_LABEL[dept] || dept
       return {
         key: dept,
         label: (
           <span>
-            <Tag color={DEPT_COLOR[dept] || 'default'} style={{ margin: 0, marginRight: 4, fontSize: 11 }}>{dept}</Tag>
+            <Tag color={DEPT_COLOR[dept] || 'default'} style={{ margin: 0, marginRight: 4, fontSize: 11 }}>{label}</Tag>
             <small style={{ color: '#666' }}>({rows.length})</small>
           </span>
         ),
