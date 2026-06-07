@@ -278,9 +278,12 @@ public class ProductionService {
                     .map(l -> isEmpty(l.getToThucHien()) ? null : l.getToThucHien())
                     .orElse(null);
         }
-        // Fallback: giữ nguyên toNhom trên record nếu LenhSanXuat chưa có toThucHien
-        if (isEmpty(toNhomPcpl)) {
-            toNhomPcpl = r.getToNhom();
+        // Fallback: lấy từ WorkSchedule (Kế hoạch PLAN) nếu LenhSanXuat không có toThucHien
+        if (isEmpty(toNhomPcpl) && !isEmpty(r.getMaTp())) {
+            java.util.List<String> wb = workScheduleRepository.findToNhomByPcTriplet(
+                    r.getMaTp(), null, isEmpty(r.getLsx()) ? null : r.getLsx(),
+                    org.springframework.data.domain.PageRequest.of(0, 1));
+            if (!wb.isEmpty() && !isEmpty(wb.get(0))) toNhomPcpl = wb.get(0);
         }
         // Cập nhật toNhom trên record nếu khác (sửa sai từ code cũ hoặc lần đầu set)
         if (!isEmpty(toNhomPcpl) && !toNhomPcpl.equals(r.getToNhom())) {
