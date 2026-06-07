@@ -22,10 +22,12 @@ public class TimeEntryController {
 
     @GetMapping
     public ResponseEntity<List<TimeEntry>> list(
-            @RequestParam String maNhanVien,
+            @RequestParam(required = false) String maNhanVien,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
-        return ResponseEntity.ok(repo.findByMaNhanVienAndRange(maNhanVien, fromDate, toDate));
+        if (maNhanVien != null && !maNhanVien.isBlank())
+            return ResponseEntity.ok(repo.findByMaNhanVienAndRange(maNhanVien, fromDate, toDate));
+        return ResponseEntity.ok(repo.findByRange(fromDate, toDate));
     }
 
     @PostMapping

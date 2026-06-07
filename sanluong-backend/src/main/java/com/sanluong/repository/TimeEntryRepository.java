@@ -15,4 +15,9 @@ public interface TimeEntryRepository extends JpaRepository<TimeEntry, Long> {
             @Param("ma") String maNhanVien,
             @Param("from") LocalDate from,
             @Param("to") LocalDate to);
+
+    @Query("SELECT t FROM TimeEntry t WHERE t.ngay BETWEEN :from AND :to ORDER BY t.ngay DESC, t.maNhanVien ASC")
+    List<TimeEntry> findByRange(
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
 }

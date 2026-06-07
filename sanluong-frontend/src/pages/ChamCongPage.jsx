@@ -5,7 +5,7 @@ import {
 } from 'antd'
 import {
   SearchOutlined, ReloadOutlined, FileDoneOutlined,
-  TeamOutlined, ClockCircleOutlined, RiseOutlined, ApartmentOutlined
+  TeamOutlined, ClockCircleOutlined, RiseOutlined, ApartmentOutlined, LoginOutlined
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
@@ -69,7 +69,9 @@ export default function ChamCongPage() {
 
   const [empRows, setEmpRows]   = useState([])
   const [deptRows, setDeptRows] = useState([])
+  const [timeRows, setTimeRows] = useState([])
   const [loading, setLoading]   = useState(false)
+  const [timeLoading, setTimeLoading] = useState(false)
 
   const stickyRef = useRef(null)
   const [stickyH, setStickyH] = useState(120)
@@ -108,6 +110,25 @@ export default function ChamCongPage() {
   }, [dateRange, deptFilter])
 
   useEffect(() => { fetchData() }, []) // eslint-disable-line
+
+  const fetchTimeEntries = useCallback(async (range = dateRange) => {
+    setTimeLoading(true)
+    try {
+      const from = range[0].format('YYYY-MM-DD')
+      const to   = range[1].format('YYYY-MM-DD')
+      const r = await api.get('/attendance/time-entries', { params: { fromDate: from, toDate: to } })
+      setTimeRows(r.data)
+    } catch {
+      message.error('Không thể tải dữ liệu giờ ra/vào')
+    } finally {
+      setTimeLoading(false)
+    }
+  }, [dateRange])
+
+  const handleTabChange = (key) => {
+    setActiveTab(key)
+    if (key === 'congravao') fetchTimeEntries()
+  }
 
   const handlePeriod = (key) => {
     setPeriod(key)
@@ -442,6 +463,95 @@ export default function ChamCongPage() {
         />
       ),
     },
+    {
+      key: 'congravao',
+      label: <span><LoginOutlined style={{ marginRight: 4 }} />Công Ra Vào</span>,
+      children: (
+        <Table
+          className="chamcong-table"
+          loading={timeLoading}
+          dataSource={timeRows}
+          rowKey="id"
+          size="small"
+          scroll={{ x: 900 }}
+          sticky={{ offsetHeader: stickyH + tabBarH }}
+          pagination={{ pageSize: 50, showSizeChanger: true, pageSizeOptions: ['50','100','200'], showTotal: t => `${t} bản ghi` }}
+          rowClassName={(_, i) => i % 2 !== 0 ? 'row-alt' : ''}
+          locale={{ emptyText: 'Chưa có dữ liệu giờ ra/vào' }}
+          columns={[
+            {
+              title: 'Mã NV', dataIndex: 'maNhanVien', key: 'ma', width: 85, fixed: 'left',
+              render: v => <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 600 }}>{v}</span>,
+              sorter: (a, b) => (a.maNhanVien || '').localeCompare(b.maNhanVien || ''),
+            },
+            {
+              title: 'Ngày', dataIndex: 'ngay', key: 'ngay', width: 105, align: 'center',
+              render: v => v ? dayjs(v).format('DD/MM/YYYY') : '—',
+              sorter: (a, b) => (a.ngay || '').localeCompare(b.ngay || ''),
+              defaultSortOrder: 'descend',
+            },
+            {
+              title: 'Ca', dataIndex: 'caThucHien', key: 'ca', width: 65, align: 'center',
+              render: v => v
+                ? <Tag color={v === 'HC' ? 'blue' : v === 'Ca1' ? 'orange' : 'purple'} style={{ marginRight: 0 }}>{v}</Tag>
+                : <span style={{ color: '#d9d9d9' }}>—</span>,
+              filters: [{ text: 'HC', value: 'HC' }, { text: 'Ca1', value: 'Ca1' }, { text: 'Ca2', value: 'Ca2' }],
+              onFilter: (val, r) => r.caThucHien === val,
+            },
+            {
+              title: 'Giờ Vào', dataIndex: 'gioVao', key: 'gioVao', width: 85, align: 'center',
+              render: v => v ? <span style={{ color: '#1D4ED8', fontFamily: 'monospace' }}>{v.slice(0,5)}</span> : <span style={{ color: '#d9d9d9' }}>—</span>,
+            },
+            {
+              title: 'Giờ Ra', dataIndex: 'gioRa', key: 'gioRa', width: 85, align: 'center',
+              render: v => v ? <span style={{ color: '#059669', fontFamily: 'monospace' }}>{v.slice(0,5)}</span> : <span style={{ color: '#d9d9d9' }}>—</span>,
+            },
+            {
+              title: 'Số Giờ', key: 'soGio', width: 75, align: 'center',
+              render: (_, r) => {
+                if (!r.gioVao || !r.gioRa) return <span style={{ color: '#d9d9d9' }}>—</span>
+                const vao = dayjs(`2000-01-01T${r.gioVao}`)
+                const ra  = dayjs(`2000-01-01T${r.gioRa}`)
+                const diffMin = ra.diff(vao, 'minute') - 60
+                if (diffMin <= 0) return <span style={{ color: '#d9d9d9' }}>—</span>
+                const h = Math.floor(diffMin / 60), m = diffMin % 60
+                return <span style={{ color: '#7c3aed' }}>{h}h{m > 0 ? `${m}p` : ''}</span>
+              },
+            },
+            {
+              title: 'Số Công', key: 'soCong', width: 85, align: 'center', fixed: 'right',
+              render: (_, r) => {
+                if (!r.gioVao || !r.gioRa || !r.caThucHien) return <span style={{ color: '#d9d9d9' }}>—</span>
+                const vao = dayjs(`2000-01-01T${r.gioVao}`)
+                const ra  = dayjs(`2000-01-01T${r.gioRa}`)
+                const soGio = (ra.diff(vao, 'minute') - 60) / 60
+                if (soGio <= 0) return <span style={{ color: '#d9d9d9' }}>—</span>
+                let cong
+                if (r.caThucHien === 'HC') {
+                  cong = soGio / 8
+                } else {
+                  cong = soGio <= 7 ? soGio / 7 : 1 + (soGio - 7) / 8
+                }
+                return <span style={{ color: '#d46b08', fontWeight: 600 }}>{cong.toFixed(4)}</span>
+              },
+              sorter: (a, b) => {
+                const calc = r => {
+                  if (!r.gioVao || !r.gioRa || !r.caThucHien) return 0
+                  const soGio = (dayjs(`2000-01-01T${r.gioRa}`).diff(dayjs(`2000-01-01T${r.gioVao}`), 'minute') - 60) / 60
+                  if (soGio <= 0) return 0
+                  return r.caThucHien === 'HC' ? soGio / 8 : soGio <= 7 ? soGio / 7 : 1 + (soGio - 7) / 8
+                }
+                return calc(a) - calc(b)
+              },
+            },
+            {
+              title: 'Ghi Chú', dataIndex: 'ghiChu', key: 'ghiChu', ellipsis: true,
+              render: v => v || <span style={{ color: '#d9d9d9' }}>—</span>,
+            },
+          ]}
+        />
+      ),
+    },
   ]
 
   return (
@@ -540,7 +650,7 @@ export default function ChamCongPage() {
       <Tabs
         className="chamcong-tabs"
         activeKey={activeTab}
-        onChange={setActiveTab}
+        onChange={handleTabChange}
         items={tabItems}
         type="line"
         size="middle"
