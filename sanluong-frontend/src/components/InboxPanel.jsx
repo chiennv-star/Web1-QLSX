@@ -283,7 +283,7 @@ export default function InboxPanel({ open, onClose, onCountChange }) {
   const syncWorkSchedule = async (r) => {
     const { maBravo, maTp, tienTrinh, lsx, soLuong, maDonHang } = r
     if (!maBravo && !maTp) return
-    const params = {}
+    const params = { phatLenh: true }
     if (maBravo)         params.maBravo   = maBravo
     if (maTp)            params.maSp      = maTp
     if (tienTrinh)       params.tenTrinh  = tienTrinh

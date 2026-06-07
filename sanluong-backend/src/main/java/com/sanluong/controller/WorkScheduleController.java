@@ -87,8 +87,9 @@ public class WorkScheduleController {
             @RequestParam(required = false) String tenTrinh,
             @RequestParam(required = false) String soLo,
             @RequestParam(required = false) java.math.BigDecimal coLo,
-            @RequestParam(required = false) String maDonHang) {
-        int created = service.autoSyncFromProduction(maBravo, maSp, tenTrinh, soLo, coLo, maDonHang);
+            @RequestParam(required = false) String maDonHang,
+            @RequestParam(required = false, defaultValue = "false") boolean phatLenh) {
+        int created = service.autoSyncFromProduction(maBravo, maSp, tenTrinh, soLo, coLo, maDonHang, phatLenh);
         return ResponseEntity.ok(created);
     }
 

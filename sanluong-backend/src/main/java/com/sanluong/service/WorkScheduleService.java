@@ -207,9 +207,11 @@ public class WorkScheduleService {
     // Tự động tạo/cập nhật bản ghi SCHEDULE cho từng công đoạn
     // Nếu đã có record (congDoan + maBravo + soLo) → update maDonHang + coLo
     // Nếu chưa có → tạo mới
+    // isPhatLenh=true: khi phát lệnh PCPL1/PCPL2 → đặt tinhTrang="doing" cho PC/PL/BBC1/DG (nếu chưa có)
     @org.springframework.transaction.annotation.Transactional
     public int autoSyncFromProduction(String maBravo, String maSp, String tenTrinh,
-                                       String soLo, java.math.BigDecimal coLo, String maDonHang) {
+                                       String soLo, java.math.BigDecimal coLo, String maDonHang,
+                                       boolean isPhatLenh) {
         if (isEmpty(maBravo) && isEmpty(maSp)) return 0;
         String maBravoParam   = isEmpty(maBravo)  ? null : maBravo;
         String maSpparam      = isEmpty(maSp)     ? null : maSp;
@@ -218,6 +220,18 @@ public class WorkScheduleService {
         String maDonHangParam = isEmpty(maDonHang)? null : maDonHang;
         java.time.LocalDate today = java.time.LocalDate.now();
         int created = 0;
+
+        // Lookup ProductMaster một lần — dùng cho PC toNhom và logic kích hoạt phatLenh
+        String pcplNhom = null;
+        if (maSpparam != null) {
+            pcplNhom = productMasterRepository.findByMaTpIgnoreCase(maSpparam)
+                    .map(pm -> isEmpty(pm.getToNhomPcpl()) ? null : pm.getToNhomPcpl())
+                    .orElse(null);
+        }
+        // Chỉ kích hoạt tinhTrang="doing" khi phát lệnh sản phẩm PCPL1 hoặc PCPL2
+        final boolean activateDoing = isPhatLenh
+                && ("PCPL1".equals(pcplNhom) || "PCPL2".equals(pcplNhom));
+        final String finalPcplNhom = pcplNhom;
 
         for (String stage : new String[]{"PC", "BBC1", "PL", "DG", "CC"}) {
             java.util.Optional<WorkSchedule> existing =
@@ -237,6 +251,16 @@ public class WorkScheduleService {
                     w.setMaBravo(maBravoParam);
                     changed = true;
                 }
+                // PC: gán toNhom từ ProductMaster nếu chưa có
+                if ("PC".equals(stage) && finalPcplNhom != null && isEmpty(w.getToNhom())) {
+                    w.setToNhom(finalPcplNhom);
+                    changed = true;
+                }
+                // Phát lệnh PCPL1/PCPL2: đặt tinhTrang="doing" cho PC/PL/BBC1/DG nếu chưa có
+                if (activateDoing && !"CC".equals(stage) && isEmpty(w.getTinhTrang())) {
+                    w.setTinhTrang("doing");
+                    changed = true;
+                }
                 if (changed) repository.save(w);
             } else {
                 WorkSchedule w = new WorkSchedule();
@@ -249,18 +273,24 @@ public class WorkScheduleService {
                 w.setMaDonHang(maDonHangParam);
                 w.setCoLo(coLo);
                 w.setNgayThucHien(today);
-                if ("PC".equals(stage) && maSpparam != null) {
-                    productMasterRepository.findByMaTpIgnoreCase(maSpparam)
-                            .ifPresent(pm -> {
-                                if (pm.getToNhomPcpl() != null && !pm.getToNhomPcpl().isBlank())
-                                    w.setToNhom(pm.getToNhomPcpl());
-                            });
+                // PC: gán toNhom từ ProductMaster
+                if ("PC".equals(stage) && finalPcplNhom != null) {
+                    w.setToNhom(finalPcplNhom);
+                }
+                // Phát lệnh PCPL1/PCPL2: đặt tinhTrang="doing" cho PC/PL/BBC1/DG
+                if (activateDoing && !"CC".equals(stage)) {
+                    w.setTinhTrang("doing");
                 }
                 repository.save(w);
                 created++;
             }
         }
         return created;
+    }
+
+    public int autoSyncFromProduction(String maBravo, String maSp, String tenTrinh,
+                                       String soLo, java.math.BigDecimal coLo, String maDonHang) {
+        return autoSyncFromProduction(maBravo, maSp, tenTrinh, soLo, coLo, maDonHang, false);
     }
 
     public WorkSchedule getById(Long id) {
