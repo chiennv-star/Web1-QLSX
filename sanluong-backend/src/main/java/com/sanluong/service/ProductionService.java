@@ -307,6 +307,8 @@ public class ProductionService {
         r.setUpdatedBy(username);
         ProductionRecord saved = repository.save(r);
         if (!changes.isEmpty()) historyRepository.saveAll(changes);
+        // @Transient field bị mất sau JPA merge — khôi phục để frontend nhận đúng toNhom
+        if (!isEmpty(toNhomPcpl)) saved.setToNhom(toNhomPcpl);
         return saved;
     }
 
