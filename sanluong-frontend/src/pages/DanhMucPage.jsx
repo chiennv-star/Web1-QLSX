@@ -1278,7 +1278,7 @@ function ProductMasterTab() {
         if (!canEdit) return v ? <Tag color={v === 'PCPL1' ? 'geekblue' : 'cyan'} style={{ marginRight: 0, fontWeight: 600 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>
         return (
           <Popover content={content} trigger="click" placement="bottom">
-            <div onClick={e => e.stopPropagation()} style={{ cursor: 'pointer', display: 'inline-block' }}>
+            <div data-no-row-click style={{ cursor: 'pointer', display: 'inline-block' }}>
               {v
                 ? <Tag color={v === 'PCPL1' ? 'geekblue' : 'cyan'} style={{ marginRight: 0, fontWeight: 600 }}>{v}</Tag>
                 : <span style={{ color: '#bbb', fontSize: 13, letterSpacing: 1 }}>— chọn —</span>}
@@ -1361,7 +1361,10 @@ function ProductMasterTab() {
         rowClassName={r => r.id === newItemId ? 'row-new-highlight' : ''}
         onRow={record => ({
           style: { cursor: 'pointer' },
-          onClick: () => canEdit ? openEdit(record) : (() => { setDetailItem(record); setDetailOpen(true) })(),
+          onClick: (e) => {
+            if (e.target.closest('[data-no-row-click]')) return
+            canEdit ? openEdit(record) : (() => { setDetailItem(record); setDetailOpen(true) })()
+          },
         })}
         pagination={{
           ...pagination, size: 'small', showSizeChanger: true,
