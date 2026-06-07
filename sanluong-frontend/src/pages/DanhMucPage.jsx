@@ -2581,10 +2581,10 @@ export default function DanhMucPage() {
 
         /* ── Table shared style ── */
         .dm-table .ant-table-thead > tr > th {
-          background: linear-gradient(90deg, #2980b3 0%, #3399CC 100%) !important;
+          background: #009999 !important;
           color: #fff !important; font-size: 11px !important; font-weight: 700 !important;
           text-transform: uppercase; padding: 7px 8px !important; white-space: nowrap;
-          border-right: 1px solid #4db3d4 !important;
+          border-right: 1px solid #007a7a !important;
         }
         .dm-table .ant-table-thead > tr > th::before { display: none !important; }
         .dm-table .ant-table-tbody > tr > td { padding: 5px 8px !important; }
