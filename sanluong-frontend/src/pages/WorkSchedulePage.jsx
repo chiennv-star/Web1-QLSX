@@ -3427,12 +3427,6 @@ export default function WorkSchedulePage() {
             onSaved={() => { fetchDeviations(0); refreshDevCount() }}
           />
 
-          <KphModal
-            open={kphModalOpen}
-            workScheduleRecord={kphRecord}
-            onClose={() => setKphModalOpen(false)}
-            onSaved={() => fetchDeviations(0)}
-          />
         </>
       )
     }] : []),
@@ -3545,27 +3539,35 @@ export default function WorkSchedulePage() {
         }
       `}</style>
 
-      <Tabs
-        className="ws-tabs"
-        activeKey={activeTab}
-        onChange={key => {
-          setActiveTab(key)
-          localStorage.setItem('ws_active_tab', key)
-          if (key === 'deviation') fetchDeviations(0)
-        }}
-        items={tabItems}
-        type="line"
-        size="middle"
-        tabBarExtraContent={
-          <Space style={{ paddingRight: 8 }}>
-            {isAdmin() && <AdminApprovalPanel />}
-            <Typography.Text strong className="ws-tab-title-text" style={{ color: '#DDE1E8', fontSize: 14, letterSpacing: 0.3 }}>
-              Lịch làm việc sản xuất
-            </Typography.Text>
-          </Space>
-        }
-        tabBarStyle={{ position: 'sticky', top: 0, zIndex: 10, margin: 0, paddingBottom: 0 }}
-      />
+      {kphModalOpen ? (
+        <KphModal
+          workScheduleRecord={kphRecord}
+          onClose={() => setKphModalOpen(false)}
+          onSaved={() => fetchDeviations(0)}
+        />
+      ) : (
+        <Tabs
+          className="ws-tabs"
+          activeKey={activeTab}
+          onChange={key => {
+            setActiveTab(key)
+            localStorage.setItem('ws_active_tab', key)
+            if (key === 'deviation') fetchDeviations(0)
+          }}
+          items={tabItems}
+          type="line"
+          size="middle"
+          tabBarExtraContent={
+            <Space style={{ paddingRight: 8 }}>
+              {isAdmin() && <AdminApprovalPanel />}
+              <Typography.Text strong className="ws-tab-title-text" style={{ color: '#DDE1E8', fontSize: 14, letterSpacing: 0.3 }}>
+                Lịch làm việc sản xuất
+              </Typography.Text>
+            </Space>
+          }
+          tabBarStyle={{ position: 'sticky', top: 0, zIndex: 10, margin: 0, paddingBottom: 0 }}
+        />
+      )}
     </>
   )
 }

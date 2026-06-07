@@ -48,7 +48,7 @@ const FieldRow = ({ num, label, required, children }) => (
 )
 
 // ── Main Component ───────────────────────────────────────────────────────────
-export default function KphModal({ open, workScheduleRecord, onClose, onSaved }) {
+export default function KphModal({ workScheduleRecord, onClose, onSaved }) {
   const [form] = Form.useForm()
   const [kph, setKph] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -59,7 +59,7 @@ export default function KphModal({ open, workScheduleRecord, onClose, onSaved })
 
   // ── Load existing KPH khi mở modal ────────────────────────────────────────
   useEffect(() => {
-    if (!open || !workScheduleRecord) return
+    if (!workScheduleRecord) return
     setLoading(true)
     api.get(`/kph/by-work-schedule/${workScheduleRecord.id}`)
       .then(r => {
@@ -101,7 +101,7 @@ export default function KphModal({ open, workScheduleRecord, onClose, onSaved })
         })
       })
       .finally(() => setLoading(false))
-  }, [open, workScheduleRecord])
+  }, [workScheduleRecord])
 
   // ── Save ──────────────────────────────────────────────────────────────────
   const handleSave = async () => {
@@ -178,12 +178,9 @@ export default function KphModal({ open, workScheduleRecord, onClose, onSaved })
   // ── Render ────────────────────────────────────────────────────────────────
   const ws = workScheduleRecord || {}
 
-  if (!open) return null
-
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 1000,
-      background: '#f0f2f5', overflowY: 'auto', display: 'flex', flexDirection: 'column',
+      background: '#f0f2f5', minHeight: '100%', display: 'flex', flexDirection: 'column',
     }}>
       {/* Header */}
       <div style={{
