@@ -145,15 +145,15 @@ export default function ChamCongPage() {
   // Danh sách ngày trong khoảng
   const dateList = useMemo(() => buildDateList(dateRange[0], dateRange[1]), [dateRange])
 
-  // ── Pivot timeRows → 1 hàng/nhân viên ─────────────────────────────
+  // ── Pivot timeRows → 1 hàng/nhân viên (toàn bộ empRows, điền ngayData nếu có) ──
   const timeEmpRows = useMemo(() => {
-    const empMap = {}
-    empRows.forEach(e => { empMap[e.maNhanVien] = e })
     const pivot = {}
+    empRows.forEach(e => {
+      pivot[e.maNhanVien] = { maNhanVien: e.maNhanVien, hoVaTen: e.hoVaTen, toNhom: e.toNhom || '', ngayData: {} }
+    })
     timeRows.forEach(t => {
       if (!pivot[t.maNhanVien]) {
-        const emp = empMap[t.maNhanVien] || {}
-        pivot[t.maNhanVien] = { maNhanVien: t.maNhanVien, hoVaTen: emp.hoVaTen || t.maNhanVien, toNhom: emp.toNhom || '', ngayData: {} }
+        pivot[t.maNhanVien] = { maNhanVien: t.maNhanVien, hoVaTen: t.maNhanVien, toNhom: '', ngayData: {} }
       }
       pivot[t.maNhanVien].ngayData[t.ngay] = t
     })
