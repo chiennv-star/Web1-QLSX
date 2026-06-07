@@ -3,6 +3,7 @@ package com.sanluong.service;
 import com.sanluong.dto.ProductionRecordDto;
 import com.sanluong.entity.ProductionEditHistory;
 import com.sanluong.entity.ProductionRecord;
+import com.sanluong.repository.LenhSanXuatRepository;
 import com.sanluong.repository.ProductionEditHistoryRepository;
 import com.sanluong.repository.ProductionRecordRepository;
 import com.sanluong.repository.ProductMasterRepository;
@@ -28,17 +29,20 @@ public class ProductionService {
 
     private final ProductionRecordRepository repository;
     private final ProductMasterRepository productMasterRepository;
+    private final LenhSanXuatRepository lenhSanXuatRepository;
     private final WorkScheduleRepository workScheduleRepository;
     private final ProductionEditHistoryRepository historyRepository;
     private final NotificationService notificationService;
 
     public ProductionService(ProductionRecordRepository repository,
                              ProductMasterRepository productMasterRepository,
+                             LenhSanXuatRepository lenhSanXuatRepository,
                              WorkScheduleRepository workScheduleRepository,
                              ProductionEditHistoryRepository historyRepository,
                              NotificationService notificationService) {
         this.repository = repository;
         this.productMasterRepository = productMasterRepository;
+        this.lenhSanXuatRepository = lenhSanXuatRepository;
         this.workScheduleRepository = workScheduleRepository;
         this.historyRepository = historyRepository;
         this.notificationService = notificationService;
@@ -263,33 +267,38 @@ public class ProductionService {
         saveFieldHistory(changes, id, "phatLenh", str(r.getPhatLenh()), "true", username, now);
         r.setPhatLenh(true);
 
-        // Xác định toNhomPcpl: ưu tiên từ record, fallback lookup ProductMaster
-        String toNhomPcpl = r.getToNhom();
-        if (isEmpty(toNhomPcpl) && !isEmpty(r.getMaTp())) {
-            toNhomPcpl = productMasterRepository.findByMaTpIgnoreCase(r.getMaTp())
-                    .map(pm -> isEmpty(pm.getToNhomPcpl()) ? null : pm.getToNhomPcpl())
+        // Tổ thực hiện: LenhSanXuat là nguồn duy nhất — luôn lookup để override giá trị cũ sai
+        String toNhomPcpl = null;
+        if (!isEmpty(r.getMaBravo())) {
+            toNhomPcpl = lenhSanXuatRepository
+                    .findFirstByMaBravoAndSoLo(r.getMaBravo(), isEmpty(r.getLsx()) ? null : r.getLsx())
+                    .map(l -> isEmpty(l.getToThucHien()) ? null : l.getToThucHien())
                     .orElse(null);
-            // Đồng bộ toNhom lên record nếu chưa có (để cột PCPL1/PCPL2 trên Dashboard hiển thị đúng)
-            if (!isEmpty(toNhomPcpl)) {
-                saveFieldHistory(changes, id, "toNhom", str(r.getToNhom()), toNhomPcpl, username, now);
-                r.setToNhom(toNhomPcpl);
-            }
         }
-        // Khi phát lệnh PCPL1 hoặc PCPL2: đặt tinhTrang="doing" cho tất cả công đoạn (nếu chưa có)
+        // Fallback: giữ nguyên toNhom trên record nếu LenhSanXuat chưa có toThucHien
+        if (isEmpty(toNhomPcpl)) {
+            toNhomPcpl = r.getToNhom();
+        }
+        // Cập nhật toNhom trên record nếu khác (sửa sai từ code cũ hoặc lần đầu set)
+        if (!isEmpty(toNhomPcpl) && !toNhomPcpl.equals(r.getToNhom())) {
+            saveFieldHistory(changes, id, "toNhom", str(r.getToNhom()), toNhomPcpl, username, now);
+            r.setToNhom(toNhomPcpl);
+        }
+        // Khi phát lệnh PCPL1 hoặc PCPL2: đặt tinhTrang="doing" (không check isEmpty — override giá trị sai cũ)
         if ("PCPL1".equals(toNhomPcpl) || "PCPL2".equals(toNhomPcpl)) {
-            if (isEmpty(r.getPcTrangThai())) {
+            if (!"doing".equals(r.getPcTrangThai())) {
                 saveFieldHistory(changes, id, "pcTrangThai", str(r.getPcTrangThai()), "doing", username, now);
                 r.setPcTrangThai("doing");
             }
-            if (isEmpty(r.getPlTrangThai())) {
+            if (!"doing".equals(r.getPlTrangThai())) {
                 saveFieldHistory(changes, id, "plTrangThai", str(r.getPlTrangThai()), "doing", username, now);
                 r.setPlTrangThai("doing");
             }
-            if (isEmpty(r.getDgTrangThai())) {
+            if (!"doing".equals(r.getDgTrangThai())) {
                 saveFieldHistory(changes, id, "dgTrangThai", str(r.getDgTrangThai()), "doing", username, now);
                 r.setDgTrangThai("doing");
             }
-            if (isEmpty(r.getBbc1TrangThai())) {
+            if (!"doing".equals(r.getBbc1TrangThai())) {
                 saveFieldHistory(changes, id, "bbc1TrangThai", str(r.getBbc1TrangThai()), "doing", username, now);
                 r.setBbc1TrangThai("doing");
             }

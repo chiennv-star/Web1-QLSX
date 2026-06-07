@@ -485,13 +485,18 @@ export default function ChatWidget() {
   // ── Filter users ──────────────────────────────────────────────────────────
   const filteredUsers = useMemo(() => {
     const q = search.toLowerCase()
-    if (!q) return userList
-    return userList.filter(u =>
+    const list = !q ? userList : userList.filter(u =>
       (u.fullName || '').toLowerCase().includes(q) ||
       (u.username || '').toLowerCase().includes(q) ||
       (ROLE_LABELS[u.role] || '').toLowerCase().includes(q)
     )
-  }, [search, userList])
+    // Người online lên đầu
+    return [...list].sort((a, b) => {
+      const ao = onlineSet.has(a.username) ? 0 : 1
+      const bo = onlineSet.has(b.username) ? 0 : 1
+      return ao - bo
+    })
+  }, [search, userList, onlineSet])
 
   const totalUnread = Object.values(unread).reduce((s, v) => s + v, 0)
 
@@ -689,49 +694,80 @@ export default function ChatWidget() {
                     )}
 
                     {/* Thành viên (tất cả hoặc kết quả search) */}
-                    <div style={{
-                      padding: '6px 14px 4px',
-                      fontSize: 10.5, fontWeight: 700, color: '#94a3b8',
-                      textTransform: 'uppercase', letterSpacing: '0.6px',
-                    }}>
-                      {search ? `Kết quả (${filteredUsers.length})` : 'Thành viên'}
-                    </div>
-
-                    {filteredUsers.length === 0 && (
-                      <div style={{
-                        textAlign: 'center', padding: '20px 0',
-                        color: '#94a3b8', fontSize: 12,
-                      }}>
-                        Không tìm thấy thành viên nào
-                      </div>
-                    )}
-
-                    {filteredUsers.map(u => {
-                      const roomKey = dmRoomKey(user.username, u.username)
-                      const last    = lastMsg[roomKey]
-                      const cnt     = unread[roomKey] || 0
-                      const isOnline = onlineSet.has(u.username)
+                    {(() => {
+                      const onlineUsers  = filteredUsers.filter(u => onlineSet.has(u.username))
+                      const offlineUsers = filteredUsers.filter(u => !onlineSet.has(u.username))
+                      const renderRow = u => {
+                        const roomKey  = dmRoomKey(user.username, u.username)
+                        const last     = lastMsg[roomKey]
+                        const cnt      = unread[roomKey] || 0
+                        const isOnline = onlineSet.has(u.username)
+                        return (
+                          <ConvRow
+                            key={u.username}
+                            name={u.fullName || u.username}
+                            sub={last
+                              ? (last.sender === user.username ? `Bạn: ${last.content}` : last.content)
+                              : (ROLE_LABELS[u.role] ? `[${ROLE_LABELS[u.role]}]` : undefined)
+                            }
+                            time={last ? fmtTime(last.sentAt) : ''}
+                            unread={cnt}
+                            online={isOnline}
+                            onClick={() => openConv({
+                              key:      roomKey,
+                              name:     u.fullName || u.username,
+                              type:     'dm',
+                              dmTarget: u.username,
+                              color:    strColor(u.fullName || u.username),
+                            })}
+                          />
+                        )
+                      }
                       return (
-                        <ConvRow
-                          key={u.username}
-                          name={u.fullName || u.username}
-                          sub={last
-                            ? (last.sender === user.username ? `Bạn: ${last.content}` : last.content)
-                            : (ROLE_LABELS[u.role] ? `[${ROLE_LABELS[u.role]}]` : undefined)
-                          }
-                          time={last ? fmtTime(last.sentAt) : ''}
-                          unread={cnt}
-                          online={isOnline}
-                          onClick={() => openConv({
-                            key:      roomKey,
-                            name:     u.fullName || u.username,
-                            type:     'dm',
-                            dmTarget: u.username,
-                            color:    strColor(u.fullName || u.username),
-                          })}
-                        />
+                        <>
+                          {/* Online */}
+                          <div style={{
+                            padding: '6px 14px 4px', display: 'flex', alignItems: 'center', gap: 6,
+                            fontSize: 10.5, fontWeight: 700, color: '#16a34a',
+                            textTransform: 'uppercase', letterSpacing: '0.6px',
+                          }}>
+                            <span style={{
+                              width: 7, height: 7, borderRadius: '50%',
+                              background: '#22c55e', display: 'inline-block', flexShrink: 0,
+                            }} />
+                            {search ? `Kết quả (${filteredUsers.length})` : `Đang online (${onlineUsers.length})`}
+                          </div>
+                          {onlineUsers.length === 0 && !search && (
+                            <div style={{ padding: '4px 14px 8px', color: '#94a3b8', fontSize: 11 }}>
+                              Chưa có ai online
+                            </div>
+                          )}
+                          {onlineUsers.map(renderRow)}
+
+                          {/* Offline — chỉ hiện khi không search */}
+                          {!search && offlineUsers.length > 0 && (
+                            <>
+                              <div style={{
+                                padding: '8px 14px 4px',
+                                fontSize: 10.5, fontWeight: 700, color: '#94a3b8',
+                                textTransform: 'uppercase', letterSpacing: '0.6px',
+                              }}>
+                                Thành viên ({offlineUsers.length})
+                              </div>
+                              {offlineUsers.map(renderRow)}
+                            </>
+                          )}
+                          {search && filteredUsers.length === 0 && (
+                            <div style={{
+                              textAlign: 'center', padding: '20px 0',
+                              color: '#94a3b8', fontSize: 12,
+                            }}>
+                              Không tìm thấy thành viên nào
+                            </div>
+                          )}
+                        </>
                       )
-                    })}
+                    })()}
                   </div>
                 </div>
               )}

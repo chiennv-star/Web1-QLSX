@@ -207,11 +207,11 @@ public class WorkScheduleService {
     // Tự động tạo/cập nhật bản ghi SCHEDULE cho từng công đoạn
     // Nếu đã có record (congDoan + maBravo + soLo) → update maDonHang + coLo
     // Nếu chưa có → tạo mới
-    // isPhatLenh=true: khi phát lệnh PCPL1/PCPL2 → đặt tinhTrang="doing" cho PC/PL/BBC1/DG (nếu chưa có)
+    // isPhatLenh=true + toNhomOverride=PCPL1/PCPL2 → đặt tinhTrang="doing" cho PC/PL/BBC1/DG (nếu chưa có)
     @org.springframework.transaction.annotation.Transactional
     public int autoSyncFromProduction(String maBravo, String maSp, String tenTrinh,
                                        String soLo, java.math.BigDecimal coLo, String maDonHang,
-                                       boolean isPhatLenh) {
+                                       boolean isPhatLenh, String toNhomOverride) {
         if (isEmpty(maBravo) && isEmpty(maSp)) return 0;
         String maBravoParam   = isEmpty(maBravo)  ? null : maBravo;
         String maSpparam      = isEmpty(maSp)     ? null : maSp;
@@ -221,13 +221,8 @@ public class WorkScheduleService {
         java.time.LocalDate today = java.time.LocalDate.now();
         int created = 0;
 
-        // Lookup ProductMaster một lần — dùng cho PC toNhom và logic kích hoạt phatLenh
-        String pcplNhom = null;
-        if (maSpparam != null) {
-            pcplNhom = productMasterRepository.findByMaTpIgnoreCase(maSpparam)
-                    .map(pm -> isEmpty(pm.getToNhomPcpl()) ? null : pm.getToNhomPcpl())
-                    .orElse(null);
-        }
+        // Tổ thực hiện lấy từ LenhSanXuat (truyền qua toNhomOverride), không dùng ProductMaster
+        String pcplNhom = isEmpty(toNhomOverride) ? null : toNhomOverride;
         // Chỉ kích hoạt tinhTrang="doing" khi phát lệnh sản phẩm PCPL1 hoặc PCPL2
         final boolean activateDoing = isPhatLenh
                 && ("PCPL1".equals(pcplNhom) || "PCPL2".equals(pcplNhom));
@@ -289,8 +284,14 @@ public class WorkScheduleService {
     }
 
     public int autoSyncFromProduction(String maBravo, String maSp, String tenTrinh,
+                                       String soLo, java.math.BigDecimal coLo, String maDonHang,
+                                       boolean isPhatLenh) {
+        return autoSyncFromProduction(maBravo, maSp, tenTrinh, soLo, coLo, maDonHang, isPhatLenh, null);
+    }
+
+    public int autoSyncFromProduction(String maBravo, String maSp, String tenTrinh,
                                        String soLo, java.math.BigDecimal coLo, String maDonHang) {
-        return autoSyncFromProduction(maBravo, maSp, tenTrinh, soLo, coLo, maDonHang, false);
+        return autoSyncFromProduction(maBravo, maSp, tenTrinh, soLo, coLo, maDonHang, false, null);
     }
 
     public WorkSchedule getById(Long id) {

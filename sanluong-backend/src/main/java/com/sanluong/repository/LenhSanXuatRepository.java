@@ -52,6 +52,19 @@ public interface LenhSanXuatRepository extends JpaRepository<LenhSanXuat, Long> 
     @Query("SELECT COALESCE(MAX(l.thuTu), 0) FROM LenhSanXuat l WHERE l.deletedAt IS NULL")
     Integer findMaxThuTu();
 
+    // Tìm lệnh theo maBravo + soLo — dùng khi phát lệnh để lấy toThucHien
+    @Query("""
+        SELECT l FROM LenhSanXuat l
+        WHERE l.deletedAt IS NULL
+          AND l.maBravo = :maBravo
+          AND ((:soLo IS NULL AND l.soLo IS NULL) OR l.soLo = :soLo)
+        ORDER BY l.id DESC
+        """)
+    java.util.Optional<LenhSanXuat> findFirstByMaBravoAndSoLo(
+            @org.springframework.data.repository.query.Param("maBravo") String maBravo,
+            @org.springframework.data.repository.query.Param("soLo")    String soLo
+    );
+
     @Query("SELECT l FROM LenhSanXuat l WHERE l.deletedAt IS NOT NULL ORDER BY l.deletedAt DESC")
     List<LenhSanXuat> findAllDeleted();
 

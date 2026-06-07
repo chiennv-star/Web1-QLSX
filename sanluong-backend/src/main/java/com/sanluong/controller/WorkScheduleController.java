@@ -88,8 +88,9 @@ public class WorkScheduleController {
             @RequestParam(required = false) String soLo,
             @RequestParam(required = false) java.math.BigDecimal coLo,
             @RequestParam(required = false) String maDonHang,
-            @RequestParam(required = false, defaultValue = "false") boolean phatLenh) {
-        int created = service.autoSyncFromProduction(maBravo, maSp, tenTrinh, soLo, coLo, maDonHang, phatLenh);
+            @RequestParam(required = false, defaultValue = "false") boolean phatLenh,
+            @RequestParam(required = false) String toNhomOverride) {
+        int created = service.autoSyncFromProduction(maBravo, maSp, tenTrinh, soLo, coLo, maDonHang, phatLenh, toNhomOverride);
         return ResponseEntity.ok(created);
     }
 
