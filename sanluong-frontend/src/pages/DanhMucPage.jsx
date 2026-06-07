@@ -1075,6 +1075,7 @@ function ProductMasterDrawer({ open, record, onClose, onEdit }) {
       <Section title="Thông tin cơ bản" color="#1D4ED8">
         <Row2 label="Mã Bravo" value={<span style={{ fontFamily: 'monospace', color: '#1677ff', fontWeight: 600 }}>{fmtT(record.maBravo)}</span>} />
         <Row2 label="Loại sản phẩm" value={record.loaiSanPham ? <Tag color="purple" style={{ fontSize: 11 }}>{record.loaiSanPham}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>} />
+        <Row2 label="Tổ/Nhóm PCPL" value={record.toNhomPcpl ? <Tag color={record.toNhomPcpl === 'PCPL1' ? 'geekblue' : 'cyan'} style={{ fontWeight: 600 }}>{record.toNhomPcpl}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>} />
         <Row2 label="Khối lượng/ĐV (g)" value={fmtN(record.khoiLuong)} />
         <Row2 label="NS Trung Bình (sp/công)" value={fmtN(record.slTrungBinh)} />
         <Row2 label="Tên / Tiến trình" value={<span style={{ fontSize: 12 }}>{fmtT(record.tienTrinh)}</span>} full />
@@ -1248,6 +1249,8 @@ function ProductMasterTab() {
       render: v => <span style={{ fontSize: 12 }}>{v || '—'}</span> },
     { title: 'Loại SP', dataIndex: 'loaiSanPham', key: 'loaiSanPham', width: 130,
       render: v => v ? <Tag color="purple" style={{ marginRight: 0, fontSize: 11 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span> },
+    { title: 'Tổ/Nhóm PCPL', dataIndex: 'toNhomPcpl', key: 'toNhomPcpl', width: 120,
+      render: v => v ? <Tag color={v === 'PCPL1' ? 'geekblue' : 'cyan'} style={{ marginRight: 0, fontWeight: 600 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span> },
     { title: 'KL/ĐV (g)', dataIndex: 'khoiLuong', key: 'khoiLuong', width: 100, align: 'right', render: numCell },
     { title: 'NS Trung Bình', dataIndex: 'slTrungBinh', key: 'slTrungBinh', width: 120, align: 'right', render: numCell },
     { title: 'NS PC', dataIndex: 'nangSuatPc', key: 'nangSuatPc', width: 100, align: 'right', render: numCell },
@@ -1378,7 +1381,7 @@ function ProductMasterTab() {
           </Form.Item>
 
           <Row gutter={12}>
-            <Col span={12}>
+            <Col span={8}>
               <Form.Item label="Loại sản phẩm" name="loaiSanPham">
                 <AutoComplete
                   placeholder="VD: Kem dưỡng, Dầu gội..."
@@ -1387,7 +1390,15 @@ function ProductMasterTab() {
                 />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col span={8}>
+              <Form.Item label="Tổ/Nhóm PCPL" name="toNhomPcpl">
+                <Select placeholder="Chọn tổ PCPL" allowClear options={[
+                  { value: 'PCPL1', label: 'PCPL1' },
+                  { value: 'PCPL2', label: 'PCPL2' },
+                ]} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
               <Form.Item label="Khối lượng 1 đơn vị (gram)" name="khoiLuong">
                 <InputNumber style={{ width: '100%' }} min={0} step={0.1}
                   placeholder="VD: 50, 100, 250..."

@@ -50,6 +50,9 @@ public class ProductMaster {
     @Column(name = "khoi_luong", precision = 12, scale = 4)
     private java.math.BigDecimal khoiLuong;
 
+    @Column(name = "to_nhom_pcpl", length = 20)
+    private String toNhomPcpl;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -99,6 +102,8 @@ public class ProductMaster {
     public void setLoaiSanPham(String loaiSanPham) { this.loaiSanPham = loaiSanPham; }
     public java.math.BigDecimal getKhoiLuong() { return khoiLuong; }
     public void setKhoiLuong(java.math.BigDecimal khoiLuong) { this.khoiLuong = khoiLuong; }
+    public String getToNhomPcpl() { return toNhomPcpl; }
+    public void setToNhomPcpl(String toNhomPcpl) { this.toNhomPcpl = toNhomPcpl; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 }

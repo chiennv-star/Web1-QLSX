@@ -18,6 +18,7 @@ public class ProductMasterDto {
     private String mayMocDg;
     private String loaiSanPham;
     private BigDecimal khoiLuong;
+    private String toNhomPcpl;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -47,4 +48,6 @@ public class ProductMasterDto {
     public void setLoaiSanPham(String loaiSanPham) { this.loaiSanPham = loaiSanPham; }
     public BigDecimal getKhoiLuong() { return khoiLuong; }
     public void setKhoiLuong(BigDecimal khoiLuong) { this.khoiLuong = khoiLuong; }
+    public String getToNhomPcpl() { return toNhomPcpl; }
+    public void setToNhomPcpl(String toNhomPcpl) { this.toNhomPcpl = toNhomPcpl; }
 }
