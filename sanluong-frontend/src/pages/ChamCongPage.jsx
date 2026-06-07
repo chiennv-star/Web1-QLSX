@@ -448,7 +448,7 @@ export default function ChamCongPage() {
 
   const empByDept = useMemo(() => {
     const map = { all: empRows }
-    DEPTS.forEach(d => { map[d] = empRows.filter(r => r.toNhom === d) })
+    TIME_DEPTS.forEach(d => { map[d] = empRows.filter(r => r.toNhom === d) })
     return map
   }, [empRows])
 
@@ -478,13 +478,14 @@ export default function ChamCongPage() {
         />
       ),
     },
-    ...DEPTS.map(dept => {
+    ...TIME_DEPTS.map(dept => {
       const rows = empByDept[dept] || []
+      const label = TIME_DEPT_LABEL[dept] || dept
       return {
         key: dept,
         label: (
           <span>
-            <Tag color={DEPT_COLOR[dept] || 'default'} style={{ margin: 0, marginRight: 4, fontSize: 11 }}>{dept}</Tag>
+            <Tag color={DEPT_COLOR[dept] || 'default'} style={{ margin: 0, marginRight: 4, fontSize: 11 }}>{label}</Tag>
             <small style={{ color: '#666' }}>({rows.length})</small>
           </span>
         ),
