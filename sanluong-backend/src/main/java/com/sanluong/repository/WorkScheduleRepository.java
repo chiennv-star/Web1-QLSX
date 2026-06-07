@@ -33,7 +33,7 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
           AND (:source IS NULL
                OR w.source = :source
                OR (:source = 'SCHEDULE' AND w.source IS NULL))
-          AND (:toNhom IS NULL OR w.toNhom IS NULL OR TRIM(w.toNhom) = '' OR w.toNhom = :toNhom)
+          AND (:toNhom IS NULL OR w.toNhom = :toNhom)
         ORDER BY w.ngayThucHien DESC, w.id DESC
         """)
     Page<WorkSchedule> search(
@@ -65,7 +65,7 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
           AND (:source IS NULL
                OR w.source = :source
                OR (:source = 'SCHEDULE' AND w.source IS NULL))
-          AND (:toNhom IS NULL OR w.toNhom IS NULL OR TRIM(w.toNhom) = '' OR w.toNhom = :toNhom)
+          AND (:toNhom IS NULL OR w.toNhom = :toNhom)
         """)
     List<WorkSchedule> searchAll(
             @Param("fromDate") LocalDate fromDate,
@@ -163,7 +163,7 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
           AND w.deletedAt IS NULL
           AND (:congDoan IS NULL OR w.congDoan = :congDoan)
           AND (:source IS NULL OR w.source = :source OR (:source = 'SCHEDULE' AND w.source IS NULL))
-          AND (:toNhom IS NULL OR w.toNhom IS NULL OR TRIM(w.toNhom) = '' OR w.toNhom = :toNhom)
+          AND (:toNhom IS NULL OR w.toNhom = :toNhom)
         ORDER BY w.updatedAt DESC, w.id DESC
         """)
     Page<WorkSchedule> findHidden(

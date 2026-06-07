@@ -249,6 +249,13 @@ public class WorkScheduleService {
                 w.setMaDonHang(maDonHangParam);
                 w.setCoLo(coLo);
                 w.setNgayThucHien(today);
+                if ("PC".equals(stage) && maSpparam != null) {
+                    productMasterRepository.findByMaTpIgnoreCase(maSpparam)
+                            .ifPresent(pm -> {
+                                if (pm.getToNhomPcpl() != null && !pm.getToNhomPcpl().isBlank())
+                                    w.setToNhom(pm.getToNhomPcpl());
+                            });
+                }
                 repository.save(w);
                 created++;
             }
