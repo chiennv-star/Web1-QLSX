@@ -237,6 +237,7 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
   const [editingTime, setEditingTime] = useState(null)
   const [timeSaving, setTimeSaving] = useState(false)
   const [timeForm] = Form.useForm()
+  const [timeCtxMenu, setTimeCtxMenu] = useState(null) // {x, y, record}
 
   const fetchTimeEntries = useCallback(async () => {
     if (!employee?.maNhanVien || !fromDate || !toDate) return
@@ -612,7 +613,10 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
         styles={{ body: { padding: 0, background: '#fafafe' } }}
       >
         {/* ── Tab switcher ── */}
-        <div style={{ display: 'flex', borderBottom: '2px solid #e0e7ff', background: '#fff', paddingLeft: 16 }}>
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
+          borderBottom: '2px solid #e0e7ff', background: '#fff',
+        }}>
           {[
             { key: 'sx',      label: 'Hồ Sơ Sản Xuất',  icon: <BarChartOutlined /> },
             { key: 'daily',   label: 'Ngày Sản Xuất',    icon: <CalendarOutlined /> },
@@ -620,13 +624,17 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
             { key: 'profile', label: 'Hồ Sơ Nhân Viên',  icon: <IdcardOutlined /> },
           ].map(t => (
             <button key={t.key} onClick={() => setDrawerTab(t.key)} style={{
-              padding: '10px 20px', border: 'none', cursor: 'pointer', background: 'transparent',
-              fontSize: 13, fontWeight: drawerTab === t.key ? 700 : 500,
+              border: 'none', cursor: 'pointer', background: 'transparent',
+              padding: '12px 8px',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
+              fontSize: 12, fontWeight: drawerTab === t.key ? 700 : 500,
               color: drawerTab === t.key ? '#1D4ED8' : '#64748b',
               borderBottom: drawerTab === t.key ? '2.5px solid #1D4ED8' : '2.5px solid transparent',
-              marginBottom: -2, display: 'flex', alignItems: 'center', gap: 6, transition: 'all .15s',
+              borderRight: '1px solid #e0e7ff',
+              transition: 'all .15s',
             }}>
-              {t.icon} {t.label}
+              <span style={{ fontSize: 16 }}>{t.icon}</span>
+              <span style={{ lineHeight: 1.3, textAlign: 'center' }}>{t.label}</span>
             </button>
           ))}
         </div>
@@ -715,20 +723,18 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
                   title: 'Ghi Chú', dataIndex: 'ghiChu', key: 'ghiChu', ellipsis: true,
                   render: v => v || <span style={{ color: '#d9d9d9' }}>—</span>,
                 },
-                ...(canEdit ? [{
-                  title: '', key: 'action', width: 70, align: 'center',
-                  render: (_, r) => (
-                    <Space size={4}>
-                      <Button size="small" icon={<EditOutlined />} type="text"
-                        onClick={() => openEditTime(r)} />
-                      <Popconfirm title="Xoá bản ghi này?" okText="Xoá" cancelText="Huỷ"
-                        onConfirm={() => handleTimeDelete(r.id)}>
-                        <Button size="small" icon={<DeleteOutlined />} type="text" danger />
-                      </Popconfirm>
-                    </Space>
-                  ),
-                }] : []),
               ]}
+              onRow={canEdit ? (record) => ({
+                onClick: (e) => {
+                  if (e.target.closest('button')) return
+                  openEditTime(record)
+                },
+                onContextMenu: (e) => {
+                  e.preventDefault()
+                  setTimeCtxMenu({ x: e.clientX, y: e.clientY, record })
+                },
+                style: { cursor: 'pointer' },
+              }) : undefined}
             />
           </div>
         ) : drawerTab === 'profile' ? (
@@ -1156,6 +1162,40 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
           )}
         </Form>
       </Modal>
+
+      {/* ── Time entry context menu ── */}
+      {timeCtxMenu && (
+        <>
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+            onClick={() => setTimeCtxMenu(null)}
+            onContextMenu={(e) => { e.preventDefault(); setTimeCtxMenu(null) }}
+          />
+          <div style={{
+            position: 'fixed', zIndex: 9999,
+            left: timeCtxMenu.x, top: timeCtxMenu.y,
+            background: '#fff', borderRadius: 6,
+            boxShadow: '0 4px 16px rgba(0,0,0,.18)',
+            minWidth: 140, padding: '4px 0', userSelect: 'none',
+          }}>
+            <div
+              style={{
+                padding: '8px 16px', cursor: 'pointer', color: '#ff4d4f',
+                display: 'flex', alignItems: 'center', gap: 8, fontSize: 13,
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#fff1f0'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              onClick={() => {
+                const id = timeCtxMenu.record.id
+                setTimeCtxMenu(null)
+                handleTimeDelete(id)
+              }}
+            >
+              <DeleteOutlined /> Xóa bản ghi
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ── Time entry modal ── */}
       <Modal
