@@ -1173,53 +1173,6 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
         </Form>
       </Modal>
 
-      {/* ── Eff table context menu ── */}
-      {effCtxMenu && (
-        <>
-          <div
-            style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
-            onClick={() => setEffCtxMenu(null)}
-            onContextMenu={(e) => { e.preventDefault(); setEffCtxMenu(null) }}
-          />
-          <div style={{
-            position: 'fixed', zIndex: 9999,
-            left: effCtxMenu.x, top: effCtxMenu.y,
-            background: '#fff', borderRadius: 6,
-            boxShadow: '0 4px 16px rgba(0,0,0,.18)',
-            minWidth: 160, padding: '4px 0', userSelect: 'none',
-          }}>
-            <div style={{ padding: '6px 12px 4px', fontSize: 11, color: '#94a3b8', borderBottom: '1px solid #f0f0f0' }}>
-              {effCtxMenu.record.hoVaTen}
-            </div>
-            <div
-              style={{ padding: '8px 16px', cursor: 'pointer', color: '#ff4d4f', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
-              onMouseEnter={e => e.currentTarget.style.background = '#fff1f0'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              onClick={() => {
-                const record = effCtxMenu.record
-                setEffCtxMenu(null)
-                Modal.confirm({
-                  title: `Xóa bản ghi "${record.hoVaTen}"?`,
-                  icon: <ExclamationCircleOutlined />,
-                  content: 'Thao tác này sẽ xóa bản ghi hiệu quả của nhân viên. Không thể hoàn tác.',
-                  okText: 'Xóa', okButtonProps: { danger: true }, cancelText: 'Huỷ',
-                  onOk: async () => {
-                    if (!record.weId) { message.warning('Không có bản ghi để xóa'); return }
-                    try {
-                      await api.delete('/work-efficiency/bulk', { data: [record.weId] })
-                      message.success('Đã xóa bản ghi')
-                      fetchData(fromDate, toDate, activeGroup)
-                    } catch { message.error('Xóa thất bại') }
-                  },
-                })
-              }}
-            >
-              <DeleteOutlined /> Xóa bản ghi
-            </div>
-          </div>
-        </>
-      )}
-
       {/* ── Time entry context menu ── */}
       {timeCtxMenu && (
         <>
@@ -2644,6 +2597,53 @@ export default function WorkEfficiencyPage() {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* ── Eff table context menu ── */}
+      {effCtxMenu && (
+        <>
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+            onClick={() => setEffCtxMenu(null)}
+            onContextMenu={(e) => { e.preventDefault(); setEffCtxMenu(null) }}
+          />
+          <div style={{
+            position: 'fixed', zIndex: 9999,
+            left: effCtxMenu.x, top: effCtxMenu.y,
+            background: '#fff', borderRadius: 6,
+            boxShadow: '0 4px 16px rgba(0,0,0,.18)',
+            minWidth: 160, padding: '4px 0', userSelect: 'none',
+          }}>
+            <div style={{ padding: '6px 12px 4px', fontSize: 11, color: '#94a3b8', borderBottom: '1px solid #f0f0f0' }}>
+              {effCtxMenu.record.hoVaTen}
+            </div>
+            <div
+              style={{ padding: '8px 16px', cursor: 'pointer', color: '#ff4d4f', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
+              onMouseEnter={e => e.currentTarget.style.background = '#fff1f0'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              onClick={() => {
+                const record = effCtxMenu.record
+                setEffCtxMenu(null)
+                Modal.confirm({
+                  title: `Xóa bản ghi "${record.hoVaTen}"?`,
+                  icon: <ExclamationCircleOutlined />,
+                  content: 'Thao tác này sẽ xóa bản ghi hiệu quả của nhân viên. Không thể hoàn tác.',
+                  okText: 'Xóa', okButtonProps: { danger: true }, cancelText: 'Huỷ',
+                  onOk: async () => {
+                    if (!record.weId) { message.warning('Không có bản ghi để xóa'); return }
+                    try {
+                      await api.delete('/work-efficiency/bulk', { data: [record.weId] })
+                      message.success('Đã xóa bản ghi')
+                      fetchData(fromDate, toDate, activeGroup)
+                    } catch { message.error('Xóa thất bại') }
+                  },
+                })
+              }}
+            >
+              <DeleteOutlined /> Xóa bản ghi
+            </div>
+          </div>
+        </>
+      )}
     </>
   )
 }
