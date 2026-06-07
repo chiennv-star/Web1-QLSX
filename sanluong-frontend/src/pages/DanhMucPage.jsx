@@ -1385,7 +1385,7 @@ function ProductMasterTab() {
               <Form.Item label="Loại sản phẩm" name="loaiSanPham">
                 <AutoComplete
                   placeholder="VD: Kem dưỡng, Dầu gội..."
-                  options={['Kem dưỡng', 'Dầu gội', 'Sữa tắm', 'Nước súc miệng', 'Dầu nóng', 'Gel', 'Serum', 'Xịt', 'Bột', 'Khác'].map(v => ({ value: v }))}
+                  options={['Nhũ Tương', 'Dung Dịch', 'Gel', 'Son', 'Sáp', 'Bột', 'Nến', 'Kem O/W', 'Kem W/O'].map(v => ({ value: v }))}
                   filterOption={(input, opt) => opt.value.toLowerCase().includes(input.toLowerCase())}
                 />
               </Form.Item>
