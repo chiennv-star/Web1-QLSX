@@ -890,10 +890,10 @@ export default function HangLoiPage() {
       <style>{`
         /* ── Table ── */
         .hl-table .ant-table-thead > tr > th {
-          background: linear-gradient(90deg, #2980b3 0%, #3399CC 100%) !important; color: #ffffff !important;
+          background: #009999 !important; color: #ffffff !important;
           font-size: 12px !important; font-weight: 700 !important;
           text-transform: uppercase; padding: 8px 10px !important;
-          letter-spacing: 0.4px; border-right: 1px solid #4db3d4 !important;
+          letter-spacing: 0.4px; border-right: 1px solid #007a7a !important;
           white-space: nowrap;
         }
         .hl-table .ant-table-thead > tr > th::before { display: none !important; }
