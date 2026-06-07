@@ -75,6 +75,12 @@ public class ProductMasterController {
         return ResponseEntity.ok(service.update(id, dto, username));
     }
 
+    @PatchMapping("/{id}/to-nhom-pcpl")
+    public ResponseEntity<?> patchToNhomPcpl(@PathVariable Long id,
+                                              @RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(service.patchToNhomPcpl(id, body.get("value")));
+    }
+
     @GetMapping("/{id}/history")
     public ResponseEntity<?> getHistory(@PathVariable Long id) {
         return ResponseEntity.ok(service.getHistory(id));

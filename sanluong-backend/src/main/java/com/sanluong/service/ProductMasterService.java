@@ -155,6 +155,14 @@ public class ProductMasterService {
         return p;
     }
 
+    public ProductMaster patchToNhomPcpl(Long id, String value) {
+        ProductMaster p = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ID: " + id));
+        String v = (value == null || value.isBlank()) ? null : value.trim();
+        p.setToNhomPcpl(v);
+        return repository.save(p);
+    }
+
     public void delete(Long id) {
         repository.deleteById(id);
     }

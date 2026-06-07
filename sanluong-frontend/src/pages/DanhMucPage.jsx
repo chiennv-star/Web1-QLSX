@@ -1221,6 +1221,13 @@ function ProductMasterTab() {
     ? <span style={{ fontSize: 12 }}>{v}</span>
     : <span style={{ color: '#d9d9d9' }}>—</span>
 
+  const patchPcpl = async (record, newValue) => {
+    try {
+      await api.patch(`/product-master/${record.id}/to-nhom-pcpl`, { value: newValue ?? null })
+      setData(prev => prev.map(r => r.id === record.id ? { ...r, toNhomPcpl: newValue ?? null } : r))
+    } catch { message.error('Cập nhật thất bại') }
+  }
+
   const openEdit = (r) => {
     setEditItem(r)
     form.setFieldsValue({
@@ -1251,8 +1258,35 @@ function ProductMasterTab() {
       render: v => <span style={{ fontSize: 12 }}>{v || '—'}</span> },
     { title: 'Loại SP', dataIndex: 'loaiSanPham', key: 'loaiSanPham', width: 130,
       render: v => v ? <Tag color="purple" style={{ marginRight: 0, fontSize: 11 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span> },
-    { title: 'Tổ/Nhóm PCPL', dataIndex: 'toNhomPcpl', key: 'toNhomPcpl', width: 120,
-      render: v => v ? <Tag color={v === 'PCPL1' ? 'geekblue' : 'cyan'} style={{ marginRight: 0, fontWeight: 600 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span> },
+    { title: 'Tổ/Nhóm PCPL', dataIndex: 'toNhomPcpl', key: 'toNhomPcpl', width: 120, align: 'center',
+      render: (v, record) => {
+        const opts = [
+          { value: 'PCPL1', color: 'geekblue' },
+          { value: 'PCPL2', color: 'cyan' },
+        ]
+        const content = (
+          <div style={{ display: 'flex', gap: 6, flexDirection: 'column', minWidth: 90 }} onClick={e => e.stopPropagation()}>
+            {opts.map(o => (
+              <Tag key={o.value} color={v === o.value ? o.color : 'default'}
+                style={{ cursor: 'pointer', fontWeight: 600, textAlign: 'center', margin: 0, opacity: v === o.value ? 1 : 0.55 }}
+                onClick={() => patchPcpl(record, v === o.value ? null : o.value)}>
+                {v === o.value ? '✓ ' : ''}{o.value}
+              </Tag>
+            ))}
+          </div>
+        )
+        if (!canEdit) return v ? <Tag color={v === 'PCPL1' ? 'geekblue' : 'cyan'} style={{ marginRight: 0, fontWeight: 600 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>
+        return (
+          <Popover content={content} trigger="click" placement="bottom">
+            <div onClick={e => e.stopPropagation()} style={{ cursor: 'pointer', display: 'inline-block' }}>
+              {v
+                ? <Tag color={v === 'PCPL1' ? 'geekblue' : 'cyan'} style={{ marginRight: 0, fontWeight: 600 }}>{v}</Tag>
+                : <span style={{ color: '#bbb', fontSize: 13, letterSpacing: 1 }}>— chọn —</span>}
+            </div>
+          </Popover>
+        )
+      }
+    },
     { title: 'KL/ĐV (g)', dataIndex: 'khoiLuong', key: 'khoiLuong', width: 100, align: 'right', render: numCell },
     { title: 'NS Trung Bình', dataIndex: 'slTrungBinh', key: 'slTrungBinh', width: 120, align: 'right', render: numCell },
     { title: 'NS PC', dataIndex: 'nangSuatPc', key: 'nangSuatPc', width: 100, align: 'right', render: numCell },
