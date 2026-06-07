@@ -262,6 +262,34 @@ public class ProductionService {
         List<ProductionEditHistory> changes = new ArrayList<>();
         saveFieldHistory(changes, id, "phatLenh", str(r.getPhatLenh()), "true", username, now);
         r.setPhatLenh(true);
+
+        // Xác định toNhomPcpl: ưu tiên từ record, fallback lookup ProductMaster
+        String toNhomPcpl = r.getToNhom();
+        if (isEmpty(toNhomPcpl) && !isEmpty(r.getMaTp())) {
+            toNhomPcpl = productMasterRepository.findByMaTpIgnoreCase(r.getMaTp())
+                    .map(pm -> isEmpty(pm.getToNhomPcpl()) ? null : pm.getToNhomPcpl())
+                    .orElse(null);
+        }
+        // Khi phát lệnh PCPL1 hoặc PCPL2: đặt tinhTrang="doing" cho tất cả công đoạn (nếu chưa có)
+        if ("PCPL1".equals(toNhomPcpl) || "PCPL2".equals(toNhomPcpl)) {
+            if (isEmpty(r.getPcTrangThai())) {
+                saveFieldHistory(changes, id, "pcTrangThai", str(r.getPcTrangThai()), "doing", username, now);
+                r.setPcTrangThai("doing");
+            }
+            if (isEmpty(r.getPlTrangThai())) {
+                saveFieldHistory(changes, id, "plTrangThai", str(r.getPlTrangThai()), "doing", username, now);
+                r.setPlTrangThai("doing");
+            }
+            if (isEmpty(r.getDgTrangThai())) {
+                saveFieldHistory(changes, id, "dgTrangThai", str(r.getDgTrangThai()), "doing", username, now);
+                r.setDgTrangThai("doing");
+            }
+            if (isEmpty(r.getBbc1TrangThai())) {
+                saveFieldHistory(changes, id, "bbc1TrangThai", str(r.getBbc1TrangThai()), "doing", username, now);
+                r.setBbc1TrangThai("doing");
+            }
+        }
+
         r.setUpdatedBy(username);
         ProductionRecord saved = repository.save(r);
         if (!changes.isEmpty()) historyRepository.saveAll(changes);
