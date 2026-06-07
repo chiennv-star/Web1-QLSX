@@ -182,6 +182,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const [lookupStatus, setLookupStatus] = useState(null)
   const lookupTimer = useRef(null)
   const [maBravo, setMaBravo] = useState('')
+  const [pcplFromProduct, setPcplFromProduct] = useState(null)
   const [nsTrungBinh, setNsTrungBinh] = useState(null)
   const [openTabs, setOpenTabs] = useState(['list'])
   const [activeTabKey, setActiveTabKey] = useState('list')
@@ -238,6 +239,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
         const field = NS_LOOKUP_FIELD[schedule.congDoan] || 'slTrungBinh'
         const val = r.data[field]
         setNsTrungBinh(val != null ? Number(val) : null)
+        setPcplFromProduct(r.data.toNhomPcpl || null)
       })
       .catch(() => {})
     api.get('/employees', { params: { page: 0, size: 500 } })
@@ -264,6 +266,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     try {
       const { data } = await api.get(`/product-master/lookup-by-bravo/${encodeURIComponent(val)}`)
       infoForm.setFieldsValue({ maSp: data.maTp, tenTrinh: data.tienTrinh })
+      setPcplFromProduct(data.toNhomPcpl || null)
       setLookupStatus('found')
     } catch { setLookupStatus('not_found') }
   }
@@ -276,6 +279,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     try {
       const { data } = await api.get(`/product-master/lookup/${encodeURIComponent(val)}`)
       infoForm.setFieldsValue({ tenTrinh: data.tienTrinh })
+      setPcplFromProduct(data.toNhomPcpl || null)
       setLookupStatus('found')
     } catch { setLookupStatus('not_found') }
   }
@@ -1401,6 +1405,11 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                           </Select>
                         : <Input size="small" placeholder="Nhập nhóm" disabled={!isInfoEditing} style={{ width: '100%' }} />}
                     </Form.Item>
+                    {isInfoEditing && pcplFromProduct && ['PCPL1', 'PCPL2'].includes(watchedToNhom) && watchedToNhom !== pcplFromProduct && (
+                      <div style={{ color: '#d46b08', fontSize: 11, marginTop: 2 }}>
+                        ⚠️ Sản phẩm quy định tổ <strong>{pcplFromProduct}</strong>
+                      </div>
+                    )}
                   </VC>
                   <LC>🏢 Phòng TH</LC>
                   <VC style={{ borderRight: 'none' }}>
@@ -1586,7 +1595,9 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
 // ── Modal ─────────────────────────────────────────────────────────────────────
 function WorkScheduleModal({ open, editItem, congDoan, defaultToNhom, extraFormFields = [], onClose, onSaved }) {
   const [form] = Form.useForm()
+  const watchedToNhomModal = Form.useWatch('toNhom', form)
   const [lookupStatus, setLookupStatus] = useState(null)
+  const [pcplFromProduct, setPcplFromProduct] = useState(null)
   const timerRef = useRef(null)
 
   useEffect(() => {
@@ -1601,6 +1612,7 @@ function WorkScheduleModal({ open, editItem, congDoan, defaultToNhom, extraFormF
         form.resetFields()
         if (defaultToNhom) form.setFieldValue('toNhom', defaultToNhom)
         setLookupStatus(null)
+        setPcplFromProduct(null)
       }
     }
   }, [open, editItem])
@@ -1615,6 +1627,7 @@ function WorkScheduleModal({ open, editItem, congDoan, defaultToNhom, extraFormF
       try {
         const { data } = await api.get(`/product-master/lookup-by-bravo/${encodeURIComponent(val)}`)
         form.setFieldsValue({ maSp: data.maTp, tenTrinh: data.tienTrinh })
+        setPcplFromProduct(data.toNhomPcpl || null)
         setLookupStatus('found')
       } catch {
         setLookupStatus('not_found')
@@ -1632,6 +1645,7 @@ function WorkScheduleModal({ open, editItem, congDoan, defaultToNhom, extraFormF
       try {
         const { data } = await api.get(`/product-master/lookup/${encodeURIComponent(val)}`)
         form.setFieldsValue({ tenTrinh: data.tienTrinh })
+        setPcplFromProduct(data.toNhomPcpl || null)
         setLookupStatus('found')
       } catch {
         setLookupStatus('not_found')
@@ -1762,7 +1776,13 @@ function WorkScheduleModal({ open, editItem, congDoan, defaultToNhom, extraFormF
 
         <Row gutter={16}>
           <Col xs={24} sm={12} md={8}>
-            <Form.Item label="Tổ/ Nhóm thực hiện" name="toNhom">
+            <Form.Item
+              label="Tổ/ Nhóm thực hiện"
+              name="toNhom"
+              extra={pcplFromProduct && ['PCPL1', 'PCPL2'].includes(watchedToNhomModal) && watchedToNhomModal !== pcplFromProduct
+                ? <span style={{ color: '#d46b08', fontSize: 12 }}>⚠️ Sản phẩm quy định tổ <strong>{pcplFromProduct}</strong></span>
+                : null}
+            >
               {TO_NHOM_OPTIONS[congDoan] ? (
                 <Select allowClear placeholder="Chọn tổ/nhóm">
                   {TO_NHOM_OPTIONS[congDoan].map(o => <Option key={o} value={o}>{o}</Option>)}
