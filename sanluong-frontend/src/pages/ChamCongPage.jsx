@@ -15,10 +15,9 @@ dayjs.extend(isoWeek)
 
 const { RangePicker } = DatePicker
 
-const DEPTS = ['PC', 'PL', 'DG', 'BBC1', 'PCPL1', 'PCPL2', 'PCPL3']
-const TIME_DEPTS = ['DG', 'BBC1', 'PCPL1', 'PCPL2', 'PCPL3']
-const TIME_DEPT_LABEL = { DG: 'ĐG' }
-const DEPT_COLOR = { PC: '#1D4ED8', PL: '#1677ff', DG: '#d48806', BBC1: '#531dab', PCPL1: '#c41d7f', PCPL2: '#08979c', PCPL3: '#d46b08' }
+const DEPTS = ['PC', 'PL', 'ĐG', 'BBC1', 'PCPL1', 'PCPL2', 'PCPL3']
+const TIME_DEPTS = ['ĐG', 'BBC1', 'PCPL1', 'PCPL2', 'PCPL3']
+const DEPT_COLOR = { PC: '#1D4ED8', PL: '#1677ff', ĐG: '#d48806', BBC1: '#531dab', PCPL1: '#c41d7f', PCPL2: '#08979c', PCPL3: '#d46b08' }
 
 const fmt4 = v => (v || 0).toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 })
 const fmt2 = v => (v || 0).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -446,11 +445,22 @@ export default function ChamCongPage() {
   const [deptActiveTab, setDeptActiveTab] = useState('all')
   const [timeActiveTab, setTimeActiveTab] = useState('all')
 
+  // Toàn bộ nhân viên, điền dữ liệu công nếu có
+  const allEmpRows = useMemo(() => {
+    if (!allEmps.length) return empRows
+    const empMap = {}
+    empRows.forEach(e => { empMap[e.maNhanVien] = e })
+    return allEmps.map(e => empMap[e.maNhanVien] || {
+      maNhanVien: e.maNhanVien, hoVaTen: e.hoVaTen, toNhom: e.toNhom || '',
+      tongCongThuong: 0, tongCongTangCa: 0, tongCong: 0, soCaLamViec: 0, ngayData: {},
+    }).sort((a, b) => (a.maNhanVien || '').localeCompare(b.maNhanVien || ''))
+  }, [empRows, allEmps])
+
   const empByDept = useMemo(() => {
-    const map = { all: empRows }
-    TIME_DEPTS.forEach(d => { map[d] = empRows.filter(r => r.toNhom === d) })
+    const map = { all: allEmpRows }
+    TIME_DEPTS.forEach(d => { map[d] = allEmpRows.filter(r => r.toNhom === d) })
     return map
-  }, [empRows])
+  }, [allEmpRows])
 
   const timeByDept = useMemo(() => {
     const map = { all: timeEmpRows }
@@ -461,12 +471,12 @@ export default function ChamCongPage() {
   const deptSubTabs = useMemo(() => [
     {
       key: 'all',
-      label: <span>Tất Cả ({empRows.length})</span>,
+      label: <span>Tất Cả ({allEmpRows.length})</span>,
       children: (
         <Table
           className="chamcong-table"
           columns={empColumns}
-          dataSource={empRows}
+          dataSource={allEmpRows}
           rowKey="maNhanVien"
           loading={loading}
           size="small"
@@ -480,7 +490,7 @@ export default function ChamCongPage() {
     },
     ...TIME_DEPTS.map(dept => {
       const rows = empByDept[dept] || []
-      const label = TIME_DEPT_LABEL[dept] || dept
+      const label = dept
       return {
         key: dept,
         label: (
