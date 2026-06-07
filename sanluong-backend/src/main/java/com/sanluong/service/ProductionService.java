@@ -290,23 +290,24 @@ public class ProductionService {
             saveFieldHistory(changes, id, "toNhom", str(r.getToNhom()), toNhomPcpl, username, now);
             r.setToNhom(toNhomPcpl);
         }
-        // Khi phát lệnh PCPL1 hoặc PCPL2: đặt tinhTrang="doing" (không check isEmpty — override giá trị sai cũ)
+        // PL, ĐG, BBC1: luôn doing khi phát lệnh (bất kể tổ nào)
+        if (!"doing".equals(r.getPlTrangThai())) {
+            saveFieldHistory(changes, id, "plTrangThai", str(r.getPlTrangThai()), "doing", username, now);
+            r.setPlTrangThai("doing");
+        }
+        if (!"doing".equals(r.getDgTrangThai())) {
+            saveFieldHistory(changes, id, "dgTrangThai", str(r.getDgTrangThai()), "doing", username, now);
+            r.setDgTrangThai("doing");
+        }
+        if (!"doing".equals(r.getBbc1TrangThai())) {
+            saveFieldHistory(changes, id, "bbc1TrangThai", str(r.getBbc1TrangThai()), "doing", username, now);
+            r.setBbc1TrangThai("doing");
+        }
+        // PCPL1/PCPL2: doing đúng ô tổ đó; PCPL3: không thay đổi
         if ("PCPL1".equals(toNhomPcpl) || "PCPL2".equals(toNhomPcpl)) {
             if (!"doing".equals(r.getPcTrangThai())) {
                 saveFieldHistory(changes, id, "pcTrangThai", str(r.getPcTrangThai()), "doing", username, now);
                 r.setPcTrangThai("doing");
-            }
-            if (!"doing".equals(r.getPlTrangThai())) {
-                saveFieldHistory(changes, id, "plTrangThai", str(r.getPlTrangThai()), "doing", username, now);
-                r.setPlTrangThai("doing");
-            }
-            if (!"doing".equals(r.getDgTrangThai())) {
-                saveFieldHistory(changes, id, "dgTrangThai", str(r.getDgTrangThai()), "doing", username, now);
-                r.setDgTrangThai("doing");
-            }
-            if (!"doing".equals(r.getBbc1TrangThai())) {
-                saveFieldHistory(changes, id, "bbc1TrangThai", str(r.getBbc1TrangThai()), "doing", username, now);
-                r.setBbc1TrangThai("doing");
             }
         }
 

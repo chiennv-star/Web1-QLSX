@@ -221,12 +221,10 @@ public class WorkScheduleService {
         java.time.LocalDate today = java.time.LocalDate.now();
         int created = 0;
 
-        // Tổ thực hiện lấy từ LenhSanXuat (truyền qua toNhomOverride), không dùng ProductMaster
-        String pcplNhom = isEmpty(toNhomOverride) ? null : toNhomOverride;
-        // Chỉ kích hoạt tinhTrang="doing" khi phát lệnh sản phẩm PCPL1 hoặc PCPL2
-        final boolean activateDoing = isPhatLenh
-                && ("PCPL1".equals(pcplNhom) || "PCPL2".equals(pcplNhom));
-        final String finalPcplNhom = pcplNhom;
+        final String finalPcplNhom = isEmpty(toNhomOverride) ? null : toNhomOverride;
+        // PC doing chỉ khi PCPL1/PCPL2; PL/ĐG/BBC1 luôn doing; PCPL3 không thay đổi PC
+        final boolean activatePcDoing = isPhatLenh
+                && ("PCPL1".equals(finalPcplNhom) || "PCPL2".equals(finalPcplNhom));
 
         for (String stage : new String[]{"PC", "BBC1", "PL", "DG", "CC"}) {
             java.util.Optional<WorkSchedule> existing =
@@ -246,15 +244,19 @@ public class WorkScheduleService {
                     w.setMaBravo(maBravoParam);
                     changed = true;
                 }
-                // PC: luôn cập nhật toNhom từ LenhSanXuat khi phát lệnh (override giá trị sai cũ)
-                if ("PC".equals(stage) && finalPcplNhom != null && !finalPcplNhom.equals(w.getToNhom())) {
-                    w.setToNhom(finalPcplNhom);
-                    changed = true;
+                // PC: cập nhật toNhom, doing chỉ PCPL1/PCPL2
+                if ("PC".equals(stage)) {
+                    if (finalPcplNhom != null && !finalPcplNhom.equals(w.getToNhom())) {
+                        w.setToNhom(finalPcplNhom); changed = true;
+                    }
+                    if (activatePcDoing && !"doing".equals(w.getTinhTrang())) {
+                        w.setTinhTrang("doing"); changed = true;
+                    }
                 }
-                // Phát lệnh PCPL1/PCPL2: đặt tinhTrang="doing" cho PC/PL/BBC1/DG (override nếu sai)
-                if (activateDoing && !"CC".equals(stage) && !"doing".equals(w.getTinhTrang())) {
-                    w.setTinhTrang("doing");
-                    changed = true;
+                // PL, ĐG, BBC1: luôn doing khi phát lệnh
+                if (isPhatLenh && ("PL".equals(stage) || "DG".equals(stage) || "BBC1".equals(stage))
+                        && !"doing".equals(w.getTinhTrang())) {
+                    w.setTinhTrang("doing"); changed = true;
                 }
                 if (changed) repository.save(w);
             } else {
@@ -268,12 +270,11 @@ public class WorkScheduleService {
                 w.setMaDonHang(maDonHangParam);
                 w.setCoLo(coLo);
                 w.setNgayThucHien(today);
-                // PC: gán toNhom từ LenhSanXuat
                 if ("PC".equals(stage) && finalPcplNhom != null) {
                     w.setToNhom(finalPcplNhom);
+                    if (activatePcDoing) w.setTinhTrang("doing");
                 }
-                // Phát lệnh PCPL1/PCPL2: đặt tinhTrang="doing" cho PC/PL/BBC1/DG
-                if (activateDoing && !"CC".equals(stage)) {
+                if (isPhatLenh && ("PL".equals(stage) || "DG".equals(stage) || "BBC1".equals(stage))) {
                     w.setTinhTrang("doing");
                 }
                 repository.save(w);
