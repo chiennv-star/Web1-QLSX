@@ -124,8 +124,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/work-efficiency/**").hasAnyRole(ALL_ROLES)
                 .requestMatchers("/api/work-efficiency/**").hasAnyRole("ADMIN", "TKSX")
 
-                // ── Chấm công: tất cả xem ──────────────────────────────────────
+                // ── Chấm công: tất cả xem, tất cả ADMIN + NHAN_VIEN ghi giờ ────
                 .requestMatchers(HttpMethod.GET, "/api/attendance/**").hasAnyRole(ALL_ROLES)
+                .requestMatchers("/api/attendance/time-entries/**").hasAnyRole(ALL_ROLES)
 
                 // ── Người dùng tự quản lý hồ sơ của mình: tất cả vai trò ────
                 .requestMatchers(HttpMethod.PATCH, "/api/users/me/avatar").hasAnyRole(ALL_ROLES)

@@ -232,22 +232,22 @@ export default function KphModal({ workScheduleRecord, onClose, onSaved }) {
       {/* Header */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 10,
-        background: '#fff', borderBottom: '1px solid #e8e8e8',
+        background: '#33CCCC', borderBottom: '1px solid #2bb8b8',
         padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
       }}>
-        <Button icon={<ArrowLeftOutlined />} onClick={onClose} style={{ fontWeight: 700 }}>
+        <Button icon={<ArrowLeftOutlined />} onClick={onClose} style={{ fontWeight: 700, color: '#33CCCC', borderColor: '#fff', background: '#fff' }}>
           Quay lại
         </Button>
         <Space style={{ flex: 1 }}>
-          <FileTextOutlined style={{ color: '#fa8c16', fontSize: 16 }} />
-          <span style={{ fontWeight: 800, fontSize: 15 }}>Hồ Sơ KPH</span>
-          {ws.maSp && <Tag color="blue">{ws.maSp}</Tag>}
-          {ws.soLo && <Tag color="purple">Lô: {ws.soLo}</Tag>}
-          {ws.congDoan && <Tag color="orange">{ws.congDoan}</Tag>}
-          {kph?.id && <Tag color="green" style={{ fontSize: 10 }}>Đã lưu #{kph.id}</Tag>}
+          <FileTextOutlined style={{ color: '#fff', fontSize: 16 }} />
+          <span style={{ fontWeight: 800, fontSize: 15, color: '#fff' }}>Hồ Sơ KPH</span>
+          {ws.maSp && <Tag color="blue" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.2)' }}>{ws.maSp}</Tag>}
+          {ws.soLo && <Tag color="purple" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.2)' }}>Lô: {ws.soLo}</Tag>}
+          {ws.congDoan && <Tag color="orange" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.2)' }}>{ws.congDoan}</Tag>}
+          {kph?.id && <Tag style={{ fontSize: 10, color: '#fff', borderColor: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.2)' }}>Đã lưu #{kph.id}</Tag>}
         </Space>
-        <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={handleSave}>
+        <Button icon={<SaveOutlined />} loading={saving} onClick={handleSave} style={{ fontWeight: 700, color: '#33CCCC', borderColor: '#fff', background: '#fff' }}>
           Lưu hồ sơ
         </Button>
       </div>

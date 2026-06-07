@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Table, Button, Space, Input, Typography, message,
-  Tag, Drawer, Spin, Tooltip, Progress, DatePicker, Select, Badge,
+  Tag, Drawer, Spin, Tooltip, Progress, DatePicker, TimePicker, Select, Badge,
   Modal, Form, AutoComplete, InputNumber, Popconfirm, Tabs, Avatar
 } from 'antd'
 import {
@@ -10,7 +10,8 @@ import {
   RiseOutlined, FallOutlined, CalendarOutlined, EditOutlined,
   PlusOutlined, DeleteOutlined, ExclamationCircleOutlined,
   IdcardOutlined, PhoneOutlined, HomeOutlined, TeamOutlined,
-  LockOutlined, EyeInvisibleOutlined, EyeTwoTone, CameraOutlined
+  LockOutlined, EyeInvisibleOutlined, EyeTwoTone, CameraOutlined,
+  ClockCircleOutlined
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
@@ -228,6 +229,84 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
   const [sessionDetailOpen, setSessionDetailOpen] = useState(false)
   const [selectedSession,   setSelectedSession]   = useState(null)
   const [drawerTab, setDrawerTab] = useState('sx')
+
+  // Time entries (giờ vào/ra)
+  const [timeEntries, setTimeEntries] = useState([])
+  const [timeLoading, setTimeLoading] = useState(false)
+  const [timeModalOpen, setTimeModalOpen] = useState(false)
+  const [editingTime, setEditingTime] = useState(null)
+  const [timeSaving, setTimeSaving] = useState(false)
+  const [timeForm] = Form.useForm()
+
+  const fetchTimeEntries = useCallback(async () => {
+    if (!employee?.maNhanVien || !fromDate || !toDate) return
+    setTimeLoading(true)
+    try {
+      const { data } = await api.get('/attendance/time-entries', {
+        params: { maNhanVien: employee.maNhanVien, fromDate, toDate }
+      })
+      setTimeEntries(data)
+    } catch { message.error('Không thể tải dữ liệu giờ ra/vào') }
+    finally { setTimeLoading(false) }
+  }, [employee, fromDate, toDate])
+
+  useEffect(() => {
+    if (drawerTab === 'time') fetchTimeEntries()
+  }, [drawerTab, fetchTimeEntries])
+
+  const openAddTime = () => {
+    setEditingTime(null)
+    timeForm.resetFields()
+    setTimeModalOpen(true)
+  }
+
+  const openEditTime = (record) => {
+    setEditingTime(record)
+    timeForm.setFieldsValue({
+      ngay: record.ngay ? dayjs(record.ngay) : null,
+      caThucHien: record.caThucHien || undefined,
+      gioVao: record.gioVao ? dayjs(record.gioVao, 'HH:mm:ss') : null,
+      gioRa: record.gioRa ? dayjs(record.gioRa, 'HH:mm:ss') : null,
+      ghiChu: record.ghiChu || '',
+    })
+    setTimeModalOpen(true)
+  }
+
+  const handleTimeSave = async () => {
+    try {
+      const vals = await timeForm.validateFields()
+      setTimeSaving(true)
+      const body = {
+        maNhanVien: employee.maNhanVien,
+        ngay: vals.ngay?.format('YYYY-MM-DD'),
+        caThucHien: vals.caThucHien || null,
+        gioVao: vals.gioVao?.format('HH:mm:ss') || null,
+        gioRa: vals.gioRa?.format('HH:mm:ss') || null,
+        ghiChu: vals.ghiChu || null,
+      }
+      if (editingTime) {
+        await api.put(`/attendance/time-entries/${editingTime.id}`, body)
+        message.success('Đã cập nhật')
+      } else {
+        await api.post('/attendance/time-entries', body)
+        message.success('Đã thêm')
+      }
+      setTimeModalOpen(false)
+      await fetchTimeEntries()
+    } catch (err) {
+      if (err?.errorFields) return // AntD validation — ignore
+      message.error('Lưu thất bại: ' + (err?.response?.data?.message || err?.message || 'Lỗi không xác định'))
+    }
+    finally { setTimeSaving(false) }
+  }
+
+  const handleTimeDelete = async (id) => {
+    try {
+      await api.delete(`/attendance/time-entries/${id}`)
+      message.success('Đã xoá')
+      fetchTimeEntries()
+    } catch { message.error('Không thể xoá') }
+  }
 
   // Profile edit
   const [profileEditOpen,   setProfileEditOpen]   = useState(false)
@@ -537,6 +616,7 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
           {[
             { key: 'sx',      label: 'Hồ Sơ Sản Xuất',  icon: <BarChartOutlined /> },
             { key: 'daily',   label: 'Ngày Sản Xuất',    icon: <CalendarOutlined /> },
+            { key: 'time',    label: 'Giờ Ra/Vào',        icon: <ClockCircleOutlined /> },
             { key: 'profile', label: 'Hồ Sơ Nhân Viên',  icon: <IdcardOutlined /> },
           ].map(t => (
             <button key={t.key} onClick={() => setDrawerTab(t.key)} style={{
@@ -551,7 +631,107 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
           ))}
         </div>
 
-        {drawerTab === 'profile' ? (
+        {drawerTab === 'time' ? (
+          <div style={{ padding: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <span style={{ fontWeight: 600, color: '#374151', fontSize: 14 }}>Bảng theo dõi giờ ra/vào — {employee?.hoVaTen}</span>
+              {canEdit && (
+                <Button type="primary" icon={<PlusOutlined />} size="small" onClick={openAddTime}
+                  style={{ background: '#1D4ED8', borderColor: '#1D4ED8' }}>
+                  Thêm
+                </Button>
+              )}
+            </div>
+            <style>{`
+              .time-entry-table .ant-table-thead > tr > th {
+                background: #FFCC99 !important;
+                color: #0000CC !important;
+                font-weight: 600 !important;
+                text-align: center !important;
+                border-right: 1px solid #FFDDBB !important;
+                white-space: nowrap;
+              }
+              .time-entry-table .ant-table-thead > tr > th::before { display: none !important; }
+            `}</style>
+            <Table
+              className="time-entry-table"
+              size="small"
+              loading={timeLoading}
+              dataSource={timeEntries}
+              rowKey="id"
+              pagination={{ pageSize: 20, size: 'small', showTotal: t => `${t} bản ghi` }}
+              locale={{ emptyText: 'Chưa có dữ liệu giờ ra/vào' }}
+              columns={[
+                {
+                  title: 'Ngày', dataIndex: 'ngay', key: 'ngay', width: 110, align: 'center',
+                  render: v => v ? dayjs(v).format('DD/MM/YYYY') : '—',
+                  sorter: (a, b) => (a.ngay || '').localeCompare(b.ngay || ''),
+                  defaultSortOrder: 'descend',
+                },
+                {
+                  title: 'Giờ Vào', dataIndex: 'gioVao', key: 'gioVao', width: 90, align: 'center',
+                  render: v => v ? <span style={{ color: '#1D4ED8', fontFamily: 'monospace' }}>{v.slice(0,5)}</span> : <span style={{ color: '#d9d9d9' }}>—</span>,
+                },
+                {
+                  title: 'Giờ Ra', dataIndex: 'gioRa', key: 'gioRa', width: 90, align: 'center',
+                  render: v => v ? <span style={{ color: '#059669', fontFamily: 'monospace' }}>{v.slice(0,5)}</span> : <span style={{ color: '#d9d9d9' }}>—</span>,
+                },
+                {
+                  title: 'Ca', dataIndex: 'caThucHien', key: 'caThucHien', width: 70, align: 'center',
+                  render: v => v
+                    ? <Tag color={v === 'HC' ? 'blue' : v === 'Ca1' ? 'orange' : 'purple'} style={{ marginRight: 0 }}>{v}</Tag>
+                    : <span style={{ color: '#d9d9d9' }}>—</span>,
+                },
+                {
+                  title: 'Số Giờ', key: 'soGio', width: 80, align: 'center',
+                  render: (_, r) => {
+                    if (!r.gioVao || !r.gioRa) return <span style={{ color: '#d9d9d9' }}>—</span>
+                    const vao = dayjs(`2000-01-01T${r.gioVao}`)
+                    const ra  = dayjs(`2000-01-01T${r.gioRa}`)
+                    const diffMin = ra.diff(vao, 'minute') - 60
+                    if (diffMin <= 0) return <span style={{ color: '#d9d9d9' }}>—</span>
+                    const h = Math.floor(diffMin / 60), m = diffMin % 60
+                    return <span style={{ color: '#7c3aed' }}>{h}h{m > 0 ? `${m}p` : ''}</span>
+                  },
+                },
+                {
+                  title: 'Số Công', key: 'soCong', width: 90, align: 'center',
+                  render: (_, r) => {
+                    if (!r.gioVao || !r.gioRa || !r.caThucHien) return <span style={{ color: '#d9d9d9' }}>—</span>
+                    const vao = dayjs(`2000-01-01T${r.gioVao}`)
+                    const ra  = dayjs(`2000-01-01T${r.gioRa}`)
+                    const soGio = (ra.diff(vao, 'minute') - 60) / 60
+                    if (soGio <= 0) return <span style={{ color: '#d9d9d9' }}>—</span>
+                    let cong
+                    if (r.caThucHien === 'HC') {
+                      cong = soGio / 8
+                    } else {
+                      cong = soGio <= 7 ? soGio / 7 : 1 + (soGio - 7) / 8
+                    }
+                    return <span style={{ color: '#d46b08', fontWeight: 600 }}>{cong.toFixed(4)}</span>
+                  },
+                },
+                {
+                  title: 'Ghi Chú', dataIndex: 'ghiChu', key: 'ghiChu', ellipsis: true,
+                  render: v => v || <span style={{ color: '#d9d9d9' }}>—</span>,
+                },
+                ...(canEdit ? [{
+                  title: '', key: 'action', width: 70, align: 'center',
+                  render: (_, r) => (
+                    <Space size={4}>
+                      <Button size="small" icon={<EditOutlined />} type="text"
+                        onClick={() => openEditTime(r)} />
+                      <Popconfirm title="Xoá bản ghi này?" okText="Xoá" cancelText="Huỷ"
+                        onConfirm={() => handleTimeDelete(r.id)}>
+                        <Button size="small" icon={<DeleteOutlined />} type="text" danger />
+                      </Popconfirm>
+                    </Space>
+                  ),
+                }] : []),
+              ]}
+            />
+          </div>
+        ) : drawerTab === 'profile' ? (
           <div>
             {canEdit && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px 0' }}>
@@ -974,6 +1154,51 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
               {editingSession.tenTrinh && <span>{editingSession.tenTrinh}</span>}
             </div>
           )}
+        </Form>
+      </Modal>
+
+      {/* ── Time entry modal ── */}
+      <Modal
+        open={timeModalOpen}
+        title={
+          <Space>
+            <ClockCircleOutlined style={{ color: '#1D4ED8' }} />
+            <span>{editingTime ? 'Sửa giờ ra/vào' : 'Thêm giờ ra/vào'}</span>
+            <Tag color="blue">{employee?.maNhanVien}</Tag>
+          </Space>
+        }
+        onOk={handleTimeSave}
+        onCancel={() => setTimeModalOpen(false)}
+        okText={editingTime ? 'Lưu' : 'Thêm'}
+        cancelText="Huỷ"
+        confirmLoading={timeSaving}
+        width={400}
+        destroyOnClose
+      >
+        <Form form={timeForm} layout="vertical" style={{ marginTop: 16 }}>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <Form.Item label="Ngày" name="ngay" rules={[{ required: true, message: 'Chọn ngày' }]} style={{ flex: 2 }}>
+              <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Chọn ngày" />
+            </Form.Item>
+            <Form.Item label="Ca thực hiện" name="caThucHien" rules={[{ required: true, message: 'Chọn ca' }]} style={{ flex: 1 }}>
+              <Select placeholder="Chọn ca">
+                <Select.Option value="Ca1">Ca 1</Select.Option>
+                <Select.Option value="Ca2">Ca 2</Select.Option>
+                <Select.Option value="HC">HC</Select.Option>
+              </Select>
+            </Form.Item>
+          </div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <Form.Item label="Giờ Vào" name="gioVao" style={{ flex: 1 }}>
+              <TimePicker style={{ width: '100%' }} format="HH:mm" placeholder="07:30" />
+            </Form.Item>
+            <Form.Item label="Giờ Ra" name="gioRa" style={{ flex: 1 }}>
+              <TimePicker style={{ width: '100%' }} format="HH:mm" placeholder="17:00" />
+            </Form.Item>
+          </div>
+          <Form.Item label="Ghi Chú" name="ghiChu">
+            <Input placeholder="Ghi chú (nếu có)" />
+          </Form.Item>
         </Form>
       </Modal>
 

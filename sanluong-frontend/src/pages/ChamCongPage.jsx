@@ -154,7 +154,7 @@ export default function ChamCongPage() {
       title: (
         <div style={{ textAlign: 'center', lineHeight: 1.2 }}>
           <div style={{ fontSize: 10 }}>{dayjs(date).format('ddd')}</div>
-          <div style={{ fontSize: 12, fontWeight: 700 }}>{dayjs(date).format('DD/MM')}</div>
+          <div style={{ fontSize: 12 }}>{dayjs(date).format('DD/MM')}</div>
         </div>
       ),
       key: date,
@@ -167,11 +167,11 @@ export default function ChamCongPage() {
         return (
           <Tooltip title={`Thường: ${fmt4(dc.congThuong)} | Tăng ca: ${fmt4(dc.congTangCa)} | ${dc.soPhien} phiên`}>
             <div style={{ lineHeight: 1.3 }}>
-              <div style={{ fontWeight: 700, color: '#0033CC', fontSize: 12 }}>
+              <div style={{ color: '#0033CC', fontSize: 12 }}>
                 {fmt2(Number(dc.congThuong))}
               </div>
               {Number(dc.congTangCa) > 0 && (
-                <div style={{ color: '#0033CC', fontSize: 11, fontWeight: 600 }}>
+                <div style={{ color: '#0033CC', fontSize: 11 }}>
                   +{fmt2(Number(dc.congTangCa))}
                 </div>
               )}
@@ -184,22 +184,22 @@ export default function ChamCongPage() {
     const summaryCols = [
       {
         title: 'Công Thường', key: 'ct', width: 95, align: 'right', fixed: 'right',
-        render: (_, r) => <span style={{ fontWeight: 700, color: '#0033CC' }}>{fmt2(Number(r.tongCongThuong))}</span>,
+        render: (_, r) => <span style={{ color: '#0033CC' }}>{fmt2(Number(r.tongCongThuong))}</span>,
         sorter: (a, b) => Number(a.tongCongThuong) - Number(b.tongCongThuong),
       },
       {
         title: 'Tăng Ca', key: 'tc', width: 80, align: 'right', fixed: 'right',
         render: (_, r) => Number(r.tongCongTangCa) > 0
-          ? <span style={{ fontWeight: 700, color: '#0033CC' }}>{fmt2(Number(r.tongCongTangCa))}</span>
+          ? <span style={{ color: '#0033CC' }}>{fmt2(Number(r.tongCongTangCa))}</span>
           : <span style={{ color: '#e0e0e0' }}>—</span>,
         sorter: (a, b) => Number(a.tongCongTangCa) - Number(b.tongCongTangCa),
       },
       {
         title: 'Tổng Công', key: 'tong', width: 95, align: 'right', fixed: 'right',
         render: (_, r) => (
-          <strong style={{ color: '#0033CC', fontSize: 13 }}>
+          <span style={{ color: '#0033CC', fontSize: 13 }}>
             {fmt2(Number(r.tongCong))}
-          </strong>
+          </span>
         ),
         sorter: (a, b) => Number(a.tongCong) - Number(b.tongCong),
         defaultSortOrder: 'descend',
@@ -224,7 +224,7 @@ export default function ChamCongPage() {
       title: (
         <div style={{ textAlign: 'center', lineHeight: 1.2 }}>
           <div style={{ fontSize: 10 }}>{dayjs(date).format('ddd')}</div>
-          <div style={{ fontSize: 12, fontWeight: 700 }}>{dayjs(date).format('DD/MM')}</div>
+          <div style={{ fontSize: 12 }}>{dayjs(date).format('DD/MM')}</div>
         </div>
       ),
       key: date,
@@ -237,7 +237,7 @@ export default function ChamCongPage() {
         return (
           <Tooltip title={`Thường: ${fmt4(dc.congThuong)} | TC: ${fmt4(dc.congTangCa)} | ${dc.soPhien} phiên`}>
             <div style={{ lineHeight: 1.4 }}>
-              <div style={{ fontWeight: 700, color: '#0033CC', fontSize: 13 }}>{fmt2(Number(dc.congThuong))}</div>
+              <div style={{ color: '#0033CC', fontSize: 13 }}>{fmt2(Number(dc.congThuong))}</div>
               {Number(dc.congTangCa) > 0 && (
                 <div style={{ color: '#0033CC', fontSize: 11 }}>
                   <ClockCircleOutlined style={{ marginRight: 2 }} />+{fmt2(Number(dc.congTangCa))}
@@ -252,18 +252,18 @@ export default function ChamCongPage() {
     const summaryCols = [
       {
         title: 'Công Thường', key: 'ct', width: 100, align: 'right', fixed: 'right',
-        render: (_, r) => <strong style={{ color: '#0033CC' }}>{fmt2(Number(r.tongCongThuong))}</strong>,
+        render: (_, r) => <span style={{ color: '#0033CC' }}>{fmt2(Number(r.tongCongThuong))}</span>,
       },
       {
         title: 'Tăng Ca', key: 'tc', width: 85, align: 'right', fixed: 'right',
         render: (_, r) => Number(r.tongCongTangCa) > 0
-          ? <strong style={{ color: '#0033CC' }}>{fmt2(Number(r.tongCongTangCa))}</strong>
+          ? <span style={{ color: '#0033CC' }}>{fmt2(Number(r.tongCongTangCa))}</span>
           : <span style={{ color: '#e0e0e0' }}>—</span>,
       },
       {
         title: 'Tổng Công', key: 'tong', width: 100, align: 'right', fixed: 'right',
         render: (_, r) => (
-          <strong style={{ color: '#0033CC', fontSize: 14 }}>{fmt2(Number(r.tongCong))}</strong>
+          <span style={{ color: '#0033CC', fontSize: 14 }}>{fmt2(Number(r.tongCong))}</span>
         ),
       },
     ]
@@ -287,24 +287,24 @@ export default function ChamCongPage() {
       <Table.Summary fixed="bottom">
         <Table.Summary.Row>
           <Table.Summary.Cell index={0} colSpan={3} align="center">
-            <strong style={{ color: '#ffffff' }}>TỔNG TRANG ({pageData.length} NV)</strong>
+            <span style={{ color: '#0000CC' }}>TỔNG TRANG ({pageData.length} NV)</span>
           </Table.Summary.Cell>
           {dateList.map((d, i) => (
             <Table.Summary.Cell key={d} index={i + 3} align="center">
               <div style={{ lineHeight: 1.3 }}>
-                <div style={{ fontWeight: 700, color: '#ffffff', fontSize: 11 }}>{fmt2(daySums[d].ct)}</div>
-                {daySums[d].tc > 0 && <div style={{ color: '#ffffff', fontSize: 10 }}>+{fmt2(daySums[d].tc)}</div>}
+                <div style={{ color: '#0000CC', fontSize: 11 }}>{fmt2(daySums[d].ct)}</div>
+                {daySums[d].tc > 0 && <div style={{ color: '#0000CC', fontSize: 10 }}>+{fmt2(daySums[d].tc)}</div>}
               </div>
             </Table.Summary.Cell>
           ))}
           <Table.Summary.Cell index={dateList.length + 3} align="right">
-            <strong style={{ color: '#ffffff' }}>{fmt2(totCT)}</strong>
+            <span style={{ color: '#0000CC' }}>{fmt2(totCT)}</span>
           </Table.Summary.Cell>
           <Table.Summary.Cell index={dateList.length + 4} align="right">
-            <strong style={{ color: '#ffffff' }}>{fmt2(totTC)}</strong>
+            <span style={{ color: '#0000CC' }}>{fmt2(totTC)}</span>
           </Table.Summary.Cell>
           <Table.Summary.Cell index={dateList.length + 5} align="right">
-            <strong style={{ color: '#ffffff', fontSize: 13 }}>{fmt2(totCT + totTC)}</strong>
+            <span style={{ color: '#0000CC', fontSize: 13 }}>{fmt2(totCT + totTC)}</span>
           </Table.Summary.Cell>
         </Table.Summary.Row>
       </Table.Summary>
@@ -318,29 +318,37 @@ export default function ChamCongPage() {
       <Table.Summary fixed="bottom">
         <Table.Summary.Row>
           <Table.Summary.Cell index={0} align="center">
-            <strong style={{ color: '#ffffff' }}>TỔNG</strong>
+            <span style={{ color: '#0000CC' }}>TỔNG</span>
           </Table.Summary.Cell>
           {dateList.map((_, i) => (
             <Table.Summary.Cell key={i} index={i + 1} />
           ))}
           <Table.Summary.Cell index={dateList.length + 1} align="right">
-            <strong style={{ color: '#ffffff' }}>{fmt2(totCT)}</strong>
+            <span style={{ color: '#0000CC' }}>{fmt2(totCT)}</span>
           </Table.Summary.Cell>
           <Table.Summary.Cell index={dateList.length + 2} align="right">
-            <strong style={{ color: '#ffffff' }}>{fmt2(totTC)}</strong>
+            <span style={{ color: '#0000CC' }}>{fmt2(totTC)}</span>
           </Table.Summary.Cell>
           <Table.Summary.Cell index={dateList.length + 3} align="right">
-            <strong style={{ color: '#ffffff', fontSize: 14 }}>{fmt2(totCT + totTC)}</strong>
+            <span style={{ color: '#0000CC', fontSize: 14 }}>{fmt2(totCT + totTC)}</span>
           </Table.Summary.Cell>
         </Table.Summary.Row>
       </Table.Summary>
     )
   }
 
-  const tabItems = [
+  const [deptActiveTab, setDeptActiveTab] = useState('all')
+
+  const empByDept = useMemo(() => {
+    const map = { all: empRows }
+    DEPTS.forEach(d => { map[d] = empRows.filter(r => r.toNhom === d) })
+    return map
+  }, [empRows])
+
+  const deptSubTabs = useMemo(() => [
     {
-      key: 'nhanvien',
-      label: <span><TeamOutlined style={{ marginRight: 4 }} />Chấm Công Nhân Viên</span>,
+      key: 'all',
+      label: <span>Tất Cả ({empRows.length})</span>,
       children: (
         <Table
           className="chamcong-table"
@@ -350,11 +358,69 @@ export default function ChamCongPage() {
           loading={loading}
           size="small"
           scroll={{ x: Math.max(500 + dateList.length * 75, 900) }}
-          sticky={{ offsetHeader: stickyH + tabBarH }}
+          sticky={{ offsetHeader: stickyH + tabBarH + 40 }}
           pagination={{ defaultPageSize: 50, showSizeChanger: true, pageSizeOptions: ['25','50','100'], showTotal: t => `${t} nhân viên` }}
           summary={empSummary}
           rowClassName={(_, i) => i % 2 !== 0 ? 'row-alt' : ''}
         />
+      ),
+    },
+    ...DEPTS.map(dept => {
+      const rows = empByDept[dept] || []
+      return {
+        key: dept,
+        label: (
+          <span>
+            <Tag color={DEPT_COLOR[dept] || 'default'} style={{ margin: 0, marginRight: 4, fontSize: 11 }}>{dept}</Tag>
+            <small style={{ color: '#666' }}>({rows.length})</small>
+          </span>
+        ),
+        children: rows.length === 0 ? (
+          <div style={{ padding: '32px 24px', color: '#bbb', textAlign: 'center' }}>Không có dữ liệu</div>
+        ) : (
+          <Table
+            className="chamcong-table"
+            columns={empColumns}
+            dataSource={rows}
+            rowKey="maNhanVien"
+            loading={loading}
+            size="small"
+            scroll={{ x: Math.max(500 + dateList.length * 75, 900) }}
+            sticky={{ offsetHeader: stickyH + tabBarH + 40 }}
+            pagination={{ defaultPageSize: 50, showSizeChanger: true, pageSizeOptions: ['25','50','100'], showTotal: t => `${t} nhân viên` }}
+            summary={empSummary}
+            rowClassName={(_, i) => i % 2 !== 0 ? 'row-alt' : ''}
+          />
+        ),
+      }
+    }),
+  ], [empRows, empByDept, empColumns, loading, dateList, stickyH, tabBarH, empSummary])
+
+  const tabItems = [
+    {
+      key: 'nhanvien',
+      label: <span><TeamOutlined style={{ marginRight: 4 }} />Công Sản Xuất</span>,
+      children: (
+        <>
+          <style>{`
+            .dept-sub-tabs > .ant-tabs-nav { background: #f7fdfd; border-bottom: 2px solid #33CCCC; padding: 0 8px; }
+            .dept-sub-tabs > .ant-tabs-nav .ant-tabs-tab { font-size: 12px; padding: 6px 14px !important; margin: 0 2px !important; }
+            .dept-sub-tabs > .ant-tabs-nav .ant-tabs-tab:hover { color: #FFFF00 !important; }
+            .dept-sub-tabs > .ant-tabs-nav .ant-tabs-tab:hover small { color: #FFFF00 !important; }
+            .dept-sub-tabs > .ant-tabs-nav .ant-tabs-tab-active { background: #FFCC33 !important; border-radius: 4px 4px 0 0; }
+            .dept-sub-tabs > .ant-tabs-nav .ant-tabs-ink-bar { background: #33CCCC !important; height: 2px !important; }
+            .dept-sub-tabs > .ant-tabs-nav::before { border-bottom: none !important; }
+            .dept-sub-tabs > .ant-tabs-content-holder { padding-top: 0; }
+          `}</style>
+          <Tabs
+            className="dept-sub-tabs"
+            activeKey={deptActiveTab}
+            onChange={setDeptActiveTab}
+            size="small"
+            items={deptSubTabs}
+            tabBarStyle={{ position: 'sticky', top: stickyH + tabBarH, zIndex: 8, margin: 0 }}
+          />
+        </>
       ),
     },
     {
@@ -440,31 +506,31 @@ export default function ChamCongPage() {
       {/* ── CSS ── */}
       <style>{`
         .chamcong-tabs > .ant-tabs-nav { margin: 0 !important; background: #66CCCC; padding: 0 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
-        .chamcong-tabs > .ant-tabs-nav .ant-tabs-tab { color: #ffffff !important; font-size: 13px; padding: 9px 18px !important; margin: 0 2px !important; border-radius: 6px 6px 0 0; transition: all 0.2s; }
-        .chamcong-tabs > .ant-tabs-nav .ant-tabs-tab:hover { color: #fff !important; background: rgba(255,255,255,0.2) !important; }
-        .chamcong-tabs > .ant-tabs-nav .ant-tabs-tab-active { color: #fff !important; background: rgba(255,255,255,0.25) !important; font-weight: 700; box-shadow: 0 -3px 0 #ffffff inset; }
-        .chamcong-tabs > .ant-tabs-nav .ant-tabs-ink-bar { background: #ffffff !important; height: 3px !important; border-radius: 2px; }
+        .chamcong-tabs > .ant-tabs-nav .ant-tabs-tab { color: #0000CC !important; font-size: 13px; padding: 9px 18px !important; margin: 0 2px !important; border-radius: 6px 6px 0 0; transition: all 0.2s; }
+        .chamcong-tabs > .ant-tabs-nav .ant-tabs-tab:hover { color: #0000CC !important; background: rgba(255,255,255,0.2) !important; }
+        .chamcong-tabs > .ant-tabs-nav .ant-tabs-tab-active { color: #0000CC !important; background: #FFCC33 !important; font-weight: 400; box-shadow: 0 -3px 0 #0000CC inset; }
+        .chamcong-tabs > .ant-tabs-nav .ant-tabs-ink-bar { background: #0000CC !important; height: 3px !important; border-radius: 2px; }
         .chamcong-tabs > .ant-tabs-nav::before { border-bottom: none !important; }
 
         .chamcong-table .ant-table-thead > tr > th {
           background: #66CCCC !important;
-          color: #ffffff !important; text-align: center !important;
+          color: #0000CC !important; text-align: center !important;
           font-size: 11px !important; text-transform: uppercase; letter-spacing: 0.3px;
           padding: 7px 6px !important; border-right: 1px solid #88DDDD !important; white-space: nowrap;
         }
         .chamcong-table .ant-table-thead > tr > th::before { display: none !important; }
         .chamcong-table .ant-table-thead > tr:first-child > th {
           background: #66CCCC !important;
-          font-size: 12px !important; font-weight: 700 !important;
+          font-size: 12px !important; font-weight: 400 !important;
         }
         .chamcong-table .ant-table-tbody > tr > td { padding: 5px 6px !important; border-bottom: 1px solid #EAECF2 !important; }
         .chamcong-table .ant-table-tbody > tr.row-alt > td { background: #EAECF2; }
         .chamcong-table .ant-table-tbody > tr:hover > td { background: #DDE1E8 !important; }
         .chamcong-table .ant-table-summary > tr > td {
           background: #66CCCC !important;
-          color: #ffffff !important; font-weight: 700; padding: 6px 6px !important;
+          color: #0000CC !important; font-weight: 400; padding: 6px 6px !important;
         }
-        .chamcong-table .ant-table-body::-webkit-scrollbar { height: 5px; }
+        .chamcong-table .ant-table-body::-webkit-scrollbar { height: 3px; }
         .chamcong-table .ant-table-body::-webkit-scrollbar-track { background: #f0f4f8; border-radius: 4px; }
         .chamcong-table .ant-table-body::-webkit-scrollbar-thumb { background: #66CCCC; border-radius: 4px; }
         .chamcong-table .ant-table-body::-webkit-scrollbar-thumb:hover { background: #44AAAA; }
@@ -480,7 +546,7 @@ export default function ChamCongPage() {
         size="middle"
         tabBarStyle={{ position: 'sticky', top: stickyH, zIndex: 9, margin: 0 }}
         tabBarExtraContent={
-          <span style={{ paddingRight: 12, color: '#ffffff', fontSize: 12, fontWeight: 600 }}>
+          <span style={{ paddingRight: 12, color: '#0000CC', fontSize: 12, fontWeight: 600 }}>
             Bảng Chấm Công Sản Xuất
           </span>
         }

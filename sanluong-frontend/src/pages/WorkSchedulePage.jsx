@@ -100,8 +100,8 @@ const STAGE_CONFIG = {
   PC: {
     label: 'Lịch sản xuất PC',
     extraTableCols: [
-      { title: 'SL PC', dataIndex: 'slPc', key: 'slPc', width: 95, align: 'right', render: slExceedRender },
-      { title: 'Công PC', dataIndex: 'congPc', key: 'congPc', width: 85, align: 'right', render: fmtNum }
+      { title: 'SL PC', dataIndex: 'slPc', key: 'slPc', width: 95, align: 'center', render: slExceedRender },
+      { title: 'Công PC', dataIndex: 'congPc', key: 'congPc', width: 85, align: 'center', render: fmtNum }
     ],
     extraFormFields: [
       { name: 'slPc', label: 'SL PC' },
@@ -111,8 +111,8 @@ const STAGE_CONFIG = {
   BBC1: {
     label: 'Lịch sản xuất BBC1',
     extraTableCols: [
-      { title: 'SL BBC1', dataIndex: 'slBbc1', key: 'slBbc1', width: 95, align: 'right', render: slExceedRender },
-      { title: 'Công BBC1', dataIndex: 'congBbc1', key: 'congBbc1', width: 88, align: 'right', render: fmtNum }
+      { title: 'SL BBC1', dataIndex: 'slBbc1', key: 'slBbc1', width: 95, align: 'center', render: slExceedRender },
+      { title: 'Công BBC1', dataIndex: 'congBbc1', key: 'congBbc1', width: 88, align: 'center', render: fmtNum }
     ],
     extraFormFields: [
       { name: 'slBbc1', label: 'SL BBC1' },
@@ -122,8 +122,8 @@ const STAGE_CONFIG = {
   PL: {
     label: 'Lịch sản xuất PL',
     extraTableCols: [
-      { title: 'SL PL', dataIndex: 'slPl', key: 'slPl', width: 90, align: 'right', render: slExceedRender },
-      { title: 'Công PL', dataIndex: 'congPl', key: 'congPl', width: 82, align: 'right', render: fmtNum }
+      { title: 'SL PL', dataIndex: 'slPl', key: 'slPl', width: 90, align: 'center', render: slExceedRender },
+      { title: 'Công PL', dataIndex: 'congPl', key: 'congPl', width: 82, align: 'center', render: fmtNum }
     ],
     extraFormFields: [
       { name: 'slPl', label: 'SL PL' },
@@ -133,8 +133,8 @@ const STAGE_CONFIG = {
   DG: {
     label: 'Lịch sản xuất ĐG',
     extraTableCols: [
-      { title: 'SL ĐG', dataIndex: 'slDg', key: 'slDg', width: 90, align: 'right', render: slExceedRender },
-      { title: 'Công ĐG', dataIndex: 'congDg', key: 'congDg', width: 82, align: 'right', render: fmtNum }
+      { title: 'SL ĐG', dataIndex: 'slDg', key: 'slDg', width: 90, align: 'center', render: slExceedRender },
+      { title: 'Công ĐG', dataIndex: 'congDg', key: 'congDg', width: 82, align: 'center', render: fmtNum }
     ],
     extraFormFields: [
       { name: 'slDg', label: 'SL ĐG' },
@@ -144,7 +144,7 @@ const STAGE_CONFIG = {
   CC: {
     label: 'Lịch cân chia',
     extraTableCols: [
-      { title: 'Công Cân Chia', dataIndex: 'congCc', key: 'congCc', width: 105, align: 'right', render: fmtNum }
+      { title: 'Công Cân Chia', dataIndex: 'congCc', key: 'congCc', width: 105, align: 'center', render: fmtNum }
     ],
     extraFormFields: [
       { name: 'congCc', label: 'Công Cân Chia' }
@@ -2206,19 +2206,19 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                      : <span style={{ color: '#d9d9d9' }}>—</span>
     },
     {
-      title: 'Cỡ lô', dataIndex: 'coLo', key: 'coLo', width: 80, align: 'right',
+      title: 'Cỡ lô', dataIndex: 'coLo', key: 'coLo', width: 80, align: 'center',
       sorter: (a, b) => (Number(a.coLo) || 0) - (Number(b.coLo) || 0),
       render: v => (v != null && v !== '') ? <span style={NUM_STYLE}>{Number(v).toLocaleString('vi-VN')}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
     },
     {
-      title: 'Tổ/Nhóm TH', dataIndex: 'toNhom', key: 'toNhom', width: 120, ellipsis: true,
+      title: 'Tổ/Nhóm TH', dataIndex: 'toNhom', key: 'toNhom', width: 120, align: 'center', ellipsis: true,
       filters: ['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG'].map(v => ({ text: v, value: v })),
       filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#fff' : 'rgba(255,255,255,0.7)' }} />,
       onFilter: (value, record) => record.toNhom === value,
       render: v => v ? <span style={{ ...TEXT_STYLE, whiteSpace: 'pre-wrap' }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
     },
     {
-      title: 'Phòng TH', dataIndex: 'phongThucHien', key: 'phongThucHien', width: 100,
+      title: 'Phòng TH', dataIndex: 'phongThucHien', key: 'phongThucHien', width: 100, align: 'center',
       ...colSearch('phongThucHien'),
       render: v => v ? <span style={TEXT_STYLE}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
     },
@@ -3210,6 +3210,10 @@ export default function WorkSchedulePage() {
   }, [devFilters])
 
   useEffect(() => { refreshDevCount() }, [])
+
+  useEffect(() => {
+    if (activeTab === 'deviation') fetchDeviations(0)
+  }, [])
 
   const deviationColumns = [
     {
