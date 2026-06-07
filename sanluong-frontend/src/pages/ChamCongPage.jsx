@@ -145,6 +145,82 @@ export default function ChamCongPage() {
   // Danh sách ngày trong khoảng
   const dateList = useMemo(() => buildDateList(dateRange[0], dateRange[1]), [dateRange])
 
+  // ── Pivot timeRows → 1 hàng/nhân viên ─────────────────────────────
+  const timeEmpRows = useMemo(() => {
+    const empMap = {}
+    empRows.forEach(e => { empMap[e.maNhanVien] = e })
+    const pivot = {}
+    timeRows.forEach(t => {
+      if (!pivot[t.maNhanVien]) {
+        const emp = empMap[t.maNhanVien] || {}
+        pivot[t.maNhanVien] = { maNhanVien: t.maNhanVien, hoVaTen: emp.hoVaTen || t.maNhanVien, toNhom: emp.toNhom || '', ngayData: {} }
+      }
+      pivot[t.maNhanVien].ngayData[t.ngay] = t
+    })
+    return Object.values(pivot).sort((a, b) => (a.maNhanVien || '').localeCompare(b.maNhanVien || ''))
+  }, [timeRows, empRows])
+
+  // ── Cột bảng Công Ra Vào ─────────────────────────────────────────
+  const timeColumns = useMemo(() => {
+    const calcCong = r => {
+      if (!r.gioVao || !r.gioRa || !r.caThucHien) return 0
+      const soGio = (dayjs(`2000-01-01T${r.gioRa}`).diff(dayjs(`2000-01-01T${r.gioVao}`), 'minute') - 60) / 60
+      if (soGio <= 0) return 0
+      return r.caThucHien === 'HC' ? soGio / 8 : soGio <= 7 ? soGio / 7 : 1 + (soGio - 7) / 8
+    }
+    const fixedCols = [
+      {
+        title: 'Mã NV', dataIndex: 'maNhanVien', key: 'ma', width: 80, fixed: 'left',
+        render: v => <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 600 }}>{v}</span>,
+      },
+      {
+        title: 'Họ và Tên', dataIndex: 'hoVaTen', key: 'ten', width: 160, fixed: 'left',
+        render: v => <span style={{ fontWeight: 600, fontSize: 12 }}>{v}</span>,
+      },
+      {
+        title: 'Bộ phận', dataIndex: 'toNhom', key: 'bp', width: 80, fixed: 'left', align: 'center',
+        render: v => v ? <Tag color={DEPT_COLOR[v] || 'default'} style={{ margin: 0, fontSize: 11 }}>{v}</Tag> : '—',
+      },
+    ]
+    const dayCols = dateList.map(date => ({
+      title: (
+        <div style={{ textAlign: 'center', lineHeight: 1.2 }}>
+          <div style={{ fontSize: 10 }}>{dayjs(date).format('ddd')}</div>
+          <div style={{ fontSize: 12 }}>{dayjs(date).format('DD/MM')}</div>
+        </div>
+      ),
+      key: date, width: 90, align: 'center',
+      render: (_, r) => {
+        const t = r.ngayData?.[date]
+        if (!t) return <span style={{ color: '#e0e0e0', fontSize: 12 }}>—</span>
+        const cong = calcCong(t)
+        return (
+          <Tooltip title={`${t.gioVao ? t.gioVao.slice(0,5) : '?'} → ${t.gioRa ? t.gioRa.slice(0,5) : '?'} | Ca: ${t.caThucHien || '?'} | Công: ${cong.toFixed(4)}`}>
+            <div style={{ lineHeight: 1.3 }}>
+              <div style={{ fontSize: 11, color: '#1D4ED8' }}>{t.gioVao ? t.gioVao.slice(0,5) : '—'}</div>
+              <div style={{ fontSize: 11, color: '#059669' }}>{t.gioRa ? t.gioRa.slice(0,5) : '—'}</div>
+            </div>
+          </Tooltip>
+        )
+      },
+    }))
+    const summaryCols = [
+      {
+        title: 'Tổng Công', key: 'tongcong', width: 95, align: 'right', fixed: 'right',
+        render: (_, r) => {
+          const total = Object.values(r.ngayData || {}).reduce((s, t) => s + calcCong(t), 0)
+          return <span style={{ color: '#0033CC', fontSize: 13 }}>{fmt2(total)}</span>
+        },
+        sorter: (a, b) => {
+          const s = r => Object.values(r.ngayData || {}).reduce((s, t) => s + calcCong(t), 0)
+          return s(a) - s(b)
+        },
+        defaultSortOrder: 'descend',
+      },
+    ]
+    return [...fixedCols, ...dayCols, ...summaryCols]
+  }, [dateList, timeEmpRows])
+
   // ── KPI tổng ─────────────────────────────────────────────────────
   const kpi = useMemo(() => {
     const tongCongThuong = empRows.reduce((s, r) => s + Number(r.tongCongThuong || 0), 0)
@@ -470,85 +546,15 @@ export default function ChamCongPage() {
         <Table
           className="chamcong-table"
           loading={timeLoading}
-          dataSource={timeRows}
-          rowKey="id"
+          dataSource={timeEmpRows}
+          rowKey="maNhanVien"
           size="small"
-          scroll={{ x: 900 }}
+          scroll={{ x: Math.max(340 + dateList.length * 90, 700) }}
           sticky={{ offsetHeader: stickyH + tabBarH }}
-          pagination={{ pageSize: 50, showSizeChanger: true, pageSizeOptions: ['50','100','200'], showTotal: t => `${t} bản ghi` }}
+          pagination={{ pageSize: 50, showSizeChanger: true, pageSizeOptions: ['50','100','200'], showTotal: t => `${t} nhân viên` }}
           rowClassName={(_, i) => i % 2 !== 0 ? 'row-alt' : ''}
           locale={{ emptyText: 'Chưa có dữ liệu giờ ra/vào' }}
-          columns={[
-            {
-              title: 'Mã NV', dataIndex: 'maNhanVien', key: 'ma', width: 85, fixed: 'left',
-              render: v => <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 600 }}>{v}</span>,
-              sorter: (a, b) => (a.maNhanVien || '').localeCompare(b.maNhanVien || ''),
-            },
-            {
-              title: 'Ngày', dataIndex: 'ngay', key: 'ngay', width: 105, align: 'center',
-              render: v => v ? dayjs(v).format('DD/MM/YYYY') : '—',
-              sorter: (a, b) => (a.ngay || '').localeCompare(b.ngay || ''),
-              defaultSortOrder: 'descend',
-            },
-            {
-              title: 'Ca', dataIndex: 'caThucHien', key: 'ca', width: 65, align: 'center',
-              render: v => v
-                ? <Tag color={v === 'HC' ? 'blue' : v === 'Ca1' ? 'orange' : 'purple'} style={{ marginRight: 0 }}>{v}</Tag>
-                : <span style={{ color: '#d9d9d9' }}>—</span>,
-              filters: [{ text: 'HC', value: 'HC' }, { text: 'Ca1', value: 'Ca1' }, { text: 'Ca2', value: 'Ca2' }],
-              onFilter: (val, r) => r.caThucHien === val,
-            },
-            {
-              title: 'Giờ Vào', dataIndex: 'gioVao', key: 'gioVao', width: 85, align: 'center',
-              render: v => v ? <span style={{ color: '#1D4ED8', fontFamily: 'monospace' }}>{v.slice(0,5)}</span> : <span style={{ color: '#d9d9d9' }}>—</span>,
-            },
-            {
-              title: 'Giờ Ra', dataIndex: 'gioRa', key: 'gioRa', width: 85, align: 'center',
-              render: v => v ? <span style={{ color: '#059669', fontFamily: 'monospace' }}>{v.slice(0,5)}</span> : <span style={{ color: '#d9d9d9' }}>—</span>,
-            },
-            {
-              title: 'Số Giờ', key: 'soGio', width: 75, align: 'center',
-              render: (_, r) => {
-                if (!r.gioVao || !r.gioRa) return <span style={{ color: '#d9d9d9' }}>—</span>
-                const vao = dayjs(`2000-01-01T${r.gioVao}`)
-                const ra  = dayjs(`2000-01-01T${r.gioRa}`)
-                const diffMin = ra.diff(vao, 'minute') - 60
-                if (diffMin <= 0) return <span style={{ color: '#d9d9d9' }}>—</span>
-                const h = Math.floor(diffMin / 60), m = diffMin % 60
-                return <span style={{ color: '#7c3aed' }}>{h}h{m > 0 ? `${m}p` : ''}</span>
-              },
-            },
-            {
-              title: 'Số Công', key: 'soCong', width: 85, align: 'center', fixed: 'right',
-              render: (_, r) => {
-                if (!r.gioVao || !r.gioRa || !r.caThucHien) return <span style={{ color: '#d9d9d9' }}>—</span>
-                const vao = dayjs(`2000-01-01T${r.gioVao}`)
-                const ra  = dayjs(`2000-01-01T${r.gioRa}`)
-                const soGio = (ra.diff(vao, 'minute') - 60) / 60
-                if (soGio <= 0) return <span style={{ color: '#d9d9d9' }}>—</span>
-                let cong
-                if (r.caThucHien === 'HC') {
-                  cong = soGio / 8
-                } else {
-                  cong = soGio <= 7 ? soGio / 7 : 1 + (soGio - 7) / 8
-                }
-                return <span style={{ color: '#d46b08', fontWeight: 600 }}>{cong.toFixed(4)}</span>
-              },
-              sorter: (a, b) => {
-                const calc = r => {
-                  if (!r.gioVao || !r.gioRa || !r.caThucHien) return 0
-                  const soGio = (dayjs(`2000-01-01T${r.gioRa}`).diff(dayjs(`2000-01-01T${r.gioVao}`), 'minute') - 60) / 60
-                  if (soGio <= 0) return 0
-                  return r.caThucHien === 'HC' ? soGio / 8 : soGio <= 7 ? soGio / 7 : 1 + (soGio - 7) / 8
-                }
-                return calc(a) - calc(b)
-              },
-            },
-            {
-              title: 'Ghi Chú', dataIndex: 'ghiChu', key: 'ghiChu', ellipsis: true,
-              render: v => v || <span style={{ color: '#d9d9d9' }}>—</span>,
-            },
-          ]}
+          columns={timeColumns}
         />
       ),
     },
