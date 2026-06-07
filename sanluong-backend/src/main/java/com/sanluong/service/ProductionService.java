@@ -31,6 +31,7 @@ public class ProductionService {
     private final ProductMasterRepository productMasterRepository;
     private final LenhSanXuatRepository lenhSanXuatRepository;
     private final WorkScheduleRepository workScheduleRepository;
+    private final WorkScheduleService workScheduleService;
     private final ProductionEditHistoryRepository historyRepository;
     private final NotificationService notificationService;
 
@@ -38,12 +39,14 @@ public class ProductionService {
                              ProductMasterRepository productMasterRepository,
                              LenhSanXuatRepository lenhSanXuatRepository,
                              WorkScheduleRepository workScheduleRepository,
+                             WorkScheduleService workScheduleService,
                              ProductionEditHistoryRepository historyRepository,
                              NotificationService notificationService) {
         this.repository = repository;
         this.productMasterRepository = productMasterRepository;
         this.lenhSanXuatRepository = lenhSanXuatRepository;
         this.workScheduleRepository = workScheduleRepository;
+        this.workScheduleService = workScheduleService;
         this.historyRepository = historyRepository;
         this.notificationService = notificationService;
     }
@@ -309,6 +312,13 @@ public class ProductionService {
         if (!changes.isEmpty()) historyRepository.saveAll(changes);
         // @Transient field bị mất sau JPA merge — khôi phục để frontend nhận đúng toNhom
         if (!isEmpty(toNhomPcpl)) saved.setToNhom(toNhomPcpl);
+        // Tự động sync WorkSchedule ngay tại backend — không cần frontend gọi thêm
+        java.math.BigDecimal coLo = r.getSoLuong() != null
+                ? new java.math.BigDecimal(r.getSoLuong()) : null;
+        workScheduleService.autoSyncFromProduction(
+                r.getMaBravo(), r.getMaTp(), r.getTienTrinh(),
+                r.getLsx(), coLo, r.getMaDonHang(),
+                true, toNhomPcpl);
         return saved;
     }
 

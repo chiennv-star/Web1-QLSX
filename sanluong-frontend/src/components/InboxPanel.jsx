@@ -280,23 +280,6 @@ export default function InboxPanel({ open, onClose, onCountChange }) {
     finally { setActionState(p => { const n = { ...p }; delete n[id]; return n }) }
   }
 
-  const syncWorkSchedule = async (r) => {
-    const { maBravo, maTp, tienTrinh, lsx, soLuong, maDonHang, toNhom } = r
-    if (!maBravo && !maTp) return
-    const params = { phatLenh: true }
-    if (maBravo)         params.maBravo        = maBravo
-    if (maTp)            params.maSp           = maTp
-    if (tienTrinh)       params.tenTrinh       = tienTrinh
-    if (lsx)             params.soLo           = lsx
-    if (soLuong != null) params.coLo           = soLuong
-    if (maDonHang)       params.maDonHang      = maDonHang
-    if (toNhom)          params.toNhomOverride = toNhom   // từ LenhSanXuat qua phat-lenh response
-    try {
-      const { data: created } = await api.post('/work-schedule/auto-sync', null, { params })
-      if (created > 0) message.info(`Đã tự động tạo ${created} bản ghi Lịch làm việc`)
-    } catch { /* non-blocking */ }
-  }
-
   const syncHangLoi = async (r) => {
     const { maTp, maBravo, tienTrinh, lsx, soLuong } = r
     if (!maTp) return
@@ -319,15 +302,12 @@ export default function InboxPanel({ open, onClose, onCountChange }) {
     const { id } = record
     setPhatLenhState(p => ({ ...p, [id]: true }))
     try {
-      const { data: updated } = await api.patch(`/production/${id}/phat-lenh`)
+      await api.patch(`/production/${id}/phat-lenh`)
       message.success('Đã phát lệnh thành công!')
       setChuaPhat(p => p.filter(r => r.id !== id))
       setSelectedIds(p => { const n = new Set(p); n.delete(id); return n })
       onClose()
-      // Dùng record đã được resolve toNhom (từ LenhSanXuat) để sync đúng tổ
-      const synced = { ...record, toNhom: updated?.toNhom || record.toNhom }
-      syncHangLoi(synced)
-      syncWorkSchedule(synced)
+      syncHangLoi(record)
     } catch { message.error('Phát lệnh thất bại') }
     finally { setPhatLenhState(p => { const n = { ...p }; delete n[id]; return n }) }
   }
@@ -344,12 +324,7 @@ export default function InboxPanel({ open, onClose, onCountChange }) {
       setChuaPhat(p => p.filter(r => !ids.includes(r.id)))
       setSelectedIds(new Set())
       onClose()
-      // Sync từng record với toNhom đã được resolve
-      records.forEach((r, i) => {
-        const synced = { ...r, toNhom: results[i]?.data?.toNhom || r.toNhom }
-        syncHangLoi(synced)
-        syncWorkSchedule(synced)
-      })
+      records.forEach(r => syncHangLoi(r))
     } catch { message.error('Phát lệnh thất bại') }
     finally { setBatchLoading(false) }
   }
