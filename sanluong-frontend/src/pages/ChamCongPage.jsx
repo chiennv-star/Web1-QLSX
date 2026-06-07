@@ -70,6 +70,7 @@ export default function ChamCongPage() {
   const [empRows, setEmpRows]   = useState([])
   const [deptRows, setDeptRows] = useState([])
   const [timeRows, setTimeRows] = useState([])
+  const [allEmps, setAllEmps]   = useState([])
   const [loading, setLoading]   = useState(false)
   const [timeLoading, setTimeLoading] = useState(false)
 
@@ -109,7 +110,12 @@ export default function ChamCongPage() {
     }
   }, [dateRange, deptFilter])
 
-  useEffect(() => { fetchData() }, []) // eslint-disable-line
+  useEffect(() => {
+    fetchData()
+    api.get('/employees', { params: { page: 0, size: 500 } })
+      .then(r => setAllEmps(r.data.content || []))
+      .catch(() => {})
+  }, []) // eslint-disable-line
 
   const fetchTimeEntries = useCallback(async (range = dateRange) => {
     setTimeLoading(true)
@@ -145,10 +151,11 @@ export default function ChamCongPage() {
   // Danh sách ngày trong khoảng
   const dateList = useMemo(() => buildDateList(dateRange[0], dateRange[1]), [dateRange])
 
-  // ── Pivot timeRows → 1 hàng/nhân viên (toàn bộ empRows, điền ngayData nếu có) ──
+  // ── Pivot timeRows → 1 hàng/nhân viên (toàn bộ danh sách nhân sự, điền ngayData nếu có) ──
   const timeEmpRows = useMemo(() => {
     const pivot = {}
-    empRows.forEach(e => {
+    const baseList = allEmps.length > 0 ? allEmps : empRows
+    baseList.forEach(e => {
       pivot[e.maNhanVien] = { maNhanVien: e.maNhanVien, hoVaTen: e.hoVaTen, toNhom: e.toNhom || '', ngayData: {} }
     })
     timeRows.forEach(t => {
@@ -158,7 +165,7 @@ export default function ChamCongPage() {
       pivot[t.maNhanVien].ngayData[t.ngay] = t
     })
     return Object.values(pivot).sort((a, b) => (a.maNhanVien || '').localeCompare(b.maNhanVien || ''))
-  }, [timeRows, empRows])
+  }, [timeRows, empRows, allEmps])
 
   // ── Cột bảng Công Ra Vào ─────────────────────────────────────────
   const timeColumns = useMemo(() => {
