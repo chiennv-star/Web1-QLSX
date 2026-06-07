@@ -1223,8 +1223,7 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
         cancelText="Huỷ"
         confirmLoading={timeSaving}
         width={400}
-        destroyOnClose
-        footer={({ OkBtn, CancelBtn }) => (
+        footer={(_, { OkBtn, CancelBtn }) => (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               {editingTime && (
