@@ -896,7 +896,17 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
           ))}
         </div>
 
-        <style>{`.eff-detail-table .ant-table-thead > tr > th { background: #FFCC99 !important; color: #7c3a00 !important; font-size: 11px !important; text-transform: uppercase; padding: 6px 8px !important; border-right: 1px solid #f0a060 !important; } .eff-detail-table .ant-table-thead > tr > th::before { display: none !important; }`}</style>
+        <style>{`
+          .eff-detail-table .ant-table-thead > tr > th { background: #FFCC99 !important; color: #7c3a00 !important; font-size: 11px !important; text-transform: uppercase; padding: 6px 8px !important; border-right: 1px solid #f0a060 !important; }
+          .eff-detail-table .ant-table-thead > tr > th::before { display: none !important; }
+          .eff-detail-table .ant-table-body::-webkit-scrollbar,
+          .eff-detail-table .ant-table-content::-webkit-scrollbar,
+          .eff-detail-table *::-webkit-scrollbar { height: 1.5px !important; width: 1.5px !important; }
+          .eff-detail-table .ant-table-body::-webkit-scrollbar-track,
+          .eff-detail-table *::-webkit-scrollbar-track { background: #f0f4f8; border-radius: 4px; }
+          .eff-detail-table .ant-table-body::-webkit-scrollbar-thumb,
+          .eff-detail-table *::-webkit-scrollbar-thumb { background: #66FFCC; border-radius: 4px; }
+        `}</style>
 
         {loading ? (
           <Spin style={{ display: 'block', margin: '60px auto' }} size="large" />
