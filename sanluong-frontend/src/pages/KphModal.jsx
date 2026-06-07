@@ -49,7 +49,7 @@ const FileUploadField = ({ fileList, onChange, multiple = true, action, headers,
       Chọn file
     </Button>
     <span style={{ marginLeft: 8, fontSize: 11, color: '#8c8c8c' }}>
-      Ảnh · PDF · Word · Excel · Video (tối đa 100MB/file)
+      Ảnh · PDF · Word · Excel · Video (tối đa 500MB/file)
     </span>
   </Upload>
 )
