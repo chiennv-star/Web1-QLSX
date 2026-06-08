@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import {
   Drawer, Badge, Button, Collapse, Tag,
-  Popconfirm, Empty, Spin, Tooltip, Checkbox,
+  Popconfirm, Empty, Spin, Tooltip,
 } from 'antd'
 import {
   ClockCircleOutlined,
@@ -11,7 +11,6 @@ import {
   CheckOutlined,
   CloseOutlined,
   ArrowRightOutlined,
-  ThunderboltOutlined,
 } from '@ant-design/icons'
 import api from '../api/axios'
 import { useNavigate } from 'react-router-dom'
@@ -75,80 +74,58 @@ function RecordCard({ r, onClose }) {
   )
 }
 
-// ── Chưa phát lệnh card (checkbox + nút phát lệnh nhanh) ─────────────────────
-function ChuaPhatCard({ r, selected, onToggle, onPhatLenh, loading, onClose }) {
+// ── Chưa phát lệnh card (navigate only) ──────────────────────────────────────
+function ChuaPhatCard({ r, onClose }) {
   const navigate = useNavigate()
   const [hover, setHover] = useState(false)
   return (
     <div
+      onClick={() => { navigate(`/lenh-san-xuat`); onClose() }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
         padding: '10px 12px',
         marginBottom: 8,
         borderRadius: 8,
-        border: `1px solid ${selected ? '#0d9488' : hover ? '#99f6e4' : '#e2e8f0'}`,
-        background: selected ? '#f0fdfa' : hover ? '#f8fffd' : '#fff',
+        border: `1px solid ${hover ? '#99f6e4' : '#e2e8f0'}`,
+        background: hover ? '#f0fdfa' : '#fff',
+        cursor: 'pointer',
         transition: 'all 0.15s',
-        boxShadow: selected ? '0 0 0 2px rgba(13,148,136,0.15)' : '0 1px 3px rgba(0,0,0,0.04)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-        {/* Checkbox */}
-        <Checkbox
-          checked={selected}
-          onChange={e => { e.stopPropagation(); onToggle(r.id) }}
-          style={{ marginTop: 2, flexShrink: 0 }}
-        />
-
-        {/* Content — click to navigate */}
-        <div
-          style={{ flex: 1, cursor: 'pointer', minWidth: 0 }}
-          onClick={() => { navigate(`/record/edit/${r.id}`); onClose() }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-            <span style={{ fontWeight: 700, fontSize: 13, color: '#1e4570' }}>{r.maTp}</span>
-            <Tag style={{
-              fontSize: 11, margin: 0, padding: '1px 7px',
-              borderRadius: 10, fontWeight: 600,
-              background: '#f0fdfa', color: '#0d9488', borderColor: '#99f6e4',
-            }}>
-              {r.lsx}
-            </Tag>
-          </div>
-          <div style={{
-            fontSize: 12, color: '#475569', marginBottom: 4,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            fontWeight: 500,
-          }}>
-            {r.tienTrinh || '—'}
-          </div>
-          <div style={{ display: 'flex', gap: 12, fontSize: 12, color: '#64748b' }}>
-            {r.soLuong != null && (
-              <span>KH: <b style={{ color: '#111', fontWeight: 700 }}>{Number(r.soLuong).toLocaleString('vi-VN')}</b></span>
-            )}
-            {r.maDonHang && (
-              <span>Đơn: <b style={{ color: '#111', fontWeight: 700 }}>{r.maDonHang}</b></span>
-            )}
-          </div>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+        <span style={{ fontWeight: 700, fontSize: 13, color: '#1e4570' }}>{r.maTp}</span>
+        <Tag style={{
+          fontSize: 11, margin: 0, padding: '1px 7px',
+          borderRadius: 10, fontWeight: 600,
+          background: '#f0fdfa', color: '#0d9488', borderColor: '#99f6e4',
+        }}>
+          {r.lsx}
+        </Tag>
       </div>
-
-      {/* Nút Phát lệnh nhanh */}
-      <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
-        <Button
-          type="primary"
-          size="small"
-          icon={<ThunderboltOutlined />}
-          loading={loading}
-          onClick={e => { e.stopPropagation(); onPhatLenh(r) }}
-          style={{
-            fontSize: 11, height: 26, borderRadius: 6, fontWeight: 700,
-            background: '#0d9488', borderColor: '#0d9488',
-          }}
-        >
-          Phát lệnh
-        </Button>
+      <div style={{
+        fontSize: 12, color: '#475569', marginBottom: 4,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        fontWeight: 500,
+      }}>
+        {r.tienTrinh || '—'}
+      </div>
+      <div style={{ display: 'flex', gap: 12, fontSize: 12, color: '#64748b', marginBottom: 4 }}>
+        {r.soLuong != null && (
+          <span>KH: <b style={{ color: '#111', fontWeight: 700 }}>{Number(r.soLuong).toLocaleString('vi-VN')}</b></span>
+        )}
+        {r.maDonHang && (
+          <span>Đơn: <b style={{ color: '#111', fontWeight: 700 }}>{r.maDonHang}</b></span>
+        )}
+      </div>
+      <div style={{
+        display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
+        fontSize: 11, color: hover ? '#0d9488' : '#94a3b8',
+        transition: 'color 0.15s',
+        fontWeight: hover ? 600 : 400,
+      }}>
+        Vào Lệnh SX để phát lệnh <ArrowRightOutlined style={{ fontSize: 9, marginLeft: 3 }} />
       </div>
     </div>
   )
@@ -235,11 +212,6 @@ export default function InboxPanel({ open, onClose, onCountChange }) {
   const [activeKeys, setActiveKeys]   = useState(['1', '2', '3'])
   const [actionState, setActionState] = useState({})
 
-  // Trạng thái phát lệnh
-  const [selectedIds, setSelectedIds]     = useState(new Set())
-  const [phatLenhState, setPhatLenhState] = useState({}) // id → loading
-  const [batchLoading, setBatchLoading]   = useState(false)
-
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
@@ -251,7 +223,6 @@ export default function InboxPanel({ open, onClose, onCountChange }) {
       setChoXepLich(r1.data || [])
       setChoDuyet(r2.data || [])
       setChuaPhat(r3.data || [])
-      setSelectedIds(new Set())
     } catch { /* non-blocking */ }
     finally { setLoading(false) }
   }, [])
@@ -280,75 +251,6 @@ export default function InboxPanel({ open, onClose, onCountChange }) {
     finally { setActionState(p => { const n = { ...p }; delete n[id]; return n }) }
   }
 
-  const syncHangLoi = async (r) => {
-    const { maTp, maBravo, tienTrinh, lsx, soLuong } = r
-    if (!maTp) return
-    try {
-      const { data: exists } = await api.get('/hang-loi/exists', {
-        params: { mtpCoMem: maTp, tenHangHoa: tienTrinh || '', soLo: lsx || '' },
-      })
-      if (!exists) {
-        await api.post('/hang-loi', {
-          mtpCoMem: maTp || null, mtpSongAn: maBravo || null,
-          tenHangHoa: tienTrinh || null, soLo: lsx || null, soLuong: soLuong ?? null,
-        })
-        message.info('Đã tự động tạo bản ghi Hàng Lỗi mới')
-      }
-    } catch { /* non-blocking */ }
-  }
-
-  // Phát lệnh đơn lẻ
-  const handlePhatLenh = async (record) => {
-    const { id } = record
-    setPhatLenhState(p => ({ ...p, [id]: true }))
-    try {
-      await api.patch(`/production/${id}/phat-lenh`)
-      message.success('Đã phát lệnh thành công!')
-      setChuaPhat(p => p.filter(r => r.id !== id))
-      setSelectedIds(p => { const n = new Set(p); n.delete(id); return n })
-      onClose()
-      syncHangLoi(record)
-    } catch { message.error('Phát lệnh thất bại') }
-    finally { setPhatLenhState(p => { const n = { ...p }; delete n[id]; return n }) }
-  }
-
-  // Phát lệnh đồng loạt
-  const handlePhatLenhBatch = async () => {
-    if (selectedIds.size === 0) return
-    setBatchLoading(true)
-    const ids = [...selectedIds]
-    const records = chuaPhat.filter(r => ids.includes(r.id))
-    try {
-      const results = await Promise.all(ids.map(id => api.patch(`/production/${id}/phat-lenh`)))
-      message.success(`Đã phát lệnh ${ids.length} bản ghi`)
-      setChuaPhat(p => p.filter(r => !ids.includes(r.id)))
-      setSelectedIds(new Set())
-      onClose()
-      records.forEach(r => syncHangLoi(r))
-    } catch { message.error('Phát lệnh thất bại') }
-    finally { setBatchLoading(false) }
-  }
-
-  // Toggle checkbox
-  const handleToggle = (id) => {
-    setSelectedIds(prev => {
-      const n = new Set(prev)
-      if (n.has(id)) n.delete(id); else n.add(id)
-      return n
-    })
-  }
-
-  // Chọn / bỏ chọn tất cả
-  const allSelected = chuaPhat.length > 0 && chuaPhat.every(r => selectedIds.has(r.id))
-  const someSelected = chuaPhat.some(r => selectedIds.has(r.id))
-  const handleToggleAll = () => {
-    if (allSelected) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(chuaPhat.map(r => r.id)))
-    }
-  }
-
   const totalCount = choXepLich.length + choDuyet.length + chuaPhat.length
 
   const sectionLabel = (icon, text, count, color) => (
@@ -369,52 +271,10 @@ export default function InboxPanel({ open, onClose, onCountChange }) {
     />
   )
 
-  // Section "Chưa phát lệnh" với batch controls
   const chuaPhatChildren = chuaPhat.length === 0 ? emptyNode : (
     <div>
-      {/* Batch controls */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '6px 4px 10px 4px',
-        borderBottom: '1px solid #f0fdf9',
-        marginBottom: 8,
-      }}>
-        <Checkbox
-          checked={allSelected}
-          indeterminate={someSelected && !allSelected}
-          onChange={handleToggleAll}
-        >
-          <span style={{ fontSize: 12, color: '#475569' }}>Chọn tất cả</span>
-        </Checkbox>
-        {someSelected && (
-          <Button
-            type="primary"
-            size="small"
-            icon={<ThunderboltOutlined />}
-            loading={batchLoading}
-            onClick={handlePhatLenhBatch}
-            style={{
-              marginLeft: 'auto',
-              fontSize: 11, height: 28, borderRadius: 6, fontWeight: 700,
-              background: '#0d9488', borderColor: '#0d9488',
-            }}
-          >
-            Phát lệnh ({selectedIds.size})
-          </Button>
-        )}
-      </div>
-
-      {/* Cards */}
       {chuaPhat.map(r => (
-        <ChuaPhatCard
-          key={r.id}
-          r={r}
-          selected={selectedIds.has(r.id)}
-          onToggle={handleToggle}
-          onPhatLenh={handlePhatLenh}
-          loading={!!phatLenhState[r.id]}
-          onClose={onClose}
-        />
+        <ChuaPhatCard key={r.id} r={r} onClose={onClose} />
       ))}
     </div>
   )
