@@ -6,6 +6,7 @@ import {
 import {
   PlusOutlined, SyncOutlined, SearchOutlined,
   ReloadOutlined, EditOutlined, CheckOutlined, FileAddOutlined,
+  DeleteOutlined, ThunderboltOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import api from '../api/axios'
@@ -157,6 +158,7 @@ export default function LenhSanXuatTab() {
   const [editItem,     setEditItem]     = useState(null)
   const [actionId,     setActionId]     = useState(null)
   const [selectedKeys, setSelectedKeys] = useState([])
+  const [bulkLoading,  setBulkLoading]  = useState(null) // 'banhanh' | 'lichsx' | 'delete'
   // useRef để lưu giá trị soLo — không gây re-render khi gõ, tránh input mất focus
   const soLoRef = useRef({})
 
@@ -288,6 +290,47 @@ export default function LenhSanXuatTab() {
     } finally {
       setActionId(null)
     }
+  }
+
+  // Lấy danh sách numeric ID từ selectedKeys (chỉ lấy l-{id}, bỏ ws-{id})
+  const selectedIds = selectedKeys
+    .filter(k => typeof k === 'string' && k.startsWith('l-'))
+    .map(k => Number(k.replace('l-', '')))
+    .filter(Boolean)
+
+  const handleBulkBanHanh = async () => {
+    if (!selectedIds.length) { message.warning('Chưa có lệnh nào được chọn'); return }
+    setBulkLoading('banhanh')
+    try {
+      const { data: r } = await api.post('/lenh-san-xuat/ban-hanh/bulk', selectedIds)
+      message.success(`Đã ban hành ${r.updated} lệnh`)
+      setSelectedKeys([])
+      await fetchLenh()
+    } catch { message.error('Ban hành hàng loạt thất bại') }
+    finally { setBulkLoading(null) }
+  }
+
+  const handleBulkLichSX = async () => {
+    if (!selectedIds.length) { message.warning('Chưa có lệnh nào được chọn'); return }
+    setBulkLoading('lichsx')
+    try {
+      const { data: r } = await api.post('/lenh-san-xuat/sync-lich-sx/bulk', selectedIds)
+      message.success(`Đã tạo ${r.created} bản ghi Lịch SX còn thiếu`)
+      setSelectedKeys([])
+    } catch { message.error('Đồng bộ Lịch SX thất bại') }
+    finally { setBulkLoading(null) }
+  }
+
+  const handleBulkDelete = async () => {
+    if (!selectedIds.length) { message.warning('Chưa có lệnh nào được chọn'); return }
+    setBulkLoading('delete')
+    try {
+      const { data: r } = await api.delete('/lenh-san-xuat/bulk', { data: selectedIds })
+      message.success(`Đã xóa ${r.deleted} lệnh`)
+      setSelectedKeys([])
+      await fetchLenh()
+    } catch { message.error('Xóa hàng loạt thất bại') }
+    finally { setBulkLoading(null) }
   }
 
   const reset = () => {
@@ -608,7 +651,21 @@ export default function LenhSanXuatTab() {
         size="small"
         scroll={{ x: 1420 }}
         rowClassName={r => (!r.isFromKhoach && r.daBanHanh === false && r.soLo) ? 'lsx-row-pending' : ''}
-        rowSelection={{ selectedRowKeys: selectedKeys, onChange: setSelectedKeys }}
+        rowSelection={{
+          selectedRowKeys: selectedKeys,
+          onChange: setSelectedKeys,
+          selections: [
+            {
+              key: 'select-all-pages',
+              text: 'Chọn tất cả trang',
+              onSelect: () => {
+                const allKeys = rows.map(r => r.isFromKhoach ? `ws-${r.workScheduleId}` : `l-${r.id}`)
+                setSelectedKeys(allKeys)
+              },
+            },
+            { key: 'deselect-all', text: 'Bỏ chọn tất cả', onSelect: () => setSelectedKeys([]) },
+          ],
+        }}
         pagination={{
           pageSize: 50,
           showSizeChanger: true,
@@ -623,6 +680,58 @@ export default function LenhSanXuatTab() {
         onClose={() => { setModalOpen(false); setEditItem(null) }}
         onSaved={fetchAll}
       />
+
+      {/* ── Bulk action bar ── */}
+      {selectedKeys.length > 0 && (
+        <div style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 1000,
+          background: '#1e3a5f', color: '#fff',
+          borderRadius: 10, padding: '10px 20px',
+          display: 'flex', alignItems: 'center', gap: 10,
+          boxShadow: '0 4px 24px rgba(0,0,0,0.25)',
+          whiteSpace: 'nowrap',
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 700, marginRight: 4 }}>
+            Đã chọn {selectedKeys.length} lệnh
+          </span>
+          <span style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.3)' }} />
+          {activeTab !== 'chua_xep' && activeTab !== 'hoan_thien' && (
+            <Button
+              size="small" icon={<CheckOutlined />}
+              loading={bulkLoading === 'banhanh'}
+              onClick={handleBulkBanHanh}
+              style={{ background: '#16a34a', borderColor: '#16a34a', color: '#fff', fontSize: 12 }}
+            >
+              Ban hành ({selectedIds.length})
+            </Button>
+          )}
+          <Button
+            size="small" icon={<SyncOutlined />}
+            loading={bulkLoading === 'lichsx'}
+            onClick={handleBulkLichSX}
+            style={{ background: '#0891b2', borderColor: '#0891b2', color: '#fff', fontSize: 12 }}
+          >
+            Đồng bộ Lịch SX ({selectedIds.length})
+          </Button>
+          <Button
+            size="small" icon={<DeleteOutlined />}
+            loading={bulkLoading === 'delete'}
+            onClick={handleBulkDelete}
+            danger
+            style={{ fontSize: 12 }}
+          >
+            Xóa ({selectedIds.length})
+          </Button>
+          <Button
+            size="small" type="text"
+            onClick={() => setSelectedKeys([])}
+            style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}
+          >
+            Bỏ chọn
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

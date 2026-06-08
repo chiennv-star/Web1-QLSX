@@ -250,6 +250,33 @@ public class LenhSanXuatService {
                 .count();
     }
 
+    /** Ban hành hàng loạt theo danh sách ID */
+    @Transactional
+    public int banHanhBulk(List<Long> ids, String username) {
+        List<LenhSanXuat> list = repo.findAllById(ids).stream()
+                .filter(e -> e.getDeletedAt() == null && !Boolean.TRUE.equals(e.getDaBanHanh()))
+                .collect(Collectors.toList());
+        list.forEach(e -> { e.setDaBanHanh(true); e.setUpdatedBy(username); });
+        repo.saveAll(list);
+        return list.size();
+    }
+
+    /** Đồng bộ Lịch SX cho danh sách ID cụ thể */
+    @Transactional
+    public int syncLichSXByIds(List<Long> ids, String username) {
+        List<LenhSanXuat> list = repo.findAllById(ids).stream()
+                .filter(e -> e.getDeletedAt() == null && e.getMaBravo() != null && e.getSoLo() != null)
+                .collect(Collectors.toList());
+        int total = 0;
+        for (LenhSanXuat lenh : list) {
+            total += workScheduleService.autoSyncFromProduction(
+                    lenh.getMaBravo(), lenh.getMaSp(), lenh.getTenSanPham(),
+                    lenh.getSoLo(), lenh.getSoLuong(), lenh.getMaDonHang(),
+                    Boolean.TRUE.equals(lenh.getDaBanHanh()), lenh.getToThucHien());
+        }
+        return total;
+    }
+
     /** Đồng bộ Lịch SX: tạo WorkSchedule SCHEDULE còn thiếu cho tất cả LenhSanXuat */
     @Transactional
     public int syncAllLichSX(String username) {

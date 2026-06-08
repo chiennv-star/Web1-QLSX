@@ -146,6 +146,18 @@ public class LenhSanXuatController {
         return ResponseEntity.ok(Map.of("created", created));
     }
 
+    @PostMapping("/sync-lich-sx/bulk")
+    public ResponseEntity<Map<String, Integer>> syncLichSXBulk(@RequestBody List<Long> ids, Authentication auth) {
+        int created = service.syncLichSXByIds(ids, auth.getName());
+        return ResponseEntity.ok(Map.of("created", created));
+    }
+
+    @PostMapping("/ban-hanh/bulk")
+    public ResponseEntity<Map<String, Integer>> banHanhBulk(@RequestBody List<Long> ids, Authentication auth) {
+        int updated = service.banHanhBulk(ids, auth.getName());
+        return ResponseEntity.ok(Map.of("updated", updated));
+    }
+
     @PostMapping("/from-work-schedule/{workScheduleId}")
     public ResponseEntity<LenhSanXuatDto> createFromWorkSchedule(
             @PathVariable Long workScheduleId,
