@@ -175,6 +175,7 @@ async function _syncAllLenhForDH(maBravo, maDonHang) {
     if (!khoachList.length) return
 
     const toDelete = lenhList.filter(l => {
+      if (l.daBanHanh) return false  // Không xóa lệnh đã ban hành
       const ld = norm(l.ngayThucHien)
       return !khoachList.some(k =>
         norm(k.ngayThucHien) === ld && k.toNhom === l.toThucHien &&

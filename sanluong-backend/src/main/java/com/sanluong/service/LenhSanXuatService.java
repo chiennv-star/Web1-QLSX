@@ -74,6 +74,10 @@ public class LenhSanXuatService {
         if (e.getThuTu() == null) {
             e.setThuTu((repo.findMaxThuTu() == null ? 0 : repo.findMaxThuTu()) + 1);
         }
+        // Tự động ban hành nếu đủ thông tin (nhất quán với update())
+        if (e.getMaBravo() != null && e.getSoLo() != null) {
+            e.setDaBanHanh(true);
+        }
         e.setCreatedBy(username);
         e.setUpdatedBy(username);
         LenhSanXuat saved = repo.save(e);
