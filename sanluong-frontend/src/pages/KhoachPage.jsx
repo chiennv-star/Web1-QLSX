@@ -2496,6 +2496,18 @@ function KhoachContent({ miniPickerMode = false }) {
             </Tooltip>
           )}
           {canEdit && (
+            <Tooltip title="Đẩy tất cả kế hoạch trong view sang Lệnh SX (tạo lệnh còn thiếu)">
+              <Button
+                icon={<SyncOutlined spin={syncingAll} />}
+                loading={syncingAll}
+                onClick={handleSyncAllLenhSX}
+                style={{ borderColor: '#0d9488', color: '#0d9488' }}
+              >
+                Đồng bộ sang Lệnh SX
+              </Button>
+            </Tooltip>
+          )}
+          {canEdit && (
             <Tooltip title="Tạo Kế hoạch từ Lệnh SX bị thiếu trong khoảng ngày này">
               <Button
                 icon={<SyncOutlined spin={syncingFromLenh} />}
