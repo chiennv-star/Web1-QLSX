@@ -33,19 +33,22 @@ public class LenhSanXuatService {
     private final WorkScheduleRepository workScheduleRepo;
     private final ProductionRecordRepository productionRepo;
     private final NotificationService notificationService;
+    private final WorkScheduleService workScheduleService;
 
     public LenhSanXuatService(LenhSanXuatRepository repo,
                                LenhLoHistoryRepository historyRepo,
                                LenhFieldHistoryRepository fieldHistoryRepo,
                                WorkScheduleRepository workScheduleRepo,
                                ProductionRecordRepository productionRepo,
-                               NotificationService notificationService) {
+                               NotificationService notificationService,
+                               WorkScheduleService workScheduleService) {
         this.repo = repo;
         this.historyRepo = historyRepo;
         this.fieldHistoryRepo = fieldHistoryRepo;
         this.workScheduleRepo = workScheduleRepo;
         this.productionRepo = productionRepo;
         this.notificationService = notificationService;
+        this.workScheduleService = workScheduleService;
     }
 
 
@@ -82,18 +85,39 @@ public class LenhSanXuatService {
 
     private void autoCreateSanLuong(LenhSanXuat lenh, String username) {
         if (lenh.getMaBravo() == null || lenh.getSoLo() == null) return;
-        if (productionRepo.existsByMaBravoAndLsxAndMaDonHang(
-                lenh.getMaBravo(), lenh.getSoLo(), lenh.getMaDonHang())) return;
-        ProductionRecord pr = new ProductionRecord();
-        pr.setMaBravo(lenh.getMaBravo());
-        pr.setMaTp(lenh.getMaSp());
-        pr.setTienTrinh(lenh.getTenSanPham());
-        pr.setLsx(lenh.getSoLo());
-        pr.setMaDonHang(lenh.getMaDonHang());
-        pr.setSoLuong(lenh.getSoLuong() != null ? lenh.getSoLuong().intValue() : null);
-        pr.setCreatedBy(username);
+
+        // Tìm bản ghi Sản lượng hiện có hoặc tạo mới
+        java.util.List<ProductionRecord> existing = productionRepo.findByLenhKey(
+                lenh.getMaBravo(), lenh.getSoLo(), lenh.getMaDonHang());
+        ProductionRecord pr;
+        if (!existing.isEmpty()) {
+            pr = existing.get(0);
+        } else {
+            pr = new ProductionRecord();
+            pr.setMaBravo(lenh.getMaBravo());
+            pr.setMaTp(lenh.getMaSp());
+            pr.setTienTrinh(lenh.getTenSanPham());
+            pr.setLsx(lenh.getSoLo());
+            pr.setMaDonHang(lenh.getMaDonHang());
+            pr.setSoLuong(lenh.getSoLuong() != null ? lenh.getSoLuong().intValue() : null);
+            pr.setCreatedBy(username);
+        }
+        // Đánh dấu đã phát lệnh và set trạng thái các công đoạn
+        pr.setPhatLenh(true);
+        pr.setPcTrangThai("doing");
+        pr.setPlTrangThai("doing");
+        pr.setDgTrangThai("doing");
+        pr.setBbc1TrangThai("doing");
         pr.setUpdatedBy(username);
         productionRepo.save(pr);
+
+        // Tự động tạo bản ghi Lịch SX cho tất cả công đoạn
+        String toNhomPcpl = lenh.getToThucHien();
+        java.math.BigDecimal coLo = lenh.getSoLuong() != null
+                ? new java.math.BigDecimal(lenh.getSoLuong()) : null;
+        workScheduleService.autoSyncFromProduction(
+                lenh.getMaBravo(), lenh.getMaSp(), lenh.getTenSanPham(),
+                lenh.getSoLo(), coLo, lenh.getMaDonHang(), true, toNhomPcpl);
     }
 
     @Transactional

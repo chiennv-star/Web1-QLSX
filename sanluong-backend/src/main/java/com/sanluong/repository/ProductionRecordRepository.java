@@ -118,6 +118,19 @@ public interface ProductionRecordRepository extends JpaRepository<ProductionReco
     boolean existsByMaBravoAndLsx(@Param("maBravo") String maBravo, @Param("lsx") String lsx);
 
     @Query("""
+        SELECT r FROM ProductionRecord r
+        WHERE r.maBravo = :maBravo
+          AND r.lsx = :lsx
+          AND (:maDonHang IS NULL AND r.maDonHang IS NULL OR r.maDonHang = :maDonHang)
+          AND r.deletedAt IS NULL
+        ORDER BY r.id DESC
+        """)
+    List<ProductionRecord> findByLenhKey(
+            @Param("maBravo") String maBravo,
+            @Param("lsx") String lsx,
+            @Param("maDonHang") String maDonHang);
+
+    @Query("""
         SELECT COUNT(r) > 0 FROM ProductionRecord r
         WHERE r.maBravo = :maBravo
           AND r.lsx = :lsx
