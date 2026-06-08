@@ -145,6 +145,13 @@ public class LenhSanXuatService {
                     username);
             if (updated == 0) {
                 autoCreateSanLuong(saved, username);
+            } else if (Boolean.TRUE.equals(saved.getDaBanHanh())) {
+                // ProductionRecord đã tồn tại nhưng chưa sync Lịch SX → sync ngay
+                String toNhomPcpl = saved.getToThucHien();
+                java.math.BigDecimal coLo = saved.getSoLuong();
+                workScheduleService.autoSyncFromProduction(
+                        saved.getMaBravo(), saved.getMaSp(), saved.getTenSanPham(),
+                        saved.getSoLo(), coLo, saved.getMaDonHang(), true, toNhomPcpl);
             }
         }
         return toDto(saved);
