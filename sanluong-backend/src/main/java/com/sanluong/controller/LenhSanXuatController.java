@@ -140,6 +140,12 @@ public class LenhSanXuatController {
         return ResponseEntity.ok(Map.of("created", created));
     }
 
+    @PostMapping("/sync-lich-sx")
+    public ResponseEntity<Map<String, Integer>> syncLichSX(Authentication auth) {
+        int created = service.syncAllLichSX(auth.getName());
+        return ResponseEntity.ok(Map.of("created", created));
+    }
+
     @PostMapping("/from-work-schedule/{workScheduleId}")
     public ResponseEntity<LenhSanXuatDto> createFromWorkSchedule(
             @PathVariable Long workScheduleId,

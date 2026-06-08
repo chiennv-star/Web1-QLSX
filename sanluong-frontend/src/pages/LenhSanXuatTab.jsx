@@ -549,6 +549,19 @@ export default function LenhSanXuatTab() {
             Đồng bộ SL
           </Button>
           <Button
+            icon={<SyncOutlined />} size="small"
+            onClick={async () => {
+              try {
+                const { data: r } = await api.post('/lenh-san-xuat/sync-lich-sx')
+                message.success(`Đã tạo ${r.created} bản ghi Lịch SX còn thiếu`)
+                fetchAll()
+              } catch { message.error('Đồng bộ Lịch SX thất bại') }
+            }}
+            style={{ fontSize: 11 }}
+          >
+            Đồng bộ Lịch SX
+          </Button>
+          <Button
             type="primary" icon={<PlusOutlined />} size="small"
             onClick={() => { setEditItem(null); setModalOpen(true) }}
             style={{ background: '#1e4570', borderColor: '#1e4570', fontSize: 11 }}

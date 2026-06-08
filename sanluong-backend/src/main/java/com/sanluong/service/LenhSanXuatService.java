@@ -250,6 +250,24 @@ public class LenhSanXuatService {
                 .count();
     }
 
+    /** Đồng bộ Lịch SX: tạo WorkSchedule SCHEDULE còn thiếu cho tất cả LenhSanXuat */
+    @Transactional
+    public int syncAllLichSX(String username) {
+        List<LenhSanXuat> all = repo.findAll().stream()
+                .filter(e -> e.getDeletedAt() == null
+                          && e.getMaBravo() != null
+                          && e.getSoLo() != null)
+                .collect(Collectors.toList());
+        int total = 0;
+        for (LenhSanXuat lenh : all) {
+            total += workScheduleService.autoSyncFromProduction(
+                    lenh.getMaBravo(), lenh.getMaSp(), lenh.getTenSanPham(),
+                    lenh.getSoLo(), lenh.getSoLuong(), lenh.getMaDonHang(),
+                    Boolean.TRUE.equals(lenh.getDaBanHanh()), lenh.getToThucHien());
+        }
+        return total;
+    }
+
     @Transactional
     public int syncAllSanLuong(String username) {
         List<LenhSanXuat> all = repo.findAll().stream()
