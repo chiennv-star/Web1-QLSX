@@ -117,8 +117,7 @@ public class LenhSanXuatService {
 
         // Tự động tạo bản ghi Lịch SX cho tất cả công đoạn
         String toNhomPcpl = lenh.getToThucHien();
-        java.math.BigDecimal coLo = lenh.getSoLuong() != null
-                ? new java.math.BigDecimal(lenh.getSoLuong()) : null;
+        java.math.BigDecimal coLo = lenh.getSoLuong();
         workScheduleService.autoSyncFromProduction(
                 lenh.getMaBravo(), lenh.getMaSp(), lenh.getTenSanPham(),
                 lenh.getSoLo(), coLo, lenh.getMaDonHang(), true, toNhomPcpl);
