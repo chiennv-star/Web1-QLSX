@@ -9,7 +9,7 @@ import {
   ReloadOutlined, WarningOutlined, CalendarOutlined,
   SyncOutlined, CheckCircleOutlined, EyeOutlined, LinkOutlined,
   CheckOutlined, CloseOutlined, BellOutlined, EyeInvisibleOutlined,
-  EyeTwoTone, SettingOutlined, DownOutlined, FilterOutlined
+  EyeTwoTone, SettingOutlined, DownOutlined, FilterOutlined, UsergroupAddOutlined
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import api from '../api/axios'
@@ -62,10 +62,12 @@ const TINH_TRANG_OPTIONS = [
 ]
 
 const TO_NHOM_OPTIONS = {
-  PC:   ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
-  PL:   ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
-  DG:   ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
-  BBC1: ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
+  PC:    ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
+  PCPL1: ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
+  PCPL2: ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
+  PL:    ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
+  DG:    ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
+  BBC1:  ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
 }
 
 const tinhTrangTag = (val) => {
@@ -97,8 +99,19 @@ const slExceedRender = (v, record) => {
 }
 
 const STAGE_CONFIG = {
-  PC: {
-    label: 'Lịch sản xuất PC',
+  PCPL1: {
+    label: 'Lịch sản xuất PCPL1',
+    extraTableCols: [
+      { title: 'SL PC', dataIndex: 'slPc', key: 'slPc', width: 95, align: 'center', render: slExceedRender },
+      { title: 'Công PC', dataIndex: 'congPc', key: 'congPc', width: 85, align: 'center', render: fmtNum }
+    ],
+    extraFormFields: [
+      { name: 'slPc', label: 'SL PC' },
+      { name: 'congPc', label: 'Công PC' }
+    ]
+  },
+  PCPL2: {
+    label: 'Lịch sản xuất PCPL2',
     extraTableCols: [
       { title: 'SL PC', dataIndex: 'slPc', key: 'slPc', width: 95, align: 'center', render: slExceedRender },
       { title: 'Công PC', dataIndex: 'congPc', key: 'congPc', width: 85, align: 'center', render: fmtNum }
@@ -154,9 +167,9 @@ const STAGE_CONFIG = {
 
 
 // ── WorkDetailDrawer ──────────────────────────────────────────────────────────
-const CONG_FIELD_MAP   = { PC: 'congPc', BBC1: 'congBbc1', PL: 'congPl', DG: 'congDg', CC: 'congCc' }
-const SL_FIELD_MAP     = { PC: 'slPc',   BBC1: 'slBbc1',   PL: 'slPl',   DG: 'slDg' }
-const NS_LOOKUP_FIELD  = { PC: 'nangSuatPc', PL: 'nangSuatPl', BBC1: 'nangSuatBbc1', DG: 'slTrungBinh', CC: 'slTrungBinh' }
+const CONG_FIELD_MAP   = { PC: 'congPc', PCPL1: 'congPc', PCPL2: 'congPc', BBC1: 'congBbc1', PL: 'congPl', DG: 'congDg', CC: 'congCc' }
+const SL_FIELD_MAP     = { PC: 'slPc',   PCPL1: 'slPc',   PCPL2: 'slPc',  BBC1: 'slBbc1',   PL: 'slPl',   DG: 'slDg' }
+const NS_LOOKUP_FIELD  = { PC: 'nangSuatPc', PCPL1: 'nangSuatPc', PCPL2: 'nangSuatPc', PL: 'nangSuatPl', BBC1: 'nangSuatBbc1', DG: 'slTrungBinh', CC: 'slTrungBinh' }
 
 function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const { isAdmin, isAdminKH, isStageAdmin, canEditStage } = useAuth()
@@ -199,6 +212,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   })
   const [vaiTroModalOpen, setVaiTroModalOpen] = useState(false)
   const [newVaiTroInput, setNewVaiTroInput] = useState('')
+  const [multiAddModal, setMultiAddModal] = useState({ open: false, ngayKey: null, nhom: '', selectedEmps: [], caSX: '', thoiGian: '' })
   const saveVaiTroOptions = (opts) => { setVaiTroOptions(opts); localStorage.setItem(VAI_TRO_KEY, JSON.stringify(opts)) }
   const addVaiTroOption = () => {
     const v = newVaiTroInput.trim()
@@ -298,7 +312,6 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
         slDg: schedule.slDg, congDg: schedule.congDg,
         congCc: schedule.congCc,
         // Preserve identity fields not present in form
-        maDonHang: schedule.maDonHang ?? null,
         maBravo:   schedule.maBravo   ?? null,
         // Form fields override base values
         ...values,
@@ -395,6 +408,26 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     }])
     setBatchEditDays(prev => new Set([...prev, ngayKey]))
     setEditingKeys(prev => new Set([...prev, tempId]))
+  }
+
+  const confirmMultiAdd = () => {
+    const { ngayKey, nhom, selectedEmps, caSX, thoiGian } = multiAddModal
+    if (!selectedEmps.length) { message.warning('Vui lòng chọn ít nhất 1 nhân viên'); return }
+    const newRows = selectedEmps.map((emp, i) => ({
+      _tempId: Date.now() + i, id: null, workScheduleId: schedule.id,
+      ngay: ngayKey, maNhanVien: emp.maNhanVien || '', nguoiThucHien: emp.hoVaTen || '',
+      nhomThucHien: nhom, thoiGianBatDau: thoiGian,
+      congThucHien: caSX && thoiGian ? calcCong(thoiGian, caSX) : '',
+      vaiTro: '', ghiChu: '', caSanXuat: caSX, isTangCa: false,
+    }))
+    setSessions(prev => [...prev, ...newRows])
+    setBatchEditDays(prev => new Set([...prev, ngayKey]))
+    setEditingKeys(prev => {
+      const n = new Set(prev)
+      newRows.forEach(r => n.add(r._tempId))
+      return n
+    })
+    setMultiAddModal({ open: false, ngayKey: null, nhom: '', selectedEmps: [], caSX: '', thoiGian: '' })
   }
 
   const calcCong = (thoiGian, ca) => {
@@ -695,7 +728,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr>
-              {['Mã Bravo', 'Mã sản phẩm', 'Tiến Trình', 'Số Lô', 'Số Lượng', 'Sản Lượng', 'Tổng Công', 'Năng Suất', 'NS Trung Bình',
+              {['Mã Bravo', 'Mã sản phẩm', 'Mã ĐH', 'Tiến Trình', 'Số Lô', 'Số Lượng', 'Sản Lượng', 'Tổng Công', 'Năng Suất', 'NS Trung Bình',
                 'Ngày Bắt đầu', 'Ngày Kết thúc', 'Tổng Số Ngày TH'].map(h => (
                 <th key={h} style={headStyle}>{h}</th>
               ))}
@@ -705,6 +738,10 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
             <tr>
               <td style={cellStyle}><Tag color="blue" style={{ fontFamily: 'monospace' }}>{maBravo || '—'}</Tag></td>
               <td style={cellStyle}><span style={{ color: '#3cc6ec', fontWeight: 600 }}>{schedule?.maSp || '—'}</span></td>
+              <td style={cellStyle}>{schedule?.maDonHang
+                ? <span style={{ color: '#7c3aed', fontFamily: 'monospace', fontWeight: 600 }}>{schedule.maDonHang}</span>
+                : <span style={{ color: '#bbb' }}>—</span>}
+              </td>
               <td style={{ ...cellStyle, maxWidth: 260 }}>{schedule?.tenTrinh || '—'}</td>
               <td style={cellStyle}>{schedule?.soLo || '—'}</td>
               <td style={{ ...cellStyle, textAlign: 'right' }}>{schedule?.coLo ?? '—'}</td>
@@ -1159,6 +1196,10 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
               <Button icon={<PlusOutlined />} onClick={() => addRowToDay(ngayKey)} type="dashed">
                 Thêm dòng
               </Button>
+              <Button icon={<UsergroupAddOutlined />} type="dashed"
+                onClick={() => setMultiAddModal({ open: true, ngayKey, nhom: '', selectedEmps: [], caSX: '', thoiGian: '' })}>
+                Nhiều người
+              </Button>
               <Button icon={<CloseOutlined />} onClick={() => {
                 setSessions(prev => prev.filter(s => (s.ngay || 'unknown') !== ngayKey || s.id))
                 setBatchEditDays(prev => { const n = new Set(prev); n.delete(ngayKey); return n })
@@ -1180,6 +1221,10 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
               )}
               <Button icon={<PlusOutlined />} onClick={() => addRowToDay(ngayKey)} type="dashed" style={{ flex: 1 }}>
                 + Thêm dòng
+              </Button>
+              <Button icon={<UsergroupAddOutlined />} type="dashed"
+                onClick={() => setMultiAddModal({ open: true, ngayKey, nhom: '', selectedEmps: [], caSX: '', thoiGian: '' })}>
+                Nhiều người
               </Button>
             </div>
           )
@@ -1373,11 +1418,18 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                     </Form.Item>
                   </VC>
 
-                  {/* Row 2 — Tiến trình (full width) */}
+                  {/* Row 2 — Tiến trình + Mã ĐH */}
                   <LC>📝 Tiến Trình</LC>
-                  <VC span={7}>
+                  <VC span={5}>
                     <Form.Item name="tenTrinh" noStyle>
                       <Input size="small" disabled={!isInfoEditing} style={{ width: '100%', fontSize: 12 }} />
+                    </Form.Item>
+                  </VC>
+                  <LC accent="#7c3aed">📄 Mã ĐH</LC>
+                  <VC style={{ borderRight: 'none' }}>
+                    <Form.Item name="maDonHang" noStyle>
+                      <Input size="small" disabled={!isInfoEditing} placeholder="Mã đơn hàng"
+                        style={{ fontFamily: 'monospace', fontWeight: 600, color: '#7c3aed', width: '100%' }} />
                     </Form.Item>
                   </VC>
 
@@ -1588,6 +1640,103 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
           </div>
         </div>
       )}
+
+      {/* ── Modal thêm nhiều người cùng lúc ── */}
+      <Modal
+        title={<Space><UsergroupAddOutlined />Thêm nhiều người thực hiện</Space>}
+        open={multiAddModal.open}
+        onOk={confirmMultiAdd}
+        onCancel={() => setMultiAddModal({ open: false, ngayKey: null, nhom: '', selectedEmps: [], caSX: '', thoiGian: '' })}
+        okText={`Thêm ${multiAddModal.selectedEmps.length || ''} người`.trim()}
+        okButtonProps={{ disabled: !multiAddModal.selectedEmps.length }}
+        width={480}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Nhóm/Tổ */}
+          <div>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>Nhóm / Tổ</div>
+            <select
+              style={{ width: '100%', padding: '5px 8px', borderRadius: 6, border: '1px solid #d9d9d9', fontSize: 14 }}
+              value={multiAddModal.nhom}
+              onChange={e => setMultiAddModal(prev => ({ ...prev, nhom: e.target.value, selectedEmps: [] }))}
+            >
+              <option value="">-- Chọn nhóm --</option>
+              {['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG'].map(v => (
+                <option key={v} value={v}>{v}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Danh sách nhân viên trong nhóm */}
+          {multiAddModal.nhom && (() => {
+            const empList = employees.filter(e => e.toNhom === multiAddModal.nhom)
+            if (!empList.length) return <div style={{ color: '#999', fontSize: 13 }}>Không có nhân viên trong nhóm này.</div>
+            const allSelected = empList.every(e => multiAddModal.selectedEmps.some(s => s.id === e.id))
+            return (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontWeight: 600 }}>Chọn nhân viên ({empList.length} người)</span>
+                  <span
+                    style={{ fontSize: 12, color: '#1677ff', cursor: 'pointer' }}
+                    onClick={() => setMultiAddModal(prev => ({
+                      ...prev,
+                      selectedEmps: allSelected ? [] : [...empList],
+                    }))}
+                  >
+                    {allSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 220, overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: 6, padding: '8px 10px' }}>
+                  {empList.map(emp => {
+                    const checked = multiAddModal.selectedEmps.some(s => s.id === emp.id)
+                    return (
+                      <label key={emp.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+                        <input type="checkbox" checked={checked} onChange={() => {
+                          setMultiAddModal(prev => ({
+                            ...prev,
+                            selectedEmps: checked
+                              ? prev.selectedEmps.filter(s => s.id !== emp.id)
+                              : [...prev.selectedEmps, emp],
+                          }))
+                        }} />
+                        <span style={{ fontWeight: 600 }}>{emp.hoVaTen}</span>
+                        <span style={{ color: '#999', fontSize: 12 }}>{emp.maNhanVien}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Ca SX + Thời gian (tùy chọn) */}
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>Ca SX <span style={{ color: '#999', fontWeight: 400 }}>(tùy chọn)</span></div>
+              <select
+                style={{ width: '100%', padding: '5px 8px', borderRadius: 6, border: '1px solid #d9d9d9', fontSize: 14 }}
+                value={multiAddModal.caSX}
+                onChange={e => setMultiAddModal(prev => ({ ...prev, caSX: e.target.value }))}
+              >
+                <option value="">-- Chọn ca --</option>
+                <option value="Ca 1">Ca 1</option>
+                <option value="Ca 2">Ca 2</option>
+                <option value="HC">Hành Chính</option>
+              </select>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>Thời gian (giờ) <span style={{ color: '#999', fontWeight: 400 }}>(tùy chọn)</span></div>
+              <input
+                type="number" step="0.5" min="0"
+                style={{ width: '100%', padding: '5px 8px', borderRadius: 6, border: '1px solid #d9d9d9', fontSize: 14, boxSizing: 'border-box' }}
+                value={multiAddModal.thoiGian}
+                placeholder="vd: 8"
+                onChange={e => setMultiAddModal(prev => ({ ...prev, thoiGian: e.target.value }))}
+              />
+            </div>
+          </div>
+        </div>
+      </Modal>
     </Drawer>
   )
 }
@@ -1727,9 +1876,14 @@ function WorkScheduleModal({ open, editItem, congDoan, defaultToNhom, extraFormF
               <Input onChange={handleMaBravoChange} placeholder="Nhập để tự điền Mã SP và tiến trình" allowClear />
             </Form.Item>
           </Col>
-          <Col xs={24} sm={12} md={8}>
+          <Col xs={24} sm={12} md={4}>
             <Form.Item label="Mã SP" name="maSp">
               <Input onChange={handleMaSpChange} placeholder="Tự động điền hoặc nhập tay" allowClear />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={12} md={4}>
+            <Form.Item label="Mã ĐH" name="maDonHang">
+              <Input placeholder="Mã đơn hàng" allowClear />
             </Form.Item>
           </Col>
           <Col xs={24} sm={12} md={8}>
@@ -1776,21 +1930,20 @@ function WorkScheduleModal({ open, editItem, congDoan, defaultToNhom, extraFormF
 
         <Row gutter={16}>
           <Col xs={24} sm={12} md={8}>
-            <Form.Item
-              label="Tổ/ Nhóm thực hiện"
-              name="toNhom"
-              extra={pcplFromProduct && ['PCPL1', 'PCPL2'].includes(watchedToNhomModal) && watchedToNhomModal !== pcplFromProduct
-                ? <span style={{ color: '#d46b08', fontSize: 12 }}>⚠️ Sản phẩm quy định tổ <strong>{pcplFromProduct}</strong></span>
-                : null}
-            >
-              {TO_NHOM_OPTIONS[congDoan] ? (
-                <Select allowClear placeholder="Chọn tổ/nhóm">
-                  {TO_NHOM_OPTIONS[congDoan].map(o => <Option key={o} value={o}>{o}</Option>)}
-                </Select>
-              ) : (
-                <Input />
-              )}
-            </Form.Item>
+            {!['PCPL1', 'PCPL2'].includes(congDoan) && (
+              <Form.Item
+                label="Tổ/ Nhóm thực hiện"
+                name="toNhom"
+              >
+                {TO_NHOM_OPTIONS[congDoan] ? (
+                  <Select allowClear placeholder="Chọn tổ/nhóm">
+                    {TO_NHOM_OPTIONS[congDoan].map(o => <Option key={o} value={o}>{o}</Option>)}
+                  </Select>
+                ) : (
+                  <Input />
+                )}
+              </Form.Item>
+            )}
           </Col>
           <Col xs={24} sm={12} md={8}>
             <Form.Item label="Phòng thực hiện" name="phongThucHien">
@@ -2015,7 +2168,12 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         toNhom: allowedNhom || undefined,
       }
       const { data: res } = await api.get('/work-schedule', { params })
-      const sorted = [...res.content].sort((a, b) => parseSoLo(b.soLo) - parseSoLo(a.soLo))
+      // Ẩn records bị gán sai tổ: PCPL1 tab ẩn toNhom=PCPL2, PCPL2 tab ẩn toNhom=PCPL1
+      const PCPL_CONFLICT = { PCPL1: 'PCPL2', PCPL2: 'PCPL1' }
+      const conflictNhom = PCPL_CONFLICT[congDoan]
+      const sorted = [...res.content]
+        .filter(r => !conflictNhom || !r.toNhom || r.toNhom !== conflictNhom)
+        .sort((a, b) => parseSoLo(b.soLo) - parseSoLo(a.soLo))
       setData(sorted)
       setPagination(p => {
         const next = { ...p, total: res.totalElements }
@@ -2055,6 +2213,12 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
     window.addEventListener('app:silent-refresh', handler)
     return () => window.removeEventListener('app:silent-refresh', handler)
   }, [fetchData, detailOpen])
+
+  useEffect(() => {
+    const handler = () => fetchData(0, paginationRef.current.pageSize)
+    window.addEventListener('app:force-refresh', handler)
+    return () => window.removeEventListener('app:force-refresh', handler)
+  }, [fetchData])
 
   // ── Auto-refresh mỗi 3 giây, giữ nguyên trang + filter ──────────────────
   const AUTO_REFRESH_SEC = 3
@@ -3010,6 +3174,29 @@ function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange }) {
   )
 }
 
+// ── Sync Schedule Button (Admin) ──────────────────────────────────────────────
+function SyncScheduleButton() {
+  const [syncing, setSyncing] = useState(false)
+  const handleSync = async () => {
+    setSyncing(true)
+    try {
+      const { data } = await api.post('/production/sync-schedule-all')
+      message.success(`Đồng bộ thành công: tạo mới ${data.created} bản ghi lịch sản xuất`)
+      // Force reload với loading indicator để user thấy data cập nhật
+      window.dispatchEvent(new CustomEvent('app:force-refresh'))
+    } catch (e) { message.error(e?.response?.data?.message || 'Đồng bộ thất bại') }
+    finally { setSyncing(false) }
+  }
+  return (
+    <Tooltip title="Tạo bổ sung bản ghi PCPL1/PCPL2/BBC1/PL/ĐG/CC cho tất cả lệnh đã phát">
+      <Button size="small" icon={<ReloadOutlined />} loading={syncing} onClick={handleSync}
+        style={{ background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }}>
+        Đồng bộ lịch SX
+      </Button>
+    </Tooltip>
+  )
+}
+
 // ── Admin Approval Panel ───────────────────────────────────────────────────────
 function AdminApprovalPanel() {
   const [open, setOpen] = useState(false)
@@ -3150,7 +3337,6 @@ export default function WorkSchedulePage() {
   const defaultStage = (() => {
     const s = jumpInit?.stage || (allowedNhom === 'PCPL2' ? 'PCPL2' : 'PCPL1')
     if (!allowedStages) return s
-    if (s === 'PCPL1' || s === 'PCPL2') return allowedStages.includes('PC') ? s : allowedStages[0]
     return allowedStages.includes(s) ? s : allowedStages[0]
   })()
   const [activeTab, setActiveTab] = useState(() => {
@@ -3159,8 +3345,6 @@ export default function WorkSchedulePage() {
       const saved = localStorage.getItem('ws_active_tab')
       if (saved && (!allowedStages || allowedStages.length === 0 ||
           allowedStages.includes(saved) ||
-          (saved === 'PCPL1' && allowedStages.includes('PC')) ||
-          (saved === 'PCPL2' && allowedStages.includes('PC')) ||
           saved === 'deviation')) {
         return saved
       }
@@ -3254,7 +3438,8 @@ export default function WorkSchedulePage() {
     {
       title: 'Công đoạn', dataIndex: 'congDoan', key: 'congDoan', width: 95,
       filters: [
-        { text: 'PC', value: 'PC' },
+        { text: 'PCPL1', value: 'PCPL1' },
+        { text: 'PCPL2', value: 'PCPL2' },
         { text: 'PL', value: 'PL' },
         { text: 'BBC1', value: 'BBC1' },
         { text: 'ĐG', value: 'DG' },
@@ -3332,40 +3517,18 @@ export default function WorkSchedulePage() {
   const tabItems = [
     ...Object.entries(STAGE_CONFIG)
       .filter(([stage]) => !allowedStages || allowedStages.includes(stage))
-      .flatMap(([stage, config]) => {
-        if (stage === 'PC') {
-          return [
-            { nhom: 'PCPL1', label: 'Lịch sản xuất PCPL1' },
-            { nhom: 'PCPL2', label: 'Lịch sản xuất PCPL2' },
-          ]
-            .filter(({ nhom }) => !allowedNhom || allowedNhom === nhom)
-            .map(({ nhom, label }) => ({
-              key: nhom,
-              label,
-              children: (
-                <StageTab
-                  congDoan="PC"
-                  config={config}
-                  forcedNhom={nhom}
-                  onSaved={refreshDevCount}
-                  jumpTarget={jumpTarget?.stage === nhom || jumpTarget?.stage === 'PC' ? jumpTarget : null}
-                />
-              )
-            }))
-        }
-        return [{
-          key: stage,
-          label: config.label,
-          children: (
-            <StageTab
-              congDoan={stage}
-              config={config}
-              onSaved={refreshDevCount}
-              jumpTarget={jumpTarget?.stage === stage ? jumpTarget : null}
-            />
-          )
-        }]
-      }),
+      .map(([stage, config]) => ({
+        key: stage,
+        label: config.label,
+        children: (
+          <StageTab
+            congDoan={stage}
+            config={config}
+            onSaved={refreshDevCount}
+            jumpTarget={jumpTarget?.stage === stage ? jumpTarget : null}
+          />
+        )
+      })),
     ...(user?.role !== 'NHAN_VIEN' ? [{
       key: 'wip',
       label: (
@@ -3583,6 +3746,7 @@ export default function WorkSchedulePage() {
           size="middle"
           tabBarExtraContent={
             <Space style={{ paddingRight: 8 }}>
+              {isAdmin() && <SyncScheduleButton />}
               {isAdmin() && <AdminApprovalPanel />}
               <Typography.Text strong className="ws-tab-title-text" style={{ color: '#DDE1E8', fontSize: 14, letterSpacing: 0.3 }}>
                 Lịch làm việc sản xuất
