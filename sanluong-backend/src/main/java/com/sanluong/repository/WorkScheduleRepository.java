@@ -246,6 +246,35 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
     @Query("SELECT COUNT(w) FROM WorkSchedule w WHERE w.createdAt >= :from AND w.createdAt < :to AND w.deletedAt IS NULL")
     long countCreatedBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 
+    // Tìm PCPL records bị sai toNhom (vd congDoan='PCPL1' nhưng toNhom='PCPL2') — để xóa
+    @Modifying
+    @Transactional
+    @Query("""
+        UPDATE WorkSchedule w SET w.deletedAt = CURRENT_TIMESTAMP
+        WHERE (w.source = 'SCHEDULE' OR w.source IS NULL)
+          AND w.congDoan = :congDoan
+          AND w.toNhom = :conflictToNhom
+          AND w.maBravo = :maBravo
+          AND (:soLo IS NULL AND w.soLo IS NULL OR w.soLo = :soLo)
+          AND w.deletedAt IS NULL
+        """)
+    int softDeleteConflictingPcpl(
+        @Param("congDoan")       String congDoan,
+        @Param("conflictToNhom") String conflictToNhom,
+        @Param("maBravo")        String maBravo,
+        @Param("soLo")           String soLo
+    );
+
+    // Batch-fetch PCPL1/PCPL2 tinhTrang từ SCHEDULE — dùng để enrich production list
+    @Query("""
+        SELECT w.maBravo, w.soLo, w.congDoan, w.tinhTrang FROM WorkSchedule w
+        WHERE (w.source = 'SCHEDULE' OR w.source IS NULL)
+          AND w.congDoan IN ('PCPL1', 'PCPL2')
+          AND w.maBravo IN :maBravos
+          AND w.deletedAt IS NULL
+        """)
+    List<Object[]> findPcplStatusBatch(@Param("maBravos") List<String> maBravos);
+
     // All records sharing same maSp + maDonHang + soLo + toNhom (used for bulk coLo sync)
     @Query("""
         SELECT w FROM WorkSchedule w
@@ -261,5 +290,24 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
             @Param("maDonHang") String maDonHang,
             @Param("soLo") String soLo,
             @Param("toNhom") String toNhom
+    );
+
+    // Kiểm tra tồn tại SCHEDULE theo congDoan + toNhom (nullable) + maBravo + maDonHang + soLo
+    @Query("""
+        SELECT COUNT(w) > 0 FROM WorkSchedule w
+        WHERE (w.source = 'SCHEDULE' OR w.source IS NULL)
+          AND w.congDoan = :congDoan
+          AND (:toNhom IS NULL OR w.toNhom = :toNhom)
+          AND w.maBravo = :maBravo
+          AND (:maDonHang IS NULL AND w.maDonHang IS NULL OR w.maDonHang = :maDonHang)
+          AND (:soLo IS NULL AND w.soLo IS NULL OR w.soLo = :soLo)
+          AND w.deletedAt IS NULL
+        """)
+    boolean existsScheduleByCongDoanAndKey(
+            @Param("congDoan")   String congDoan,
+            @Param("toNhom")     String toNhom,
+            @Param("maBravo")    String maBravo,
+            @Param("maDonHang")  String maDonHang,
+            @Param("soLo")       String soLo
     );
 }

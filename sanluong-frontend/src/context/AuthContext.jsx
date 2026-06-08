@@ -64,9 +64,10 @@ export function AuthProvider({ children }) {
   // ADMIN_KH: chỉ xem, không sửa lịch sản xuất
   const canEditStage = (congDoan) => {
     if (user?.role === 'ADMIN') return true
-    if (congDoan === 'CC') return ['ADMIN_PC', 'ADMIN_PCPL2'].includes(user?.role)
-    if (congDoan === 'PC') return ['ADMIN_PC', 'ADMIN_PCPL1', 'ADMIN_PCPL2'].includes(user?.role)
-    if (congDoan === 'PL') return ['ADMIN_PL', 'ADMIN_PCPL3'].includes(user?.role)
+    if (congDoan === 'CC')    return ['ADMIN_PC', 'ADMIN_PCPL2'].includes(user?.role)
+    if (congDoan === 'PCPL1') return ['ADMIN_PC', 'ADMIN_PCPL1'].includes(user?.role)
+    if (congDoan === 'PCPL2') return ['ADMIN_PC', 'ADMIN_PCPL2'].includes(user?.role)
+    if (congDoan === 'PL')    return ['ADMIN_PL', 'ADMIN_PCPL3'].includes(user?.role)
     return user?.role === `ADMIN_${congDoan}`
   }
 
@@ -128,22 +129,24 @@ export function AuthProvider({ children }) {
   // null = tất cả; mảng = chỉ các stage được liệt kê
   const getAllowedStages = () => {
     const role = user?.role
-    if (role === 'ADMIN_PC')   return ['PC']
-    if (role === 'ADMIN_BBC1') return ['BBC1']
-    if (role === 'ADMIN_PL')   return ['PL']
-    if (role === 'ADMIN_DG')   return ['DG']
-    if (role === 'ADMIN_PCPL1') return ['PC']
-    if (role === 'ADMIN_PCPL2') return ['PC', 'CC']
+    if (role === 'ADMIN_PC')    return ['PCPL1', 'PCPL2']
+    if (role === 'ADMIN_BBC1')  return ['BBC1']
+    if (role === 'ADMIN_PL')    return ['PL']
+    if (role === 'ADMIN_DG')    return ['DG']
+    if (role === 'ADMIN_PCPL1') return ['PCPL1']
+    if (role === 'ADMIN_PCPL2') return ['PCPL2', 'CC']
     if (role === 'ADMIN_PCPL3') return ['PL']
     // Nhân viên theo nhóm cụ thể
-    if (role === 'NHAN_VIEN_PCPL1' || role === 'NHAN_VIEN_PCPL2') return ['PC']
+    if (role === 'NHAN_VIEN_PCPL1') return ['PCPL1']
+    if (role === 'NHAN_VIEN_PCPL2') return ['PCPL2']
     if (role === 'NHAN_VIEN_PCPL3') return ['PL']
     if (role === 'NHAN_VIEN_DG')    return ['DG']
     if (role === 'NHAN_VIEN_BBC1')  return ['BBC1']
     if (role === 'NHAN_VIEN') {
       const toNhom = user?.toNhom
       if (!toNhom) return null
-      if (toNhom === 'PCPL1' || toNhom === 'PCPL2') return ['PC']
+      if (toNhom === 'PCPL1') return ['PCPL1']
+      if (toNhom === 'PCPL2') return ['PCPL2']
       if (toNhom === 'PCPL3') return ['PL']
       if (toNhom === 'ĐG')   return ['DG']
       if (toNhom === 'BBC1') return ['BBC1']

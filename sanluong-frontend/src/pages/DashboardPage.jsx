@@ -967,14 +967,14 @@ export default function DashboardPage() {
         {
           title: 'PCPL1', key: 'pcpl1TrangThai', width: 72, align: 'center',
           render: (_, r) => <StatusTag
-            value={r.toNhom === 'PCPL1' ? r.pcTrangThai : null}
+            value={r.pcpl1TrangThai}
             onClick={() => goToSchedule('PCPL1', r)}
           />,
         },
         {
           title: 'PCPL2', key: 'pcpl2TrangThai', width: 72, align: 'center',
           render: (_, r) => <StatusTag
-            value={r.toNhom === 'PCPL2' ? r.pcTrangThai : null}
+            value={r.pcpl2TrangThai}
             onClick={() => goToSchedule('PCPL2', r)}
           />,
         },

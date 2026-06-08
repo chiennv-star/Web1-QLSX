@@ -99,6 +99,12 @@ public class ProductionRecord {
     @jakarta.persistence.Transient
     private String toNhom;
 
+    @jakarta.persistence.Transient
+    private String pcpl1TrangThai;
+
+    @jakarta.persistence.Transient
+    private String pcpl2TrangThai;
+
     @Column(name = "mo_ta", length = 500)
     private String moTa;
 
@@ -278,6 +284,10 @@ public class ProductionRecord {
     public void setMayMoc(String mayMoc) { this.mayMoc = mayMoc; }
     public String getToNhom() { return toNhom; }
     public void setToNhom(String toNhom) { this.toNhom = toNhom; }
+    public String getPcpl1TrangThai() { return pcpl1TrangThai; }
+    public void setPcpl1TrangThai(String pcpl1TrangThai) { this.pcpl1TrangThai = pcpl1TrangThai; }
+    public String getPcpl2TrangThai() { return pcpl2TrangThai; }
+    public void setPcpl2TrangThai(String pcpl2TrangThai) { this.pcpl2TrangThai = pcpl2TrangThai; }
     public String getMoTa() { return moTa; }
     public void setMoTa(String moTa) { this.moTa = moTa; }
     public BigDecimal getHlSoLuongTraVe() { return hlSoLuongTraVe; }

@@ -3,6 +3,7 @@ package com.sanluong.service;
 import com.sanluong.dto.ProductionRecordDto;
 import com.sanluong.entity.ProductionEditHistory;
 import com.sanluong.entity.ProductionRecord;
+import com.sanluong.entity.WorkSchedule;
 import com.sanluong.repository.LenhSanXuatRepository;
 import com.sanluong.repository.ProductionEditHistoryRepository;
 import com.sanluong.repository.ProductionRecordRepository;
@@ -34,6 +35,7 @@ public class ProductionService {
     private final WorkScheduleService workScheduleService;
     private final ProductionEditHistoryRepository historyRepository;
     private final NotificationService notificationService;
+    private final KhoachEventPublisher khoachEventPublisher;
 
     public ProductionService(ProductionRecordRepository repository,
                              ProductMasterRepository productMasterRepository,
@@ -41,7 +43,8 @@ public class ProductionService {
                              WorkScheduleRepository workScheduleRepository,
                              WorkScheduleService workScheduleService,
                              ProductionEditHistoryRepository historyRepository,
-                             NotificationService notificationService) {
+                             NotificationService notificationService,
+                             KhoachEventPublisher khoachEventPublisher) {
         this.repository = repository;
         this.productMasterRepository = productMasterRepository;
         this.lenhSanXuatRepository = lenhSanXuatRepository;
@@ -49,6 +52,7 @@ public class ProductionService {
         this.workScheduleService = workScheduleService;
         this.historyRepository = historyRepository;
         this.notificationService = notificationService;
+        this.khoachEventPublisher = khoachEventPublisher;
     }
 
     // Tên hiển thị tiếng Việt của từng trường
@@ -158,6 +162,7 @@ public class ProductionService {
         int end = Math.min(start + size, all.size());
         List<ProductionRecord> content = start < all.size() ? all.subList(start, end) : List.of();
         enrichToNhom(content);
+        enrichPcplStatus(content);
         return new PageImpl<>(content, PageRequest.of(page, size), all.size());
     }
 
@@ -290,7 +295,11 @@ public class ProductionService {
             saveFieldHistory(changes, id, "toNhom", str(r.getToNhom()), toNhomPcpl, username, now);
             r.setToNhom(toNhomPcpl);
         }
-        // PL, ĐG, BBC1: luôn doing khi phát lệnh (bất kể tổ nào)
+        // PC, PL, ĐG, BBC1: luôn doing khi phát lệnh (bất kể tổ nào)
+        if (!"doing".equals(r.getPcTrangThai())) {
+            saveFieldHistory(changes, id, "pcTrangThai", str(r.getPcTrangThai()), "doing", username, now);
+            r.setPcTrangThai("doing");
+        }
         if (!"doing".equals(r.getPlTrangThai())) {
             saveFieldHistory(changes, id, "plTrangThai", str(r.getPlTrangThai()), "doing", username, now);
             r.setPlTrangThai("doing");
@@ -302,13 +311,6 @@ public class ProductionService {
         if (!"doing".equals(r.getBbc1TrangThai())) {
             saveFieldHistory(changes, id, "bbc1TrangThai", str(r.getBbc1TrangThai()), "doing", username, now);
             r.setBbc1TrangThai("doing");
-        }
-        // PCPL1/PCPL2: doing đúng ô tổ đó; PCPL3: không thay đổi
-        if ("PCPL1".equals(toNhomPcpl) || "PCPL2".equals(toNhomPcpl)) {
-            if (!"doing".equals(r.getPcTrangThai())) {
-                saveFieldHistory(changes, id, "pcTrangThai", str(r.getPcTrangThai()), "doing", username, now);
-                r.setPcTrangThai("doing");
-            }
         }
 
         r.setUpdatedBy(username);
@@ -323,11 +325,73 @@ public class ProductionService {
                 r.getMaBravo(), r.getMaTp(), r.getTienTrinh(),
                 r.getLsx(), coLo, r.getMaDonHang(),
                 true, toNhomPcpl);
+        // Bước 1: đảm bảo tất cả tab lịch sản xuất đã có bản ghi SCHEDULE
+        // với key maBravo + maDonHang + soLo. PCPL1/PCPL2 là congDoan riêng biệt.
+        if (!isEmpty(r.getMaBravo())) {
+            String soLoKey      = isEmpty(r.getLsx())       ? null : r.getLsx();
+            String maDonHangKey = isEmpty(r.getMaDonHang()) ? null : r.getMaDonHang();
+            String maTpKey      = isEmpty(r.getMaTp())      ? null : r.getMaTp();
+            String[] tabStages  = {"PCPL1", "PCPL2", "BBC1", "PL", "DG", "CC"};
+            boolean anyCreated = false;
+            for (String stage : tabStages) {
+                // Bug fix: dùng findFirst (bỏ qua maDonHang) — nhất quán với autoSyncFromProduction
+                // tránh tạo bản ghi trùng khi maDonHang trên record khác với record đã có
+                boolean exists = workScheduleRepository
+                        .findFirstScheduleByCongDoanAndKey(stage, r.getMaBravo(), maTpKey, soLoKey)
+                        .isPresent();
+                if (!exists) {
+                    WorkSchedule ws = new WorkSchedule();
+                    ws.setSource("SCHEDULE");
+                    ws.setCongDoan(stage);
+                    ws.setMaBravo(r.getMaBravo());
+                    ws.setMaSp(maTpKey);
+                    ws.setTenTrinh(isEmpty(r.getTienTrinh()) ? null : r.getTienTrinh());
+                    ws.setSoLo(soLoKey);
+                    ws.setMaDonHang(maDonHangKey);
+                    ws.setCoLo(coLo);
+                    ws.setNgayThucHien(java.time.LocalDate.now());
+                    // PCPL1/PCPL2: chỉ set "doing" cho đúng group theo toNhomPcpl
+                    // BBC1/PL/DG: luôn doing; CC: không set
+                    boolean shouldDoing = !"CC".equals(stage);
+                    if (shouldDoing && ("PCPL1".equals(stage) || "PCPL2".equals(stage)) && toNhomPcpl != null) {
+                        shouldDoing = stage.equals(toNhomPcpl);
+                    }
+                    if (shouldDoing) ws.setTinhTrang("doing");
+                    workScheduleRepository.save(ws);
+                    anyCreated = true;
+                }
+            }
+            if (anyCreated) khoachEventPublisher.publishKhoachUpdated();
+        }
         return saved;
     }
 
     public long countChuaPhatLenh() {
         return repository.countChuaPhatLenhNative();
+    }
+
+    /** Tạo bổ sung WorkSchedule SCHEDULE cho tất cả records đã phatLenh nhưng thiếu bản ghi công đoạn */
+    public int syncScheduleAll() {
+        List<ProductionRecord> daPhat = repository.searchAll(null, null, null, null, null)
+                .stream().filter(r -> Boolean.TRUE.equals(r.getPhatLenh()) && r.getDeletedAt() == null)
+                .collect(Collectors.toList());
+        int total = 0;
+        for (ProductionRecord r : daPhat) {
+            if (isEmpty(r.getMaBravo()) && isEmpty(r.getMaTp())) continue;
+            java.math.BigDecimal coLo = r.getSoLuong() != null
+                    ? new java.math.BigDecimal(r.getSoLuong()) : null;
+            String toNhomPcpl = null;
+            if (!isEmpty(r.getMaBravo())) {
+                toNhomPcpl = lenhSanXuatRepository
+                        .findFirstByMaBravoAndSoLo(r.getMaBravo(), isEmpty(r.getLsx()) ? null : r.getLsx())
+                        .map(l -> isEmpty(l.getToThucHien()) ? null : l.getToThucHien())
+                        .orElse(null);
+            }
+            total += workScheduleService.autoSyncFromProduction(
+                    r.getMaBravo(), r.getMaTp(), r.getTienTrinh(),
+                    r.getLsx(), coLo, r.getMaDonHang(), true, toNhomPcpl);
+        }
+        return total;
     }
 
     public java.util.List<ProductionRecord> getChuaPhatLenhList() {
@@ -562,6 +626,27 @@ public class ProductionService {
         content.forEach(r -> {
             String key = s(r.getMaTp()) + "|" + s(r.getTienTrinh()) + "|" + s(r.getLsx());
             r.setToNhom(toNhomMap.get(key));
+        });
+    }
+
+    private void enrichPcplStatus(List<ProductionRecord> content) {
+        if (content.isEmpty()) return;
+        List<String> maBravos = content.stream()
+                .map(ProductionRecord::getMaBravo)
+                .filter(b -> b != null && !b.isBlank())
+                .distinct().collect(Collectors.toList());
+        if (maBravos.isEmpty()) return;
+        // key = maBravo|soLo|congDoan -> tinhTrang
+        Map<String, String> statusMap = new HashMap<>();
+        workScheduleRepository.findPcplStatusBatch(maBravos).forEach(row -> {
+            String key = s(row[0]) + "|" + s(row[1]) + "|" + s(row[2]);
+            if (row[3] != null) statusMap.put(key, row[3].toString());
+        });
+        content.forEach(r -> {
+            String bravo = s(r.getMaBravo());
+            String soLo  = s(r.getLsx());
+            r.setPcpl1TrangThai(statusMap.get(bravo + "|" + soLo + "|PCPL1"));
+            r.setPcpl2TrangThai(statusMap.get(bravo + "|" + soLo + "|PCPL2"));
         });
     }
 

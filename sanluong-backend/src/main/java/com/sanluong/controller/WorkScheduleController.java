@@ -38,18 +38,25 @@ public class WorkScheduleController {
 
     // ADMIN: toàn quyền
     // ADMIN_KH: chỉ được ghi source=PLAN; không được ghi SCHEDULE
-    // NHAN_VIEN: tất cả trừ CC
-    // ADMIN_PC: được PC và CC
-    // ADMIN_*: chỉ được công đoạn của mình
+    // NHAN_VIEN*: tất cả trừ CC (hoặc chỉ đúng công đoạn của mình)
+    // ADMIN_PC: được PCPL1, PCPL2, CC (và PC cũ cho tương thích PLAN records)
+    // ADMIN_PCPL1: được PCPL1 (và PC cũ)
+    // ADMIN_PCPL2: được PCPL2, CC (và PC cũ)
+    // ADMIN_PCPL3: được PL
     private void checkStagePermission(Authentication auth, String congDoan, String source) {
         for (var a : auth.getAuthorities()) {
             String role = a.getAuthority();
             if ("ROLE_ADMIN".equals(role)) return;
             if ("ROLE_ADMIN_KH".equals(role) && "PLAN".equals(source)) return;
             if ("ROLE_NHAN_VIEN".equals(role) && !"CC".equals(congDoan)) return;
-            if ("ROLE_ADMIN_PC".equals(role) && ("PC".equals(congDoan) || "CC".equals(congDoan))) return;
-            if ("ROLE_ADMIN_PCPL1".equals(role) && "PC".equals(congDoan)) return;
-            if ("ROLE_ADMIN_PCPL2".equals(role) && ("PC".equals(congDoan) || "CC".equals(congDoan))) return;
+            if ("ROLE_NHAN_VIEN_PCPL1".equals(role) && "PCPL1".equals(congDoan)) return;
+            if ("ROLE_NHAN_VIEN_PCPL2".equals(role) && "PCPL2".equals(congDoan)) return;
+            if ("ROLE_NHAN_VIEN_PCPL3".equals(role) && "PL".equals(congDoan)) return;
+            if ("ROLE_NHAN_VIEN_BBC1".equals(role) && "BBC1".equals(congDoan)) return;
+            if ("ROLE_NHAN_VIEN_DG".equals(role) && "DG".equals(congDoan)) return;
+            if ("ROLE_ADMIN_PC".equals(role) && ("PC".equals(congDoan) || "PCPL1".equals(congDoan) || "PCPL2".equals(congDoan) || "CC".equals(congDoan))) return;
+            if ("ROLE_ADMIN_PCPL1".equals(role) && ("PC".equals(congDoan) || "PCPL1".equals(congDoan))) return;
+            if ("ROLE_ADMIN_PCPL2".equals(role) && ("PC".equals(congDoan) || "PCPL2".equals(congDoan) || "CC".equals(congDoan))) return;
             if ("ROLE_ADMIN_PCPL3".equals(role) && "PL".equals(congDoan)) return;
             if (congDoan != null && ("ROLE_ADMIN_" + congDoan).equals(role)) return;
         }

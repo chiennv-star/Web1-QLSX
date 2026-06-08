@@ -222,11 +222,28 @@ public class WorkScheduleService {
         int created = 0;
 
         final String finalPcplNhom = isEmpty(toNhomOverride) ? null : toNhomOverride;
-        // PC doing chỉ khi PCPL1/PCPL2; PL/ĐG/BBC1 luôn doing; PCPL3 không thay đổi PC
-        final boolean activatePcDoing = isPhatLenh
-                && ("PCPL1".equals(finalPcplNhom) || "PCPL2".equals(finalPcplNhom));
 
-        for (String stage : new String[]{"PC", "BBC1", "PL", "DG", "CC"}) {
+        // Xóa PCPL records sai toNhom TRƯỚC khi sync (vd PCPL1+toNhom=PCPL2 và ngược lại)
+        // Phải chạy trước để tránh findFirst tìm ra record sai rồi update thay vì tạo mới
+        if (maBravoParam != null) {
+            repository.softDeleteConflictingPcpl("PCPL1", "PCPL2", maBravoParam, soLoParam);
+            repository.softDeleteConflictingPcpl("PCPL2", "PCPL1", maBravoParam, soLoParam);
+        }
+
+        // Khi phát lệnh: sync cả PCPL1 lẫn PCPL2 (giống ĐG/BBC1/PL — không phân biệt tổ)
+        // Khi không phát lệnh: chỉ sync tổ được gán; nếu không biết tổ thì chỉ update existing
+        java.util.List<String> stages = new java.util.ArrayList<>();
+        if (isPhatLenh || "PCPL1".equals(finalPcplNhom) || "PCPL2".equals(finalPcplNhom)) {
+            stages.add("PCPL1");
+            stages.add("PCPL2");
+        } else {
+            // Không biết tổ và không phải phát lệnh: thử update existing, không tạo mới
+            stages.add("PCPL1");
+            stages.add("PCPL2");
+        }
+        stages.addAll(java.util.Arrays.asList("BBC1", "PL", "DG", "CC"));
+
+        for (String stage : stages) {
             java.util.Optional<WorkSchedule> existing =
                     repository.findFirstScheduleByCongDoanAndKey(stage, maBravoParam, maSpparam, soLoParam);
             if (existing.isPresent()) {
@@ -244,22 +261,19 @@ public class WorkScheduleService {
                     w.setMaBravo(maBravoParam);
                     changed = true;
                 }
-                // PC: cập nhật toNhom, doing chỉ PCPL1/PCPL2
-                if ("PC".equals(stage)) {
-                    if (finalPcplNhom != null && !finalPcplNhom.equals(w.getToNhom())) {
-                        w.setToNhom(finalPcplNhom); changed = true;
-                    }
-                    if (activatePcDoing && !"doing".equals(w.getTinhTrang())) {
-                        w.setTinhTrang("doing"); changed = true;
-                    }
+                // PCPL1/PCPL2: chỉ set "doing" cho đúng group; nếu không biết group thì cả hai đều doing
+                // BBC1/PL/DG: luôn doing khi phát lệnh
+                boolean shouldDoing = isPhatLenh && !"CC".equals(stage);
+                if (shouldDoing && ("PCPL1".equals(stage) || "PCPL2".equals(stage)) && finalPcplNhom != null) {
+                    shouldDoing = stage.equals(finalPcplNhom);
                 }
-                // PL, ĐG, BBC1: luôn doing khi phát lệnh
-                if (isPhatLenh && ("PL".equals(stage) || "DG".equals(stage) || "BBC1".equals(stage))
-                        && !"doing".equals(w.getTinhTrang())) {
+                if (shouldDoing && !"doing".equals(w.getTinhTrang())) {
                     w.setTinhTrang("doing"); changed = true;
                 }
                 if (changed) repository.save(w);
             } else {
+                // Nếu không phải phát lệnh và không biết tổ: không tạo mới PCPL record
+                if (("PCPL1".equals(stage) || "PCPL2".equals(stage)) && !isPhatLenh && finalPcplNhom == null) continue;
                 WorkSchedule w = new WorkSchedule();
                 w.setSource("SCHEDULE");
                 w.setCongDoan(stage);
@@ -270,13 +284,13 @@ public class WorkScheduleService {
                 w.setMaDonHang(maDonHangParam);
                 w.setCoLo(coLo);
                 w.setNgayThucHien(today);
-                if ("PC".equals(stage) && finalPcplNhom != null) {
-                    w.setToNhom(finalPcplNhom);
-                    if (activatePcDoing) w.setTinhTrang("doing");
+                // PCPL1/PCPL2: chỉ set "doing" cho đúng group; nếu không biết group thì cả hai đều doing
+                // BBC1/PL/DG/CC: không thay đổi
+                boolean shouldDoing = isPhatLenh && !"CC".equals(stage);
+                if (shouldDoing && ("PCPL1".equals(stage) || "PCPL2".equals(stage)) && finalPcplNhom != null) {
+                    shouldDoing = stage.equals(finalPcplNhom);
                 }
-                if (isPhatLenh && ("PL".equals(stage) || "DG".equals(stage) || "BBC1".equals(stage))) {
-                    w.setTinhTrang("doing");
-                }
+                if (shouldDoing) w.setTinhTrang("doing");
                 repository.save(w);
                 created++;
             }
@@ -435,6 +449,23 @@ public class WorkScheduleService {
                     oldNgay, oldToNhom);
         }
         syncToProduction(saved);
+        // PCPL1/PCPL2: nếu toNhom thay đổi → đồng bộ sang record còn lại (cùng maBravo + soLo + maDonHang)
+        if (("PCPL1".equals(saved.getCongDoan()) || "PCPL2".equals(saved.getCongDoan()))
+                && !Objects.equals(oldToNhom, saved.getToNhom())) {
+            String siblingCongDoan = "PCPL1".equals(saved.getCongDoan()) ? "PCPL2" : "PCPL1";
+            repository.searchAll(null, null, null, null,
+                    isEmpty(saved.getSoLo())     ? null : saved.getSoLo(),
+                    isEmpty(saved.getMaBravo())  ? null : saved.getMaBravo(),
+                    null, siblingCongDoan, "SCHEDULE", null)
+                .stream()
+                .filter(sib -> Objects.equals(sib.getMaDonHang(), saved.getMaDonHang()))
+                .findFirst()
+                .ifPresent(sib -> {
+                    sib.setToNhom(saved.getToNhom());
+                    sib.setUpdatedBy(username);
+                    repository.save(sib);
+                });
+        }
         eventPublisher.publishKhoachUpdated();
         return saved;
     }
@@ -457,7 +488,7 @@ public class WorkScheduleService {
 
         for (ProductionRecord r : records) {
             switch (stage) {
-                case "PC" -> {
+                case "PC", "PCPL1", "PCPL2" -> {
                     if (w.getSlPc()   != null) r.setSlPc(String.valueOf(w.getSlPc().intValue()));
                     if (w.getCongPc() != null) r.setPcChiPhi(w.getCongPc());
                     r.setPcTrangThai(trangThai);

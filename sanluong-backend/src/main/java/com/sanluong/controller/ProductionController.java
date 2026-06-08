@@ -120,6 +120,13 @@ public class ProductionController {
         return ResponseEntity.ok(productionService.phatLenh(id, auth.getName()));
     }
 
+    /** Tạo bổ sung WorkSchedule SCHEDULE cho tất cả records đã phatLenh nhưng thiếu bản ghi công đoạn */
+    @PostMapping("/sync-schedule-all")
+    public ResponseEntity<Map<String, Integer>> syncScheduleAll() {
+        int created = productionService.syncScheduleAll();
+        return ResponseEntity.ok(Map.of("created", created));
+    }
+
     @PatchMapping("/{id}/hide")
     public ResponseEntity<Void> hide(@PathVariable Long id) {
         productionService.hide(id);
