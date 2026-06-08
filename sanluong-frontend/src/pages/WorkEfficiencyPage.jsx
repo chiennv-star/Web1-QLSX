@@ -2552,7 +2552,7 @@ export default function WorkEfficiencyPage() {
         periodStr={periodStr}
         onClose={() => setDrawerOpen(false)}
         isAdmin={isAdmin()}
-        canEdit={isAdmin() || isNhanVien()}
+        canEdit={isAdmin()}
         onRefreshMain={() => { fetchData(fromDate, toDate, activeGroup); fetchAllEmployees() }}
       />
 
