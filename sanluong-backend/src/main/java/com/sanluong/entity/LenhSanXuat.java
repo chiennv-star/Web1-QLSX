@@ -66,6 +66,9 @@ public class LenhSanXuat {
     @Column(name = "da_ban_hanh")
     private Boolean daBanHanh = false;
 
+    @Column(name = "ngay_ket_thuc")
+    private LocalDate ngayKetThuc;
+
     @Column(name = "ngay_phat_lenh")
     private LocalDate ngayPhatLenh;
 
@@ -135,6 +138,8 @@ public class LenhSanXuat {
     public void setDaDgVaXepLichDg(Boolean daDgVaXepLichDg) { this.daDgVaXepLichDg = daDgVaXepLichDg; }
     public Boolean getDaBanHanh() { return daBanHanh; }
     public void setDaBanHanh(Boolean daBanHanh) { this.daBanHanh = daBanHanh; }
+    public LocalDate getNgayKetThuc() { return ngayKetThuc; }
+    public void setNgayKetThuc(LocalDate ngayKetThuc) { this.ngayKetThuc = ngayKetThuc; }
     public LocalDate getNgayPhatLenh() { return ngayPhatLenh; }
     public void setNgayPhatLenh(LocalDate ngayPhatLenh) { this.ngayPhatLenh = ngayPhatLenh; }
     public LocalDateTime getDeletedAt() { return deletedAt; }

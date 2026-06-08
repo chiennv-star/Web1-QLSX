@@ -292,6 +292,45 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
             @Param("toNhom") String toNhom
     );
 
+    /** Tất cả PLAN records cùng nhóm (maBravo+maDonHang+toNhom) chưa có soLo — để cập nhật đồng loạt khi tạo lệnh */
+    @Query("SELECT w FROM WorkSchedule w " +
+           "WHERE w.source = 'PLAN' " +
+           "AND w.deletedAt IS NULL " +
+           "AND w.id <> :excludeId " +
+           "AND ((:maBravo IS NULL AND w.maBravo IS NULL) OR w.maBravo = :maBravo) " +
+           "AND ((:maDonHang IS NULL AND w.maDonHang IS NULL) OR w.maDonHang = :maDonHang) " +
+           "AND ((:toNhom IS NULL AND w.toNhom IS NULL) OR w.toNhom = :toNhom) " +
+           "AND (w.soLo IS NULL OR w.soLo = '') ")
+    List<WorkSchedule> findPlanSiblingsWithoutSoLo(
+            @Param("maBravo")    String maBravo,
+            @Param("maDonHang")  String maDonHang,
+            @Param("toNhom")     String toNhom,
+            @Param("excludeId")  Long   excludeId);
+
+    /** PLAN records đã lên lịch nhưng chưa có số lô (Chưa xếp) */
+    @Query("SELECT w FROM WorkSchedule w " +
+           "WHERE w.source = 'PLAN' " +
+           "AND w.deletedAt IS NULL " +
+           "AND w.maDonHang IS NOT NULL " +
+           "AND (w.soLo IS NULL OR w.soLo = '') " +
+           "ORDER BY w.ngayThucHien ASC, w.id ASC")
+    List<WorkSchedule> findPlanWithoutLenh();
+
+    /** Kiểm tra tồn tại bản ghi PLAN cho key (maBravo + maDonHang + soLo) — dùng để set hasKhoach */
+    @Query("""
+        SELECT COUNT(w) > 0 FROM WorkSchedule w
+        WHERE w.source = 'PLAN'
+          AND w.deletedAt IS NULL
+          AND (:maBravo IS NULL OR w.maBravo = :maBravo)
+          AND (:maDonHang IS NULL OR w.maDonHang = :maDonHang)
+          AND (:soLo IS NULL OR w.soLo = :soLo)
+        """)
+    boolean existsByPlanKey(
+            @Param("maBravo")   String maBravo,
+            @Param("maDonHang") String maDonHang,
+            @Param("soLo")      String soLo
+    );
+
     // Kiểm tra tồn tại SCHEDULE theo congDoan + toNhom (nullable) + maBravo + maDonHang + soLo
     @Query("""
         SELECT COUNT(w) > 0 FROM WorkSchedule w

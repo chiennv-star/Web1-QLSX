@@ -24,6 +24,7 @@ public class LenhSanXuatDto {
     private String ghiChu;
     private Boolean daDgVaXepLichDg;
     private Boolean daBanHanh;
+    private LocalDate ngayKetThuc;
     private LocalDate ngayPhatLenh;
     private LocalDateTime deletedAt;
     private String deletedBy;
@@ -31,6 +32,7 @@ public class LenhSanXuatDto {
     private LocalDateTime updatedAt;
     private String createdBy;
     private String updatedBy;
+    private Boolean hasKhoach;
 
     // ── Getters & Setters ──────────────────────────────────────────────────────
     public Long getId() { return id; }
@@ -69,6 +71,8 @@ public class LenhSanXuatDto {
     public void setDaDgVaXepLichDg(Boolean daDgVaXepLichDg) { this.daDgVaXepLichDg = daDgVaXepLichDg; }
     public Boolean getDaBanHanh() { return daBanHanh; }
     public void setDaBanHanh(Boolean daBanHanh) { this.daBanHanh = daBanHanh; }
+    public LocalDate getNgayKetThuc() { return ngayKetThuc; }
+    public void setNgayKetThuc(LocalDate ngayKetThuc) { this.ngayKetThuc = ngayKetThuc; }
     public LocalDate getNgayPhatLenh() { return ngayPhatLenh; }
     public void setNgayPhatLenh(LocalDate ngayPhatLenh) { this.ngayPhatLenh = ngayPhatLenh; }
     public LocalDateTime getDeletedAt() { return deletedAt; }
@@ -83,4 +87,6 @@ public class LenhSanXuatDto {
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
     public String getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
+    public Boolean getHasKhoach() { return hasKhoach; }
+    public void setHasKhoach(Boolean hasKhoach) { this.hasKhoach = hasKhoach; }
 }

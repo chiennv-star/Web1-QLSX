@@ -23,6 +23,11 @@ public class DonHangController {
         this.service = service;
     }
 
+    @GetMapping("/by-product")
+    public ResponseEntity<List<DonHangDto>> getByProduct(@RequestParam String maBravo) {
+        return ResponseEntity.ok(service.findByMaBravo(maBravo));
+    }
+
     @GetMapping
     public ResponseEntity<List<DonHangDto>> getAll(
             @RequestParam(required = false) String tinhTrangDatHang,

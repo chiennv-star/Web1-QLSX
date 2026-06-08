@@ -11,26 +11,9 @@ import dayjs from 'dayjs'
 
 // ── Fetch helpers ──────────────────────────────────────────────────────────────
 
-async function fetchLenhChuaPhatHanh() {
-  const { data } = await api.get('/production/chua-phat-lenh/count')
-  return data.count || 0
-}
-
 async function fetchLichMoiHomNay() {
   const { data } = await api.get('/work-schedule/new-today/count')
   return data.count || 0
-}
-
-async function fetchLenhChuaBanHanh() {
-  const { data } = await api.get('/lenh-san-xuat')
-  const list = Array.isArray(data) ? data : (data?.content || [])
-  return list.filter(l => l.ngayPhatLenh && !l.daBanHanh).length
-}
-
-async function fetchLenhChuaSoLo() {
-  const { data } = await api.get('/lenh-san-xuat')
-  const list = Array.isArray(data) ? data : (data?.content || [])
-  return list.filter(l => l.daBanHanh && !l.soLo).length
 }
 
 async function fetchChoDuyetSL() {
@@ -108,33 +91,6 @@ function buildTasks(role) {
         color: '#0ea5e9',
       },
       {
-        id:    'chua_phat_hanh',
-        icon:  '🚀',
-        label: 'Lệnh chưa phát hành',
-        desc:  'Lệnh SX chưa có ngày phát lệnh',
-        route: '/',
-        fetch: fetchLenhChuaPhatHanh,
-        color: '#dc2626',
-      },
-      {
-        id:    'ban_hanh',
-        icon:  '📋',
-        label: 'Lệnh SX chưa ban hành',
-        desc:  'Đã phát hành vào bảng sản lượng, chưa hoàn thành',
-        route: '/lenh-san-xuat',
-        fetch: fetchLenhChuaBanHanh,
-        color: '#ef4444',
-      },
-      {
-        id:    'so_lo',
-        icon:  '🔢',
-        label: 'Lệnh chưa có số lô',
-        desc:  'Đã ban hành nhưng chưa gán số lô sản xuất',
-        route: '/lenh-san-xuat',
-        fetch: fetchLenhChuaSoLo,
-        color: '#f97316',
-      },
-      {
         id:    'cho_duyet',
         icon:  '⏳',
         label: 'Yêu cầu đổi SL chờ duyệt',
@@ -151,15 +107,6 @@ function buildTasks(role) {
   if (role === 'TKSX') {
     return [
       {
-        id:    'chua_phat_hanh',
-        icon:  '🚀',
-        label: 'Lệnh chưa phát hành',
-        desc:  'Lệnh SX chưa có ngày phát lệnh',
-        route: '/',
-        fetch: fetchLenhChuaPhatHanh,
-        color: '#dc2626',
-      },
-      {
         id:    'cho_duyet',
         icon:  '⏳',
         label: 'Yêu cầu đổi SL chờ duyệt',
@@ -175,33 +122,6 @@ function buildTasks(role) {
   // ── ADMIN_KH ───────────────────────────────────────────────────────────────
   if (role === 'ADMIN_KH') {
     return [
-      {
-        id:    'chua_phat_hanh',
-        icon:  '🚀',
-        label: 'Lệnh chưa phát hành',
-        desc:  'Lệnh SX chưa có ngày phát lệnh',
-        route: '/',
-        fetch: fetchLenhChuaPhatHanh,
-        color: '#dc2626',
-      },
-      {
-        id:    'ban_hanh',
-        icon:  '📋',
-        label: 'Lệnh SX chưa ban hành',
-        desc:  'Đã phát hành vào bảng sản lượng, chưa hoàn thành',
-        route: '/lenh-san-xuat',
-        fetch: fetchLenhChuaBanHanh,
-        color: '#ef4444',
-      },
-      {
-        id:    'so_lo',
-        icon:  '🔢',
-        label: 'Lệnh chưa có số lô',
-        desc:  'Đã ban hành nhưng chưa gán số lô sản xuất',
-        route: '/lenh-san-xuat',
-        fetch: fetchLenhChuaSoLo,
-        color: '#f97316',
-      },
       {
         id:    'cho_duyet',
         icon:  '⏳',
@@ -227,15 +147,6 @@ function buildTasks(role) {
   // ── Stage admins (PCPL1/2/3, DG, BBC1, PL, PC) ────────────────────────────
   const toNhom = TO_NHOM_MAP[role]
   const tasks = [
-    {
-      id:    'chua_phat_hanh',
-      icon:  '🚀',
-      label: 'Lệnh chưa phát hành',
-      desc:  'Lệnh SX chưa có ngày phát lệnh',
-      route: '/',
-      fetch: fetchLenhChuaPhatHanh,
-      color: '#dc2626',
-    },
     {
       id:    'lich_hom_nay',
       icon:  '📅',

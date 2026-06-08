@@ -7,18 +7,22 @@ import com.sanluong.entity.LenhFieldHistory;
 import com.sanluong.entity.LenhLoHistory;
 import com.sanluong.entity.LenhSanXuat;
 import com.sanluong.entity.ProductionRecord;
+import com.sanluong.repository.DonHangRepository;
 import com.sanluong.repository.LenhFieldHistoryRepository;
 import com.sanluong.repository.LenhLoHistoryRepository;
 import com.sanluong.repository.LenhSanXuatRepository;
+import com.sanluong.repository.ProductMasterRepository;
 import com.sanluong.repository.ProductionRecordRepository;
 import com.sanluong.repository.WorkScheduleRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Propagation;
 
+import com.sanluong.entity.WorkSchedule;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -32,6 +36,8 @@ public class LenhSanXuatService {
     private final LenhFieldHistoryRepository fieldHistoryRepo;
     private final WorkScheduleRepository workScheduleRepo;
     private final ProductionRecordRepository productionRepo;
+    private final ProductMasterRepository productMasterRepo;
+    private final DonHangRepository donHangRepo;
     private final NotificationService notificationService;
     private final WorkScheduleService workScheduleService;
 
@@ -40,6 +46,8 @@ public class LenhSanXuatService {
                                LenhFieldHistoryRepository fieldHistoryRepo,
                                WorkScheduleRepository workScheduleRepo,
                                ProductionRecordRepository productionRepo,
+                               ProductMasterRepository productMasterRepo,
+                               DonHangRepository donHangRepo,
                                NotificationService notificationService,
                                WorkScheduleService workScheduleService) {
         this.repo = repo;
@@ -47,10 +55,82 @@ public class LenhSanXuatService {
         this.fieldHistoryRepo = fieldHistoryRepo;
         this.workScheduleRepo = workScheduleRepo;
         this.productionRepo = productionRepo;
+        this.productMasterRepo = productMasterRepo;
+        this.donHangRepo = donHangRepo;
         this.notificationService = notificationService;
         this.workScheduleService = workScheduleService;
     }
 
+
+    /** PLAN records đã lên lịch nhưng chưa có số lô — nhóm theo (maBravo+maDonHang+toNhom) */
+    @Transactional
+    public List<java.util.Map<String, Object>> findPlanWithoutLenh() {
+        List<WorkSchedule> plans = workScheduleRepo.findPlanWithoutLenh();
+        // Enrich maBravo từ ProductMaster hoặc DonHang cho các record cũ chưa có (lưu vào DB luôn)
+        java.util.Set<String> maSpsNeedBravo = plans.stream()
+                .filter(w -> (w.getMaBravo() == null || w.getMaBravo().isBlank()) && w.getMaSp() != null && !w.getMaSp().isBlank())
+                .map(WorkSchedule::getMaSp)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Map<String, String> bravoMap = new java.util.HashMap<>();
+        for (String maSp : maSpsNeedBravo) {
+            productMasterRepo.findByMaTpIgnoreCase(maSp)
+                    .ifPresent(pm -> { if (pm.getMaBravo() != null) bravoMap.put(maSp.toUpperCase(), pm.getMaBravo()); });
+        }
+        for (WorkSchedule ws : plans) {
+            if ((ws.getMaBravo() == null || ws.getMaBravo().isBlank())) {
+                String bravo = (ws.getMaSp() != null) ? bravoMap.get(ws.getMaSp().toUpperCase()) : null;
+                // Fallback: tìm từ DonHang theo maDonHang
+                if (bravo == null && ws.getMaDonHang() != null) {
+                    bravo = donHangRepo.findTopByMaDonHangAndDeletedAtIsNull(ws.getMaDonHang())
+                            .map(dh -> dh.getMaBravo())
+                            .orElse(null);
+                }
+                if (bravo != null) {
+                    ws.setMaBravo(bravo);
+                    workScheduleRepo.save(ws);
+                }
+            }
+        }
+        // Nhóm theo (maBravo + maDonHang + toNhom): gộp nhiều ngày của cùng một đơn thành 1 dòng
+        java.util.LinkedHashMap<String, java.util.Map<String, Object>> grouped = new java.util.LinkedHashMap<>();
+        for (WorkSchedule ws : plans) {
+            String key = ws.getMaBravo() + "|" + ws.getMaDonHang() + "|" + ws.getToNhom();
+            if (!grouped.containsKey(key)) {
+                java.util.Map<String, Object> row = new java.util.HashMap<>();
+                row.put("workScheduleId", ws.getId());
+                row.put("maBravo",        ws.getMaBravo());
+                row.put("maSp",           ws.getMaSp());
+                row.put("tenSanPham",     ws.getTenTrinh());
+                row.put("soLo",           null); // chưa có số lô
+                row.put("maDonHang",      ws.getMaDonHang());
+                row.put("soLuong",        ws.getCoLo());
+                row.put("ngayThucHien",   ws.getNgayThucHien() != null ? ws.getNgayThucHien().toString() : null);
+                row.put("ngayKetThuc",    ws.getNgayThucHien() != null ? ws.getNgayThucHien().toString() : null);
+                row.put("toThucHien",     ws.getToNhom());
+                row.put("phongThucHien",  ws.getPhongThucHien());
+                row.put("tinhTrang",      ws.getTinhTrang());
+                row.put("chuY",           ws.getChuY());
+                row.put("hasKhoach",      true);
+                row.put("daBanHanh",      false);
+                row.put("isFromKhoach",   true);
+                grouped.put(key, row);
+            } else {
+                // Cập nhật ngayKetThuc sang ngày muộn nhất
+                java.util.Map<String, Object> row = grouped.get(key);
+                if (ws.getNgayThucHien() != null) {
+                    String existing = (String) row.get("ngayKetThuc");
+                    if (existing == null || ws.getNgayThucHien().toString().compareTo(existing) > 0) {
+                        row.put("ngayKetThuc", ws.getNgayThucHien().toString());
+                    }
+                }
+            }
+        }
+        return new java.util.ArrayList<>(grouped.values());
+    }
+
+    public List<LenhSanXuatDto> findByMaBravo(String maBravo) {
+        return repo.findByMaBravo(maBravo).stream().map(this::toDto).collect(Collectors.toList());
+    }
 
     public List<LenhSanXuatDto> findAll(String tinhTrang, String toThucHien,
                                         java.time.LocalDate fromDate, java.time.LocalDate toDate) {
@@ -384,6 +464,7 @@ public class LenhSanXuatService {
         e.setGhiChu(d.getGhiChu());
         if (d.getDaDgVaXepLichDg()  != null) e.setDaDgVaXepLichDg(d.getDaDgVaXepLichDg());
         if (d.getDaBanHanh()        != null) e.setDaBanHanh(d.getDaBanHanh());
+        e.setNgayKetThuc(d.getNgayKetThuc());
         e.setNgayPhatLenh(d.getNgayPhatLenh());
     }
 
@@ -407,6 +488,7 @@ public class LenhSanXuatService {
         d.setGhiChu(e.getGhiChu());
         d.setDaDgVaXepLichDg(e.getDaDgVaXepLichDg());
         d.setDaBanHanh(e.getDaBanHanh());
+        d.setNgayKetThuc(e.getNgayKetThuc());
         d.setNgayPhatLenh(e.getNgayPhatLenh());
         d.setDeletedAt(e.getDeletedAt());
         d.setDeletedBy(e.getDeletedBy());
@@ -414,6 +496,66 @@ public class LenhSanXuatService {
         d.setUpdatedAt(e.getUpdatedAt());
         d.setCreatedBy(e.getCreatedBy());
         d.setUpdatedBy(e.getUpdatedBy());
+        // hasKhoach: kiểm tra tồn tại bản ghi PLAN theo key
+        boolean hasKhoach = workScheduleRepo.existsByPlanKey(e.getMaBravo(), e.getMaDonHang(), e.getSoLo());
+        d.setHasKhoach(hasKhoach);
         return d;
+    }
+
+    @Transactional
+    public LenhSanXuatDto createFromWorkSchedule(Long workScheduleId, String soLoInput, String username) {
+        WorkSchedule ws = workScheduleRepo.findById(workScheduleId)
+                .orElseThrow(() -> new RuntimeException("WorkSchedule not found: " + workScheduleId));
+        if (!"PLAN".equals(ws.getSource())) return null;
+
+        String effectiveSoLo = (soLoInput != null && !soLoInput.isBlank()) ? soLoInput.trim() : ws.getSoLo();
+
+        // BƯỚC 1: Cập nhật soLo vào WorkSchedule này VÀ tất cả bản ghi cùng nhóm (maBravo+maDonHang+toNhom)
+        // Phải làm TRƯỚC khi check duplicate để row biến mất khỏi tab Chưa xếp
+        if (effectiveSoLo != null && !effectiveSoLo.isBlank()) {
+            if (!effectiveSoLo.equals(ws.getSoLo())) {
+                ws.setSoLo(effectiveSoLo);
+                workScheduleRepo.save(ws);
+            }
+            // Cập nhật tất cả WorkSchedule PLAN cùng nhóm còn thiếu soLo
+            List<WorkSchedule> siblings = workScheduleRepo.findPlanSiblingsWithoutSoLo(
+                    ws.getMaBravo(), ws.getMaDonHang(), ws.getToNhom(), ws.getId());
+            for (WorkSchedule sib : siblings) {
+                sib.setSoLo(effectiveSoLo);
+                workScheduleRepo.save(sib);
+            }
+        }
+
+        // BƯỚC 2: Kiểm tra duplicate LenhSanXuat
+        if (ws.getMaBravo() != null && ws.getNgayThucHien() != null) {
+            Optional<LenhSanXuat> existing = repo.findExistingKey(
+                    ws.getMaBravo(), ws.getMaDonHang(),
+                    ws.getNgayThucHien(), ws.getToNhom(), effectiveSoLo);
+            if (existing.isPresent()) return toDto(existing.get());
+        }
+
+        // BƯỚC 3: Tạo LenhSanXuat — daBanHanh=false (màu cam) cho đến khi user phát hành thủ công
+        LenhSanXuat e = new LenhSanXuat();
+        e.setMaBravo(ws.getMaBravo());
+        e.setMaSp(ws.getMaSp());
+        e.setTenSanPham(ws.getTenTrinh());
+        e.setSoLo(effectiveSoLo);
+        e.setMaDonHang(ws.getMaDonHang());
+        e.setSoLuong(ws.getCoLo());
+        e.setNgayThucHien(ws.getNgayThucHien());
+        e.setToThucHien(ws.getToNhom());
+        e.setPhongThucHien(ws.getPhongThucHien());
+        e.setCreatedBy(username);
+        e.setUpdatedBy(username);
+        Integer maxThu = repo.findMaxThuTu();
+        e.setThuTu(maxThu == null ? 1 : maxThu + 1);
+        e.setDaBanHanh(false);
+        LenhSanXuat saved = repo.save(e);
+
+        // BƯỚC 4: Sync sang Sản lượng + Lịch làm việc
+        if (saved.getMaBravo() != null && saved.getSoLo() != null) {
+            autoCreateSanLuong(saved, username);
+        }
+        return toDto(saved);
     }
 }

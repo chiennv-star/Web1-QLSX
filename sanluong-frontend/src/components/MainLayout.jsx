@@ -16,7 +16,6 @@ import {
   AppstoreOutlined,
   ArrowLeftOutlined,
   BellOutlined,
-  SolutionOutlined,
 } from '@ant-design/icons'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -113,11 +112,7 @@ export default function MainLayout() {
   const screens = useBreakpoint()
   const isMobile = !screens.md
   const pollRef = useRef(null)
-  const pollChuaPhatRef = useRef(null)
-  const [chuaPhatLenhCount, setChuaPhatLenhCount] = useState(0)
   useAutoReload()
-
-  const canSeeChuaPhat = isAdmin() || isAdminKH()
 
   const fetchUnread = useCallback(async () => {
     try {
@@ -130,25 +125,11 @@ export default function MainLayout() {
     } catch { /* non-blocking */ }
   }, [])
 
-  const fetchChuaPhatLenh = useCallback(async () => {
-    if (!canSeeChuaPhat) return
-    try {
-      const { data } = await api.get('/production/chua-phat-lenh/count')
-      setChuaPhatLenhCount(data.count || 0)
-    } catch { /* non-blocking */ }
-  }, [canSeeChuaPhat])
-
   useEffect(() => {
     fetchUnread()
     pollRef.current = setInterval(fetchUnread, 30000)
     return () => clearInterval(pollRef.current)
   }, [fetchUnread])
-
-  useEffect(() => {
-    fetchChuaPhatLenh()
-    pollChuaPhatRef.current = setInterval(fetchChuaPhatLenh, 60000)
-    return () => clearInterval(pollChuaPhatRef.current)
-  }, [fetchChuaPhatLenh])
 
   // Reset badge khi vào trang thông báo
   useEffect(() => {
@@ -167,7 +148,6 @@ export default function MainLayout() {
       ? <span>{label}<Badge count={count} size="small" style={{ background: '#e85d04', marginLeft: 6 }} /></span>
       : label
 
-  const lenhNew   = unreadByType['LENH_SX_NEW']  || 0
   const hangLoi   = unreadByType['HANG_LOI_NEW']  || 0
   const donHang   = unreadByType['DON_HANG_NEW']  || 0
   const lichSxNew = unreadByType['LICH_SX_NEW']   || 0
@@ -195,27 +175,12 @@ export default function MainLayout() {
         { key: '/', icon: <TableOutlined />, label: 'Sản lượng' },
         { key: '/daily-sl',        icon: <BarChartOutlined />, label: 'Sản lượng theo ngày' },
         {
-          key: '/lenh-san-xuat',
-          icon: mkBadgeIcon(<SolutionOutlined />, lenhNew + chuaPhatLenhCount),
-          label: (lenhNew > 0 || chuaPhatLenhCount > 0)
-            ? (
-              <span>
-                Lệnh SX
-                {lenhNew > 0 && <Badge count={lenhNew} size="small" style={{ background: '#e85d04', marginLeft: 6 }} />}
-                {chuaPhatLenhCount > 0 && <Badge count={chuaPhatLenhCount} size="small"
-                  style={{ background: '#008080', marginLeft: 6 }}
-                  title={`${chuaPhatLenhCount} bản ghi chưa phát lệnh`}
-                />}
-              </span>
-            )
-            : 'Lệnh SX',
-        },
-        {
           key: '/work-schedule',
           icon: mkBadgeIcon(<ScheduleOutlined />, lichSxNew),
           label: mkBadgeLabel('Lịch làm việc', lichSxNew),
         },
         { key: '/khoach',          icon: <CalendarOutlined />, label: 'Kế hoạch' },
+        { key: '/lenh-san-xuat',   icon: <FileDoneOutlined />, label: 'Lệnh Sản Xuất' },
         ...(canEditHangLoi() ? [{
           key: '/hang-loi',
           icon: <WarningOutlined />,

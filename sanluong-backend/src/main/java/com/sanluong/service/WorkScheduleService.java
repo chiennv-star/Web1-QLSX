@@ -1,5 +1,6 @@
 package com.sanluong.service;
 
+import com.sanluong.dto.LenhSanXuatDto;
 import com.sanluong.dto.StageTimelineDto;
 import com.sanluong.dto.WorkScheduleCoLoHistoryDto;
 import com.sanluong.dto.WorkScheduleDto;
@@ -12,6 +13,8 @@ import com.sanluong.repository.ProductMasterRepository;
 import com.sanluong.repository.WorkScheduleCoLoHistoryRepository;
 import com.sanluong.repository.WorkScheduleRepository;
 import com.sanluong.repository.WorkScheduleSessionRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
@@ -631,6 +634,7 @@ public class WorkScheduleService {
         w.setSource(dto.getSource());
         w.setCongDoan(dto.getCongDoan());
         w.setNgayThucHien(dto.getNgayThucHien());
+        w.setMaBravo(dto.getMaBravo());
         w.setMaSp(dto.getMaSp());
         w.setTenTrinh(dto.getTenTrinh());
         w.setSoLo(dto.getSoLo());

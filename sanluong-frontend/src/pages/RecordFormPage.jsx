@@ -5,7 +5,7 @@ import {
 } from 'antd'
 import {
   SaveOutlined, ArrowLeftOutlined, SyncOutlined, CheckCircleOutlined,
-  LinkOutlined, WarningOutlined, EditOutlined, HistoryOutlined, SwapOutlined,
+  LinkOutlined, WarningOutlined, EditOutlined,
   PlusOutlined, DeleteOutlined, CalendarOutlined,
 } from '@ant-design/icons'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
@@ -43,8 +43,6 @@ export default function RecordFormPage() {
   const canEditProd  = canEditProduction()
   const [isEditing, setIsEditing] = useState(!isEdit) // true khi tạo mới, false khi xem/chỉnh sửa
   const [saving, setSaving] = useState(false)
-  const [loHistory, setLoHistory] = useState([])
-  const [loHistoryOpen, setLoHistoryOpen] = useState(false)
   const [phatLenh, setPhatLenh] = useState(false)
   const [lookupStatus, setLookupStatus] = useState(null)
   const lookupTimer = useRef(null)
@@ -288,12 +286,6 @@ export default function RecordFormPage() {
             hlSlHuy:           data.hlSlHuy,
           })
           fetchHangLoiList(data.maTp, data.lsx)
-          // Lịch sử đổi lô: fetch nếu có maDonHang + lsx
-          if (data.maDonHang && data.lsx) {
-            api.get('/lenh-san-xuat/doi-lo-history', { params: { maDonHang: data.maDonHang, soLo: data.lsx } })
-              .then(({ data: hist }) => setLoHistory(hist || []))
-              .catch(() => {})
-          }
         })
         .catch(() => message.error('Không thể tải dữ liệu'))
     }
@@ -654,30 +646,14 @@ export default function RecordFormPage() {
                     </Form.Item>
                   </td>
                   <td style={{ padding: '6px 10px', background: '#f8fafc', color: '#d46b08', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap', width: '8%' }}>
-                    <Space size={4}>
-                      <span>Lô SX (LSX)</span>
-                      {loHistory.length > 0 && (
-                        <Badge count={loHistory.length} size="small" color="#d46b08" />
-                      )}
-                    </Space>
+                    Lô SX (LSX)
                   </td>
                   <td style={{ padding: '4px 8px', width: '13%' }}>
-                    <Space.Compact style={{ width: '100%' }}>
-                      <Form.Item name="lsx" style={{ marginBottom: 0, flex: 1 }}>
-                        <Input disabled
-                          style={{ fontFamily: 'monospace', fontWeight: 700, color: '#d46b08',
-                            background: '#fffbf0', cursor: 'not-allowed' }} />
-                      </Form.Item>
-                      {loHistory.length > 0 && (
-                        <Tooltip title={`Đã đổi lô ${loHistory.length} lần — xem lịch sử`}>
-                          <Button
-                            icon={<HistoryOutlined />}
-                            onClick={() => setLoHistoryOpen(true)}
-                            style={{ color: '#d46b08', borderColor: '#ffd591', background: '#fff7e6' }}
-                          />
-                        </Tooltip>
-                      )}
-                    </Space.Compact>
+                    <Form.Item name="lsx" style={{ marginBottom: 0 }}>
+                      <Input disabled
+                        style={{ fontFamily: 'monospace', fontWeight: 700, color: '#d46b08',
+                          background: '#fffbf0', cursor: 'not-allowed' }} />
+                    </Form.Item>
                   </td>
                   <td style={{ padding: '6px 10px', background: '#f8fafc', color: '#64748b', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap', width: '8%' }}>
                     Cỡ lô
@@ -1377,55 +1353,6 @@ export default function RecordFormPage() {
         </Form>
       </div>
 
-      {/* ── Modal lịch sử đổi lô ─────────────────────────────────────────── */}
-      <Modal
-        open={loHistoryOpen}
-        onCancel={() => setLoHistoryOpen(false)}
-        footer={null}
-        title={
-          <Space>
-            <SwapOutlined style={{ color: '#d46b08' }} />
-            <span style={{ fontWeight: 700 }}>Lịch sử đổi Lô SX</span>
-            <Badge count={loHistory.length} color="#d46b08" />
-          </Space>
-        }
-        width={580}
-      >
-        <Alert
-          type="warning"
-          showIcon
-          style={{ marginBottom: 12 }}
-          message="Lô của bản ghi này đã được thay đổi từ Lệnh Sản Xuất. Dữ liệu bên dưới cho thấy lịch sử các lần đổi lô."
-        />
-        <List
-          size="small"
-          dataSource={loHistory}
-          renderItem={h => (
-            <List.Item style={{ padding: '8px 0', borderBottom: '1px solid #f0f2f5' }}>
-              <div style={{ width: '100%', fontSize: 13 }}>
-                <Space style={{ marginBottom: 4 }}>
-                  <span style={{ background: '#fee2e2', color: '#991b1b', padding: '1px 10px', borderRadius: 20, fontFamily: 'monospace', fontWeight: 700, fontSize: 12 }}>
-                    {h.soLoCu || '—'}
-                  </span>
-                  <span style={{ color: '#8c8c8c' }}>→</span>
-                  <span style={{ background: '#dcfce7', color: '#166534', padding: '1px 10px', borderRadius: 20, fontFamily: 'monospace', fontWeight: 700, fontSize: 12 }}>
-                    {h.soLoMoi}
-                  </span>
-                </Space>
-                <div style={{ display: 'flex', gap: 16, fontSize: 11, color: '#6b7280' }}>
-                  <span>
-                    {h.changedAt ? new Date(Array.isArray(h.changedAt)
-                      ? new Date(h.changedAt[0], h.changedAt[1]-1, h.changedAt[2], h.changedAt[3]||0, h.changedAt[4]||0)
-                      : h.changedAt).toLocaleString('vi-VN') : ''}
-                  </span>
-                  <span>Bởi: <strong style={{ color: '#374151' }}>{h.changedBy}</strong></span>
-                  {h.lyDo && <span>Lý do: <em style={{ color: '#374151' }}>{h.lyDo}</em></span>}
-                </div>
-              </div>
-            </List.Item>
-          )}
-        />
-      </Modal>
     </>
   )
 }

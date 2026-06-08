@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { Button, Tooltip, message, Spin, Tag, Checkbox, Popconfirm } from 'antd'
 import {
   BellFilled, CheckOutlined, SwapOutlined, ReloadOutlined,
-  FileAddOutlined, WarningOutlined, CheckCircleFilled,
+  WarningOutlined, CheckCircleFilled,
   ClockCircleOutlined, InboxOutlined, EyeOutlined, ShoppingOutlined,
   CalendarOutlined, BarChartOutlined, ArrowRightOutlined,
   DeleteOutlined, CheckSquareOutlined, BorderOutlined,
@@ -19,18 +19,6 @@ dayjs.locale('vi')
 
 /* ── Type metadata ──────────────────────────────────────────────────── */
 const TYPE_CONFIG = {
-  LENH_SX_NEW: {
-    Icon: FileAddOutlined,
-    iconColor: '#1d4ed8',
-    iconBg: 'linear-gradient(135deg,#dbeafe,#bfdbfe)',
-    accent: '#2563eb',
-    tagColor: '#1d4ed8',
-    tagBg: '#eff6ff',
-    tagBorder: '#93c5fd',
-    label: 'Lệnh SX Mới',
-    tabColor: '#2563eb',
-    tabBg: '#eff6ff',
-  },
   HANG_LOI_NEW: {
     Icon: WarningOutlined,
     iconColor: '#dc2626',
@@ -123,8 +111,7 @@ function groupByDate(items) {
 function getNavPath(type, refId) {
   switch (type) {
     case 'SAN_LUONG_NEW': return refId ? `/record/edit/${refId}` : '/'
-    case 'LENH_SX_NEW':   return '/lenh-san-xuat'
-    case 'DOI_LO':        return '/lenh-san-xuat'
+    case 'DOI_LO':        return '/khoach'
     case 'DON_HANG_NEW':  return '/don-hang'
     case 'HANG_LOI_NEW':  return '/hang-loi'
     case 'KE_HOACH':      return '/work-schedule'
@@ -473,7 +460,7 @@ function NotifPanel({ items, loading, onRead, onDelete, subTab, setSubTab, typeK
 }
 
 /* ── Main page ──────────────────────────────────────────────────────── */
-const ADMIN_KH_HIDDEN_TABS = new Set(['LENH_SX_NEW', 'HANG_LOI_NEW', 'DOI_LO'])
+const ADMIN_KH_HIDDEN_TABS = new Set(['HANG_LOI_NEW', 'DOI_LO'])
 
 export default function NotificationPage() {
   const { isAdminKH } = useAuth()

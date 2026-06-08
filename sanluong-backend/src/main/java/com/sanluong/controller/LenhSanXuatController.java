@@ -21,6 +21,16 @@ public class LenhSanXuatController {
         this.service = service;
     }
 
+    @GetMapping("/chua-co-lenh")
+    public ResponseEntity<List<java.util.Map<String, Object>>> getChuaCoLenh() {
+        return ResponseEntity.ok(service.findPlanWithoutLenh());
+    }
+
+    @GetMapping("/by-product")
+    public ResponseEntity<List<LenhSanXuatDto>> getByProduct(@RequestParam String maBravo) {
+        return ResponseEntity.ok(service.findByMaBravo(maBravo));
+    }
+
     @GetMapping
     public ResponseEntity<List<LenhSanXuatDto>> getAll(
             @RequestParam(required = false) String tinhTrang,
@@ -128,5 +138,15 @@ public class LenhSanXuatController {
     public ResponseEntity<Map<String, Integer>> syncSanLuong(Authentication auth) {
         int created = service.syncAllSanLuong(auth.getName());
         return ResponseEntity.ok(Map.of("created", created));
+    }
+
+    @PostMapping("/from-work-schedule/{workScheduleId}")
+    public ResponseEntity<LenhSanXuatDto> createFromWorkSchedule(
+            @PathVariable Long workScheduleId,
+            @RequestBody(required = false) Map<String, String> body,
+            Authentication auth) {
+        String soLo = (body != null) ? body.get("soLo") : null;
+        LenhSanXuatDto dto = service.createFromWorkSchedule(workScheduleId, soLo, auth.getName());
+        return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.noContent().build();
     }
 }

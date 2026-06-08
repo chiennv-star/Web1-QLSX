@@ -42,6 +42,10 @@ public class DonHangService {
         this.notificationService = notificationService;
     }
 
+    public List<DonHangDto> findByMaBravo(String maBravo) {
+        return repo.findByMaBravo(maBravo).stream().map(this::toDto).collect(Collectors.toList());
+    }
+
     public List<DonHangDto> findAll(String tinhTrangDatHang, String tinhTrangSx) {
         List<DonHang> list = (tinhTrangDatHang == null && tinhTrangSx == null)
                 ? repo.findAllActive()

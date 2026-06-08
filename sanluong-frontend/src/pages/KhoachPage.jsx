@@ -14,9 +14,9 @@ import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
-import LenhSanXuatPage from './LenhSanXuatPage'
 import PhongThucHienSelect from '../components/PhongThucHienSelect'
 import DonHangPage from './DonHangPage'
+import LenhSanXuatTab from './LenhSanXuatTab'
 
 dayjs.extend(isoWeek)
 
@@ -54,175 +54,6 @@ function checkUrgent(r) {
   return t.includes('GẤP') || t.includes('GAP')
 }
 
-// ── Auto-sync Lệnh SX khi thêm/dán kế hoạch ──────────────────────────────────
-// Key đơn hàng: maBravo + maDonHang (composite). Tự tạo đơn hàng nếu chưa có.
-async function autoSyncLenhSX(payload) {
-  let { maBravo, maDonHang, ngayThucHien: ngay, maSp, tenTrinh, soLo, coLo, toNhom } = payload || {}
-  if (!ngay) return
-
-  // Nếu thiếu maBravo nhưng có maDonHang: tra cứu maBravo từ đơn hàng
-  if (!maBravo && maDonHang) {
-    try {
-      const { data: dhRes } = await api.get('/don-hang', { params: { size: 500 } })
-      const dhList = Array.isArray(dhRes) ? dhRes : (dhRes.content || [])
-      const found = dhList.find(d => d.maDonHang === maDonHang)
-      if (found) maBravo = found.maBravo
-    } catch {}
-  }
-  if (!maBravo) return
-
-  // Tự động tạo Lệnh SX cho tổ nếu có maDonHang
-  if (maDonHang) {
-    try {
-      const { data: dhRes } = await api.get('/don-hang', { params: { size: 500 } })
-      const dhList = Array.isArray(dhRes) ? dhRes : (dhRes.content || [])
-
-      // Tìm hoặc tạo đơn hàng theo composite key maBravo + maDonHang
-      let matchDH = dhList.find(d => d.maBravo === maBravo && d.maDonHang === maDonHang)
-      if (!matchDH) {
-        const { data: newDH } = await api.post('/don-hang', {
-          maBravo,
-          maDonHang,
-          maSp:       maSp     || null,
-          tenSanPham: tenTrinh || null,
-        })
-        matchDH = newDH
-        message.info(`Đã tự động tạo Đơn Hàng: ${maDonHang}`, 3)
-      }
-
-      // Tạo Lệnh SX nếu chưa có cùng tổ + ngày
-      const { data: lRes } = await api.get('/lenh-san-xuat')
-      const lList = Array.isArray(lRes) ? lRes : (lRes.content || [])
-      const existing = lList.find(l =>
-        l.maDonHang === maDonHang && l.maBravo === maBravo &&
-        l.ngayThucHien === ngay && l.toThucHien === toNhom
-      )
-      if (!existing) {
-        await api.post('/lenh-san-xuat', {
-          maBravo, maDonHang,
-          maSp:         maSp     || null,
-          tenSanPham:   tenTrinh || null,
-          soLo:         soLo     || null,
-          soLuong:      coLo != null ? coLo : null,
-          toThucHien:   toNhom   || null,
-          ngayThucHien: ngay,
-        })
-        message.info(
-          `Đã tự động thêm Lệnh SX [${toNhom || ''}] ngày ${dayjs(ngay).format('DD/MM/YYYY')} cho đơn ${maDonHang}`,
-          4
-        )
-      }
-    } catch {}
-  }
-
-  // Đồng bộ coLo → soLuong chỉ cho Lệnh SX cùng tổ (toThucHien) + maBravo + ngày + soLo
-  if (coLo != null) {
-    try {
-      const { data: lRes2 } = await api.get('/lenh-san-xuat')
-      const lAll = Array.isArray(lRes2) ? lRes2 : (lRes2.content || [])
-      const toSync = lAll.filter(l =>
-        l.maBravo === maBravo &&
-        (maDonHang ? l.maDonHang === maDonHang : true) &&
-        l.ngayThucHien === ngay &&
-        l.toThucHien === toNhom &&
-        // Chỉ sync lệnh SX cùng soLo — tránh ghi đè lệnh khác lô cùng đơn hàng
-        (!soLo || !l.soLo || l.soLo === soLo) &&
-        Number(l.soLuong) !== Number(coLo)
-      )
-      if (toSync.length > 0) {
-        await Promise.all(toSync.map(l => api.put(`/lenh-san-xuat/${l.id}`, { ...l, soLuong: coLo })))
-        message.info(
-          `Đã cập nhật số lượng ${Number(coLo).toLocaleString('vi-VN')} cho ${toSync.length} Lệnh SX [${toNhom || ''}] ngày ${dayjs(ngay).format('DD/MM/YYYY')}`,
-          3
-        )
-      }
-    } catch {}
-  }
-}
-
-// ── Đồng bộ toàn bộ Lệnh SX theo Kế hoạch PLAN cho một đơn hàng ─────────────
-// So sánh kế hoạch vs lệnh SX: xóa orphan, tạo mới thiếu, cập nhật coLo khác.
-// Lock theo key maBravo+maDonHang để tránh 2 lần chạy song song tạo duplicate.
-const _syncLenhLock = new Set()
-async function syncAllLenhForDH(maBravo, maDonHang) {
-  if (!maBravo || !maDonHang) return
-  const lockKey = `${maBravo}||${maDonHang}`
-  if (_syncLenhLock.has(lockKey)) return
-  _syncLenhLock.add(lockKey)
-  try {
-    await _syncAllLenhForDH(maBravo, maDonHang)
-  } finally {
-    _syncLenhLock.delete(lockKey)
-  }
-}
-async function _syncAllLenhForDH(maBravo, maDonHang) {
-  if (!maBravo || !maDonHang) return
-  const norm = (val) => {
-    if (!val) return null
-    if (Array.isArray(val)) return `${val[0]}-${String(val[1]).padStart(2,'0')}-${String(val[2]).padStart(2,'0')}`
-    return dayjs(val).isValid() ? dayjs(val).format('YYYY-MM-DD') : null
-  }
-  try {
-    const [{ data: kRes }, { data: lRes }] = await Promise.all([
-      api.get('/work-schedule', { params: { source: 'PLAN', size: 1000 } }),
-      api.get('/lenh-san-xuat'),
-    ])
-    const khoachList = (Array.isArray(kRes) ? kRes : (kRes.content || []))
-      .filter(k => k.maBravo === maBravo && k.maDonHang === maDonHang)
-    const lenhList = (Array.isArray(lRes) ? lRes : (lRes.content || []))
-      .filter(l => l.maBravo === maBravo && l.maDonHang === maDonHang)
-
-    if (!khoachList.length) return
-
-    const toDelete = lenhList.filter(l => {
-      if (l.daBanHanh) return false  // Không xóa lệnh đã ban hành
-      const ld = norm(l.ngayThucHien)
-      return !khoachList.some(k =>
-        norm(k.ngayThucHien) === ld && k.toNhom === l.toThucHien &&
-        (!k.soLo || !l.soLo || k.soLo === l.soLo)
-      )
-    })
-    const toAdd = khoachList.filter(k => {
-      const kd = norm(k.ngayThucHien)
-      return !lenhList.some(l =>
-        norm(l.ngayThucHien) === kd && l.toThucHien === k.toNhom &&
-        (!k.soLo || !l.soLo || l.soLo === k.soLo)
-      )
-    })
-    const toUpdate = khoachList.flatMap(k => {
-      if (k.coLo == null) return []
-      const kd = norm(k.ngayThucHien)
-      return lenhList.filter(l =>
-        norm(l.ngayThucHien) === kd && l.toThucHien === k.toNhom &&
-        (!k.soLo || !l.soLo || l.soLo === k.soLo) &&
-        Number(l.soLuong) !== Number(k.coLo)
-      ).map(l => ({ ...l, soLuong: k.coLo }))
-    })
-
-    let dhRecord = null
-    try {
-      const { data: dhRes } = await api.get('/don-hang', { params: { size: 500 } })
-      const dhList = Array.isArray(dhRes) ? dhRes : (dhRes.content || [])
-      dhRecord = dhList.find(d => d.maBravo === maBravo && d.maDonHang === maDonHang)
-    } catch {}
-
-    if (toDelete.length > 0)
-      await Promise.all(toDelete.map(l => api.delete(`/lenh-san-xuat/${l.id}`)))
-    if (toAdd.length > 0)
-      await Promise.all(toAdd.map(k => api.post('/lenh-san-xuat', {
-        maBravo, maDonHang,
-        maSp:         k.maSp     || dhRecord?.maSp      || null,
-        tenSanPham:   k.tenTrinh || dhRecord?.tenSanPham || null,
-        soLo:         k.soLo     || null,
-        soLuong:      k.coLo != null ? k.coLo : null,
-        toThucHien:   k.toNhom   || null,
-        ngayThucHien: norm(k.ngayThucHien),
-      })))
-    if (toUpdate.length > 0)
-      await Promise.all(toUpdate.map(l => api.put(`/lenh-san-xuat/${l.id}`, l)))
-  } catch {}
-}
-
 // ── Plan Modal ────────────────────────────────────────────────────────────────
 function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSaved, onReloadData, donHangList = [], donHangLoading = false }) {
   const [form]         = Form.useForm()
@@ -242,7 +73,6 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
   // Theo dõi coLo hiện tại sau khi đổi — tránh hiển thị giá trị cũ từ editItem
   const [currentCoLo,    setCurrentCoLo]    = useState(editItem?.coLo ?? null)
   const [soLuongDon,     setSoLuongDon]     = useState(null)
-  const [syncCheck,      setSyncCheck]      = useState({ loading: false, lenhSX: null, schedule: null })
   const [loHistory,      setLoHistory]      = useState([])
   const [loHistoryOpen,  setLoHistoryOpen]  = useState(false)
   const [bravoPickerOpen, setBravoPickerOpen] = useState(false) // gợi ý đơn hàng khi gõ bravo
@@ -285,7 +115,6 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
       setBravoStatus(null)
       setDonHangStatus(null)
       setSoLuongDon(null)
-      setSyncCheck({ loading: false, lenhSX: null, schedule: null })
       setDhPickerOpen(false)
       setDhInput('')
 
@@ -298,43 +127,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
         }).catch(() => {})
       }
 
-      // Kiểm tra đồng bộ sang Lệnh SX và Lịch làm việc (SCHEDULE)
-      if (editItem.id && (editItem.maBravo || editItem.maSp)) {
-        setSyncCheck({ loading: true, lenhSX: null, schedule: null })
-        const checkLenhSX = editItem.maBravo && editItem.maDonHang
-          ? api.get('/lenh-san-xuat').then(({ data }) => {
-              const list = Array.isArray(data) ? data : (data.content || [])
-              return list.some(l => l.maBravo === editItem.maBravo && l.maDonHang === editItem.maDonHang)
-                ? 'ok' : 'missing'
-            }).catch(() => null)
-          : Promise.resolve(null)
-
-        const checkSchedule = editItem.maSp
-          ? api.get('/work-schedule', {
-              params: { maSp: editItem.maSp, source: 'SCHEDULE', size: 50 }
-            }).then(({ data }) => {
-              const list = data.content || []
-              const tenT = editItem.tenTrinh || null
-              const soL  = editItem.soLo    || null
-              return list.some(w =>
-                (!tenT || w.tenTrinh === tenT) &&
-                (!soL  || w.soLo    === soL)
-              ) ? 'ok' : 'missing'
-            }).catch(() => null)
-          : Promise.resolve(null)
-
-        Promise.all([checkLenhSX, checkSchedule]).then(([lenhSX, schedule]) => {
-          setSyncCheck({ loading: false, lenhSX, schedule })
-        })
-      }
-
-      // Lịch sử đổi lô — fetch nếu có maDonHang + soLo
       setLoHistory([])
-      if (editItem.maDonHang && editItem.soLo) {
-        api.get('/lenh-san-xuat/doi-lo-history', {
-          params: { maDonHang: editItem.maDonHang, soLo: editItem.soLo }
-        }).then(({ data }) => setLoHistory(data || [])).catch(() => {})
-      }
     } else {
       const cd = GROUP_DEFAULT_CD[defaultToNhom] || 'PC'
       setCongDoan(cd)
@@ -348,7 +141,6 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
       setBravoStatus(null)
       setDonHangStatus(null)
       setSoLuongDon(null)
-      setSyncCheck({ loading: false, lenhSX: null, schedule: null })
       setLoHistory([])
       setDhPickerOpen(false)
       setDhInput('')
@@ -405,7 +197,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
     setTimeout(() => { justSelectedBravo.current = false }, 150)
   }
 
-  // Lookup by Mã Đơn Hàng → auto-fill maBravo + maSp from LenhSanXuat + soLuongDon from DonHang
+  // Lookup by Mã Đơn Hàng → auto-fill maBravo + maSp + soLuongDon from DonHang
   const handleMaDonHangChange = (e) => {
     const val = e.target.value?.trim()
     setDhInput(val || '')
@@ -415,37 +207,28 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
     setDonHangStatus('loading')
     donHangTimerRef.current = setTimeout(async () => {
       try {
-        const { data: res } = await api.get('/lenh-san-xuat')
-        const all = Array.isArray(res) ? res : (res.content || [])
-        const match = all.find(l => l.maDonHang === val)
-        if (match) {
+        const { data: dhRes } = await api.get('/don-hang')
+        const dhList = Array.isArray(dhRes) ? dhRes : (dhRes.content || [])
+        const dh = dhList.find(d => d.maDonHang === val)
+        if (dh) {
           setDonHangStatus('found')
           const updates = {}
-          if (!form.getFieldValue('maBravo') && match.maBravo) {
-            updates.maBravo = match.maBravo
+          if (!form.getFieldValue('maBravo') && dh.maBravo) {
+            updates.maBravo = dh.maBravo
             setBravoStatus('found')
           }
-          if (!form.getFieldValue('maSp') && match.maSp) {
-            updates.maSp = match.maSp
+          if (!form.getFieldValue('maSp') && dh.maSp) {
+            updates.maSp = dh.maSp
             setLookupStatus('found')
           }
-          if (!form.getFieldValue('tenTrinh') && match.tenSanPham) {
-            updates.tenTrinh = match.tenSanPham
+          if (!form.getFieldValue('tenTrinh') && dh.tenSanPham) {
+            updates.tenTrinh = dh.tenSanPham
           }
           if (Object.keys(updates).length > 0) form.setFieldsValue(updates)
-          // Lấy SL đơn từ DonHang
-          try {
-            const { data: dhRes } = await api.get('/don-hang')
-            const dhList = Array.isArray(dhRes) ? dhRes : (dhRes.content || [])
-            const dh = dhList.find(d => d.maDonHang === val)
-            if (dh) {
-              setSoLuongDon(dh.soLuongDatHang)
-              // Tự động điền Cỡ lô = Số lượng đơn nếu chưa nhập
-              if (!form.getFieldValue('coLo') && dh.soLuongDatHang != null) {
-                form.setFieldsValue({ coLo: Number(dh.soLuongDatHang) })
-              }
-            }
-          } catch {}
+          setSoLuongDon(dh.soLuongDatHang)
+          if (!form.getFieldValue('coLo') && dh.soLuongDatHang != null) {
+            form.setFieldsValue({ coLo: Number(dh.soLuongDatHang) })
+          }
         } else {
           setDonHangStatus('not_found')
           setSoLuongDon(null)
@@ -454,25 +237,9 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
     }, 500)
   }
 
-  // Lookup by Số Lô + Mã Bravo → auto-fill maDonHang từ Lệnh SX
-  const handleSoLoChange = (e) => {
-    const soLo = e.target.value?.trim()
-    if (soLoTimerRef.current) clearTimeout(soLoTimerRef.current)
-    if (!soLo) return
-    soLoTimerRef.current = setTimeout(async () => {
-      const maBravo = form.getFieldValue('maBravo')?.trim()
-      if (!maBravo) return
-      try {
-        const { data: res } = await api.get('/lenh-san-xuat')
-        const all = Array.isArray(res) ? res : (res.content || [])
-        const match = all.find(l => l.maBravo === maBravo && l.soLo === soLo && l.maDonHang)
-        if (match && !form.getFieldValue('maDonHang')) {
-          form.setFieldsValue({ maDonHang: match.maDonHang })
-          setDonHangStatus('found')
-          message.success(`Tự động điền Mã Đơn Hàng: ${match.maDonHang}`, 2)
-        }
-      } catch {}
-    }, 500)
+  // Lookup by Số Lô — no longer uses Lệnh SX
+  const handleSoLoChange = (_e) => {
+    // Removed: was looking up maDonHang from Lệnh SX
   }
 
   // Lookup by Mã SP → auto-fill tenTrinh
@@ -561,18 +328,16 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
         await api.put(`/work-schedule/${editItem.id}`, payload)
         message.success('Cập nhật thành công')
       } else {
-        await api.post('/work-schedule', payload)
+        const { data: newWs } = await api.post('/work-schedule', payload)
         message.success('Thêm mới thành công')
+        // Auto-create LenhSanXuat nếu là PLAN record
+        if (payload.source === 'PLAN' && newWs?.id) {
+          api.post(`/lenh-san-xuat/from-work-schedule/${newWs.id}`).catch(() => {})
+        }
       }
       setIsDirty(false)
       onSaved(payload)
       onClose()
-
-      if (payload.maBravo && payload.maDonHang) {
-        syncAllLenhForDH(payload.maBravo, payload.maDonHang).catch(() => {})
-      } else {
-        autoSyncLenhSX(payload).catch(() => {})
-      }
     } catch (err) {
       if (err?.response) message.error(err.response.data?.message || 'Lưu thất bại')
     }
@@ -919,38 +684,6 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
           </Col>
         </Row>
 
-        {/* ── Cảnh báo đồng bộ ── */}
-        {editItem?.id && (
-          <div style={{ marginBottom: 12 }}>
-            {syncCheck.loading && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#8c8c8c', fontSize: 12 }}>
-                <Spin size="small" /> Đang kiểm tra đồng bộ...
-              </div>
-            )}
-            {!syncCheck.loading && syncCheck.lenhSX === 'missing' && (
-              <Alert
-                type="warning"
-                showIcon
-                style={{ marginBottom: 6 }}
-                message={<span style={{ fontSize: 12 }}>
-                  <b>Chưa có Lệnh Sản Xuất</b> tương ứng với đơn hàng <b>{editItem.maDonHang}</b>.
-                  Vào tab <i>Lệnh Sản Xuất</i> để tạo.
-                </span>}
-              />
-            )}
-            {!syncCheck.loading && syncCheck.schedule === 'missing' && (
-              <Alert
-                type="warning"
-                showIcon
-                style={{ marginBottom: 6 }}
-                message={<span style={{ fontSize: 12 }}>
-                  <b>Chưa có bản ghi Lịch làm việc (SCHEDULE)</b> cho sản phẩm này.
-                  Cần nhập sản lượng hoặc dùng <i>Auto-Sync</i> để tạo lịch.
-                </span>}
-              />
-            )}
-          </div>
-        )}
 
         <Row gutter={12}>
           <Col span={7}>
@@ -1776,9 +1509,6 @@ function KhoachContent({ miniPickerMode = false }) {
       await fetchData(undefined, { silent: true })
       requestAnimationFrame(() => window.scrollTo({ top: sy, behavior: 'instant' }))
       syncToDonHang(payload)
-      if (payload.maBravo && payload.maDonHang)
-        syncAllLenhForDH(payload.maBravo, payload.maDonHang).catch(() => {})
-      else autoSyncLenhSX(payload).catch(() => {})
     } catch { message.error('Xếp kế hoạch thất bại') }
   }
 
@@ -1844,12 +1574,6 @@ function KhoachContent({ miniPickerMode = false }) {
           const sy = window.scrollY
           await fetchData(undefined, { silent: true })
           requestAnimationFrame(() => window.scrollTo({ top: sy, behavior: 'instant' }))
-
-          // Đồng bộ lại Lệnh SX cho các đơn hàng bị ảnh hưởng
-          for (const key of uniqueDH) {
-            const [mb, mdh] = key.split('||')
-            syncAllLenhForDH(mb, mdh).catch(() => {})
-          }
         } catch { message.error('Xóa thất bại') }
       },
     })
@@ -1878,9 +1602,6 @@ function KhoachContent({ miniPickerMode = false }) {
         await fetchData(undefined, { silent: true })
         requestAnimationFrame(() => window.scrollTo({ top: sy, behavior: 'instant' }))
         syncToDonHang(payload)
-        if (payload.maBravo && payload.maDonHang)
-          syncAllLenhForDH(payload.maBravo, payload.maDonHang).catch(() => {})
-        else autoSyncLenhSX(payload).catch(() => {})
       } catch { message.error('Xếp kế hoạch thất bại') }
       return
     }
@@ -1923,9 +1644,6 @@ function KhoachContent({ miniPickerMode = false }) {
       message.success(`Đã xếp "${(dh.tenSanPham || dh.maDonHang || '').substring(0, 30)}" → ${toNhom} · ${dayjs(toDate).format('DD/MM/YYYY')}`)
       { const sy = window.scrollY; await fetchData(undefined, { silent: true }); requestAnimationFrame(() => window.scrollTo({ top: sy, behavior: 'instant' })) }
       syncToDonHang(payload)
-      if (payload.maBravo && payload.maDonHang)
-        syncAllLenhForDH(payload.maBravo, payload.maDonHang).catch(() => {})
-      else autoSyncLenhSX(payload).catch(() => {})
     } catch { message.error('Xếp kế hoạch thất bại') }
     finally { scheduleSelectInFlightRef.current = false }
   }
@@ -1971,9 +1689,6 @@ function KhoachContent({ miniPickerMode = false }) {
         )
         { const sy = window.scrollY; await fetchData(undefined, { silent: true }); requestAnimationFrame(() => window.scrollTo({ top: sy, behavior: 'instant' })) }
         syncToDonHang(payload)
-        if (payload.maBravo && payload.maDonHang)
-          syncAllLenhForDH(payload.maBravo, payload.maDonHang).catch(() => {})
-        else autoSyncLenhSX(payload).catch(() => {})
       } catch { message.error('Kéo thả thất bại') }
       return
     }
@@ -1991,10 +1706,7 @@ function KhoachContent({ miniPickerMode = false }) {
       })
       message.success(`Đã chuyển sang ${dayjs(toDate).format('DD/MM/YYYY')}${toNhom !== rec.toNhom ? ` · ${toNhom}` : ''}`)
       { const sy = window.scrollY; await fetchData(undefined, { silent: true }); requestAnimationFrame(() => window.scrollTo({ top: sy, behavior: 'instant' })) }
-      // Đồng bộ Lệnh SX: xóa lệnh ở ngày cũ, tạo lệnh ở ngày mới
-      if (rec.maBravo && rec.maDonHang)
-        syncAllLenhForDH(rec.maBravo, rec.maDonHang).catch(() => {})
-      else syncToDonHang({ ...rec, ngayThucHien: toDate, toNhom })
+      syncToDonHang({ ...rec, ngayThucHien: toDate, toNhom })
     } catch { message.error('Kéo thả thất bại') }
   }
 
@@ -2050,9 +1762,6 @@ function KhoachContent({ miniPickerMode = false }) {
       message.success(`Đã dán vào ${dayjs(toDate).format('DD/MM/YYYY')}${toNhom !== src.toNhom ? ` · ${toNhom}` : ''}`)
       { const sy = window.scrollY; await fetchData(undefined, { silent: true }); requestAnimationFrame(() => window.scrollTo({ top: sy, behavior: 'instant' })) }
       syncToDonHang(payload)
-      if (payload.maBravo && payload.maDonHang)
-        syncAllLenhForDH(payload.maBravo, payload.maDonHang).catch(() => {})
-      else autoSyncLenhSX(payload).catch(() => {})
     } catch { message.error('Dán thất bại') }
     finally { pasteInFlightRef.current = false }
   }
@@ -2149,9 +1858,6 @@ function KhoachContent({ miniPickerMode = false }) {
       await api.delete(`/work-schedule/${record.id}`)
       message.success('Đã xóa kế hoạch')
       { const sy = window.scrollY; await fetchData(undefined, { silent: true }); requestAnimationFrame(() => window.scrollTo({ top: sy, behavior: 'instant' })) }
-      // Sau khi xóa kế hoạch → đồng bộ lại Lệnh SX cho đơn hàng này
-      if (record.maBravo && record.maDonHang)
-        syncAllLenhForDH(record.maBravo, record.maDonHang).catch(() => {})
     } catch { message.error('Xóa thất bại') }
   }
 
@@ -2165,112 +1871,6 @@ function KhoachContent({ miniPickerMode = false }) {
       })
     } catch {} // best-effort
   }, [])
-
-  // Đồng bộ tất cả kế hoạch hiện tại → Lệnh SX + Đơn Hàng
-  const [syncingAll, setSyncingAll] = useState(false)
-  const handleSyncAllLenhSX = async () => {
-    const planEntries = data.filter(r => r.source === 'PLAN' && r.maBravo && r.maDonHang)
-    if (planEntries.length === 0) {
-      message.info('Không có kế hoạch nào có Mã Bravo + Mã ĐH để đồng bộ')
-      return
-    }
-    setSyncingAll(true)
-    let done = 0
-    for (const r of planEntries) {
-      const payload = {
-        maBravo:      r.maBravo,
-        maDonHang:    r.maDonHang,
-        ngayThucHien: r.ngayThucHien,
-        maSp:         r.maSp,
-        tenTrinh:     r.tenTrinh,
-        soLo:         r.soLo,
-        coLo:         r.coLo,
-        toNhom:       r.toNhom,
-      }
-      if (payload.maBravo && payload.maDonHang)
-        await syncAllLenhForDH(payload.maBravo, payload.maDonHang).catch(() => {})
-      else await autoSyncLenhSX(payload).catch(() => {})
-      syncToDonHang(payload).catch(() => {})
-      done++
-    }
-    setSyncingAll(false)
-    message.success(`Đã đồng bộ ${done} kế hoạch sang Lệnh SX và Đơn Hàng`, 3)
-    fetchData(undefined, { silent: true })
-  }
-
-  // Đồng bộ ngược: tạo Kế hoạch từ Lệnh SX trong khoảng ngày hiện tại nếu bị thiếu
-  const [syncingFromLenh, setSyncingFromLenh] = useState(false)
-  const syncFromLenhSX = useCallback(async () => {
-    if (!dateRange?.[0] || !dateRange?.[1]) return
-    const fromStr = dateRange[0].format('YYYY-MM-DD')
-    const toStr   = dateRange[1].format('YYYY-MM-DD')
-    setSyncingFromLenh(true)
-    let created = 0
-    try {
-      const [lenhRes, planRes] = await Promise.all([
-        api.get('/lenh-san-xuat'),
-        api.get('/work-schedule', { params: { source: 'PLAN', size: 2000, fromDate: fromStr, toDate: toStr } }),
-      ])
-      const lenhList = Array.isArray(lenhRes.data) ? lenhRes.data : (lenhRes.data?.content || [])
-      const plans    = planRes.data?.content || planRes.data || []
-
-      // Lọc lệnh SX có ngayThucHien trong khoảng + có toThucHien + có maSp hoặc soLo
-      const relevant = lenhList.filter(l =>
-        l.ngayThucHien && l.toThucHien &&
-        (l.maSp || l.soLo) &&
-        l.ngayThucHien >= fromStr && l.ngayThucHien <= toStr
-      )
-
-      // Track keys created in THIS sync run (plans array is stale — loaded before loop)
-      const createdSoFar = new Set()
-
-      for (const lenh of relevant) {
-        const congDoan = GROUP_DEFAULT_CD[lenh.toThucHien] || null
-        if (!congDoan) continue
-
-        // Dedup key: ngày + tổ + (maDonHang || maSp) + soLo
-        const inMemKey = [
-          lenh.ngayThucHien, lenh.toThucHien,
-          lenh.maDonHang || lenh.maSp || '', lenh.soLo || ''
-        ].join('|')
-
-        // Kiểm tra đã có kế hoạch cho ngày + tổ + (maDonHang hoặc maSp) + soLo này chưa
-        const existsInDb = plans.some(p =>
-          p.ngayThucHien === lenh.ngayThucHien &&
-          p.toNhom === lenh.toThucHien &&
-          (lenh.maDonHang ? p.maDonHang === lenh.maDonHang : p.maSp === lenh.maSp) &&
-          (!lenh.soLo || !p.soLo || p.soLo === lenh.soLo)
-        )
-        if (existsInDb || createdSoFar.has(inMemKey)) continue
-
-        const congField = CONG_FIELD_MAP[congDoan]
-        await api.post('/work-schedule', {
-          source:        'PLAN',
-          ngayThucHien:  lenh.ngayThucHien,
-          congDoan,
-          toNhom:        lenh.toThucHien,
-          maBravo:       lenh.maBravo     || null,
-          maDonHang:     lenh.maDonHang   || null,
-          maSp:          lenh.maSp        || null,
-          tenTrinh:      lenh.tenSanPham  || null,
-          soLo:          lenh.soLo        || null,
-          coLo:          lenh.soLuong != null ? Number(lenh.soLuong) : null,
-          ...(congField && lenh.soNguoiThucHien != null
-            ? { [congField]: lenh.soNguoiThucHien } : {}),
-        })
-        createdSoFar.add(inMemKey)
-        created++
-      }
-
-      if (created > 0) {
-        message.success(`Đã tạo thêm ${created} kế hoạch từ Lệnh SX`, 3)
-        fetchData(undefined, { silent: true })
-      } else {
-        message.info('Tất cả Lệnh SX trong khoảng ngày này đã có Kế hoạch tương ứng')
-      }
-    } catch { message.error('Đồng bộ thất bại') }
-    finally { setSyncingFromLenh(false) }
-  }, [dateRange, fetchData])
 
   const addNextWeek = () => {
     const newEnd = dateRange?.[1]
@@ -2492,30 +2092,6 @@ function KhoachContent({ miniPickerMode = false }) {
                 onClick={() => setShowDonHang(v => !v)}
               >
                 ĐƠN HÀNG
-              </Button>
-            </Tooltip>
-          )}
-          {canEdit && (
-            <Tooltip title="Đẩy tất cả kế hoạch trong view sang Lệnh SX (tạo lệnh còn thiếu)">
-              <Button
-                icon={<SyncOutlined spin={syncingAll} />}
-                loading={syncingAll}
-                onClick={handleSyncAllLenhSX}
-                style={{ borderColor: '#0d9488', color: '#0d9488' }}
-              >
-                Đồng bộ sang Lệnh SX
-              </Button>
-            </Tooltip>
-          )}
-          {canEdit && (
-            <Tooltip title="Tạo Kế hoạch từ Lệnh SX bị thiếu trong khoảng ngày này">
-              <Button
-                icon={<SyncOutlined spin={syncingFromLenh} />}
-                loading={syncingFromLenh}
-                onClick={syncFromLenhSX}
-                style={{ borderColor: '#7c3aed', color: '#7c3aed' }}
-              >
-                Đồng bộ từ Lệnh SX
               </Button>
             </Tooltip>
           )}
@@ -3611,8 +3187,6 @@ function KhoachContent({ miniPickerMode = false }) {
           await fetchData(undefined, { silent: true })
           requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'instant' }))
           syncToDonHang(payload)
-          if (payload.maBravo && payload.maDonHang)
-            syncAllLenhForDH(payload.maBravo, payload.maDonHang).catch(() => {})
         }}
       />
 
@@ -3684,7 +3258,7 @@ function KhoachContent({ miniPickerMode = false }) {
 }
 
 // ── Các tab key hợp lệ ────────────────────────────────────────────────────────
-const VALID_TAB_KEYS = ['tong-hop', 'khoach', 'khoach-v2', 'lenh-sx', 'don-hang']
+const VALID_TAB_KEYS = ['tong-hop', 'khoach', 'khoach-v2', 'don-hang']
 
 // Đọc tab hiện tại từ URL (?tab=...). Fallback về 'tong-hop' nếu không hợp lệ.
 function getTabFromUrl() {
@@ -3707,11 +3281,13 @@ export default function KhoachPage() {
 
   // Khởi tạo từ URL → auto-reload sẽ đọc lại đúng tab cũ
   const [activeTab, setActiveTab] = useState(getTabFromUrl)
+  const [lenhSxKey, setLenhSxKey] = useState(0)
 
   // Khi user click tab: cập nhật state + ghi vào URL
   const handleTabChange = (key) => {
     setActiveTab(key)
     setTabInUrl(key)
+    if (key === 'lenh-sx') setLenhSxKey(k => k + 1)
   }
 
   // Đồng bộ nếu URL thay đổi từ bên ngoài (ví dụ: browser back/forward)
@@ -3740,8 +3316,8 @@ export default function KhoachPage() {
     ...(canViewExtra ? [
       {
         key: 'lenh-sx',
-        label: <span><FileTextOutlined style={{ marginRight: 5 }} />Lệnh Sản Xuất</span>,
-        children: <LenhSanXuatPage />,
+        label: <span><UnorderedListOutlined style={{ marginRight: 5 }} />Lệnh Sản Xuất</span>,
+        children: <LenhSanXuatTab key={lenhSxKey} />,
       },
       {
         key: 'don-hang',

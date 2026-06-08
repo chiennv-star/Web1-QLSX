@@ -65,6 +65,9 @@ public interface LenhSanXuatRepository extends JpaRepository<LenhSanXuat, Long> 
             @org.springframework.data.repository.query.Param("soLo")    String soLo
     );
 
+    @Query("SELECT l FROM LenhSanXuat l WHERE l.deletedAt IS NULL AND l.maBravo = :maBravo ORDER BY l.ngayThucHien ASC NULLS LAST, l.createdAt ASC")
+    List<LenhSanXuat> findByMaBravo(@org.springframework.data.repository.query.Param("maBravo") String maBravo);
+
     @Query("SELECT l FROM LenhSanXuat l WHERE l.deletedAt IS NOT NULL ORDER BY l.deletedAt DESC")
     List<LenhSanXuat> findAllDeleted();
 

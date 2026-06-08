@@ -82,6 +82,13 @@ public class ProductionController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/bulk")
+    public ResponseEntity<java.util.Map<String, Integer>> bulkDelete(
+            @RequestBody java.util.List<Long> ids, Authentication auth) {
+        int deleted = productionService.bulkDelete(ids, auth.getName());
+        return ResponseEntity.ok(java.util.Map.of("deleted", deleted));
+    }
+
     @GetMapping("/chua-phat-lenh/count")
     public ResponseEntity<java.util.Map<String, Long>> countChuaPhatLenh() {
         long count = productionService.countChuaPhatLenh();

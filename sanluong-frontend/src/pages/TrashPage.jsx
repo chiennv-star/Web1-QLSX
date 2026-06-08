@@ -5,7 +5,7 @@ import {
 } from 'antd'
 import {
   DeleteOutlined, UndoOutlined, WarningOutlined,
-  FileTextOutlined, ShoppingOutlined, BarChartOutlined, CalendarOutlined
+  ShoppingOutlined, BarChartOutlined, CalendarOutlined
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import api from '../api/axios'
@@ -52,160 +52,6 @@ function BulkToolbar({ selected, total, onSelectAll, onDeselectAll, onBulkRestor
           </Button>
         </Popconfirm>
       </div>
-    </div>
-  )
-}
-
-// ── Lenh San Xuat Trash ───────────────────────────────────────────────────────
-function LenhTrashTab({ canEdit }) {
-  const [data, setData]                     = useState([])
-  const [loading, setLoading]               = useState(false)
-  const [selectedRowKeys, setSelectedRowKeys] = useState([])
-  const [bulkRestoring, setBulkRestoring]   = useState(false)
-  const [bulkDeleting, setBulkDeleting]     = useState(false)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const { data: res } = await api.get('/lenh-san-xuat/trash')
-      setData(res)
-    } catch { message.error('Không thể tải thùng rác') }
-    finally { setLoading(false) }
-  }, [])
-
-  useEffect(() => { load() }, [load])
-
-  const handleRestore = async (id) => {
-    try {
-      await api.post(`/lenh-san-xuat/${id}/restore`)
-      message.success('Đã khôi phục lệnh sản xuất')
-      setData(prev => prev.filter(r => r.id !== id))
-    } catch { message.error('Khôi phục thất bại') }
-  }
-
-  const handleDelete = async (id) => {
-    try {
-      await api.delete(`/lenh-san-xuat/${id}/permanent`)
-      message.success('Đã xóa vĩnh viễn')
-      setData(prev => prev.filter(r => r.id !== id))
-    } catch { message.error('Xóa thất bại') }
-  }
-
-  const handleBulkRestore = async () => {
-    setBulkRestoring(true)
-    let ok = 0, fail = 0
-    for (const id of selectedRowKeys) {
-      try { await api.post(`/lenh-san-xuat/${id}/restore`); ok++ }
-      catch { fail++ }
-    }
-    setData(prev => prev.filter(r => !selectedRowKeys.includes(r.id)))
-    setSelectedRowKeys([])
-    setBulkRestoring(false)
-    fail === 0 ? message.success(`Đã khôi phục ${ok} lệnh sản xuất`)
-               : message.warning(`Khôi phục ${ok} thành công, ${fail} thất bại`)
-  }
-
-  const handleBulkDelete = async () => {
-    setBulkDeleting(true)
-    let ok = 0, fail = 0
-    for (const id of selectedRowKeys) {
-      try { await api.delete(`/lenh-san-xuat/${id}/permanent`); ok++ }
-      catch { fail++ }
-    }
-    setData(prev => prev.filter(r => !selectedRowKeys.includes(r.id)))
-    setSelectedRowKeys([])
-    setBulkDeleting(false)
-    fail === 0 ? message.success(`Đã xóa vĩnh viễn ${ok} bản ghi`)
-               : message.warning(`Xóa ${ok} thành công, ${fail} thất bại`)
-  }
-
-  const columns = [
-    {
-      title: '#', key: 'stt', width: 46, align: 'center',
-      render: (_, __, i) => <span style={{ color: '#94a3b8', fontSize: 11 }}>{i + 1}</span>,
-    },
-    {
-      title: 'Xóa lúc', dataIndex: 'deletedAt', key: 'deletedAt', width: 140,
-      render: v => <span style={{ fontSize: 12, color: '#ef4444' }}>{fmtDate(v)}</span>,
-      sorter: (a, b) => (a.deletedAt || '').localeCompare(b.deletedAt || ''),
-      defaultSortOrder: 'descend',
-    },
-    {
-      title: 'Người xóa', dataIndex: 'deletedBy', key: 'deletedBy', width: 110,
-      render: v => <span style={{ fontSize: 12, color: '#64748b' }}>{v || '—'}</span>,
-    },
-    {
-      title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 110,
-      render: v => v ? <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{v}</span> : '—',
-    },
-    {
-      title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 85,
-      render: v => v ? <Tag color="blue" style={{ marginRight: 0 }}>{v}</Tag> : '—',
-    },
-    {
-      title: 'Tên Sản Phẩm', dataIndex: 'tenSanPham', key: 'ten', width: 220, ellipsis: true,
-      render: v => <span style={{ fontSize: 12 }}>{v || '—'}</span>,
-    },
-    {
-      title: 'Số Lô', dataIndex: 'soLo', key: 'soLo', width: 90,
-      render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v || '—'}</span>,
-    },
-    {
-      title: 'Tổ TH', dataIndex: 'toThucHien', key: 'to', width: 80, align: 'center',
-      render: v => v ? <Tag style={{ marginRight: 0 }}>{v}</Tag> : '—',
-    },
-    {
-      title: 'Ngày TH', dataIndex: 'ngayThucHien', key: 'ngay', width: 100,
-      render: v => v ? <span style={{ fontSize: 12 }}>{dayjs(v).format('DD/MM/YYYY')}</span> : '—',
-    },
-    {
-      title: 'Số Lượng', dataIndex: 'soLuong', key: 'sl', width: 90, align: 'right',
-      render: v => <span style={{ fontWeight: 600 }}>{fmtNum(v)}</span>,
-    },
-    ...(canEdit ? [{
-      title: '', key: 'action', width: 90, fixed: 'right', align: 'center',
-      render: (_, r) => (
-        <Space size={4}>
-          <Tooltip title="Khôi phục">
-            <Button size="small" type="primary" icon={<UndoOutlined />}
-              style={{ background: '#15803d', borderColor: '#15803d' }}
-              onClick={() => handleRestore(r.id)} />
-          </Tooltip>
-          <Popconfirm
-            title={<><WarningOutlined style={{ color: '#ef4444' }} /> Xóa vĩnh viễn?</>}
-            description="Hành động này không thể hoàn tác."
-            okText="Xóa vĩnh viễn" cancelText="Hủy"
-            okButtonProps={{ danger: true }}
-            onConfirm={() => handleDelete(r.id)}>
-            <Button size="small" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
-      ),
-    }] : []),
-  ]
-
-  return (
-    <div style={{ padding: '8px 0' }}>
-      {canEdit && (
-        <BulkToolbar
-          selected={selectedRowKeys} total={data.length}
-          onSelectAll={() => setSelectedRowKeys(data.map(r => r.id))}
-          onDeselectAll={() => setSelectedRowKeys([])}
-          onBulkRestore={handleBulkRestore} onBulkDelete={handleBulkDelete}
-          restoring={bulkRestoring} deleting={bulkDeleting}
-        />
-      )}
-      <Table
-        className="trash-table"
-        columns={columns} dataSource={data} rowKey="id"
-        loading={loading} size="small" scroll={{ x: 1100 }}
-        rowSelection={canEdit ? {
-          type: 'checkbox', selectedRowKeys,
-          onChange: keys => setSelectedRowKeys(keys), columnWidth: 40,
-        } : undefined}
-        locale={{ emptyText: <Empty description="Thùng rác trống" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
-        pagination={{ defaultPageSize: 50, showSizeChanger: true, showTotal: t => `${t} bản ghi` }}
-      />
     </div>
   )
 }
@@ -615,30 +461,17 @@ export default function TrashPage() {
   const { isAdmin } = useAuth()
   const canEdit = isAdmin()
 
-  const [lenhCount, setLenhCount] = useState(0)
   const [donHangCount, setDonHangCount] = useState(0)
   const [sanLuongCount, setSanLuongCount] = useState(0)
   const [lichLamViecCount, setLichLamViecCount] = useState(0)
 
   useEffect(() => {
-    api.get('/lenh-san-xuat/trash').then(({ data }) => setLenhCount(data.length)).catch(() => {})
     api.get('/don-hang/trash').then(({ data }) => setDonHangCount(data.length)).catch(() => {})
     api.get('/production/trash').then(({ data }) => setSanLuongCount((Array.isArray(data) ? data : data.content || []).length)).catch(() => {})
     api.get('/work-schedule/trash').then(({ data }) => setLichLamViecCount((Array.isArray(data) ? data : data.content || []).length)).catch(() => {})
   }, [])
 
   const tabItems = [
-    {
-      key: 'lenh',
-      label: (
-        <span>
-          <FileTextOutlined style={{ marginRight: 5 }} />
-          Lệnh Sản Xuất
-          {lenhCount > 0 && <Badge count={lenhCount} style={{ marginLeft: 6, background: '#ef4444' }} />}
-        </span>
-      ),
-      children: <LenhTrashTab canEdit={canEdit} />,
-    },
     {
       key: 'donhang',
       label: (
@@ -722,7 +555,7 @@ export default function TrashPage() {
 
       <Tabs
         className="trash-tabs"
-        defaultActiveKey="lenh"
+        defaultActiveKey="donhang"
         items={tabItems}
         tabBarStyle={{ marginBottom: 0 }}
       />

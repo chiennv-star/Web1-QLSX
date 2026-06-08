@@ -655,6 +655,8 @@ export default function DashboardPage() {
   const [inboxCount, setInboxCount] = useState(0)
   const [activeTab, setActiveTab] = useState('list')
   const [ctxMenu, setCtxMenu] = useState({ visible: false, x: 0, y: 0, record: null })
+  const [selectedIds, setSelectedIds] = useState([])
+  const [bulkDelLoading, setBulkDelLoading] = useState(false)
 
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
@@ -874,6 +876,18 @@ export default function DashboardPage() {
     } catch {
       message.error('Xóa thất bại')
     }
+  }
+
+  const handleBulkDelete = async () => {
+    if (!selectedIds.length) return
+    setBulkDelLoading(true)
+    try {
+      const { data: res } = await api.delete('/production/bulk', { data: selectedIds })
+      message.success(`Đã xóa ${res.deleted} bản ghi`)
+      setSelectedIds([])
+      fetchData(pagination.current - 1)
+    } catch { message.error('Xóa thất bại') }
+    finally { setBulkDelLoading(false) }
   }
 
   const handleExport = async () => {

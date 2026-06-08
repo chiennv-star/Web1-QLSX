@@ -268,6 +268,15 @@ public class ProductionService {
         repository.save(r);
     }
 
+    public int bulkDelete(List<Long> ids, String username) {
+        if (ids == null || ids.isEmpty()) return 0;
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        List<ProductionRecord> list = repository.findAllById(ids);
+        list.forEach(r -> { r.setDeletedAt(now); r.setDeletedBy(username); });
+        repository.saveAll(list);
+        return list.size();
+    }
+
     public ProductionRecord phatLenh(Long id, String username) {
         ProductionRecord r = getById(id);
         LocalDateTime now = LocalDateTime.now();

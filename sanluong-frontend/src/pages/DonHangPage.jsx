@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react'
+﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { Rnd } from 'react-rnd'
 import {
   Table, Button, Space, Input, Select, DatePicker, Modal, Form,
   InputNumber, Tag, Popconfirm, message, Badge, Tooltip, Alert,
@@ -380,20 +381,21 @@ function DonHangModal({ open, editItem, onClose, onSaved, existingMaDonHangs = [
   )
 }
 
-// ── DonHang Detail Modal (edit + linked Lệnh SX) ─────────────────────────────
+// ── DonHang Detail Modal (edit + Kế Hoạch) ───────────────────────────────────
 function DonHangDetailModal({ open, record, onClose, onSaved }) {
   const { isAdmin, isAdminKH } = useAuth()
   const canEdit = isAdmin() || isAdminKH()
 
+  const defaultRnd = useMemo(() => {
+    const w = Math.min(window.innerWidth * 0.92, 1400)
+    const h = Math.min(window.innerHeight * 0.88, 800)
+    return { x: Math.max(20, (window.innerWidth - w) / 2), y: 20, width: w, height: h }
+  }, [])
+  const [rndBounds, setRndBounds] = useState({ w: defaultRnd.width, h: defaultRnd.height, x: defaultRnd.x, y: defaultRnd.y })
+
   const [form]                        = Form.useForm()
   const [doiSlForm]                   = Form.useForm()
-  const [lenhList, setLenhList]       = useState([])
-  const [lenhLoading, setLenhLoading] = useState(false)
   const [saving, setSaving]           = useState(false)
-  const [editingId, setEditingId]     = useState(null)
-  const [editVals, setEditVals]       = useState({})
-  const [addingRow, setAddingRow]     = useState(false)
-  const [newVals, setNewVals]         = useState({})
   const [khoachList, setKhoachList]   = useState([])
   const [khoachLoading, setKhoachLoading] = useState(false)
   const [doiSlOpen, setDoiSlOpen]     = useState(false)
@@ -418,24 +420,8 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
       daDgVaXepLichDg:  !!record.daDgVaXepLichDg,
       ngayPhatLenh:     record.ngayPhatLenh ? dayjs(record.ngayPhatLenh) : null,
     })
-    setEditingId(null); setAddingRow(false); setNewVals({})
-    loadLenhs()
     loadKhoach()
   }, [open, record])
-
-  const loadLenhs = async () => {
-    if (!record) return
-    setLenhLoading(true)
-    try {
-      const { data: res } = await api.get('/lenh-san-xuat')
-      const all = Array.isArray(res) ? res : (res.content || [])
-      setLenhList(all.filter(l =>
-        (record.maDonHang && l.maDonHang === record.maDonHang) ||
-        (!record.maDonHang && record.soLo && l.soLo === record.soLo)
-      ))
-    } catch {}
-    finally { setLenhLoading(false) }
-  }
 
   const loadKhoach = async () => {
     if (!record?.maDonHang && !record?.maBravo) return
@@ -456,7 +442,6 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
     finally { setKhoachLoading(false) }
   }
 
-  const totalSl       = lenhList.reduce((s, l) => s + (Number(l.soLuong) || 0), 0)
   const khoachTotalSl = khoachList.reduce((s, r) => s + (Number(r.coLo)  || 0), 0)
   // SL Đã Xếp KH: chỉ tính PCPL1+PCPL2, mỗi tổ chỉ tính lần đầu xuất hiện
   const khoachSlXep = (() => {
@@ -472,19 +457,6 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
     }
     return total
   })()
-
-  const normDateDH = (val) => {
-    if (!val) return null
-    if (Array.isArray(val)) return `${val[0]}-${String(val[1]).padStart(2,'0')}-${String(val[2]).padStart(2,'0')}`
-    return dayjs(val).isValid() ? dayjs(val).format('YYYY-MM-DD') : null
-  }
-  // Enrich lenhList: nếu lệnh chưa có toThucHien thì lấy từ khoachList (1 giá trị)
-  const lenhListDisplay = lenhList.map(l => {
-    if (l.toThucHien) return l
-    const lDate = normDateDH(l.ngayThucHien)
-    const match = khoachList.find(k => k.maBravo === l.maBravo && normDateDH(k.ngayThucHien) === lDate)
-    return match ? { ...l, toThucHien: match.toNhom } : l
-  })
 
   // Tổ thực hiện từ kế hoạch (unique toNhom)
   const toThucHienArr = [...new Set(khoachList.map(r => r.toNhom).filter(Boolean))]
@@ -535,7 +507,7 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
       return
     }
     const slDatHang = Number(values.soLuongDatHang) || 0
-    const slXep     = khoachSlXep > 0 ? khoachSlXep : totalSl
+    const slXep     = khoachSlXep
     const autoTinhTrangSx = slDatHang > 0 && slXep >= slDatHang ? 'done' : 'doing'
     setSaving(true)
     try {
@@ -553,282 +525,10 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
     finally { setSaving(false) }
   }
 
-  const startEdit = (r) => {
-    setEditingId(r.id)
-    setEditVals({
-      ngayThucHien: r.ngayThucHien ? dayjs(r.ngayThucHien) : null,
-      maBravo: r.maBravo || '', maSp: r.maSp || '',
-      tenSanPham: r.tenSanPham || '', soLo: r.soLo || '',
-      soLuong: r.soLuong ?? null, ghiChu: r.ghiChu || '',
-    })
-  }
-
-  const saveEdit = async (id) => {
-    const lenh = lenhList.find(l => l.id === id)
-    if (!lenh) return
-    try {
-      const { data: saved } = await api.put(`/lenh-san-xuat/${id}`, {
-        ...lenh, ...editVals,
-        ngayThucHien: editVals.ngayThucHien ? editVals.ngayThucHien.format('YYYY-MM-DD') : null,
-      })
-      setLenhList(prev => prev.map(l => l.id === id ? saved : l))
-      setEditingId(null)
-      syncSoLoToKhoach(saved.maBravo, record.maDonHang || saved.maDonHang, saved.ngayThucHien, saved.soLo)
-    } catch { message.error('Lưu thất bại') }
-  }
-
-  const deleteLenh = async (id) => {
-    try {
-      await api.delete(`/lenh-san-xuat/${id}`)
-      setLenhList(prev => prev.filter(l => l.id !== id))
-    } catch { message.error('Xóa thất bại') }
-  }
-
-  // Đồng bộ Lệnh SX theo kế hoạch: xóa lệnh không còn kế hoạch, bổ sung lệnh còn thiếu
-  const [syncing, setSyncing] = useState(false)
-  const syncLenhWithKhoach = async () => {
-    if (!khoachList.length && !lenhList.length) return
-    // Nếu không có kế hoạch → không xóa lệnh SX (kế hoạch chưa tạo, không phải lỗi)
-    if (!khoachList.length) {
-      message.info('Không có kế hoạch tương ứng — không thể đồng bộ')
-      return
-    }
-    setSyncing(true)
-    try {
-      // Lệnh SX không có kế hoạch tương ứng (khớp ngày + tổ + soLo) → xóa
-      const toDelete = lenhList.filter(l => {
-        const lDate = normDateDH(l.ngayThucHien)
-        return !khoachList.some(k =>
-          normDateDH(k.ngayThucHien) === lDate &&
-          k.toNhom === l.toThucHien &&
-          (!k.soLo || !l.soLo || k.soLo === l.soLo)
-        )
-      })
-      // Kế hoạch chưa có lệnh SX tương ứng (khớp ngày + tổ + soLo) → tạo mới
-      const toAdd = khoachList.filter(k => {
-        const kDate = normDateDH(k.ngayThucHien)
-        return !lenhList.some(l =>
-          normDateDH(l.ngayThucHien) === kDate &&
-          l.toThucHien === k.toNhom &&
-          (!k.soLo || !l.soLo || l.soLo === k.soLo)
-        )
-      })
-      // Kế hoạch đã có lệnh nhưng cỡ lô khác → cập nhật soLuong = coLo
-      const toUpdate = khoachList.flatMap(k => {
-        if (k.coLo == null) return []
-        const kDate = normDateDH(k.ngayThucHien)
-        return lenhList.filter(l =>
-          normDateDH(l.ngayThucHien) === kDate &&
-          l.toThucHien === k.toNhom &&
-          (!k.soLo || !l.soLo || l.soLo === k.soLo) &&
-          Number(l.soLuong) !== Number(k.coLo)
-        ).map(l => ({ ...l, soLuong: k.coLo }))
-      })
-
-      if (toDelete.length > 0)
-        await Promise.all(toDelete.map(l => api.delete(`/lenh-san-xuat/${l.id}`)))
-      if (toAdd.length > 0)
-        await Promise.all(toAdd.map(k => api.post('/lenh-san-xuat', {
-          maBravo:      record.maBravo       || null,
-          maDonHang:    record.maDonHang     || null,
-          maSp:         k.maSp              || record.maSp      || null,
-          tenSanPham:   k.tenTrinh          || record.tenSanPham|| null,
-          soLo:         k.soLo              || null,
-          soLuong:      k.coLo != null ? k.coLo : null,
-          toThucHien:   k.toNhom            || null,
-          ngayThucHien: normDateDH(k.ngayThucHien),
-        })))
-      if (toUpdate.length > 0)
-        await Promise.all(toUpdate.map(l => api.put(`/lenh-san-xuat/${l.id}`, l)))
-
-      const changed = toDelete.length + toAdd.length + toUpdate.length
-      if (changed > 0) {
-        message.success(`Đồng bộ: xóa ${toDelete.length}, thêm ${toAdd.length}, cập nhật cỡ lô ${toUpdate.length} lệnh SX`)
-        loadLenhs()
-      } else {
-        message.info('Lệnh SX đã khớp với kế hoạch')
-      }
-    } catch { message.error('Đồng bộ thất bại') }
-    finally { setSyncing(false) }
-  }
-
-  // Đồng bộ soLo từ Lệnh SX về Kế hoạch (PLAN) cùng maBravo + maDonHang + ngayThucHien
-  const syncSoLoToKhoach = async (maBravo, maDonHang, ngayThucHien, soLo) => {
-    if (!soLo || !maBravo || !ngayThucHien) return
-    const normDate = (val) => {
-      if (!val) return null
-      if (Array.isArray(val)) return `${val[0]}-${String(val[1]).padStart(2,'0')}-${String(val[2]).padStart(2,'0')}`
-      return dayjs(val).isValid() ? dayjs(val).format('YYYY-MM-DD') : null
-    }
-    const targetDate = normDate(ngayThucHien)
-    try {
-      const { data: res } = await api.get('/work-schedule', { params: { source: 'PLAN', page: 0, size: 1000 } })
-      const all = Array.isArray(res) ? res : (res.content || [])
-      const toUpdate = all.filter(r =>
-        r.maBravo === maBravo &&
-        (maDonHang ? r.maDonHang === maDonHang : true) &&
-        normDate(r.ngayThucHien) === targetDate &&
-        r.soLo !== soLo
-      )
-      if (toUpdate.length > 0) {
-        await Promise.all(toUpdate.map(r => api.put(`/work-schedule/${r.id}`, { ...r, soLo })))
-        message.success(`Đã cập nhật số lô "${soLo}" cho ${toUpdate.length} bản ghi Kế Hoạch`, 3)
-      }
-    } catch {} // best-effort
-  }
-
-  const saveNewRow = async () => {
-    try {
-      const { data: created } = await api.post('/lenh-san-xuat', {
-        maBravo:      newVals.maBravo    || record.maBravo    || null,
-        maSp:         newVals.maSp       || record.maSp       || null,
-        tenSanPham:   newVals.tenSanPham || record.tenSanPham || null,
-        soLo:         newVals.soLo       || record.soLo       || null,
-        maDonHang:    record.maDonHang   || null,
-        soLuong:      newVals.soLuong    ?? null,
-        ngayThucHien: newVals.ngayThucHien ? newVals.ngayThucHien.format('YYYY-MM-DD') : null,
-        ghiChu:       newVals.ghiChu     || null,
-      })
-      setLenhList(prev => [...prev, created])
-      setAddingRow(false); setNewVals({})
-      message.success('Đã thêm Lệnh SX mới')
-      syncSoLoToKhoach(created.maBravo, record.maDonHang || created.maDonHang, created.ngayThucHien, created.soLo)
-    } catch { message.error('Thêm thất bại') }
-  }
-
   if (!record) return null
 
   const fmtN  = v => v != null ? Number(v).toLocaleString('vi-VN') : '—'
-  const isEd  = id => editingId === id
   const numFmt = { formatter: v => v ? Number(v).toLocaleString('vi-VN') : '', parser: v => v ? v.replace(/[^\d]/g, '') : '' }
-
-  // ── inline edit cell builder ──────────────────────────────────────────────
-  const cellInp = (field, r, inputEl) => {
-    const isNew = r._isNew
-    if (!isNew && !isEd(r.id)) return null // signal: use default read render
-    const val    = isNew ? newVals[field]   : editVals[field]
-    const setVal = nv => isNew
-      ? setNewVals(p => ({ ...p, [field]: nv }))
-      : setEditVals(p => ({ ...p, [field]: nv }))
-    return inputEl(val, setVal)
-  }
-
-  const mkTxt = (field, style = {}) => (r) => {
-    const inp = cellInp(field, r, (val, set) =>
-      <Input size="small" value={val} onChange={e => set(e.target.value)} style={{ width: '100%', ...style }} />
-    )
-    return inp
-  }
-
-  const TO_COLOR_DH = { PCPL1: '#374151', PCPL2: '#374151', PCPL3: '#374151', BBC1: '#7c3aed', DG: '#0369a1', PC: '#166534', PL: '#92400e' }
-
-  // ── Lệnh SX table columns ────────────────────────────────────────────────
-  const lenhCols = [
-    {
-      title: 'Ngày SX', dataIndex: 'ngayThucHien', width: 112,
-      render: (v, r) => {
-        const inp = cellInp('ngayThucHien', r, (val, set) =>
-          <DatePicker size="small" value={val} format="DD/MM/YY" style={{ width: 100 }} onChange={set} />
-        )
-        if (inp) return inp
-        return v
-          ? <span style={{ fontSize: 12, color: '#1677ff', fontWeight: 600 }}>{dayjs(v).format('DD/MM/YYYY')}</span>
-          : <span style={{ color: '#d9d9d9' }}>—</span>
-      },
-    },
-    {
-      title: 'Mã Bravo', dataIndex: 'maBravo', width: 108,
-      render: (v, r) => {
-        const inp = cellInp('maBravo', r, (val, set) =>
-          <Input size="small" value={val} onChange={e => set(e.target.value)} style={{ fontFamily: 'monospace', width: 98 }} />
-        )
-        if (inp) return inp
-        return v
-          ? <span style={{ fontFamily: 'monospace', color: '#1677ff', fontWeight: 700, fontSize: 12 }}>{v}</span>
-          : <span style={{ color: '#d9d9d9' }}>—</span>
-      },
-    },
-    {
-      title: 'Mã SP', dataIndex: 'maSp', width: 78,
-      render: (v, r) => {
-        const inp = cellInp('maSp', r, (val, set) =>
-          <Input size="small" value={val} onChange={e => set(e.target.value)} style={{ width: 68 }} />
-        )
-        if (inp) return inp
-        return v ? <Tag color="blue" style={{ marginRight: 0, fontSize: 11 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>
-      },
-    },
-    {
-      title: 'Tên Sản Phẩm', dataIndex: 'tenSanPham',
-      render: (v, r) => {
-        const inp = mkTxt('tenSanPham')(r)
-        if (inp) return inp
-        return <span style={{ fontSize: 12 }}>{v || <span style={{ color: '#d9d9d9' }}>—</span>}</span>
-      },
-    },
-    {
-      title: 'Số Lô', dataIndex: 'soLo', width: 92,
-      render: (v, r) => {
-        const inp = cellInp('soLo', r, (val, set) =>
-          <Input size="small" value={val} onChange={e => set(e.target.value)} style={{ fontFamily: 'monospace', width: 82 }} />
-        )
-        if (inp) return inp
-        return v ? <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
-      },
-    },
-    {
-      title: 'Cỡ Lô', dataIndex: 'soLuong', width: 102, align: 'right',
-      render: (v, r) => {
-        const inp = cellInp('soLuong', r, (val, set) =>
-          <InputNumber size="small" value={val} min={0} style={{ width: 92 }} {...numFmt} onChange={set} />
-        )
-        if (inp) return inp
-        return v != null
-          ? <span style={{ fontWeight: 700, color: '#374151', fontSize: 13 }}>{fmtN(v)}</span>
-          : <span style={{ color: '#d9d9d9' }}>—</span>
-      },
-    },
-    {
-      title: 'Tổ TH', dataIndex: 'toThucHien', width: 80, align: 'center',
-      render: v => v
-        ? <Tag style={{ fontWeight: 700, fontSize: 11, marginRight: 0, background: `${TO_COLOR_DH[v] || '#374151'}15`, color: TO_COLOR_DH[v] || '#374151', border: `1px solid ${TO_COLOR_DH[v] || '#374151'}40` }}>{v}</Tag>
-        : <span style={{ color: '#d9d9d9' }}>—</span>,
-    },
-    {
-      title: 'Ghi Chú', dataIndex: 'ghiChu',
-      render: (v, r) => {
-        const inp = mkTxt('ghiChu')(r)
-        if (inp) return inp
-        return <span style={{ fontSize: 12, color: '#64748b' }}>{v || <span style={{ color: '#d9d9d9' }}>—</span>}</span>
-      },
-    },
-    ...(canEdit ? [{
-      title: '', width: 96, align: 'center',
-      render: (_, r) => {
-        if (r._isNew) return (
-          <Space size={3}>
-            <Button size="small" type="primary"
-              style={{ background: '#22c55e', borderColor: '#22c55e', fontSize: 11 }}
-              onClick={saveNewRow}>Thêm</Button>
-            <Button size="small" style={{ fontSize: 11 }}
-              onClick={() => { setAddingRow(false); setNewVals({}) }}>Bỏ</Button>
-          </Space>
-        )
-        if (isEd(r.id)) return (
-          <Space size={3}>
-            <Button size="small" type="primary"
-              style={{ background: '#1D4ED8', borderColor: '#1D4ED8', fontSize: 11 }}
-              onClick={() => saveEdit(r.id)}>Lưu</Button>
-            <Button size="small" style={{ fontSize: 11 }}
-              onClick={() => setEditingId(null)}>Bỏ</Button>
-          </Space>
-        )
-        return null
-      },
-    }] : []),
-  ]
-
-  const tableData = [...lenhListDisplay, ...(addingRow ? [{ id: '__new__', _isNew: true }] : [])]
 
   // ── Info grid helpers ─────────────────────────────────────────────────────
   const LCell = ({ children }) => (
@@ -844,26 +544,37 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
 
   return (
     <Modal open={open} onCancel={onClose} footer={null} title={null}
-      width={1000} destroyOnClose styles={{ body: { padding: 0 } }}
-      wrapClassName="dh-detail-modal">
+      width="100%" destroyOnClose
+      styles={{ body: { padding: 0 }, wrapper: { pointerEvents: 'none' } }}
+      style={{ top: 0, padding: 0, margin: 0, maxWidth: 'none', pointerEvents: 'none' }}
+      wrapClassName="dh-detail-modal"
+      modalRender={modal => (
+        <Rnd
+          size={{ width: rndBounds.w, height: rndBounds.h }}
+          position={{ x: rndBounds.x, y: rndBounds.y }}
+          onDragStop={(_, d) => setRndBounds(b => ({ ...b, x: d.x, y: d.y }))}
+          onResizeStop={(_, __, ref, ___, pos) => setRndBounds({ w: ref.offsetWidth, h: ref.offsetHeight, x: pos.x, y: pos.y })}
+          minWidth={700} minHeight={300}
+          bounds="window"
+          dragHandleClassName="dh-modal-drag-handle"
+          style={{ pointerEvents: 'all', zIndex: 1000 }}
+          enableResizing={{ bottom: true, right: true, bottomRight: true, left: true, bottomLeft: true, top: false, topLeft: false, topRight: false }}
+        >
+          {modal}
+        </Rnd>
+      )}
+    >
       <style>{`
-        .dh-detail-modal .ant-modal-content { padding: 0 !important; border-radius: 10px !important; overflow: hidden; }
-        .dh-detail-modal .ant-modal-body    { padding: 0 !important; }
+        .dh-detail-modal { pointer-events: none !important; }
+        .dh-detail-modal .ant-modal { width: 100% !important; height: 100% !important; margin: 0 !important; top: 0 !important; padding: 0 !important; max-width: none !important; pointer-events: all; }
+        .dh-detail-modal .ant-modal-content { padding: 0 !important; border-radius: 10px !important; overflow: hidden; height: 100%; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.22); }
+        .dh-detail-modal .ant-modal-body    { padding: 0 !important; flex: 1; overflow-y: auto; min-height: 0; }
         .dh-detail-modal .ant-form-item     { margin-bottom: 0 !important; }
-        .dh-lenh-tbl .ant-table-thead > tr > th { background: linear-gradient(90deg, #2980b3 0%, #3399CC 100%) !important; color: #ffffff !important; font-size: 11px !important; font-weight: 700 !important; padding: 5px 8px !important; text-transform: uppercase; border-right: 1px solid #4db3d4 !important; }
-        .dh-lenh-tbl .ant-table-thead > tr > th::before { display: none !important; }
-        .dh-lenh-tbl .ant-table-tbody > tr > td { padding: 4px 6px !important; vertical-align: middle; }
-        .dh-lenh-tbl .ant-table-tbody > tr:hover > td { background: #EAECF2 !important; }
-        .dh-lenh-tbl ._new-row td { background: #f0fdf4 !important; }
-        @keyframes dhRowSlideIn {
-          from { opacity: 0; transform: translateY(-10px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .dh-lenh-tbl ._new-row { animation: dhRowSlideIn 0.22s cubic-bezier(0.22,1,0.36,1); }
+        .dh-modal-drag-handle               { cursor: move; user-select: none; }
       `}</style>
 
       {/* Header */}
-      <div style={{ background: '#1e4570', padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="dh-modal-drag-handle" style={{ background: '#1e4570', padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ fontSize: 22 }}>📦</span>
         <div>
           <div style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>
@@ -897,7 +608,7 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
             <LCell><span style={{ color: '#cf1322', marginRight: 3 }}>*</span>Số Lượng ĐH</LCell>
             <VCell>
               <Form.Item name="soLuongDatHang" noStyle>
-                <InputNumber size="small" style={{ width: '100%', fontSize: 13 }} min={0} {...numFmt} disabled />
+                <InputNumber size="small" style={{ width: '100%', fontSize: 13 }} min={0} {...numFmt} />
               </Form.Item>
             </VCell>
             <LCell>Mã SP</LCell>
@@ -941,11 +652,6 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
                     ({khoachList.length} bản ghi KH)
                   </span>
                 </div>
-                {totalSl > 0 && (
-                  <span style={{ fontSize: 10, color: '#64748b' }}>
-                    Lệnh SX: <b style={{ color: '#374151' }}>{fmtN(totalSl)}</b>
-                  </span>
-                )}
               </div>
             </VCell>
             <LCell>Tình Trạng SX</LCell>
@@ -953,7 +659,7 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
               <Form.Item noStyle shouldUpdate={(prev, cur) => prev.soLuongDatHang !== cur.soLuongDatHang}>
                 {({ getFieldValue }) => {
                   const slDH  = Number(getFieldValue('soLuongDatHang')) || 0
-                  const slXep = khoachSlXep > 0 ? khoachSlXep : totalSl
+                  const slXep = khoachSlXep
                   const isDone = slDH > 0 && slXep >= slDH
                   return isDone ? (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -1019,44 +725,98 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
           </div>
         </div>
 
-        {/* ── Lệnh SX table ── */}
-        <div style={{ padding: '0 16px 12px' }}>
-          <div style={{ fontWeight: 700, fontSize: 13, color: '#1D4ED8', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-            📋 Lệnh Sản Xuất liên kết
-            {totalSl > 0 && (
-              <span style={{ fontWeight: 400, fontSize: 11, color: '#1D4ED8', background: '#EAECF2', padding: '1px 8px', borderRadius: 8, border: '1px solid #D0D5DC' }}>
-                Tổng Cỡ Lô: <b>{fmtN(totalSl)}</b>
-              </span>
-            )}
-            <Tooltip title="Đồng bộ với kế hoạch: xóa lệnh không còn lịch, bổ sung lệnh còn thiếu">
-              <Button size="small" type="default" loading={syncing} icon={<SyncOutlined />}
-                style={{ marginLeft: 'auto', fontSize: 11, color: '#0369a1', borderColor: '#bae6fd', background: '#f0f9ff' }}
-                onClick={syncLenhWithKhoach}>
-                Đồng bộ KH
-              </Button>
-            </Tooltip>
-          </div>
-          <Table className="dh-lenh-tbl"
-            columns={lenhCols} dataSource={tableData} rowKey="id"
-            loading={lenhLoading} pagination={false} size="small"
-            rowClassName={r => r._isNew ? '_new-row' : ''}
-            locale={{ emptyText: <span style={{ color: '#d9d9d9', fontSize: 12 }}>Chưa có Lệnh SX</span> }}
-            footer={canEdit ? () => (
-              <Button size="small" type="dashed" icon={<PlusOutlined />}
-                style={{ fontSize: 11, color: '#1D4ED8', borderColor: '#D0D5DC', visibility: addingRow ? 'hidden' : 'visible' }}
-                onClick={() => {
-                  setNewVals({
-                    maBravo:    record.maBravo    || '',
-                    maSp:       record.maSp       || '',
-                    tenSanPham: record.tenSanPham || '',
-                  })
-                  setAddingRow(true)
-                }}>
-                Thêm mới
-              </Button>
-            ) : undefined}
-          />
-        </div>
+        {/* ── Bảng Kế Hoạch liên kết (Lệnh SX) ── */}
+        {(() => {
+          const TO_ORDER = { PCPL1: 1, PCPL2: 2, PL: 3, DG: 4, BBC1: 5, CC: 6, PC: 7 }
+          const TO_COLOR = { PCPL1: '#374151', PCPL2: '#546e7a', PL: '#92400e', DG: '#0369a1', BBC1: '#7c3aed', CC: '#b45309', PC: '#166534' }
+          const sorted = [...khoachList].sort((a, b) => {
+            const ta = TO_ORDER[a.toNhom] ?? 99
+            const tb = TO_ORDER[b.toNhom] ?? 99
+            if (ta !== tb) return ta - tb
+            return (a.ngayThucHien || '').localeCompare(b.ngayThucHien || '')
+          })
+          const totalCoLo = khoachList
+            .filter(r => r.toNhom === 'PCPL1' || r.toNhom === 'PCPL2')
+            .reduce((s, r) => s + (Number(r.coLo) || 0), 0)
+
+          const khCols = [
+            {
+              title: 'Ngày SX', dataIndex: 'ngayThucHien', key: 'ngay', width: 90, align: 'center',
+              render: v => v ? <span style={{ fontSize: 12, fontWeight: 600, color: '#1D4ED8' }}>{dayjs(v).format('DD/MM/YYYY')}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+            },
+            {
+              title: 'Mã Bravo', dataIndex: 'maBravo', key: 'bravo', width: 100,
+              render: v => v ? <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: '#1677ff' }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+            },
+            {
+              title: 'Mã SP', dataIndex: 'maSp', key: 'masp', width: 80,
+              render: v => v ? <Tag style={{ fontWeight: 700, fontSize: 11, margin: 0 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>
+            },
+            {
+              title: 'Tên Sản Phẩm', dataIndex: 'tenTrinh', key: 'ten', ellipsis: true,
+              render: v => <span style={{ fontSize: 12 }}>{v || '—'}</span>
+            },
+            {
+              title: 'Số Lô', dataIndex: 'soLo', key: 'solo', width: 90, align: 'center',
+              render: v => v ? <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#7c3aed', fontWeight: 600 }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+            },
+            {
+              title: 'Cỡ Lô', dataIndex: 'coLo', key: 'colo', width: 90, align: 'right',
+              render: v => <span style={{ fontWeight: 700, fontSize: 13, color: v > 0 ? '#1D4ED8' : '#d9d9d9' }}>{v > 0 ? Number(v).toLocaleString('vi-VN') : '—'}</span>
+            },
+            {
+              title: 'Tổ TH', dataIndex: 'toNhom', key: 'to', width: 80, align: 'center',
+              render: v => v ? <Tag style={{ fontWeight: 700, fontSize: 11, margin: 0, background: `${TO_COLOR[v] || '#374151'}15`, color: TO_COLOR[v] || '#374151', border: `1px solid ${TO_COLOR[v] || '#374151'}40` }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>
+            },
+            {
+              title: 'Ghi Chú', dataIndex: 'chuY', key: 'ghi', ellipsis: true,
+              render: v => <span style={{ fontSize: 11, color: '#64748b' }}>{v || ''}</span>
+            },
+          ]
+
+          return (
+            <div style={{ margin: '0 16px 12px', border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+              {/* Header */}
+              <div style={{ background: '#1e4570', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ color: '#fff', fontWeight: 700, fontSize: 13 }}>📋 Kế Hoạch liên kết</span>
+                {totalCoLo > 0 && (
+                  <Tag style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', fontWeight: 700, fontSize: 11 }}>
+                    Tổng Cỡ Lô: {Number(totalCoLo).toLocaleString('vi-VN')}
+                  </Tag>
+                )}
+                <Button
+                  size="small" icon={<SyncOutlined spin={khoachLoading} />}
+                  loading={khoachLoading}
+                  onClick={loadKhoach}
+                  style={{ marginLeft: 'auto', borderColor: 'rgba(255,255,255,0.4)', color: '#fff', background: 'transparent', fontSize: 11 }}
+                >
+                  Làm mới
+                </Button>
+              </div>
+
+              {khoachList.length === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
+                  {khoachLoading ? <SyncOutlined spin /> : 'Chưa có bản ghi kế hoạch nào liên kết'}
+                </div>
+              ) : (
+                <Table
+                  columns={khCols}
+                  dataSource={sorted}
+                  rowKey="id"
+                  size="small"
+                  pagination={false}
+                  scroll={{ x: 700 }}
+                  style={{ fontSize: 12 }}
+                  rowClassName={(_, i) => i % 2 !== 0 ? 'kh-row-alt' : ''}
+                />
+              )}
+              <style>{`
+                .kh-row-alt > td { background: #f8faff !important; }
+                .ant-table-small .ant-table-thead > tr > th { background: #f1f5f9 !important; font-size: 11px !important; font-weight: 700 !important; color: #475569 !important; padding: 5px 8px !important; }
+              `}</style>
+            </div>
+          )
+        })()}
 
         {/* ── Footer ── */}
         <div style={{ padding: '10px 16px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
@@ -1121,6 +881,9 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
           }
         </div>
       </Modal>
+
+      {/* Resize corner hint */}
+      <div style={{ position: 'absolute', bottom: 4, right: 4, color: '#cbd5e1', fontSize: 12, pointerEvents: 'none', lineHeight: 1 }}>⤡</div>
 
     </Modal>
   )
@@ -1192,21 +955,11 @@ export default function DonHangPage() {
       if (filterSx) params.tinhTrangSx      = filterSx
 
       // Fetch đồng thời đơn hàng + WorkSchedule PLAN để tính SL đã xếp KH (cùng nguồn với tab Kế Hoạch)
-      const [dhRes, khRes, lenhRes] = await Promise.all([
+      const [dhRes, khRes] = await Promise.all([
         api.get('/don-hang', { params }),
         api.get('/work-schedule', { params: { source: 'PLAN', page: 0, size: 2000 } }),
-        api.get('/lenh-san-xuat'),
       ])
       const allKhoach = (khRes.data?.content || []).filter(r => r.maBravo && r.maDonHang)
-
-      // Đếm số lệnh SX theo composite key maBravo + maDonHang
-      const allLenh = Array.isArray(lenhRes.data) ? lenhRes.data : (lenhRes.data?.content || [])
-      const lenhCountMap = {}
-      allLenh.forEach(l => {
-        if (!l.maBravo || !l.maDonHang) return
-        const k = `${l.maBravo}||${l.maDonHang}`
-        lenhCountMap[k] = (lenhCountMap[k] || 0) + 1
-      })
 
       // Tính lại soLuongDaXepKh và tinhTrangSx từ Kế hoạch PLAN (coLo) — đồng bộ với BẢNG ĐƠN HÀNG
       const computeTinhTrangSx = (slXep, slDat) => {
@@ -1233,9 +986,8 @@ export default function DonHangPage() {
         const newSx = computeTinhTrangSx(slXep, slDat)
         const toThucHienList = [...new Set(matched.map(r => r.toNhom).filter(Boolean))]
         const hasKhoach = matched.length > 0
-        const soLenh = lenhCountMap[`${dh.maBravo}||${dh.maDonHang}`] || 0
 
-        return { ...dh, soLuongDaXepKh: slXep, soLuongConLai: slDat - slXep, tinhTrangSx: newSx, soLenh, toThucHienList, hasKhoach }
+        return { ...dh, soLuongDaXepKh: slXep, soLuongConLai: slDat - slXep, tinhTrangSx: newSx, toThucHienList, hasKhoach }
       })
 
       setData(enriched)
@@ -1384,13 +1136,6 @@ export default function DonHangPage() {
         : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
     {
-      title: 'Số Lệnh', dataIndex: 'soLenh', key: 'soLenh', width: 90, align: 'center',
-      sorter: (a, b) => (a.soLenh || 0) - (b.soLenh || 0),
-      render: v => v > 0
-        ? <span style={{ fontWeight: 700, fontSize: 13, color: '#1677ff' }}>{v}</span>
-        : <span style={{ color: '#d9d9d9' }}>—</span>,
-    },
-    {
       title: 'Mã Đơn Hàng', dataIndex: 'maDonHang', key: 'maDonHang', width: 115,
       render: v => v
         ? <span style={{ fontFamily: 'monospace', color: '#7c3aed', fontWeight: 600, fontSize: 12 }}>{v}</span>
@@ -1432,10 +1177,6 @@ export default function DonHangPage() {
     {
       title: 'Tình Trạng', key: 'ttSx', width: 130, align: 'center',
       render: (_, r) => {
-        // Có lệnh SX nhưng không còn kế hoạch → đã xóa kế hoạch
-        if (!r.hasKhoach && (r.soLenh || 0) > 0) {
-          return <span style={{ fontSize: 11, color: '#6b7280' }}>Đã xóa kế hoạch</span>
-        }
         const cfg = TINH_TRANG_SX[r.tinhTrangSx]
         if (!cfg) return <span style={{ color: '#d9d9d9', fontSize: 11 }}>Chưa bắt đầu</span>
         return (

@@ -46,7 +46,15 @@ public interface DonHangRepository extends JpaRepository<DonHang, Long> {
            nativeQuery = true)
     java.math.BigDecimal sumCoLoByMaSp(@Param("maSp") String maSp);
 
+    @Query("SELECT d FROM DonHang d WHERE d.deletedAt IS NULL " +
+           "AND (d.trangThaiDuyet = 'APPROVED' OR d.trangThaiDuyet IS NULL) " +
+           "AND d.maBravo = :maBravo " +
+           "ORDER BY d.ngayDatHang ASC NULLS LAST, d.createdAt ASC")
+    List<DonHang> findByMaBravo(@Param("maBravo") String maBravo);
+
     Optional<DonHang> findByMaBravoAndMaDonHang(String maBravo, String maDonHang);
+
+    Optional<DonHang> findTopByMaDonHangAndDeletedAtIsNull(String maDonHang);
 
     boolean existsByMaBravoAndDeletedAtIsNull(String maBravo);
 

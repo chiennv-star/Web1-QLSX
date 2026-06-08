@@ -16,8 +16,9 @@ import ChamCongPage from './pages/ChamCongPage'
 import TrashPage from './pages/TrashPage'
 import DanhMucPage from './pages/DanhMucPage'
 import NotificationPage from './pages/NotificationPage'
-import LenhSanXuatPage from './pages/LenhSanXuatPage'
 import DonHangPage from './pages/DonHangPage'
+import LenhSanXuatPage from './pages/LenhSanXuatPage'
+import LenhSanXuatDetailPage from './pages/LenhSanXuatDetailPage'
 import MainLayout from './components/MainLayout'
 
 function PrivateRoute({ children, adminOnly = false, allowedRoles = null }) {
@@ -79,8 +80,9 @@ export default function App() {
         } />
         <Route path="danh-muc" element={<DanhMucPage />} />
         <Route path="notifications" element={<NotificationPage />} />
-        <Route path="lenh-san-xuat" element={<LenhSanXuatPage />} />
         <Route path="don-hang" element={<DonHangPage />} />
+        <Route path="lenh-san-xuat" element={<LenhSanXuatPage />} />
+        <Route path="lenh-san-xuat/:maBravo" element={<LenhSanXuatDetailPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

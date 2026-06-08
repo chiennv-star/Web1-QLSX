@@ -6,7 +6,6 @@ import {
 import {
   ClockCircleOutlined,
   ExclamationCircleOutlined,
-  StopOutlined,
   ReloadOutlined,
   CheckOutlined,
   CloseOutlined,
@@ -69,63 +68,6 @@ function RecordCard({ r, onClose }) {
         fontWeight: hover ? 600 : 400,
       }}>
         Mở chi tiết <ArrowRightOutlined style={{ fontSize: 9, marginLeft: 3 }} />
-      </div>
-    </div>
-  )
-}
-
-// ── Chưa phát lệnh card (navigate only) ──────────────────────────────────────
-function ChuaPhatCard({ r, onClose }) {
-  const navigate = useNavigate()
-  const [hover, setHover] = useState(false)
-  return (
-    <div
-      onClick={() => { navigate(`/lenh-san-xuat`); onClose() }}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        padding: '10px 12px',
-        marginBottom: 8,
-        borderRadius: 8,
-        border: `1px solid ${hover ? '#99f6e4' : '#e2e8f0'}`,
-        background: hover ? '#f0fdfa' : '#fff',
-        cursor: 'pointer',
-        transition: 'all 0.15s',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-        <span style={{ fontWeight: 700, fontSize: 13, color: '#1e4570' }}>{r.maTp}</span>
-        <Tag style={{
-          fontSize: 11, margin: 0, padding: '1px 7px',
-          borderRadius: 10, fontWeight: 600,
-          background: '#f0fdfa', color: '#0d9488', borderColor: '#99f6e4',
-        }}>
-          {r.lsx}
-        </Tag>
-      </div>
-      <div style={{
-        fontSize: 12, color: '#475569', marginBottom: 4,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        fontWeight: 500,
-      }}>
-        {r.tienTrinh || '—'}
-      </div>
-      <div style={{ display: 'flex', gap: 12, fontSize: 12, color: '#64748b', marginBottom: 4 }}>
-        {r.soLuong != null && (
-          <span>KH: <b style={{ color: '#111', fontWeight: 700 }}>{Number(r.soLuong).toLocaleString('vi-VN')}</b></span>
-        )}
-        {r.maDonHang && (
-          <span>Đơn: <b style={{ color: '#111', fontWeight: 700 }}>{r.maDonHang}</b></span>
-        )}
-      </div>
-      <div style={{
-        display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
-        fontSize: 11, color: hover ? '#0d9488' : '#94a3b8',
-        transition: 'color 0.15s',
-        fontWeight: hover ? 600 : 400,
-      }}>
-        Vào Lệnh SX để phát lệnh <ArrowRightOutlined style={{ fontSize: 9, marginLeft: 3 }} />
       </div>
     </div>
   )
@@ -208,21 +150,18 @@ export default function InboxPanel({ open, onClose, onCountChange }) {
   const [loading, setLoading]         = useState(false)
   const [choXepLich, setChoXepLich]   = useState([])
   const [choDuyet, setChoDuyet]       = useState([])
-  const [chuaPhat, setChuaPhat]       = useState([])
-  const [activeKeys, setActiveKeys]   = useState(['1', '2', '3'])
+  const [activeKeys, setActiveKeys]   = useState(['1', '2'])
   const [actionState, setActionState] = useState({})
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
-      const [r1, r2, r3] = await Promise.all([
+      const [r1, r2] = await Promise.all([
         api.get('/production/inbox/cho-xep-lich'),
         api.get('/sl-change-request/pending'),
-        api.get('/production/inbox/chua-phat-lenh'),
       ])
       setChoXepLich(r1.data || [])
       setChoDuyet(r2.data || [])
-      setChuaPhat(r3.data || [])
     } catch { /* non-blocking */ }
     finally { setLoading(false) }
   }, [])
@@ -230,8 +169,8 @@ export default function InboxPanel({ open, onClose, onCountChange }) {
   useEffect(() => { fetchAll() }, [fetchAll])
 
   useEffect(() => {
-    onCountChange?.(choXepLich.length + choDuyet.length + chuaPhat.length)
-  }, [choXepLich, choDuyet, chuaPhat, onCountChange])
+    onCountChange?.(choXepLich.length + choDuyet.length)
+  }, [choXepLich, choDuyet, onCountChange])
 
   const handleApprove = async (id) => {
     setActionState(p => ({ ...p, [id]: 'approving' }))
@@ -251,7 +190,7 @@ export default function InboxPanel({ open, onClose, onCountChange }) {
     finally { setActionState(p => { const n = { ...p }; delete n[id]; return n }) }
   }
 
-  const totalCount = choXepLich.length + choDuyet.length + chuaPhat.length
+  const totalCount = choXepLich.length + choDuyet.length
 
   const sectionLabel = (icon, text, count, color) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -269,14 +208,6 @@ export default function InboxPanel({ open, onClose, onCountChange }) {
       image={Empty.PRESENTED_IMAGE_SIMPLE}
       style={{ padding: '16px 0', margin: 0 }}
     />
-  )
-
-  const chuaPhatChildren = chuaPhat.length === 0 ? emptyNode : (
-    <div>
-      {chuaPhat.map(r => (
-        <ChuaPhatCard key={r.id} r={r} onClose={onClose} />
-      ))}
-    </div>
   )
 
   const collapseItems = [
@@ -300,11 +231,6 @@ export default function InboxPanel({ open, onClose, onCountChange }) {
             onReject={() => handleReject(r.id)}
           />
         )),
-    },
-    {
-      key: '3',
-      label: sectionLabel(<StopOutlined />, 'Chưa phát lệnh', chuaPhat.length, '#0f766e'),
-      children: chuaPhatChildren,
     },
   ]
 
