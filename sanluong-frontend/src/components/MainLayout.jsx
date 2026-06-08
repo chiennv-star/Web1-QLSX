@@ -16,6 +16,7 @@ import {
   AppstoreOutlined,
   ArrowLeftOutlined,
   BellOutlined,
+  SolutionOutlined,
 } from '@ant-design/icons'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -191,23 +192,24 @@ export default function MainLayout() {
         { key: '/cham-cong',  icon: <FileDoneOutlined />, label: 'Chấm công' },
       ]
     : [
+        { key: '/', icon: <TableOutlined />, label: 'Sản lượng' },
+        { key: '/daily-sl',        icon: <BarChartOutlined />, label: 'Sản lượng theo ngày' },
         {
-          key: '/',
-          icon: mkBadgeIcon(<TableOutlined />, lenhNew + chuaPhatLenhCount),
-          label: canSeeChuaPhat && chuaPhatLenhCount > 0
+          key: '/lenh-san-xuat',
+          icon: mkBadgeIcon(<SolutionOutlined />, lenhNew + chuaPhatLenhCount),
+          label: (lenhNew > 0 || chuaPhatLenhCount > 0)
             ? (
               <span>
-                Sản lượng
+                Lệnh SX
                 {lenhNew > 0 && <Badge count={lenhNew} size="small" style={{ background: '#e85d04', marginLeft: 6 }} />}
-                <Badge count={chuaPhatLenhCount} size="small"
+                {chuaPhatLenhCount > 0 && <Badge count={chuaPhatLenhCount} size="small"
                   style={{ background: '#008080', marginLeft: 6 }}
                   title={`${chuaPhatLenhCount} bản ghi chưa phát lệnh`}
-                />
+                />}
               </span>
             )
-            : mkBadgeLabel('Sản lượng', lenhNew),
+            : 'Lệnh SX',
         },
-        { key: '/daily-sl',        icon: <BarChartOutlined />, label: 'Sản lượng theo ngày' },
         {
           key: '/work-schedule',
           icon: mkBadgeIcon(<ScheduleOutlined />, lichSxNew),

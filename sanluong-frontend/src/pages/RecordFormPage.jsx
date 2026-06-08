@@ -46,7 +46,6 @@ export default function RecordFormPage() {
   const [loHistory, setLoHistory] = useState([])
   const [loHistoryOpen, setLoHistoryOpen] = useState(false)
   const [phatLenh, setPhatLenh] = useState(false)
-  const pendingPhatLenh = useRef(false)
   const [lookupStatus, setLookupStatus] = useState(null)
   const lookupTimer = useRef(null)
   const [suggestions, setSuggestions] = useState([])
@@ -422,21 +421,6 @@ export default function RecordFormPage() {
     } catch {}
   }
 
-  const handleDirectPhatLenh = async () => {
-    setSaving(true)
-    try {
-      const values = form.getFieldsValue()
-      await api.put(`/production/${id}`, { ...values, phatLenh: true })
-      setPhatLenh(true)
-      message.success('Đã phát lệnh thành công!')
-      await syncHangLoi(values)
-      // Refresh danh sách hàng lỗi sau khi auto-tạo
-      await fetchHangLoiList(values.maTp, values.lsx)
-      await syncWorkSchedule(values)
-    } catch { message.error('Phát lệnh thất bại') }
-    finally { setSaving(false) }
-  }
-
   // Tạo thủ công bản ghi hàng lỗi khi tab rỗng
   const handleCreateHangLoi = async () => {
     const values = form.getFieldsValue()
@@ -456,13 +440,11 @@ export default function RecordFormPage() {
 
   const onFinish = async (values) => {
     setSaving(true)
-    const issuingNow = pendingPhatLenh.current
-    pendingPhatLenh.current = false
     try {
-      const payload = { ...values, phatLenh: issuingNow ? true : (phatLenh || false) }
+      const payload = { ...values, phatLenh: phatLenh || false }
       if (isEdit) {
         await api.put(`/production/${id}`, payload)
-        message.success(issuingNow ? 'Đã phát lệnh thành công!' : 'Cập nhật thành công')
+        message.success('Cập nhật thành công')
       } else {
         // Kiểm tra duplicate trước khi tạo mới
         if (values.maBravo && values.lsx) {
@@ -481,9 +463,7 @@ export default function RecordFormPage() {
         await api.post('/production', payload)
         message.success('Thêm mới thành công')
       }
-      if (issuingNow) setPhatLenh(true)
       await syncHangLoi(values)
-      await syncWorkSchedule(values)
       navigate('/')
     } catch (err) { message.error(err.response?.data?.message || 'Lưu thất bại') }
     finally { setSaving(false) }
@@ -607,21 +587,7 @@ export default function RecordFormPage() {
               Sửa lệnh
             </Button>
           )}
-          {ro && canEditProd && !phatLenh && (
-            <Button type="primary" size="small" icon={<SaveOutlined />}
-              loading={saving}
-              onClick={handleDirectPhatLenh}
-              style={{ fontWeight: 700, fontSize: 11, background: '#99CCCC', borderColor: '#99CCCC' }}>
-              Phát lệnh
-            </Button>
-          )}
-          {ro && phatLenh && (
-            <Button size="small" icon={<CheckCircleOutlined />} disabled
-              style={{ fontWeight: 700, fontSize: 11, background: '#777', borderColor: '#777', color: '#fff' }}>
-              Đã phát lệnh
-            </Button>
-          )}
-          {/* Chế độ sửa: hiện nút Hủy sửa + Phát lệnh */}
+          {/* Chế độ sửa: hiện nút Hủy sửa + Lưu */}
           {!ro && isEdit && (
             <Button size="small"
               onClick={() => setIsEditing(false)}
@@ -631,15 +597,11 @@ export default function RecordFormPage() {
           )}
           {canEditProd && !ro && (
             <Button type="primary" size="small"
-              icon={isEdit && phatLenh ? <CheckCircleOutlined /> : <SaveOutlined />}
+              icon={<SaveOutlined />}
               loading={saving}
-              onClick={() => { if (isEdit) pendingPhatLenh.current = true; form.submit() }}
-              style={{
-                fontWeight: 700, fontSize: 11,
-                background: isEdit && phatLenh ? '#777777' : '#99CCCC',
-                borderColor: isEdit && phatLenh ? '#777777' : '#99CCCC',
-              }}>
-              {isEdit ? (phatLenh ? 'Đã phát lệnh' : 'Phát lệnh') : 'Lưu mới'}
+              onClick={() => form.submit()}
+              style={{ fontWeight: 700, fontSize: 11, background: '#99CCCC', borderColor: '#99CCCC' }}>
+              {isEdit ? 'Lưu' : 'Lưu mới'}
             </Button>
           )}
         </Space>

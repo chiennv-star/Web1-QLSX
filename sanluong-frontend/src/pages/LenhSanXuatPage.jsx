@@ -54,6 +54,7 @@ function LenhModal({ open, editItem, defaultTo, onClose, onSaved, allRecords = [
   const [form] = Form.useForm()
   const [lookupStatus, setLookupStatus] = useState(null)
   const timerRef = useRef(null)
+  const initializingRef = useRef(false)
 
   // Gợi ý áp dụng số lô hàng loạt
   const [applyLoToAll, setApplyLoToAll] = useState(false)
@@ -149,6 +150,7 @@ function LenhModal({ open, editItem, defaultTo, onClose, onSaved, allRecords = [
 
   useEffect(() => {
     if (!open) { setDoiLoMode(false); setSoLoMoi(''); setLyDoDoiLo(''); setLoHistory([]); setDoiLoPreview(null); setApplyLoToAll(false); setIsDirty(false); setIsLocked(false); setHasSavedOnce(false); setSavedAt(null); return }
+    initializingRef.current = true
     setIsDirty(false)
     setIsLocked(!!(editItem?.daBanHanh || editItem?.soLo))
     setHasSavedOnce(false)
@@ -169,6 +171,7 @@ function LenhModal({ open, editItem, defaultTo, onClose, onSaved, allRecords = [
       form.setFieldsValue({ daLenLichLam: false, daDgVaXepLichDg: false, ngayPhatLenh: dayjs() })
       setResolvedToNhom(defaultTo || null)
     }
+    initializingRef.current = false
     setLookupStatus(null)
     setDoiLoMode(false)
     setSoLoMoi('')
@@ -374,11 +377,13 @@ function LenhModal({ open, editItem, defaultTo, onClose, onSaved, allRecords = [
     if (doiLoMode) { setDoiLoMode(false); return }
     if (isDirty) {
       Modal.confirm({
-        title: 'Thoát không lưu?',
-        content: 'Các thay đổi chưa được lưu sẽ bị mất.',
-        okText: 'Thoát',
-        cancelText: 'Ở lại',
-        onOk: onClose,
+        title: 'Có thay đổi chưa lưu',
+        content: 'Bạn có thay đổi chưa được lưu. Lưu trước khi thoát hoặc bỏ thay đổi?',
+        okText: 'Ở lại & lưu',
+        cancelText: 'Bỏ thay đổi & thoát',
+        okType: 'primary',
+        cancelButtonProps: { danger: true },
+        onCancel: () => { setIsDirty(false); onClose() },
       })
       return
     }
@@ -418,7 +423,7 @@ function LenhModal({ open, editItem, defaultTo, onClose, onSaved, allRecords = [
                 ✓ Đã phát hành{savedAt ? ` — lưu lúc ${savedAt.getHours().toString().padStart(2,'0')}:${savedAt.getMinutes().toString().padStart(2,'0')}:${savedAt.getSeconds().toString().padStart(2,'0')}` : ''}
               </span>
             )}
-            {editItem && isDirty && !doiLoMode && (
+            {isDirty && !doiLoMode && (
               <span style={{ color: '#d97706', fontWeight: 600, fontSize: 13 }}>
                 ⚠ Có thay đổi chưa lưu
               </span>
@@ -523,7 +528,7 @@ function LenhModal({ open, editItem, defaultTo, onClose, onSaved, allRecords = [
         </div>
       ) : (
       /* ── Form chỉnh sửa thường ─────────────────────────────────────────── */
-      <Form form={form} layout="vertical" style={{ marginTop: 12 }} onValuesChange={() => setIsDirty(true)} disabled={isLocked}>
+      <Form form={form} layout="vertical" style={{ marginTop: 12 }} onValuesChange={() => { if (!initializingRef.current) setIsDirty(true) }} disabled={isLocked}>
         {/* Banner đã ban hành */}
         {isBanHanh && (
           <div style={{
