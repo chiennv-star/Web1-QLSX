@@ -2199,7 +2199,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       } else {
         setNsMap({})
       }
-    } catch { message.error('Không thể tải dữ liệu') }
+    } catch { if (!silent) message.error({ content: 'Không thể tải dữ liệu', key: 'ws-fetch-err', duration: 3 }) }
     finally { if (!silent) setLoading(false) }
   }, [congDoan, filters])
 
@@ -2874,7 +2874,7 @@ function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
       setData(res.content || [])
       setPagination(p => ({ ...p, total: res.totalElements, current: page + 1, pageSize: size }))
       onCountChange?.(res.totalElements)
-    } catch { message.error('Không thể tải lịch đã hoàn thiện') }
+    } catch { message.error({ content: 'Không thể tải lịch đã hoàn thiện', key: 'ws-done-err', duration: 3 }) }
     finally { setLoading(false) }
   }, [congDoan, toNhom, filters])
 
@@ -3030,7 +3030,7 @@ function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange }) {
       setData(res.content || [])
       setPagination(p => ({ ...p, total: res.totalElements, current: page + 1, pageSize: size }))
       onCountChange?.(res.totalElements)
-    } catch { message.error('Không thể tải danh sách đã ẩn') }
+    } catch { message.error({ content: 'Không thể tải danh sách đã ẩn', key: 'ws-hidden-err', duration: 3 }) }
     finally { setLoading(false) }
   }, [congDoan, toNhom])
 
@@ -3737,6 +3737,7 @@ export default function WorkSchedulePage() {
         <Tabs
           className="ws-tabs"
           activeKey={activeTab}
+          destroyInactiveTabPane
           onChange={key => {
             setActiveTab(key)
             localStorage.setItem('ws_active_tab', key)
