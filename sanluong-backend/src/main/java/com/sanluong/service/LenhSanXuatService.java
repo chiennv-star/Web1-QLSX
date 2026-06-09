@@ -262,23 +262,26 @@ public class LenhSanXuatService {
     }
 
     /** Đồng bộ Lịch SX cho danh sách ID cụ thể */
-    @Transactional
     public int syncLichSXByIds(List<Long> ids, String username) {
         List<LenhSanXuat> list = repo.findAllById(ids).stream()
                 .filter(e -> e.getDeletedAt() == null && e.getMaBravo() != null && e.getSoLo() != null)
                 .collect(Collectors.toList());
         int total = 0;
         for (LenhSanXuat lenh : list) {
-            total += workScheduleService.autoSyncFromProduction(
-                    lenh.getMaBravo(), lenh.getMaSp(), lenh.getTenSanPham(),
-                    lenh.getSoLo(), lenh.getSoLuong(), lenh.getMaDonHang(),
-                    Boolean.TRUE.equals(lenh.getDaBanHanh()), lenh.getToThucHien());
+            try {
+                total += workScheduleService.autoSyncFromProduction(
+                        lenh.getMaBravo(), lenh.getMaSp(), lenh.getTenSanPham(),
+                        lenh.getSoLo(), lenh.getSoLuong(), lenh.getMaDonHang(),
+                        Boolean.TRUE.equals(lenh.getDaBanHanh()), lenh.getToThucHien());
+            } catch (Exception e) {
+                System.err.println("syncLichSXByIds: lỗi record " + lenh.getId()
+                        + " — " + e.getMessage());
+            }
         }
         return total;
     }
 
     /** Đồng bộ Lịch SX: tạo WorkSchedule SCHEDULE còn thiếu cho tất cả LenhSanXuat */
-    @Transactional
     public int syncAllLichSX(String username) {
         List<LenhSanXuat> all = repo.findAll().stream()
                 .filter(e -> e.getDeletedAt() == null
@@ -287,10 +290,17 @@ public class LenhSanXuatService {
                 .collect(Collectors.toList());
         int total = 0;
         for (LenhSanXuat lenh : all) {
-            total += workScheduleService.autoSyncFromProduction(
-                    lenh.getMaBravo(), lenh.getMaSp(), lenh.getTenSanPham(),
-                    lenh.getSoLo(), lenh.getSoLuong(), lenh.getMaDonHang(),
-                    Boolean.TRUE.equals(lenh.getDaBanHanh()), lenh.getToThucHien());
+            try {
+                total += workScheduleService.autoSyncFromProduction(
+                        lenh.getMaBravo(), lenh.getMaSp(), lenh.getTenSanPham(),
+                        lenh.getSoLo(), lenh.getSoLuong(), lenh.getMaDonHang(),
+                        Boolean.TRUE.equals(lenh.getDaBanHanh()), lenh.getToThucHien());
+            } catch (Exception e) {
+                // Bỏ qua record lỗi, tiếp tục xử lý các record còn lại
+                System.err.println("syncAllLichSX: lỗi record " + lenh.getId()
+                        + " maBravo=" + lenh.getMaBravo() + " soLo=" + lenh.getSoLo()
+                        + " — " + e.getMessage());
+            }
         }
         return total;
     }
