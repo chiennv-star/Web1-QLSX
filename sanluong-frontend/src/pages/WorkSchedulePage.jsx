@@ -3340,28 +3340,19 @@ export default function WorkSchedulePage() {
     if (!allowedStages) return s
     return allowedStages.includes(s) ? s : allowedStages[0]
   })()
-  const [visitedTabs, setVisitedTabs] = useState(() => new Set([
-    (() => {
-      if (jumpInit?.stage) return jumpInit.stage
-      try {
-        const saved = localStorage.getItem('ws_active_tab')
-        if (saved) return saved
-      } catch {}
-      return null
-    })()
-  ].filter(Boolean)))
-  const [activeTab, setActiveTab] = useState(() => {
+  const initialTab = (() => {
     if (jumpInit?.stage) return defaultStage
     try {
       const saved = localStorage.getItem('ws_active_tab')
       if (saved && (!allowedStages || allowedStages.length === 0 ||
-          allowedStages.includes(saved) ||
-          saved === 'deviation')) {
+          allowedStages.includes(saved) || saved === 'deviation' || saved === 'wip')) {
         return saved
       }
     } catch {}
     return defaultStage
-  })
+  })()
+  const [visitedTabs, setVisitedTabs] = useState(() => new Set([initialTab]))
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [jumpTarget] = useState(jumpInit)
 
   useEffect(() => {
