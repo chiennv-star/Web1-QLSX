@@ -2091,7 +2091,7 @@ function MobileScheduleCard({ record, congDoan, nsMap, onClick }) {
 // ── StageTab ──────────────────────────────────────────────────────────────────
 function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved, jumpTarget }) {
   const navigate = useNavigate()
-  const { canEditStage, getAllowedNhom, isNhanVien } = useAuth()
+  const { canEditStage, getAllowedNhom, isNhanVien, canDeleteSchedule } = useAuth()
   const allowedNhom = forcedNhom || (congDoan === 'PC' ? getAllowedNhom() : null)
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
