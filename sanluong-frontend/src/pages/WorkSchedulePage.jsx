@@ -3340,19 +3340,18 @@ export default function WorkSchedulePage() {
     if (!allowedStages) return s
     return allowedStages.includes(s) ? s : allowedStages[0]
   })()
-  const initialTab = (() => {
+  const [activeTab, setActiveTab] = useState(() => {
     if (jumpInit?.stage) return defaultStage
     try {
       const saved = localStorage.getItem('ws_active_tab')
       if (saved && (!allowedStages || allowedStages.length === 0 ||
-          allowedStages.includes(saved) || saved === 'deviation' || saved === 'wip')) {
+          allowedStages.includes(saved) ||
+          saved === 'deviation')) {
         return saved
       }
     } catch {}
     return defaultStage
-  })()
-  const [visitedTabs, setVisitedTabs] = useState(() => new Set([initialTab]))
-  const [activeTab, setActiveTab] = useState(initialTab)
+  })
   const [jumpTarget] = useState(jumpInit)
 
   useEffect(() => {
@@ -3522,14 +3521,14 @@ export default function WorkSchedulePage() {
       .map(([stage, config]) => ({
         key: stage,
         label: config.label,
-        children: visitedTabs.has(stage) ? (
+        children: (
           <StageTab
             congDoan={stage}
             config={config}
             onSaved={refreshDevCount}
             jumpTarget={jumpTarget?.stage === stage ? jumpTarget : null}
           />
-        ) : null,
+        ),
       })),
     ...(user?.role !== 'NHAN_VIEN' ? [{
       key: 'wip',
@@ -3740,7 +3739,6 @@ export default function WorkSchedulePage() {
           activeKey={activeTab}
           onChange={key => {
             setActiveTab(key)
-            setVisitedTabs(prev => new Set([...prev, key]))
             localStorage.setItem('ws_active_tab', key)
             if (key === 'deviation') fetchDeviations(0)
           }}
