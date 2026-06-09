@@ -1135,7 +1135,7 @@ function ProductMasterTab() {
   useEffect(() => { fetchData() }, [])
 
   useEffect(() => {
-    const handler = () => fetchData(pagination.current - 1, pagination.pageSize, undefined, { silent: true })
+    const handler = () => fetchData(pagination.current - 1, pagination.pageSize, undefined, undefined, { silent: true })
     window.addEventListener('app:silent-refresh', handler)
     return () => window.removeEventListener('app:silent-refresh', handler)
   }, [fetchData, pagination.current, pagination.pageSize])
