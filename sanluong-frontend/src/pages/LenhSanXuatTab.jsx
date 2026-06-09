@@ -3,6 +3,7 @@ import {
   Table, Input, Select, Tag, Tooltip, message, Button,
   Modal, Form, DatePicker, InputNumber,
 } from 'antd'
+import SkeletonTable from '../components/SkeletonTable'
 import {
   PlusOutlined, SyncOutlined, SearchOutlined,
   ReloadOutlined, EditOutlined, CheckOutlined, FileAddOutlined,
@@ -642,7 +643,7 @@ export default function LenhSanXuatTab() {
       </div>
 
       {/* ── Table ── */}
-      <Table
+      <SkeletonTable
         className="lsx-tab-table"
         rowKey={r => r.isFromKhoach ? `ws-${r.workScheduleId}` : `l-${r.id}`}
         dataSource={rows}

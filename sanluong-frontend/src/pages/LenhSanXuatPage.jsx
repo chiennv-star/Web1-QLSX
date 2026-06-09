@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Table, Input, Select, Tag, Tooltip, message } from 'antd'
+import SkeletonTable from '../components/SkeletonTable'
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
@@ -173,7 +174,7 @@ export default function LenhSanXuatPage() {
       </div>
 
       {/* ── Table ── */}
-      <Table
+      <SkeletonTable
         className="lenh-sx-table"
         rowKey="id"
         dataSource={rows}

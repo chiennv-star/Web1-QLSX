@@ -53,6 +53,10 @@ export function AuthProvider({ children }) {
   // Có thể thêm/sửa/xóa Lệnh Sản Xuất: chỉ ADMIN và ADMIN_KH, không phải TKSX
   const canEditLenh = () => ['ADMIN', 'ADMIN_KH'].includes(user?.role)
 
+  // Xóa bản ghi Lịch làm việc — chỉ ADMIN, ADMIN_KH, ADMIN_PC; các stage admin không được xóa
+  const NO_DELETE_SCHEDULE_ROLES = ['ADMIN_PCPL1', 'ADMIN_PCPL2', 'ADMIN_PCPL3', 'ADMIN_BBC1', 'ADMIN_PL', 'ADMIN_DG']
+  const canDeleteSchedule = () => !NO_DELETE_SCHEDULE_ROLES.includes(user?.role)
+
   // Có thể tạo/sửa/xóa bản ghi Sản lượng và WIP
   const canEditProduction = () => ['ADMIN', 'TKSX', 'ADMIN_KH', ...NV_ROLES].includes(user?.role)
 
@@ -156,7 +160,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAdmin, isAdminKH, isTKSX, isQuanDoc, isNhanVien, isHCNS, isKeToan, getMaNhanVien, getToNhom, canEditProduction, canEditProductMaster, canEditPlan, canEditLenh, canEditStage, isStageAdmin, canEditHangLoi, allowedEfficiencyTabs, getAllowedNhom, getAllowedStages, getAllowedEmployeeGroups }}>
+    <AuthContext.Provider value={{ user, login, logout, isAdmin, isAdminKH, isTKSX, isQuanDoc, isNhanVien, isHCNS, isKeToan, getMaNhanVien, getToNhom, canEditProduction, canEditProductMaster, canEditPlan, canEditLenh, canEditStage, isStageAdmin, canEditHangLoi, allowedEfficiencyTabs, getAllowedNhom, getAllowedStages, getAllowedEmployeeGroups, canDeleteSchedule }}>
       {children}
     </AuthContext.Provider>
   )

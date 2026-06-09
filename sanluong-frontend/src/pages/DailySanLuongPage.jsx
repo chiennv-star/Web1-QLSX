@@ -4,6 +4,7 @@ import {
   Table, Button, Space, Typography, message, Select, DatePicker,
   Tooltip, Modal, Input, Badge, Tag, Tabs, Popconfirm
 } from 'antd'
+import SkeletonTable from '../components/SkeletonTable'
 import {
   SearchOutlined, ReloadOutlined, BarChartOutlined,
   CheckOutlined, CloseOutlined, ClockCircleOutlined,
@@ -523,7 +524,7 @@ function DailyDetailTab() {
         .daily-sl-table .ant-table-tbody > tr:hover > td { background: #DDE1E8 !important; }
       `}</style>
 
-      <Table
+      <SkeletonTable
         className="daily-sl-table"
         columns={columns}
         dataSource={filteredData}
@@ -1006,7 +1007,7 @@ function TongHopTab() {
         }
       `}</style>
 
-      <Table
+      <SkeletonTable
         className="tonghop-table"
         columns={columns}
         dataSource={pivotData}

@@ -4,6 +4,7 @@ import {
   Modal, Form, InputNumber, Tag, Popconfirm, message,
   Row, Col, Card, Tabs, Badge, Tooltip, Divider, Drawer, Spin, Dropdown, AutoComplete
 } from 'antd'
+import SkeletonTable from '../components/SkeletonTable'
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined,
   ReloadOutlined, WarningOutlined, CalendarOutlined,
@@ -172,7 +173,7 @@ const SL_FIELD_MAP     = { PC: 'slPc',   PCPL1: 'slPc',   PCPL2: 'slPc',  BBC1: 
 const NS_LOOKUP_FIELD  = { PC: 'nangSuatPc', PCPL1: 'nangSuatPc', PCPL2: 'nangSuatPc', PL: 'nangSuatPl', BBC1: 'nangSuatBbc1', DG: 'slTrungBinh', CC: 'slTrungBinh' }
 
 function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
-  const { isAdmin, isAdminKH, isStageAdmin, canEditStage } = useAuth()
+  const { isAdmin, isAdminKH, isStageAdmin, canEditStage, canDeleteSchedule } = useAuth()
   const canEditDetail = canEditStage(schedule?.congDoan)
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(false)
@@ -2498,7 +2499,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
     },
     {
       key: 'action', width: 100, fixed: 'right', align: 'center',
-      title: () => canEditStage(congDoan) && !allowedNhom ? (
+      title: () => canEditStage(congDoan) && !allowedNhom && canDeleteSchedule() ? (
         <Popconfirm
           title={`Xóa tất cả ${data.length} bản ghi trên trang này?`}
           description={<span style={{ color: '#cf1322', fontWeight: 600 }}>Hành động này không thể hoàn tác!</span>}
@@ -2525,7 +2526,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
             icon: <EditOutlined style={{ color: '#1677ff' }} />,
             onClick: () => { setEditItem(record); setModalOpen(true) }
           },
-          canEdit && {
+          canEdit && canDeleteSchedule() && {
             key: 'delete',
             label: (
               <Popconfirm title="Xóa công việc này?" onConfirm={() => handleDelete(record.id)}
@@ -2683,7 +2684,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                   <span className="ws-desktop-actions">
                     <Button size="small" type="primary" icon={<SearchOutlined />} onClick={() => fetchData(0)}>Tìm</Button>
                     <Button size="small" icon={<ReloadOutlined />} onClick={handleReset} />
-                    {canEditStage(congDoan) && selectedRowKeys.length > 0 && (
+                    {canEditStage(congDoan) && selectedRowKeys.length > 0 && canDeleteSchedule() && (
                       <Popconfirm
                         title={`Xóa ${selectedRowKeys.length} bản ghi đã chọn?`}
                         okText="Xóa" cancelText="Hủy"
@@ -2720,7 +2721,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
 
           {/* ── Desktop table ── */}
           <div className="ws-desktop-view">
-          <Table
+          <SkeletonTable
             className="ws-table"
             columns={columns}
             dataSource={data.filter(r => r.tinhTrang !== 'done')}
@@ -2984,7 +2985,7 @@ function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
           style={{ marginLeft: 'auto' }} />
       </div>
 
-      <Table
+      <SkeletonTable
         className="ws-table"
         columns={columns}
         dataSource={data}
@@ -3146,7 +3147,7 @@ function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange }) {
           style={{ marginLeft: 'auto' }} />
       </div>
 
-      <Table
+      <SkeletonTable
         className="ws-table"
         rowSelection={{
           selectedRowKeys: selectedIds,

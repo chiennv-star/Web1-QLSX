@@ -27,6 +27,24 @@ public class WorkScheduleController {
         this.service = service;
     }
 
+    // Chỉ ADMIN được xóa vĩnh viễn, xóa hàng loạt, hoặc khôi phục dữ liệu
+    private void checkAdminPermission(Authentication auth) {
+        boolean allowed = auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        if (!allowed) throw new AccessDeniedException("Chỉ Admin được thực hiện thao tác này");
+    }
+
+    // Stage admin (PCPL1/2/3, BBC1, PL, DG) không được xóa bản ghi lịch sản xuất
+    private static final java.util.Set<String> NO_DELETE_ROLES = java.util.Set.of(
+            "ROLE_ADMIN_PCPL1", "ROLE_ADMIN_PCPL2", "ROLE_ADMIN_PCPL3",
+            "ROLE_ADMIN_BBC1", "ROLE_ADMIN_PL", "ROLE_ADMIN_DG");
+
+    private void checkDeletePermission(Authentication auth) {
+        boolean blocked = auth.getAuthorities().stream()
+                .anyMatch(a -> NO_DELETE_ROLES.contains(a.getAuthority()));
+        if (blocked) throw new AccessDeniedException("Bạn không có quyền xóa bản ghi lịch sản xuất");
+    }
+
     // Chỉ ADMIN và ADMIN_KH được ghi Kế hoạch (source = PLAN)
     private void checkPlanPermission(Authentication auth, String source) {
         if (!"PLAN".equals(source)) return;
@@ -213,6 +231,7 @@ public class WorkScheduleController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id, Authentication auth) {
+        checkDeletePermission(auth);
         WorkSchedule existing = service.getById(id);
         checkPlanPermission(auth, existing.getSource());
         checkStagePermission(auth, existing.getCongDoan(), existing.getSource());
@@ -226,20 +245,22 @@ public class WorkScheduleController {
     }
 
     @PostMapping("/{id}/restore")
-    public ResponseEntity<Void> restore(@PathVariable Long id) {
+    public ResponseEntity<Void> restore(@PathVariable Long id, Authentication auth) {
+        checkAdminPermission(auth);
         service.restore(id);
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{id}/permanent")
-    public ResponseEntity<Void> deletePermanent(@PathVariable Long id) {
+    public ResponseEntity<Void> deletePermanent(@PathVariable Long id, Authentication auth) {
+        checkAdminPermission(auth);
         service.deletePermanent(id);
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/bulk")
-    public ResponseEntity<Map<String, Integer>> bulkDelete(@RequestBody List<Long> ids) {
-        int deleted = service.bulkDelete(ids);
+    public ResponseEntity<Map<String, Integer>> bulkDelete(@RequestBody List<Long> ids, Authentication auth) {
+        int deleted = service.bulkDelete(ids, auth.getName());
         return ResponseEntity.ok(Map.of("deleted", deleted));
     }
 

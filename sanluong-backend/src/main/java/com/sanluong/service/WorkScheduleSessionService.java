@@ -616,11 +616,14 @@ public class WorkScheduleSessionService {
             result.add(dto);
         }
 
-        // ── 5. Sắp xếp: ngày giảm dần, PENDING lên đầu trong cùng ngày ──
+        // ── 5. Sắp xếp: ngày giảm dần → công đoạn (BBC1/PCPL1/PCPL2/PL/ĐG) → PENDING lên đầu ──
+        java.util.Map<String, Integer> cdOrder = java.util.Map.of(
+                "BBC1", 0, "PCPL1", 1, "PCPL2", 2, "PL", 3, "DG", 4);
         result.sort(Comparator
                 .comparing((DailyProductionDto d) -> d.getNgay() != null ? d.getNgay() : "")
                 .reversed()
-                .thenComparing(d -> switch (d.getStatus()) {
+                .thenComparingInt(d -> cdOrder.getOrDefault(d.getCongDoan(), 99))
+                .thenComparingInt(d -> switch (d.getStatus() != null ? d.getStatus() : "") {
                     case "PENDING" -> 0;
                     case "SAVED"   -> 1;
                     default        -> 2;

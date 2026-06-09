@@ -229,8 +229,12 @@ public class WorkScheduleService {
         // Xóa PCPL records sai toNhom TRƯỚC khi sync (vd PCPL1+toNhom=PCPL2 và ngược lại)
         // Phải chạy trước để tránh findFirst tìm ra record sai rồi update thay vì tạo mới
         if (maBravoParam != null) {
-            repository.softDeleteConflictingPcpl("PCPL1", "PCPL2", maBravoParam, soLoParam);
-            repository.softDeleteConflictingPcpl("PCPL2", "PCPL1", maBravoParam, soLoParam);
+            int del1 = repository.softDeleteConflictingPcpl("PCPL1", "PCPL2", maBravoParam, soLoParam);
+            int del2 = repository.softDeleteConflictingPcpl("PCPL2", "PCPL1", maBravoParam, soLoParam);
+            if (del1 > 0) System.out.println("[autoSync] soft-deleted " + del1
+                    + " PCPL1 record(s) conflict PCPL2 — maBravo=" + maBravoParam + " soLo=" + soLoParam);
+            if (del2 > 0) System.out.println("[autoSync] soft-deleted " + del2
+                    + " PCPL2 record(s) conflict PCPL1 — maBravo=" + maBravoParam + " soLo=" + soLoParam);
         }
 
         // Khi phát lệnh: sync cả PCPL1 lẫn PCPL2 (giống ĐG/BBC1/PL — không phân biệt tổ)
@@ -616,10 +620,15 @@ public class WorkScheduleService {
         eventPublisher.publishKhoachUpdated();
     }
 
-    public int bulkDelete(List<Long> ids) {
+    public int bulkDelete(List<Long> ids, String username) {
         if (ids == null || ids.isEmpty()) return 0;
-        List<WorkSchedule> list = repository.findAllById(ids);
-        repository.deleteAll(list);
+        List<WorkSchedule> list = repository.findAllById(ids).stream()
+                .filter(w -> w.getDeletedAt() == null)
+                .collect(Collectors.toList());
+        if (list.isEmpty()) return 0;
+        LocalDateTime now = LocalDateTime.now();
+        list.forEach(w -> { w.setDeletedAt(now); w.setDeletedBy(username); });
+        repository.saveAll(list);
         eventPublisher.publishKhoachUpdated();
         return list.size();
     }

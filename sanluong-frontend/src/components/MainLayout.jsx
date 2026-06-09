@@ -395,7 +395,16 @@ export default function MainLayout() {
           boxShadow: '0 2px 16px rgba(29,78,216,0.07)',
           border: '1px solid #DBEAFE',
         }}>
-          <div style={{ padding: isMobile ? 10 : 24 }}>
+          <style>{`
+            @keyframes pageEnter {
+              from { opacity: 0; transform: translateY(6px); }
+              to   { opacity: 1; transform: translateY(0); }
+            }
+            .page-transition {
+              animation: pageEnter 0.18s ease-out;
+            }
+          `}</style>
+          <div key={location.pathname} className="page-transition" style={{ padding: isMobile ? 10 : 24 }}>
             <Outlet />
           </div>
         </Content>
