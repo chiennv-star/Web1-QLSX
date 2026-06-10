@@ -1111,13 +1111,13 @@ export default function DonHangPage() {
       ),
     },
     {
-      title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 115, fixed: 'left',
+      title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 115, fixed: 'left', align: 'center',
       render: v => v
         ? <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', fontSize: 12 }}>{v}</span>
         : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
     {
-      title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 85,
+      title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 85, align: 'center',
       render: v => v ? <Tag color="blue" style={{ marginRight: 0, fontWeight: 600 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
     {
@@ -1136,13 +1136,13 @@ export default function DonHangPage() {
         : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
     {
-      title: 'Mã Đơn Hàng', dataIndex: 'maDonHang', key: 'maDonHang', width: 115,
+      title: 'Mã Đơn Hàng', dataIndex: 'maDonHang', key: 'maDonHang', width: 115, align: 'center',
       render: v => v
-        ? <span style={{ fontFamily: 'monospace', color: '#7c3aed', fontWeight: 600, fontSize: 12 }}>{v}</span>
+        ? <span style={{ fontFamily: 'monospace', color: 'rgb(0,0,205)', fontWeight: 600, fontSize: 12 }}>{v}</span>
         : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
     {
-      title: 'SL Đặt Hàng', dataIndex: 'soLuongDatHang', key: 'slDat', width: 110, align: 'right',
+      title: 'SL Đặt Hàng', dataIndex: 'soLuongDatHang', key: 'slDat', width: 110, align: 'center',
       sorter: (a, b) => (Number(a.soLuongDatHang) || 0) - (Number(b.soLuongDatHang) || 0),
       render: v => v != null
         ? <span style={{ fontWeight: 800, color: '#374151', fontSize: 13 }}>{fmtNum(v)}</span>
@@ -1166,7 +1166,7 @@ export default function DonHangPage() {
       },
     },
     {
-      title: 'SL Còn Lại', dataIndex: 'soLuongConLai', key: 'slCon', width: 110, align: 'right',
+      title: 'SL Còn Lại', dataIndex: 'soLuongConLai', key: 'slCon', width: 110, align: 'center',
       sorter: (a, b) => (Number(a.soLuongConLai) || 0) - (Number(b.soLuongConLai) || 0),
       render: v => {
         const n = Number(v) || 0
@@ -1191,7 +1191,7 @@ export default function DonHangPage() {
       title: 'Tổ Thực Hiện', dataIndex: 'toThucHienList', key: 'toTH', width: 130, align: 'center',
       render: v => {
         const list   = Array.isArray(v) ? v : []
-        const colors = { PCPL1: '#374151', PCPL2: '#546e7a', PCPL3: '#607d8b', BBC1: '#7c3aed', DG: '#0369a1', PC: '#166534', PL: '#92400e' }
+        const colors = { PCPL1: 'rgb(0,0,139)', PCPL2: 'rgb(0,0,139)', PCPL3: 'rgb(0,0,139)', BBC1: 'rgb(0,0,139)', DG: 'rgb(0,0,139)', PC: 'rgb(0,0,139)', PL: 'rgb(0,0,139)' }
         if (list.length === 0) return <span style={{ color: '#d9d9d9' }}>—</span>
         return (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, justifyContent: 'center' }}>
@@ -1306,13 +1306,14 @@ export default function DonHangPage() {
     <>
       <style>{`
         .dh-table .ant-table-thead > tr > th {
-          background: linear-gradient(90deg, #2980b3 0%, #3399CC 100%) !important; color: #ffffff !important;
+          background: rgb(72,209,204) !important; color: #ffffff !important;
           font-size: 11px !important; font-weight: 700 !important; text-transform: uppercase;
           padding: 7px 8px !important; white-space: nowrap; letter-spacing: 0.4px;
-          border-right: 1px solid #4db3d4 !important;
+          border-right: 1px solid rgba(255,255,255,0.3) !important;
         }
         .dh-table .ant-table-thead > tr > th::before { display: none !important; }
-        .dh-table .ant-table-tbody > tr > td { padding: 6px 8px !important; vertical-align: middle; }
+        .dh-table .ant-table-tbody > tr > td { padding: 6px 8px !important; vertical-align: middle; background: #ECECEC !important; }
+        .dh-table .ant-table-tbody > tr:nth-child(odd) > td { background: #ECECEC !important; }
         .dh-table .ant-table-tbody > tr:hover > td { background: #EAECF2 !important; }
         .dh-table .ant-table-column-sort { background: transparent !important; }
         .dh-row-rat-gap { background: #fff1f0 !important; }

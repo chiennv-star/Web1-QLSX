@@ -315,13 +315,13 @@ function DailyDetailTab() {
       },
     },
     {
-      title: 'Công TH (Σ)', dataIndex: 'congThucHien', key: 'congThucHien', width: 100, align: 'right',
+      title: 'Công TH (Σ)', dataIndex: 'congThucHien', key: 'congThucHien', width: 100, align: 'center',
       render: v => v != null
-        ? <span style={{ color: '#722ed1', fontWeight: 600 }}>{Number(v).toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</span>
+        ? <span style={{ color: 'rgb(0,0,205)', fontWeight: 400 }}>{Number(v).toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</span>
         : <span style={{ color: '#bbb' }}>—</span>,
     },
     {
-      title: 'Sản Lượng', key: 'sanLuong', width: 130, align: 'right',
+      title: 'Sản Lượng', key: 'sanLuong', width: 130, align: 'center',
       render: (_, r) => {
         if (r.status === 'PENDING') {
           return (
@@ -337,7 +337,7 @@ function DailyDetailTab() {
           return <span style={{ color: '#bbb', fontSize: 12 }}>Chưa nhập</span>
         }
         return r.sanLuong != null
-          ? <span style={{ fontWeight: 700, color: '#389e0d', fontSize: 14 }}>{Number(r.sanLuong).toLocaleString('vi-VN')}</span>
+          ? <span style={{ fontWeight: 400, color: 'rgb(0,0,205)', fontSize: 14 }}>{Number(r.sanLuong).toLocaleString('vi-VN')}</span>
           : <span style={{ color: '#bbb' }}>—</span>
       },
       sorter: (a, b) => Number(a.sanLuong || a.requestedValue || 0) - Number(b.sanLuong || b.requestedValue || 0),
@@ -640,16 +640,16 @@ function DayDetailModal({ open, date, rows, onClose }) {
       },
     },
     {
-      title: 'Công TH', dataIndex: 'congThucHien', key: 'cong', width: 95, align: 'right',
+      title: 'Công TH', dataIndex: 'congThucHien', key: 'cong', width: 95, align: 'center',
       render: v => v != null
-        ? <span style={{ color: '#722ed1', fontWeight: 600, fontFamily: 'monospace' }}>{fmtCong(v)}</span>
+        ? <span style={{ color: 'rgb(0,0,205)', fontWeight: 400, fontFamily: 'monospace' }}>{fmtCong(v)}</span>
         : <span style={{ color: '#ccc' }}>—</span>,
       sorter: (a, b) => (a.congThucHien || 0) - (b.congThucHien || 0),
     },
     {
-      title: 'Sản lượng', dataIndex: 'sanLuong', key: 'sl', width: 100, align: 'right',
+      title: 'Sản lượng', dataIndex: 'sanLuong', key: 'sl', width: 100, align: 'center',
       render: v => v != null
-        ? <span style={{ fontWeight: 700, color: '#389e0d', fontSize: 13 }}>{fmtSL(Number(v))}</span>
+        ? <span style={{ fontWeight: 400, color: 'rgb(0,0,205)', fontSize: 13 }}>{fmtSL(Number(v))}</span>
         : <span style={{ color: '#ccc' }}>—</span>,
       sorter: (a, b) => (Number(a.sanLuong) || 0) - (Number(b.sanLuong) || 0),
       defaultSortOrder: 'descend',
@@ -925,7 +925,7 @@ function TongHopTab() {
       render: (_, r) => {
         const total = STAGES.reduce((sum, s) => sum + (r[s.key]?.sl || 0), 0)
         return total
-          ? <strong style={{ color: '#00CC99', fontSize: 13 }}>{fmtSL(total)}</strong>
+          ? <span style={{ color: 'rgb(0,0,205)', fontWeight: 400, fontSize: 13 }}>{fmtSL(total)}</span>
           : <span style={{ color: '#d1d5db' }}>—</span>
       },
       sorter: (a, b) =>
@@ -938,7 +938,7 @@ function TongHopTab() {
       render: (_, r) => {
         const total = STAGES.reduce((sum, s) => sum + (r[s.key]?.cong || 0), 0)
         return total
-          ? <strong style={{ color: '#0e7490' }}>{fmtCong(total, 2)}</strong>
+          ? <span style={{ color: 'rgb(0,0,205)', fontWeight: 400 }}>{fmtCong(total, 2)}</span>
           : <span style={{ color: '#d1d5db' }}>—</span>
       },
     },
@@ -997,8 +997,8 @@ function TongHopTab() {
           padding: 7px 10px !important; font-size: 12px; color: #000099 !important;
           border-bottom: 1px solid #f1f5f9 !important; vertical-align: middle;
         }
-        .tonghop-table .ant-table-tbody > tr:nth-child(odd) > td  { background: #e6f5f5; }
-        .tonghop-table .ant-table-tbody > tr:nth-child(even) > td { background: #cce8e8; }
+        .tonghop-table .ant-table-tbody > tr:nth-child(odd) > td  { background: #ffffff; }
+        .tonghop-table .ant-table-tbody > tr:nth-child(even) > td { background: #ffffff; }
         .tonghop-table .ant-table-tbody > tr:hover > td { background: #99CCCC !important; }
         .tonghop-table .ant-table-summary > tr > td {
           background: #99CCCC !important; color: #000099 !important;
@@ -1137,11 +1137,11 @@ export default function DailySanLuongPage() {
     <>
       <style>{`
         .sl-page-tabs > .ant-tabs-nav {
-          background: #003d30 !important;
+          background: rgb(32,178,170) !important;
           padding: 0 12px; margin: 0 !important; box-shadow: 0 2px 12px rgba(0,0,0,0.22);
         }
         .sl-page-tabs > .ant-tabs-nav .ant-tabs-tab {
-          color: #94A3B8 !important; border: none !important; background: transparent !important;
+          color: #ffffff !important; border: none !important; background: transparent !important;
           padding: 9px 18px !important; font-size: 13px; margin: 0 2px !important;
           border-radius: 6px 6px 0 0 !important; transition: all 0.2s;
         }
@@ -1150,7 +1150,7 @@ export default function DailySanLuongPage() {
         .sl-page-tabs > .ant-tabs-nav .ant-tabs-tab-active .ant-tabs-tab-btn { color: #fff !important; }
         .sl-page-tabs > .ant-tabs-nav .ant-tabs-ink-bar { background: #00CC99 !important; height: 3px !important; border-radius: 2px; }
         .sl-page-tabs > .ant-tabs-nav::before { border-bottom: none !important; }
-        .sl-page-tabs > .ant-tabs-nav .ant-tabs-nav-more { color: #94A3B8 !important; }
+        .sl-page-tabs > .ant-tabs-nav .ant-tabs-nav-more { color: #ffffff !important; }
         .sl-page-tabs > .ant-tabs-content-holder { padding-top: 0; }
       `}</style>
       <Tabs
