@@ -796,7 +796,6 @@ function TongHopTab() {
   const [dateRange, setDateRange] = useState([dayjs().subtract(13, 'day'), dayjs()])
   const [selectedDay, setSelectedDay] = useState(null)
   const [empCounts, setEmpCounts] = useState({})
-  const [totalEmp, setTotalEmp] = useState(null)
 
   const filterRef = useRef(null)
   const [filterH, setFilterH] = useState(0)
@@ -809,13 +808,10 @@ function TongHopTab() {
 
   useEffect(() => {
     fetchData()
-    Promise.all([
-      api.get('/employees', { params: { page: 0, size: 1 } }),
-      ...STAGES.map(s => api.get('/employees', { params: { page: 0, size: 1, toNhom: s.empGroup } }))
-    ]).then(([allRes, ...stageRes]) => {
-        setTotalEmp(allRes.data.totalElements)
+    Promise.all(STAGES.map(s => api.get('/employees', { params: { page: 0, size: 1, toNhom: s.empGroup } })))
+      .then(results => {
         const counts = {}
-        STAGES.forEach((s, i) => { counts[s.key] = stageRes[i].data.totalElements })
+        STAGES.forEach((s, i) => { counts[s.key] = results[i].data.totalElements })
         setEmpCounts(counts)
       })
       .catch(() => {})
@@ -987,7 +983,7 @@ function TongHopTab() {
           style={{ background: 'rgba(255,255,255,0.25)', borderColor: 'rgba(0,0,0,0.2)', color: '#5c2e00' }} />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: 12, color: '#7a3900' }}><strong style={{ color: '#5c2e00' }}>{pivotData.length}</strong> ngày</span>
-          <span style={{ fontSize: 12, color: '#7a3900' }}>Nhân sự: <strong style={{ color: '#5c2e00' }}>{totalEmp ?? '...'}</strong></span>
+          <span style={{ fontSize: 12, color: '#7a3900' }}>Nhân sự: <strong style={{ color: '#5c2e00' }}>{Object.values(empCounts).reduce((a, b) => a + b, 0) || '...'}</strong></span>
           <span style={{ fontSize: 13, color: '#5c2e00', fontWeight: 700 }}>SL: <strong style={{ color: '#5c2e00', fontSize: 15 }}>{fmtSL(grandSL)}</strong></span>
           <span style={{ fontSize: 13, color: '#5c2e00', fontWeight: 700 }}>Công: <strong style={{ color: '#5c2e00', fontSize: 15 }}>{fmtCong(grandCong, 2)}</strong></span>
         </div>
