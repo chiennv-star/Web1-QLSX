@@ -947,7 +947,7 @@ function TongHopTab() {
         STAGES.reduce((s, st) => s + (b[st.key]?.sl || 0), 0),
     },
     {
-      title: 'TỔNG CÔNG', key: 'grandCong', width: 105, align: 'center', fixed: 'right',
+      title: `TỔNG CÔNG (${Object.values(empCounts).reduce((a, b) => a + b, 0) || '...'})`, key: 'grandCong', width: 120, align: 'center', fixed: 'right',
       onHeaderCell: () => ({ style: { background: '#99CCCC', color: '#1e3a5f', fontSize: 11 } }),
       render: (_, r) => {
         const total = STAGES.reduce((sum, s) => sum + (r[s.key]?.cong || 0), 0)
