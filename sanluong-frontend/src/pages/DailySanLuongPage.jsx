@@ -30,12 +30,12 @@ const CONG_DOAN_OPTIONS = [
 ]
 
 const STAGES = [
-  { key: 'PCPL1', label: 'PCPL 1', slColor: '#1D4ED8', congColor: '#60A5FA', bg: '#EFF6FF', border: '#BFDBFE', headerBg: '#1e5fa3' },
-  { key: 'PCPL2', label: 'PCPL 2', slColor: '#0369a1', congColor: '#38bdf8', bg: '#e0f2fe', border: '#7dd3fc', headerBg: '#075985' },
-  { key: 'PL',    label: 'PL',     slColor: '#0e7490', congColor: '#22d3ee', bg: '#ecfeff', border: '#67e8f9', headerBg: '#0e7490' },
-  { key: 'DG',    label: 'ĐG',     slColor: '#b45309', congColor: '#fbbf24', bg: '#fffbeb', border: '#fde68a', headerBg: '#b45309' },
-  { key: 'BBC1',  label: 'BBC1',   slColor: '#6d28d9', congColor: '#c084fc', bg: '#f5f3ff', border: '#c4b5fd', headerBg: '#6d28d9' },
-  { key: 'CC',    label: 'CC',     slColor: '#9d174d', congColor: '#f472b6', bg: '#fdf2f8', border: '#f9a8d4', headerBg: '#9d174d' },
+  { key: 'PCPL1', label: 'PCPL1', empGroup: 'PCPL1', slColor: '#1D4ED8', congColor: '#60A5FA', bg: '#EFF6FF', border: '#BFDBFE', headerBg: '#1e5fa3' },
+  { key: 'PCPL2', label: 'PCPL2', empGroup: 'PCPL2', slColor: '#0369a1', congColor: '#38bdf8', bg: '#e0f2fe', border: '#7dd3fc', headerBg: '#075985' },
+  { key: 'PL',    label: 'PL',    empGroup: 'PL',    slColor: '#0e7490', congColor: '#22d3ee', bg: '#ecfeff', border: '#67e8f9', headerBg: '#0e7490' },
+  { key: 'DG',    label: 'ĐG',    empGroup: 'ĐG',    slColor: '#b45309', congColor: '#fbbf24', bg: '#fffbeb', border: '#fde68a', headerBg: '#b45309' },
+  { key: 'BBC1',  label: 'BBC1',  empGroup: 'BBC1',  slColor: '#6d28d9', congColor: '#c084fc', bg: '#f5f3ff', border: '#c4b5fd', headerBg: '#6d28d9' },
+  { key: 'CC',    label: 'CC',    empGroup: 'CC',    slColor: '#9d174d', congColor: '#f472b6', bg: '#fdf2f8', border: '#f9a8d4', headerBg: '#9d174d' },
 ]
 
 const fmtSL   = v => (v || 0).toLocaleString('vi-VN')
@@ -795,6 +795,7 @@ function TongHopTab() {
   const [loading, setLoading] = useState(false)
   const [dateRange, setDateRange] = useState([dayjs().subtract(13, 'day'), dayjs()])
   const [selectedDay, setSelectedDay] = useState(null)
+  const [empCounts, setEmpCounts] = useState({})
 
   const filterRef = useRef(null)
   const [filterH, setFilterH] = useState(0)
@@ -805,7 +806,16 @@ function TongHopTab() {
     return () => obs.disconnect()
   }, [])
 
-  useEffect(() => { fetchData() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    fetchData()
+    Promise.all(STAGES.map(s => api.get('/employees', { params: { page: 0, size: 1, toNhom: s.empGroup } })))
+      .then(results => {
+        const counts = {}
+        STAGES.forEach((s, i) => { counts[s.key] = results[i].data.totalElements })
+        setEmpCounts(counts)
+      })
+      .catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchData = useCallback(async (range = dateRange, { silent = false } = {}) => {
     if (!silent) setLoading(true)
@@ -885,7 +895,11 @@ function TongHopTab() {
       defaultSortOrder: 'descend',
     },
     ...STAGES.map(s => ({
-      title: <span style={{ fontWeight: 800, letterSpacing: 1.5, fontSize: 12 }}>{s.label}</span>,
+      title: (
+        <span style={{ fontWeight: 800, letterSpacing: 1.5, fontSize: 12 }}>
+          {s.label}{empCounts[s.key] != null ? ` (${empCounts[s.key]})` : ''}
+        </span>
+      ),
       key: s.key,
       align: 'center',
       onHeaderCell: () => ({ style: { background: '#99CCCC', color: '#1e3a5f', textAlign: 'center', borderLeft: '2px solid rgba(0,0,0,0.08)' } }),
@@ -893,7 +907,7 @@ function TongHopTab() {
         {
           title: 'SL',
           key: `${s.key}_sl`,
-          width: 95, align: 'right',
+          width: 95, align: 'center',
           onHeaderCell: () => ({ style: { background: '#b3d9d9', color: '#1e3a5f', fontSize: 10 } }),
           render: (_, r) => {
             const val = r[s.key]?.sl
@@ -909,7 +923,7 @@ function TongHopTab() {
         {
           title: 'Công',
           key: `${s.key}_cong`,
-          width: 88, align: 'right',
+          width: 88, align: 'center',
           onHeaderCell: () => ({ style: { background: '#b3d9d9', color: '#1e3a5f', fontSize: 10 } }),
           render: (_, r) => {
             const val = r[s.key]?.cong
@@ -920,7 +934,7 @@ function TongHopTab() {
       ],
     })),
     {
-      title: 'TỔNG SL', key: 'grandSl', width: 110, align: 'right', fixed: 'right',
+      title: 'TỔNG SL', key: 'grandSl', width: 110, align: 'center', fixed: 'right',
       onHeaderCell: () => ({ style: { background: '#99CCCC', color: '#1e3a5f', fontSize: 11 } }),
       render: (_, r) => {
         const total = STAGES.reduce((sum, s) => sum + (r[s.key]?.sl || 0), 0)
@@ -933,7 +947,7 @@ function TongHopTab() {
         STAGES.reduce((s, st) => s + (b[st.key]?.sl || 0), 0),
     },
     {
-      title: 'TỔNG CÔNG', key: 'grandCong', width: 105, align: 'right', fixed: 'right',
+      title: 'TỔNG CÔNG', key: 'grandCong', width: 105, align: 'center', fixed: 'right',
       onHeaderCell: () => ({ style: { background: '#99CCCC', color: '#1e3a5f', fontSize: 11 } }),
       render: (_, r) => {
         const total = STAGES.reduce((sum, s) => sum + (r[s.key]?.cong || 0), 0)
