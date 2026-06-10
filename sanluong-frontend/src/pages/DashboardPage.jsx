@@ -569,10 +569,10 @@ function SanLuongKeToanTab({ data = [], loading = false, pagination = {}, onPagi
         { title: 'BBC1', dataIndex: 'bbc1TrangThai', key: 'bbc1_tt', width: 80, align: 'center',
           onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }), render: stageTag },
       ] },
-    { title: 'SP Trung Gian', dataIndex: 'spTrungGian', key: 'spTrungGian', width: 100, align: 'center',
+    { title: 'SP Trung Gian', dataIndex: 'pcPl', key: 'spTrungGian', width: 100, align: 'center',
       onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
       render: fmtN },
-    { title: 'Tổng BTP', dataIndex: 'tongBtp', key: 'tongBtp', width: 90, align: 'center',
+    { title: 'Tổng BTP', dataIndex: 'dg2', key: 'tongBtp', width: 90, align: 'center',
       onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
       render: v => <span style={{ color: '#389e0d' }}>{fmtN(v)}</span> },
     { title: 'CÔNG CÁC CÔNG ĐOẠN', align: 'center',
@@ -598,7 +598,7 @@ function SanLuongKeToanTab({ data = [], loading = false, pagination = {}, onPagi
     { title: 'Chênh lệch BTP/Nhập kho', key: 'chenhLech', width: 140, align: 'center', fixed: 'right',
       onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
       render: (_, r) => {
-        const cl = (r.tongBtp || 0) - (r.tpNhapKho || 0)
+        const cl = (parseInt(r.dg2) || 0) - (r.tpNhapKho || 0)
         return <span style={{ color: cl !== 0 ? '#cf1322' : '#389e0d' }}>{fmtN(cl)}</span>
       } },
   ]
@@ -1020,7 +1020,7 @@ export default function DashboardPage() {
       ],
     },
     {
-      title: 'SP TG', dataIndex: 'spTrungGian', key: 'spTrungGian', width: 72, align: 'center',
+      title: 'SP TG', dataIndex: 'pcPl', key: 'spTrungGian', width: 72, align: 'center',
       render: v => <span style={{ color: '#000011' }}>{v ?? '—'}</span>,
     },
     {
