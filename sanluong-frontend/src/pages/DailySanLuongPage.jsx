@@ -32,7 +32,7 @@ const CONG_DOAN_OPTIONS = [
 const STAGES = [
   { key: 'PCPL1', label: 'PCPL1', empGroup: 'PCPL1', slColor: '#1D4ED8', congColor: '#60A5FA', bg: '#EFF6FF', border: '#BFDBFE', headerBg: '#1e5fa3' },
   { key: 'PCPL2', label: 'PCPL2', empGroup: 'PCPL2', slColor: '#0369a1', congColor: '#38bdf8', bg: '#e0f2fe', border: '#7dd3fc', headerBg: '#075985' },
-  { key: 'PL',    label: 'PL',    empGroup: 'PL',    slColor: '#0e7490', congColor: '#22d3ee', bg: '#ecfeff', border: '#67e8f9', headerBg: '#0e7490' },
+  { key: 'PL',    label: 'PL',    empGroup: 'PCPL3', slColor: '#0e7490', congColor: '#22d3ee', bg: '#ecfeff', border: '#67e8f9', headerBg: '#0e7490' },
   { key: 'DG',    label: 'ĐG',    empGroup: 'ĐG',    slColor: '#b45309', congColor: '#fbbf24', bg: '#fffbeb', border: '#fde68a', headerBg: '#b45309' },
   { key: 'BBC1',  label: 'BBC1',  empGroup: 'BBC1',  slColor: '#6d28d9', congColor: '#c084fc', bg: '#f5f3ff', border: '#c4b5fd', headerBg: '#6d28d9' },
   { key: 'CC',    label: 'CC',    empGroup: 'CC',    slColor: '#9d174d', congColor: '#f472b6', bg: '#fdf2f8', border: '#f9a8d4', headerBg: '#9d174d' },
@@ -796,6 +796,7 @@ function TongHopTab() {
   const [dateRange, setDateRange] = useState([dayjs().subtract(13, 'day'), dayjs()])
   const [selectedDay, setSelectedDay] = useState(null)
   const [empCounts, setEmpCounts] = useState({})
+  const [totalEmp, setTotalEmp] = useState(null)
 
   const filterRef = useRef(null)
   const [filterH, setFilterH] = useState(0)
@@ -808,10 +809,13 @@ function TongHopTab() {
 
   useEffect(() => {
     fetchData()
-    Promise.all(STAGES.map(s => api.get('/employees', { params: { page: 0, size: 1, toNhom: s.empGroup } })))
-      .then(results => {
+    Promise.all([
+      api.get('/employees', { params: { page: 0, size: 1 } }),
+      ...STAGES.map(s => api.get('/employees', { params: { page: 0, size: 1, toNhom: s.empGroup } }))
+    ]).then(([allRes, ...stageRes]) => {
+        setTotalEmp(allRes.data.totalElements)
         const counts = {}
-        STAGES.forEach((s, i) => { counts[s.key] = results[i].data.totalElements })
+        STAGES.forEach((s, i) => { counts[s.key] = stageRes[i].data.totalElements })
         setEmpCounts(counts)
       })
       .catch(() => {})
@@ -983,7 +987,7 @@ function TongHopTab() {
           style={{ background: 'rgba(255,255,255,0.25)', borderColor: 'rgba(0,0,0,0.2)', color: '#5c2e00' }} />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: 12, color: '#7a3900' }}><strong style={{ color: '#5c2e00' }}>{pivotData.length}</strong> ngày</span>
-          <span style={{ fontSize: 12, color: '#7a3900' }}>Nhân sự: <strong style={{ color: '#5c2e00' }}>{Object.values(empCounts).reduce((a, b) => a + b, 0)}</strong></span>
+          <span style={{ fontSize: 12, color: '#7a3900' }}>Nhân sự: <strong style={{ color: '#5c2e00' }}>{totalEmp ?? '...'}</strong></span>
           <span style={{ fontSize: 13, color: '#5c2e00', fontWeight: 700 }}>SL: <strong style={{ color: '#5c2e00', fontSize: 15 }}>{fmtSL(grandSL)}</strong></span>
           <span style={{ fontSize: 13, color: '#5c2e00', fontWeight: 700 }}>Công: <strong style={{ color: '#5c2e00', fontSize: 15 }}>{fmtCong(grandCong, 2)}</strong></span>
         </div>
