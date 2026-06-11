@@ -176,17 +176,24 @@ function LenhDetailModal({ open, record, onClose, onSaved }) {
     try { values = await form.validateFields() } catch { return }
     setSaving(true)
     try {
-      const payload = {
-        ...values,
-        ngayThucHien:  values.ngayThucHien  ? values.ngayThucHien.format('YYYY-MM-DD')  : null,
-        ngayKetThuc:   values.ngayKetThuc   ? values.ngayKetThuc.format('YYYY-MM-DD')   : null,
-        ngayPhatLenh:  values.ngayPhatLenh  ? values.ngayPhatLenh.format('YYYY-MM-DD')  : null,
+      if (record.isFromKhoach) {
+        const soLoVal = (values.soLo || '').trim()
+        if (!soLoVal) { message.warning('Vui lòng nhập số lô'); setSaving(false); return }
+        await api.post(`/lenh-san-xuat/from-work-schedule/${record.workScheduleId}`, { soLo: soLoVal })
+        message.success('Đã tạo lệnh sản xuất')
+      } else {
+        const payload = {
+          ...values,
+          ngayThucHien:  values.ngayThucHien  ? values.ngayThucHien.format('YYYY-MM-DD')  : null,
+          ngayKetThuc:   values.ngayKetThuc   ? values.ngayKetThuc.format('YYYY-MM-DD')   : null,
+          ngayPhatLenh:  values.ngayPhatLenh  ? values.ngayPhatLenh.format('YYYY-MM-DD')  : null,
+        }
+        await api.put(`/lenh-san-xuat/${record.id}`, payload)
+        message.success('Đã cập nhật lệnh sản xuất')
       }
-      await api.put(`/lenh-san-xuat/${record.id}`, payload)
-      message.success('Đã cập nhật lệnh sản xuất')
       onSaved()
       onClose()
-    } catch { message.error('Lưu thất bại') }
+    } catch { message.error(record.isFromKhoach ? 'Tạo lệnh thất bại' : 'Lưu thất bại') }
     finally { setSaving(false) }
   }
 
@@ -246,7 +253,9 @@ function LenhDetailModal({ open, record, onClose, onSaved }) {
 
       {/* Header */}
       <div className="lsx-modal-drag" style={{
-        background: 'linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 100%)',
+        background: record.isFromKhoach
+          ? 'linear-gradient(135deg, #065f46 0%, #0891b2 100%)'
+          : 'linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 100%)',
         padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 10,
       }}>
         <FileTextOutlined style={{ fontSize: 22, color: '#93c5fd' }} />
@@ -267,9 +276,11 @@ function LenhDetailModal({ open, record, onClose, onSaved }) {
 
       {/* Status bar */}
       <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '6px 18px', display: 'flex', gap: 16, alignItems: 'center' }}>
-        {record.daBanHanh
-          ? <span style={{ background: '#dcfce7', color: '#15803d', fontWeight: 700, fontSize: 11, padding: '2px 10px', borderRadius: 10, border: '1px solid #bbf7d0' }}>✓ Đã phát hành</span>
-          : <span style={{ background: '#fff3e0', color: '#e65100', fontWeight: 700, fontSize: 11, padding: '2px 10px', borderRadius: 10, border: '1px solid #ffcc80' }}>⌛ Chưa phát hành</span>
+        {record.isFromKhoach
+          ? <span style={{ background: '#e0f2fe', color: '#0369a1', fontWeight: 700, fontSize: 11, padding: '2px 10px', borderRadius: 10, border: '1px solid #bae6fd' }}>📋 Chờ tạo lệnh — Nhập số lô để tạo</span>
+          : record.daBanHanh
+            ? <span style={{ background: '#dcfce7', color: '#15803d', fontWeight: 700, fontSize: 11, padding: '2px 10px', borderRadius: 10, border: '1px solid #bbf7d0' }}>✓ Đã phát hành</span>
+            : <span style={{ background: '#fff3e0', color: '#e65100', fontWeight: 700, fontSize: 11, padding: '2px 10px', borderRadius: 10, border: '1px solid #ffcc80' }}>⌛ Chưa phát hành</span>
         }
         {record.tinhTrang === 'rat_gap' && <Tag color="red" style={{ margin: 0 }}>🔥 Rất Gấp</Tag>}
         {record.tinhTrang === 'gap'     && <Tag color="orange" style={{ margin: 0 }}>⚡ Gấp</Tag>}
@@ -299,10 +310,18 @@ function LenhDetailModal({ open, record, onClose, onSaved }) {
             </Form.Item>
           </VCell>
 
-          <LCell>Số Lô</LCell>
+          <LCell>Số Lô {record.isFromKhoach && <span style={{ color: '#ef4444', marginLeft: 2 }}>*</span>}</LCell>
           <VCell>
             <Form.Item name="soLo" noStyle>
-              <Input size="small" style={{ fontFamily: 'monospace', color: '#7c3aed', fontWeight: 700, fontSize: 13, width: '100%' }} />
+              <Input
+                size="small"
+                placeholder={record.isFromKhoach ? 'Nhập số lô để tạo lệnh...' : ''}
+                autoFocus={record.isFromKhoach}
+                style={{
+                  fontFamily: 'monospace', color: '#7c3aed', fontWeight: 700, fontSize: 13, width: '100%',
+                  ...(record.isFromKhoach ? { borderColor: '#7c3aed', boxShadow: '0 0 0 2px rgba(124,58,237,0.15)' } : {}),
+                }}
+              />
             </Form.Item>
           </VCell>
           <LCell>Mã Đơn Hàng</LCell>
@@ -373,10 +392,10 @@ function LenhDetailModal({ open, record, onClose, onSaved }) {
         {/* Footer buttons */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
           <Button onClick={onClose} size="small">Đóng</Button>
-          <Button type="primary" icon={<SaveOutlined />} size="small"
+          <Button type="primary" icon={record.isFromKhoach ? <FileAddOutlined /> : <SaveOutlined />} size="small"
             loading={saving} onClick={handleSave}
-            style={{ background: '#1d4ed8', borderColor: '#1d4ed8' }}>
-            Lưu thay đổi
+            style={{ background: record.isFromKhoach ? '#0891b2' : '#1d4ed8', borderColor: record.isFromKhoach ? '#0891b2' : '#1d4ed8' }}>
+            {record.isFromKhoach ? 'Tạo Lệnh' : 'Lưu thay đổi'}
           </Button>
         </div>
       </Form>
@@ -915,8 +934,8 @@ export default function LenhSanXuatTab() {
         size="small"
         scroll={{ x: 1620, y: tableH }}
         onRow={r => ({
-          onDoubleClick: () => { if (!r.isFromKhoach) { setDetailRecord(r); setDetailOpen(true) } },
-          style: { cursor: r.isFromKhoach ? 'default' : 'pointer' },
+          onDoubleClick: () => { setDetailRecord(r); setDetailOpen(true) },
+          style: { cursor: 'pointer' },
         })}
         rowClassName={r => (!r.isFromKhoach && r.daBanHanh === false && r.soLo) ? 'lsx-row-pending' : ''}
         rowSelection={{
