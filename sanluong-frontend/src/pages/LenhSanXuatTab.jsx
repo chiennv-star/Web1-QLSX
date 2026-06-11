@@ -391,7 +391,7 @@ export default function LenhSanXuatTab() {
       render: (v) => v ? <Tag color="default" style={{ fontWeight: 600, fontSize: 11 }}>{v}</Tag> : '—',
     },
     {
-      title: 'TÊN SẢN PHẨM', dataIndex: 'tenSanPham', ellipsis: true,
+      title: 'TÊN SẢN PHẨM', dataIndex: 'tenSanPham', ellipsis: true, width: 200,
       render: (v, r) => (
         <Tooltip title={`${v || ''}${r.chuY ? ' ⚠ ' + r.chuY : ''}`}>
           <span style={{ fontWeight: 500, fontSize: 12 }}>
@@ -650,7 +650,7 @@ export default function LenhSanXuatTab() {
         columns={baseColumns}
         loading={isLoading}
         size="small"
-        scroll={{ x: 1420 }}
+        scroll={{ x: 1620 }}
         rowClassName={r => (!r.isFromKhoach && r.daBanHanh === false && r.soLo) ? 'lsx-row-pending' : ''}
         rowSelection={{
           selectedRowKeys: selectedKeys,
