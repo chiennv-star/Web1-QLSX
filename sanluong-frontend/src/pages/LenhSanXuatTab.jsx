@@ -160,8 +160,22 @@ export default function LenhSanXuatTab() {
   const [actionId,     setActionId]     = useState(null)
   const [selectedKeys, setSelectedKeys] = useState([])
   const [bulkLoading,  setBulkLoading]  = useState(null) // 'banhanh' | 'lichsx' | 'delete'
+  const [tableH, setTableH] = useState(500)
+  const tableWrapRef = useRef(null)
   // useRef để lưu giá trị soLo — không gây re-render khi gõ, tránh input mất focus
   const soLoRef = useRef({})
+
+  useEffect(() => {
+    const calcH = () => {
+      if (tableWrapRef.current) {
+        const top = tableWrapRef.current.getBoundingClientRect().top
+        setTableH(Math.max(300, window.innerHeight - top - 80))
+      }
+    }
+    calcH()
+    window.addEventListener('resize', calcH)
+    return () => window.removeEventListener('resize', calcH)
+  }, [])
 
   const fetchLenh = useCallback(async () => {
     setLoading(true)
@@ -643,6 +657,7 @@ export default function LenhSanXuatTab() {
       </div>
 
       {/* ── Table ── */}
+      <div ref={tableWrapRef}>
       <SkeletonTable
         className="lsx-tab-table"
         rowKey={r => r.isFromKhoach ? `ws-${r.workScheduleId}` : `l-${r.id}`}
@@ -650,7 +665,7 @@ export default function LenhSanXuatTab() {
         columns={baseColumns}
         loading={isLoading}
         size="small"
-        scroll={{ x: 1620 }}
+        scroll={{ x: 1620, y: tableH }}
         rowClassName={r => (!r.isFromKhoach && r.daBanHanh === false && r.soLo) ? 'lsx-row-pending' : ''}
         rowSelection={{
           selectedRowKeys: selectedKeys,
@@ -674,6 +689,7 @@ export default function LenhSanXuatTab() {
           showTotal: (t) => `Tổng ${t} lệnh`,
         }}
       />
+      </div>
 
       <LenhModal
         open={modalOpen}
