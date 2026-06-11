@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Table, Input, Select, Tag, Tooltip, message, Button,
-  Modal, Form, DatePicker, InputNumber,
+  Modal, Form, DatePicker, InputNumber, Divider,
 } from 'antd'
+import { Rnd } from 'react-rnd'
 import SkeletonTable from '../components/SkeletonTable'
 import {
   PlusOutlined, SyncOutlined, SearchOutlined,
   ReloadOutlined, EditOutlined, CheckOutlined, FileAddOutlined,
-  DeleteOutlined, ThunderboltOutlined,
+  DeleteOutlined, ThunderboltOutlined, CloseOutlined,
+  SaveOutlined, FileTextOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import api from '../api/axios'
@@ -138,6 +140,250 @@ function LenhModal({ open, editItem, onClose, onSaved }) {
   )
 }
 
+// ── Detail Modal (double-click row) ──────────────────────────────────────────
+function LenhDetailModal({ open, record, onClose, onSaved }) {
+  const [form] = Form.useForm()
+  const [saving, setSaving] = useState(false)
+
+  const defaultRnd = useMemo(() => {
+    const w = Math.min(window.innerWidth * 0.72, 860)
+    const h = Math.min(window.innerHeight * 0.82, 680)
+    return { x: Math.max(20, (window.innerWidth - w) / 2), y: 40, width: w, height: h }
+  }, [])
+  const [rnd, setRnd] = useState(defaultRnd)
+
+  useEffect(() => {
+    if (!open || !record) return
+    form.setFieldsValue({
+      tenSanPham:     record.tenSanPham     || '',
+      maBravo:        record.maBravo        || '',
+      maSp:           record.maSp           || '',
+      soLo:           record.soLo           || '',
+      maDonHang:      record.maDonHang      || '',
+      soLuong:        record.soLuong        ?? null,
+      ngayThucHien:   record.ngayThucHien   ? dayjs(record.ngayThucHien)  : null,
+      ngayKetThuc:    record.ngayKetThuc    ? dayjs(record.ngayKetThuc)   : null,
+      ngayPhatLenh:   record.ngayPhatLenh   ? dayjs(record.ngayPhatLenh)  : null,
+      toThucHien:     record.toThucHien     || null,
+      phongThucHien:  record.phongThucHien  || '',
+      tinhTrang:      record.tinhTrang      || null,
+      chuY:           record.chuY           || '',
+    })
+  }, [open, record, form])
+
+  const handleSave = async () => {
+    let values
+    try { values = await form.validateFields() } catch { return }
+    setSaving(true)
+    try {
+      const payload = {
+        ...values,
+        ngayThucHien:  values.ngayThucHien  ? values.ngayThucHien.format('YYYY-MM-DD')  : null,
+        ngayKetThuc:   values.ngayKetThuc   ? values.ngayKetThuc.format('YYYY-MM-DD')   : null,
+        ngayPhatLenh:  values.ngayPhatLenh  ? values.ngayPhatLenh.format('YYYY-MM-DD')  : null,
+      }
+      await api.put(`/lenh-san-xuat/${record.id}`, payload)
+      message.success('Đã cập nhật lệnh sản xuất')
+      onSaved()
+      onClose()
+    } catch { message.error('Lưu thất bại') }
+    finally { setSaving(false) }
+  }
+
+  if (!open || !record) return null
+
+  const LCell = ({ children }) => (
+    <div style={{ padding: '7px 10px', background: '#f1f5f9', fontWeight: 600, fontSize: 12,
+      color: '#64748b', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0',
+      display: 'flex', alignItems: 'center' }}>
+      {children}
+    </div>
+  )
+  const VCell = ({ children, last, span }) => (
+    <div style={{ padding: '5px 8px', borderBottom: '1px solid #e2e8f0',
+      ...(last ? {} : { borderRight: '1px solid #e2e8f0' }),
+      ...(span ? { gridColumn: `span ${span}` } : {}),
+      display: 'flex', alignItems: 'center' }}>
+      {children}
+    </div>
+  )
+
+  const numFmt = {
+    formatter: v => v ? Number(v).toLocaleString('vi-VN') : '',
+    parser:    v => v ? v.replace(/[^\d]/g, '') : '',
+  }
+
+  return (
+    <Modal open={open} onCancel={onClose} footer={null} title={null}
+      width="100%" destroyOnClose
+      styles={{ body: { padding: 0 }, wrapper: { pointerEvents: 'none' } }}
+      style={{ top: 0, padding: 0, margin: 0, maxWidth: 'none', pointerEvents: 'none' }}
+      wrapClassName="lsx-detail-modal"
+      modalRender={modal => (
+        <Rnd
+          size={{ width: rnd.width, height: rnd.height }}
+          position={{ x: rnd.x, y: rnd.y }}
+          onDragStop={(_, d) => setRnd(b => ({ ...b, x: d.x, y: d.y }))}
+          onResizeStop={(_, __, ref, ___, pos) => setRnd({ width: ref.offsetWidth, height: ref.offsetHeight, x: pos.x, y: pos.y })}
+          minWidth={560} minHeight={300}
+          bounds="window"
+          dragHandleClassName="lsx-modal-drag"
+          style={{ pointerEvents: 'all', zIndex: 1000 }}
+          enableResizing={{ bottom: true, right: true, bottomRight: true, left: true, bottomLeft: true, top: false, topLeft: false, topRight: false }}
+        >
+          {modal}
+        </Rnd>
+      )}
+    >
+      <style>{`
+        .lsx-detail-modal { pointer-events: none !important; }
+        .lsx-detail-modal .ant-modal { width: 100% !important; height: 100% !important; margin: 0 !important; top: 0 !important; padding: 0 !important; max-width: none !important; pointer-events: all; }
+        .lsx-detail-modal .ant-modal-content { padding: 0 !important; border-radius: 10px !important; overflow: hidden; height: 100%; display: flex; flex-direction: column; box-shadow: 0 8px 40px rgba(0,0,0,0.28); }
+        .lsx-detail-modal .ant-modal-body    { padding: 0 !important; flex: 1; overflow-y: auto; min-height: 0; }
+        .lsx-detail-modal .ant-form-item     { margin-bottom: 0 !important; }
+        .lsx-modal-drag                      { cursor: move; user-select: none; }
+      `}</style>
+
+      {/* Header */}
+      <div className="lsx-modal-drag" style={{
+        background: 'linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 100%)',
+        padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 10,
+      }}>
+        <FileTextOutlined style={{ fontSize: 22, color: '#93c5fd' }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ color: '#fff', fontWeight: 800, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {record.tenSanPham || 'Chi tiết Lệnh Sản Xuất'}
+          </div>
+          <div style={{ color: '#93c5fd', fontSize: 11, marginTop: 2, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {record.maBravo   && <span>Bravo: <b style={{ color: '#bfdbfe' }}>{record.maBravo}</b></span>}
+            {record.maSp      && <span>SP: <b style={{ color: '#bfdbfe' }}>{record.maSp}</b></span>}
+            {record.soLo      && <span>Lô: <b style={{ color: '#c4b5fd' }}>{record.soLo}</b></span>}
+            {record.maDonHang && <span>ĐH: <b style={{ color: '#c4b5fd' }}>{record.maDonHang}</b></span>}
+          </div>
+        </div>
+        <Button type="text" icon={<CloseOutlined />} onClick={onClose}
+          style={{ color: '#93c5fd', flexShrink: 0 }} />
+      </div>
+
+      {/* Status bar */}
+      <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '6px 18px', display: 'flex', gap: 16, alignItems: 'center' }}>
+        {record.daBanHanh
+          ? <span style={{ background: '#dcfce7', color: '#15803d', fontWeight: 700, fontSize: 11, padding: '2px 10px', borderRadius: 10, border: '1px solid #bbf7d0' }}>✓ Đã phát hành</span>
+          : <span style={{ background: '#fff3e0', color: '#e65100', fontWeight: 700, fontSize: 11, padding: '2px 10px', borderRadius: 10, border: '1px solid #ffcc80' }}>⌛ Chưa phát hành</span>
+        }
+        {record.tinhTrang === 'rat_gap' && <Tag color="red" style={{ margin: 0 }}>🔥 Rất Gấp</Tag>}
+        {record.tinhTrang === 'gap'     && <Tag color="orange" style={{ margin: 0 }}>⚡ Gấp</Tag>}
+        {record.hasKhoach && <span style={{ color: '#16a34a', fontSize: 11, fontWeight: 700 }}>✓ Đã xếp kế hoạch</span>}
+      </div>
+
+      {/* Form body */}
+      <Form form={form} component="div" autoComplete="off" style={{ flex: 1, overflow: 'auto', padding: '14px 16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 130px 1fr', border: '1px solid #e2e8f0', borderRadius: 7, overflow: 'hidden', marginBottom: 12 }}>
+          <LCell>Tên Sản Phẩm</LCell>
+          <VCell span={3} last>
+            <Form.Item name="tenSanPham" noStyle>
+              <Input size="small" style={{ fontSize: 13, width: '100%' }} />
+            </Form.Item>
+          </VCell>
+
+          <LCell>Mã Bravo</LCell>
+          <VCell>
+            <Form.Item name="maBravo" noStyle>
+              <Input size="small" style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0284c7', fontSize: 13, width: '100%' }} />
+            </Form.Item>
+          </VCell>
+          <LCell>Mã SP</LCell>
+          <VCell last>
+            <Form.Item name="maSp" noStyle>
+              <Input size="small" style={{ color: '#1D4ED8', fontWeight: 600, fontSize: 13, width: '100%' }} />
+            </Form.Item>
+          </VCell>
+
+          <LCell>Số Lô</LCell>
+          <VCell>
+            <Form.Item name="soLo" noStyle>
+              <Input size="small" style={{ fontFamily: 'monospace', color: '#7c3aed', fontWeight: 700, fontSize: 13, width: '100%' }} />
+            </Form.Item>
+          </VCell>
+          <LCell>Mã Đơn Hàng</LCell>
+          <VCell last>
+            <Form.Item name="maDonHang" noStyle>
+              <Input size="small" style={{ fontFamily: 'monospace', color: '#0891b2', fontWeight: 600, fontSize: 13, width: '100%' }} />
+            </Form.Item>
+          </VCell>
+
+          <LCell>Cỡ Lô</LCell>
+          <VCell>
+            <Form.Item name="soLuong" noStyle>
+              <InputNumber size="small" style={{ width: '100%' }} min={0} {...numFmt} />
+            </Form.Item>
+          </VCell>
+          <LCell>Tổ Thực Hiện</LCell>
+          <VCell last>
+            <Form.Item name="toThucHien" noStyle>
+              <Select size="small" allowClear placeholder="Chọn tổ..." style={{ width: '100%' }}>
+                {['PCPL1','PCPL2','PCPL3','BBC1','ĐG'].map(t => <Option key={t} value={t}>{t}</Option>)}
+              </Select>
+            </Form.Item>
+          </VCell>
+
+          <LCell>Ngày TH</LCell>
+          <VCell>
+            <Form.Item name="ngayThucHien" noStyle>
+              <DatePicker size="small" format="DD/MM/YYYY" style={{ width: '100%' }} />
+            </Form.Item>
+          </VCell>
+          <LCell>Ngày Kết Thúc</LCell>
+          <VCell last>
+            <Form.Item name="ngayKetThuc" noStyle>
+              <DatePicker size="small" format="DD/MM/YYYY" style={{ width: '100%' }} />
+            </Form.Item>
+          </VCell>
+
+          <LCell>Ngày Phát Lệnh</LCell>
+          <VCell>
+            <Form.Item name="ngayPhatLenh" noStyle>
+              <DatePicker size="small" format="DD/MM/YYYY" style={{ width: '100%' }} />
+            </Form.Item>
+          </VCell>
+          <LCell>Tình Trạng</LCell>
+          <VCell last>
+            <Form.Item name="tinhTrang" noStyle>
+              <Select size="small" allowClear placeholder="Chọn..." style={{ width: '100%' }}>
+                <Option value="rat_gap">🔥 Rất Gấp</Option>
+                <Option value="gap">⚡ Gấp</Option>
+              </Select>
+            </Form.Item>
+          </VCell>
+
+          <LCell>Phòng TH</LCell>
+          <VCell>
+            <Form.Item name="phongThucHien" noStyle>
+              <Input size="small" style={{ fontSize: 12, width: '100%' }} />
+            </Form.Item>
+          </VCell>
+          <LCell>Chú Ý</LCell>
+          <VCell last>
+            <Form.Item name="chuY" noStyle>
+              <Input size="small" style={{ fontSize: 12, width: '100%' }} />
+            </Form.Item>
+          </VCell>
+        </div>
+
+        {/* Footer buttons */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
+          <Button onClick={onClose} size="small">Đóng</Button>
+          <Button type="primary" icon={<SaveOutlined />} size="small"
+            loading={saving} onClick={handleSave}
+            style={{ background: '#1d4ed8', borderColor: '#1d4ed8' }}>
+            Lưu thay đổi
+          </Button>
+        </div>
+      </Form>
+    </Modal>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function LenhSanXuatTab() {
   // LenhSanXuat records (tabs PCPL1..ĐG + hoàn thiện)
@@ -160,6 +406,8 @@ export default function LenhSanXuatTab() {
   const [actionId,     setActionId]     = useState(null)
   const [selectedKeys, setSelectedKeys] = useState([])
   const [bulkLoading,  setBulkLoading]  = useState(null) // 'banhanh' | 'lichsx' | 'delete'
+  const [detailOpen,   setDetailOpen]   = useState(false)
+  const [detailRecord, setDetailRecord] = useState(null)
   const [tableH, setTableH] = useState(500)
   const tableWrapRef = useRef(null)
   // useRef để lưu giá trị soLo — không gây re-render khi gõ, tránh input mất focus
@@ -666,6 +914,10 @@ export default function LenhSanXuatTab() {
         loading={isLoading}
         size="small"
         scroll={{ x: 1620, y: tableH }}
+        onRow={r => ({
+          onDoubleClick: () => { if (!r.isFromKhoach) { setDetailRecord(r); setDetailOpen(true) } },
+          style: { cursor: r.isFromKhoach ? 'default' : 'pointer' },
+        })}
         rowClassName={r => (!r.isFromKhoach && r.daBanHanh === false && r.soLo) ? 'lsx-row-pending' : ''}
         rowSelection={{
           selectedRowKeys: selectedKeys,
@@ -690,6 +942,13 @@ export default function LenhSanXuatTab() {
         }}
       />
       </div>
+
+      <LenhDetailModal
+        open={detailOpen}
+        record={detailRecord}
+        onClose={() => setDetailOpen(false)}
+        onSaved={fetchAll}
+      />
 
       <LenhModal
         open={modalOpen}
