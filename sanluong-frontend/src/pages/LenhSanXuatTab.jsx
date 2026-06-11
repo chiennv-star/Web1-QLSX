@@ -708,9 +708,11 @@ export default function LenhSanXuatTab() {
     },
     {
       title: 'KẾ HOẠCH', dataIndex: 'hasKhoach', width: 96, align: 'center',
-      render: (v) => v
-        ? <span style={{ color: '#16a34a', fontSize: 11, fontWeight: 700 }}>✓ Đã xếp</span>
-        : <span style={{ color: '#94a3b8', fontSize: 11 }}>—</span>,
+      render: (v, r) => {
+        if (r.daBanHanh) return <span style={{ background: '#dcfce7', color: '#15803d', fontWeight: 700, fontSize: 11, padding: '2px 8px', borderRadius: 4, display: 'inline-block' }}>✓ Hoàn thành</span>
+        if (v) return <span style={{ color: '#16a34a', fontSize: 11, fontWeight: 700 }}>✓ Đã xếp</span>
+        return <span style={{ color: '#94a3b8', fontSize: 11 }}>—</span>
+      },
     },
     {
       title: 'CỠ LÔ', dataIndex: 'soLuong', width: 88, align: 'right',
@@ -718,9 +720,10 @@ export default function LenhSanXuatTab() {
     },
     {
       title: 'TÌNH TRẠNG', dataIndex: 'tinhTrang', width: 100, align: 'center',
-      render: (v) => {
+      render: (v, r) => {
         if (v === 'rat_gap') return <Tag color="red"    style={{ fontSize: 11 }}>Rất gấp</Tag>
         if (v === 'gap')     return <Tag color="orange" style={{ fontSize: 11 }}>Gấp</Tag>
+        if (r.daBanHanh)     return <Tag color="green"  style={{ fontSize: 11 }}>Hoàn thành</Tag>
         return <span style={{ color: '#d1d5db' }}>—</span>
       },
     },
