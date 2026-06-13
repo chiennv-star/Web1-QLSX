@@ -187,7 +187,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
                       <td style={td({ textAlign: 'center', fontWeight: 800, color: '#1d4ed8' })}>{r.congDoan || '—'}</td>
                       <td style={td({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 })} title={r.tenTrinh}>{r.tenTrinh || '—'}</td>
                       <td style={td({ textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 })}>{r.soLo || '—'}</td>
-                      <td style={td({ textAlign: 'right', fontWeight: 700 })}>{r.soLuong != null ? Number(r.soLuong).toLocaleString('vi-VN') : '—'}</td>
+                      <td style={td({ textAlign: 'right', fontWeight: 700 })}>{r.coLo != null ? Number(r.coLo).toLocaleString('vi-VN') : '—'}</td>
                       <td style={td({ textAlign: 'center', padding: '4px 6px' })}>
                         {r.status === 'PENDING'
                           ? <span style={{ background: '#fef3c7', color: '#d97706', fontWeight: 700, fontSize: FS - 1, padding: '2px 6px', borderRadius: 4, display: 'inline-block' }}>⌛ Chưa HT</span>

@@ -10,6 +10,7 @@ public class DailyProductionDto {
     private String maSp;
     private String tenTrinh;
     private String soLo;
+    private java.math.BigDecimal coLo;
     private String toNhom;
     private String nhomThucHien;
     private String nguoiThucHien;
@@ -43,6 +44,8 @@ public class DailyProductionDto {
     public void setTenTrinh(String tenTrinh) { this.tenTrinh = tenTrinh; }
     public String getSoLo() { return soLo; }
     public void setSoLo(String soLo) { this.soLo = soLo; }
+    public java.math.BigDecimal getCoLo() { return coLo; }
+    public void setCoLo(java.math.BigDecimal coLo) { this.coLo = coLo; }
     public String getToNhom() { return toNhom; }
     public void setToNhom(String toNhom) { this.toNhom = toNhom; }
     public String getNhomThucHien() { return nhomThucHien; }

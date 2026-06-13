@@ -587,6 +587,7 @@ public class WorkScheduleSessionService {
             dto.setMaSp(w.getMaSp());
             dto.setTenTrinh(w.getTenTrinh());
             dto.setSoLo(w.getSoLo());
+            dto.setCoLo(w.getCoLo());
             dto.setToNhom(w.getToNhom());
             dto.setNhomThucHien(rep.getNhomThucHien());
             dto.setCaSanXuat(rep.getCaSanXuat());
