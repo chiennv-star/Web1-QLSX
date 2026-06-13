@@ -131,30 +131,57 @@ function DailySummaryPanel({ data }) {
         </div>
 
         {/* MIDDLE */}
-        <div style={{ borderRight: '1px solid #a0bdd0', overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 360 }}>
+        <div style={{ borderRight: '1px solid #a0bdd0', display: 'flex', flexDirection: 'column' }}>
+          {/* header cố định */}
+          <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+            <colgroup>
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '40%' }} />
+              <col style={{ width: '15%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '18%' }} />
+            </colgroup>
             <thead>
               <tr>{['BỘ PHẬN', 'TÊN SẢN PHẨM', 'SỐ LÔ', 'CỠ LÔ', 'TÌNH TRẠNG'].map(h => <th key={h} style={th}>{h}</th>)}</tr>
             </thead>
-            <tbody>
-              {todayRows.length === 0
-                ? <tr><td colSpan={5} style={{ textAlign: 'center', color: '#94a3b8', padding: '12px', fontSize: 11 }}>Không có dữ liệu hôm nay trong bộ lọc hiện tại</td></tr>
-                : todayRows.map((r, i) => (
-                  <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#f1f7fc' }}>
-                    <td style={td({ textAlign: 'center', fontWeight: 700, color: '#0369a1' })}>{r.congDoan || '—'}</td>
-                    <td style={td({ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })}>{r.tenTrinh || '—'}</td>
-                    <td style={td({ textAlign: 'center', fontFamily: 'monospace' })}>{r.soLo || '—'}</td>
-                    <td style={td({ textAlign: 'right' })}>{r.soLuong != null ? Number(r.soLuong).toLocaleString('vi-VN') : '—'}</td>
-                    <td style={td({ textAlign: 'center' })}>
-                      {r.status === 'PENDING'
-                        ? <span style={{ color: '#d97706', fontWeight: 600 }}>⌛ Chờ duyệt</span>
-                        : <span style={{ color: '#16a34a', fontWeight: 600 }}>✓ Đã lưu</span>}
-                    </td>
-                  </tr>
-                ))
-              }
-            </tbody>
           </table>
+          {/* body cuộn khi nhiều dòng */}
+          <div style={{ maxHeight: 260, overflowY: 'auto', flex: 1 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '13%' }} />
+                <col style={{ width: '40%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '18%' }} />
+              </colgroup>
+              <tbody>
+                {todayRows.length === 0
+                  ? <tr><td colSpan={5} style={{ textAlign: 'center', color: '#94a3b8', padding: '12px', fontSize: 11 }}>Không có dữ liệu hôm nay</td></tr>
+                  : todayRows.map((r, i) => (
+                    <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#f1f7fc' }}>
+                      <td style={td({ textAlign: 'center', fontWeight: 700, color: '#0369a1' })}>{r.congDoan || '—'}</td>
+                      <td style={td({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })} title={r.tenTrinh}>{r.tenTrinh || '—'}</td>
+                      <td style={td({ textAlign: 'center', fontFamily: 'monospace' })}>{r.soLo || '—'}</td>
+                      <td style={td({ textAlign: 'right' })}>{r.soLuong != null ? Number(r.soLuong).toLocaleString('vi-VN') : '—'}</td>
+                      <td style={td({ textAlign: 'center' })}>
+                        {r.status === 'PENDING'
+                          ? <span style={{ color: '#d97706', fontWeight: 600, fontSize: 10 }}>⌛ Chưa hoàn thành</span>
+                          : r.status === 'IN_PROGRESS'
+                            ? <span style={{ color: '#2563eb', fontWeight: 600, fontSize: 10 }}>▶ Đang thực hiện</span>
+                            : <span style={{ color: '#16a34a', fontWeight: 600, fontSize: 10 }}>✓ Hoàn thành</span>}
+                      </td>
+                    </tr>
+                  ))
+                }
+              </tbody>
+            </table>
+          </div>
+          {todayRows.length > 10 && (
+            <div style={{ textAlign: 'center', fontSize: 10, color: '#64748b', padding: '3px', borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
+              {todayRows.length} dòng — cuộn để xem thêm
+            </div>
+          )}
         </div>
 
         {/* RIGHT */}
