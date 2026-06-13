@@ -1134,8 +1134,6 @@ function TongHopTab() {
 
       </div>{/* end sticky filter wrapper */}
 
-      <DailySummaryPanel data={raw} />
-
       <style>{`
         .tonghop-table .ant-table-thead > tr > th {
           background: #99CCCC !important;
@@ -1233,6 +1231,71 @@ function TongHopTab() {
   )
 }
 
+// ─── Tab 3: Báo cáo tổng hợp ngày ───────────────────────────────────────────
+
+function BaoCaoTab() {
+  const [raw, setRaw]       = useState([])
+  const [loading, setLoading] = useState(false)
+  const [dateRange, setDateRange] = useState([
+    dayjs().subtract(6, 'day'), dayjs()
+  ])
+
+  const fetchData = useCallback(async (range = dateRange) => {
+    setLoading(true)
+    try {
+      const params = {}
+      if (range?.[0]) params.fromDate = range[0].format('YYYY-MM-DD')
+      if (range?.[1]) params.toDate   = range[1].format('YYYY-MM-DD')
+      const { data: res } = await api.get('/work-schedule-session/daily-report', { params })
+      setRaw(Array.isArray(res) ? res : [])
+    } catch {
+      message.error('Không thể tải dữ liệu báo cáo')
+    } finally {
+      setLoading(false)
+    }
+  }, [dateRange])
+
+  useEffect(() => { fetchData() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div>
+      {/* Filter bar */}
+      <div style={{
+        position: 'sticky', top: 0, zIndex: 10,
+        background: '#f0fdf4', borderBottom: '2px solid #86efac',
+        padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+      }}>
+        <span style={{ fontWeight: 800, fontSize: 14, color: '#15803d', whiteSpace: 'nowrap' }}>
+          <RiseOutlined style={{ marginRight: 6 }} />Báo cáo tổng hợp ngày
+        </span>
+        <DatePicker.RangePicker
+          size="small" value={dateRange} onChange={setDateRange}
+          format="DD/MM/YYYY" allowClear placeholder={['Từ ngày', 'Đến ngày']}
+        />
+        <Button size="small" type="primary" icon={<SearchOutlined />}
+          loading={loading}
+          style={{ background: '#16a34a', borderColor: '#16a34a' }}
+          onClick={() => fetchData()}
+        >Truy xuất</Button>
+        <Button size="small" icon={<ReloadOutlined />}
+          onClick={() => {
+            const def = [dayjs().subtract(6, 'day'), dayjs()]
+            setDateRange(def)
+            fetchData(def)
+          }}
+        />
+      </div>
+
+      <div style={{ padding: '12px 16px' }}>
+        {loading
+          ? <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Đang tải...</div>
+          : <DailySummaryPanel data={raw} />
+        }
+      </div>
+    </div>
+  )
+}
+
 // ─── Page chính: wrapper Tabs ─────────────────────────────────────────────────
 
 export default function DailySanLuongPage() {
@@ -1290,6 +1353,16 @@ export default function DailySanLuongPage() {
         </span>
       ),
       children: <TongHopTab />,
+    },
+    {
+      key: 'baocao',
+      label: (
+        <span>
+          <RiseOutlined style={{ marginRight: 5 }} />
+          Báo cáo tổng hợp ngày
+        </span>
+      ),
+      children: <BaoCaoTab />,
     },
   ]
 
