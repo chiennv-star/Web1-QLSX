@@ -212,7 +212,6 @@ function DailyDetailTab() {
   const [rejectingId, setRejectingId] = useState(null)
   const [actionLoading, setActionLoading] = useState({})
   const [nsTbMap, setNsTbMap] = useState({}) // maSp → slTrungBinh (năng suất trung bình)
-  const [showSummary, setShowSummary] = useState(true)
 
   const filterRef = useRef(null)
   const [filterH, setFilterH] = useState(0)
@@ -635,7 +634,7 @@ function DailyDetailTab() {
         )}
 
         {/* KPI inline */}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {SUMMARY_CARDS.map(({ label, key, color, bg, border }) => (
             <span key={key} style={{
               fontSize: 11, fontWeight: 700, padding: '2px 10px',
@@ -645,19 +644,9 @@ function DailyDetailTab() {
               {label}: <strong>{Number(summary[key]).toLocaleString('vi-VN')}</strong>
             </span>
           ))}
-          <Button
-            size="small"
-            type={showSummary ? 'primary' : 'default'}
-            onClick={() => setShowSummary(v => !v)}
-            style={{ fontSize: 11, ...(showSummary ? { background: '#0e7490', borderColor: '#0e7490' } : {}) }}
-          >
-            {showSummary ? '▲ Ẩn bảng tổng hợp' : '▼ Bảng tổng hợp'}
-          </Button>
         </div>
       </div>
       </div>{/* end sticky filter wrapper */}
-
-      {showSummary && <DailySummaryPanel data={data} />}
 
       <style>{`
         .daily-sl-table .ant-table-thead > tr > th {
@@ -1144,6 +1133,8 @@ function TongHopTab() {
       </div>
 
       </div>{/* end sticky filter wrapper */}
+
+      <DailySummaryPanel data={raw} />
 
       <style>{`
         .tonghop-table .ant-table-thead > tr > th {
