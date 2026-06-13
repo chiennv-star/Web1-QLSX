@@ -51,10 +51,11 @@ const SUMMARY_DEPTS = [
   { key: 'DG',    label: 'ĐG'    },
 ]
 
-function DailySummaryPanel({ data }) {
-  const today      = dayjs().format('YYYY-MM-DD')
-  const yesterday  = dayjs().subtract(1, 'day').format('YYYY-MM-DD')
-  const monthStart = dayjs().startOf('month').format('YYYY-MM-DD')
+function DailySummaryPanel({ data, refDate: refDateProp }) {
+  const ref        = refDateProp ? dayjs(refDateProp) : dayjs()
+  const today      = ref.format('YYYY-MM-DD')
+  const yesterday  = ref.subtract(1, 'day').format('YYYY-MM-DD')
+  const monthStart = ref.startOf('month').format('YYYY-MM-DD')
 
   const getDeptKey = (r) => {
     let cd = r.congDoan?.toUpperCase()
@@ -106,7 +107,7 @@ function DailySummaryPanel({ data }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', background: '#dce9f5', padding: '5px 12px', alignItems: 'center', borderBottom: '1px solid #a0bdd0' }}>
         <div style={{ fontSize: 11, color: '#334155' }}>Bộ Phận: <strong>QLSX</strong></div>
         <div style={{ textAlign: 'center', fontWeight: 800, fontSize: 13, color: '#1e3a5f', letterSpacing: '0.02em' }}>CÔNG TY CÔNG PHẨM MỸ PHẨM THIÊN NHIÊN SONG AN</div>
-        <div style={{ textAlign: 'right', fontSize: 11, color: '#334155' }}>Ngày: <strong>{dayjs().format('DD/MM/YYYY')}</strong></div>
+        <div style={{ textAlign: 'right', fontSize: 11, color: '#334155' }}>Ngày: <strong>{ref.format('DD/MM/YYYY')}</strong></div>
       </div>
 
       {/* 3-column body */}
@@ -114,7 +115,7 @@ function DailySummaryPanel({ data }) {
 
         {/* LEFT */}
         <div style={{ borderRight: '1px solid #a0bdd0' }}>
-          <div style={secHead}>SẢN LƯỢNG NGÀY</div>
+          <div style={secHead}>SẢN LƯỢNG NGÀY {ref.format('DD/MM')}</div>
           {SUMMARY_DEPTS.map(d => (
             <div key={d.key} style={deptRow}>
               <span style={{ fontWeight: 600, color: '#1e3a5f' }}>{d.label}</span>
@@ -186,14 +187,14 @@ function DailySummaryPanel({ data }) {
 
         {/* RIGHT */}
         <div>
-          <div style={secHead}>Sản Lượng Hôm Qua</div>
+          <div style={secHead}>Sản Lượng {ref.subtract(1,'day').format('DD/MM')}</div>
           {SUMMARY_DEPTS.map(d => (
             <div key={d.key} style={deptRow}>
               <span style={{ fontWeight: 600, color: '#1e3a5f' }}>{d.label}</span>
               <span style={{ color: '#7c3aed', fontWeight: 700 }}>{(stats.ydSL[d.key] || 0).toLocaleString('vi-VN')}</span>
             </div>
           ))}
-          <div style={{ ...secHead, borderTop: '1px solid #a0bdd0' }}>HSCV Hôm Qua</div>
+          <div style={{ ...secHead, borderTop: '1px solid #a0bdd0' }}>HSCV {ref.subtract(1,'day').format('DD/MM')}</div>
           {SUMMARY_DEPTS.map(d => {
             const sl = stats.ydSL[d.key] || 0
             const cong = stats.ydCong[d.key] || 0
@@ -1263,6 +1264,7 @@ function TongHopTab() {
 function BaoCaoTab() {
   const [raw, setRaw]       = useState([])
   const [loading, setLoading] = useState(false)
+  const [refDate, setRefDate] = useState(dayjs())
   const [dateRange, setDateRange] = useState([
     dayjs().subtract(6, 'day'), dayjs()
   ])
@@ -1295,6 +1297,25 @@ function BaoCaoTab() {
         <span style={{ fontWeight: 800, fontSize: 14, color: '#15803d', whiteSpace: 'nowrap' }}>
           <RiseOutlined style={{ marginRight: 6 }} />Báo cáo tổng hợp ngày
         </span>
+        <span style={{ fontSize: 12, color: '#15803d', fontWeight: 600, whiteSpace: 'nowrap' }}>Xem ngày:</span>
+        <DatePicker
+          size="small" value={refDate} format="DD/MM/YYYY" allowClear={false}
+          onChange={d => {
+            if (!d) return
+            setRefDate(d)
+            // Mở rộng range fetch nếu ngày chọn nằm ngoài range hiện tại
+            const prev = dateRange?.[1]?.subtract(1, 'day') ?? d
+            const [from, to] = dateRange ?? [d, d]
+            const newFrom = d.isBefore(from) ? d.subtract(1, 'day') : from
+            const newTo   = d.isAfter(to)   ? d                      : to
+            if (!newFrom.isSame(from, 'day') || !newTo.isSame(to, 'day')) {
+              const newRange = [newFrom, newTo]
+              setDateRange(newRange)
+              fetchData(newRange)
+            }
+          }}
+        />
+        <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>Khoảng tải:</span>
         <DatePicker.RangePicker
           size="small" value={dateRange} onChange={setDateRange}
           format="DD/MM/YYYY" allowClear placeholder={['Từ ngày', 'Đến ngày']}
@@ -1307,6 +1328,7 @@ function BaoCaoTab() {
         <Button size="small" icon={<ReloadOutlined />}
           onClick={() => {
             const def = [dayjs().subtract(6, 'day'), dayjs()]
+            setRefDate(dayjs())
             setDateRange(def)
             fetchData(def)
           }}
@@ -1316,7 +1338,7 @@ function BaoCaoTab() {
       <div style={{ padding: '12px 16px' }}>
         {loading
           ? <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Đang tải...</div>
-          : <DailySummaryPanel data={raw} />
+          : <DailySummaryPanel data={raw} refDate={refDate} />
         }
       </div>
     </div>
