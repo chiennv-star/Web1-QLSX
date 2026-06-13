@@ -41,6 +41,149 @@ const STAGES = [
 const fmtSL   = v => (v || 0).toLocaleString('vi-VN')
 const fmtCong = (v, d = 4) => (v || 0).toLocaleString('vi-VN', { minimumFractionDigits: d, maximumFractionDigits: d })
 
+// ─── Bảng tổng hợp ngày ──────────────────────────────────────────────────────
+
+const SUMMARY_DEPTS = [
+  { key: 'BBC1',  label: 'BBC1'  },
+  { key: 'PCPL1', label: 'PCPL1' },
+  { key: 'PCPL2', label: 'PCPL2' },
+  { key: 'PL',    label: 'PCPL3' },
+  { key: 'DG',    label: 'ĐG'    },
+]
+
+function DailySummaryPanel({ data }) {
+  const today      = dayjs().format('YYYY-MM-DD')
+  const yesterday  = dayjs().subtract(1, 'day').format('YYYY-MM-DD')
+  const monthStart = dayjs().startOf('month').format('YYYY-MM-DD')
+
+  const getDeptKey = (r) => {
+    let cd = r.congDoan?.toUpperCase()
+    if (cd === 'PC') {
+      const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
+      cd = nhom === 'PCPL2' ? 'PCPL2' : 'PCPL1'
+    }
+    return cd
+  }
+
+  const stats = useMemo(() => {
+    const todaySL = {}, monthSL = {}, ydSL = {}, ydCong = {}, ydTotal = {}, ydDone = {}
+    SUMMARY_DEPTS.forEach(d => {
+      todaySL[d.key] = 0; monthSL[d.key] = 0
+      ydSL[d.key] = 0;    ydCong[d.key] = 0
+      ydTotal[d.key] = 0; ydDone[d.key] = 0
+    })
+    data.forEach(r => {
+      const cd = getDeptKey(r)
+      if (!SUMMARY_DEPTS.find(d => d.key === cd)) return
+      const isPending = r.status === 'PENDING' || r.status === 'IN_PROGRESS'
+      const sl = Number(r.sanLuong || 0)
+      const cong = Number(r.congThucHien || 0)
+      if (!isPending) {
+        if (r.ngay === today)          todaySL[cd] += sl
+        if (r.ngay >= monthStart)      monthSL[cd] += sl
+        if (r.ngay === yesterday) { ydSL[cd] += sl; ydCong[cd] += cong }
+      }
+      if (r.ngay === yesterday) {
+        ydTotal[cd]++
+        if (!isPending) ydDone[cd]++
+      }
+    })
+    return { todaySL, monthSL, ydSL, ydCong, ydTotal, ydDone }
+  }, [data, today, yesterday, monthStart])
+
+  const todayRows = useMemo(() =>
+    data.filter(r => r.ngay === today && r.status !== 'IN_PROGRESS'),
+  [data, today])
+
+  const th = { background: '#c5d8e8', fontWeight: 700, fontSize: 11, padding: '4px 6px', border: '1px solid #a0bdd0', textAlign: 'center', whiteSpace: 'nowrap' }
+  const td = (extra = {}) => ({ padding: '3px 6px', border: '1px solid #dde6f0', fontSize: 11, ...extra })
+  const secHead = { background: '#d0e4f0', fontWeight: 800, fontSize: 11, textAlign: 'center', padding: '4px 6px', borderBottom: '1px solid #a0bdd0', color: '#1e3a5f' }
+  const deptRow = { display: 'flex', justifyContent: 'space-between', padding: '3px 10px', borderBottom: '1px solid #e8eef5', fontSize: 11 }
+
+  return (
+    <div style={{ margin: '8px 0 4px', border: '1px solid #a0bdd0', borderRadius: 6, overflow: 'hidden', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
+      {/* Header */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', background: '#dce9f5', padding: '5px 12px', alignItems: 'center', borderBottom: '1px solid #a0bdd0' }}>
+        <div style={{ fontSize: 11, color: '#334155' }}>Bộ Phận: <strong>QLSX</strong></div>
+        <div style={{ textAlign: 'center', fontWeight: 800, fontSize: 13, color: '#1e3a5f', letterSpacing: '0.02em' }}>CÔNG TY CÔNG PHẨM MỸ PHẨM THIÊN NHIÊN SONG AN</div>
+        <div style={{ textAlign: 'right', fontSize: 11, color: '#334155' }}>Ngày: <strong>{dayjs().format('DD/MM/YYYY')}</strong></div>
+      </div>
+
+      {/* 3-column body */}
+      <div style={{ display: 'grid', gridTemplateColumns: '190px 1fr 190px' }}>
+
+        {/* LEFT */}
+        <div style={{ borderRight: '1px solid #a0bdd0' }}>
+          <div style={secHead}>SẢN LƯỢNG NGÀY</div>
+          {SUMMARY_DEPTS.map(d => (
+            <div key={d.key} style={deptRow}>
+              <span style={{ fontWeight: 600, color: '#1e3a5f' }}>{d.label}</span>
+              <span style={{ color: '#0284c7', fontWeight: 700 }}>{(stats.todaySL[d.key] || 0).toLocaleString('vi-VN')}</span>
+            </div>
+          ))}
+          <div style={{ ...secHead, borderTop: '1px solid #a0bdd0' }}>TỔNG SẢN LƯỢNG THÁNG</div>
+          {SUMMARY_DEPTS.map(d => (
+            <div key={d.key} style={deptRow}>
+              <span style={{ fontWeight: 600, color: '#1e3a5f' }}>{d.label}</span>
+              <span style={{ color: '#0369a1', fontWeight: 700 }}>{(stats.monthSL[d.key] || 0).toLocaleString('vi-VN')}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* MIDDLE */}
+        <div style={{ borderRight: '1px solid #a0bdd0', overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 360 }}>
+            <thead>
+              <tr>{['BỘ PHẬN', 'TÊN SẢN PHẨM', 'SỐ LÔ', 'CỠ LÔ', 'TÌNH TRẠNG'].map(h => <th key={h} style={th}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {todayRows.length === 0
+                ? <tr><td colSpan={5} style={{ textAlign: 'center', color: '#94a3b8', padding: '12px', fontSize: 11 }}>Không có dữ liệu hôm nay trong bộ lọc hiện tại</td></tr>
+                : todayRows.map((r, i) => (
+                  <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#f1f7fc' }}>
+                    <td style={td({ textAlign: 'center', fontWeight: 700, color: '#0369a1' })}>{r.congDoan || '—'}</td>
+                    <td style={td({ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })}>{r.tenTrinh || '—'}</td>
+                    <td style={td({ textAlign: 'center', fontFamily: 'monospace' })}>{r.soLo || '—'}</td>
+                    <td style={td({ textAlign: 'right' })}>{r.soLuong != null ? Number(r.soLuong).toLocaleString('vi-VN') : '—'}</td>
+                    <td style={td({ textAlign: 'center' })}>
+                      {r.status === 'PENDING'
+                        ? <span style={{ color: '#d97706', fontWeight: 600 }}>⌛ Chờ duyệt</span>
+                        : <span style={{ color: '#16a34a', fontWeight: 600 }}>✓ Đã lưu</span>}
+                    </td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+
+        {/* RIGHT */}
+        <div>
+          <div style={secHead}>Sản Lượng Hôm Qua</div>
+          {SUMMARY_DEPTS.map(d => (
+            <div key={d.key} style={deptRow}>
+              <span style={{ fontWeight: 600, color: '#1e3a5f' }}>{d.label}</span>
+              <span style={{ color: '#7c3aed', fontWeight: 700 }}>{(stats.ydSL[d.key] || 0).toLocaleString('vi-VN')}</span>
+            </div>
+          ))}
+          <div style={{ ...secHead, borderTop: '1px solid #a0bdd0' }}>HSCV Hôm Qua</div>
+          {SUMMARY_DEPTS.map(d => {
+            const sl = stats.ydSL[d.key] || 0
+            const cong = stats.ydCong[d.key] || 0
+            const hscv = cong > 0 ? (sl / cong).toLocaleString('vi-VN', { maximumFractionDigits: 2 }) : '—'
+            return (
+              <div key={d.key} style={deptRow}>
+                <span style={{ fontWeight: 600, color: '#1e3a5f' }}>{d.label}</span>
+                <span style={{ color: '#059669', fontWeight: 700 }}>{hscv}</span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Tab 1: Sản lượng theo ngày (chi tiết) ───────────────────────────────────
 
 function DailyDetailTab() {
@@ -69,6 +212,7 @@ function DailyDetailTab() {
   const [rejectingId, setRejectingId] = useState(null)
   const [actionLoading, setActionLoading] = useState({})
   const [nsTbMap, setNsTbMap] = useState({}) // maSp → slTrungBinh (năng suất trung bình)
+  const [showSummary, setShowSummary] = useState(true)
 
   const filterRef = useRef(null)
   const [filterH, setFilterH] = useState(0)
@@ -491,7 +635,7 @@ function DailyDetailTab() {
         )}
 
         {/* KPI inline */}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           {SUMMARY_CARDS.map(({ label, key, color, bg, border }) => (
             <span key={key} style={{
               fontSize: 11, fontWeight: 700, padding: '2px 10px',
@@ -501,9 +645,19 @@ function DailyDetailTab() {
               {label}: <strong>{Number(summary[key]).toLocaleString('vi-VN')}</strong>
             </span>
           ))}
+          <Button
+            size="small"
+            type={showSummary ? 'primary' : 'default'}
+            onClick={() => setShowSummary(v => !v)}
+            style={{ fontSize: 11, ...(showSummary ? { background: '#0e7490', borderColor: '#0e7490' } : {}) }}
+          >
+            {showSummary ? '▲ Ẩn bảng tổng hợp' : '▼ Bảng tổng hợp'}
+          </Button>
         </div>
       </div>
       </div>{/* end sticky filter wrapper */}
+
+      {showSummary && <DailySummaryPanel data={data} />}
 
       <style>{`
         .daily-sl-table .ant-table-thead > tr > th {

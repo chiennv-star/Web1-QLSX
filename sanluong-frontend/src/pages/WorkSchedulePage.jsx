@@ -2091,12 +2091,12 @@ function MobileScheduleCard({ record, congDoan, nsMap, onClick }) {
 // ── StageTab ──────────────────────────────────────────────────────────────────
 function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved, jumpTarget }) {
   const navigate = useNavigate()
-  const { canEditStage, getAllowedNhom, isNhanVien, canDeleteSchedule } = useAuth()
+  const { canEditStage, getAllowedNhom, isNhanVien, canDeleteSchedule, user } = useAuth()
   const allowedNhom = forcedNhom || (congDoan === 'PC' ? getAllowedNhom() : null)
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 })
-  const paginationRef = useRef({ current: 1, pageSize: 20 })
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 500, total: 0 })
+  const paginationRef = useRef({ current: 1, pageSize: 500 })
   const [filters, setFilters] = useState({
     dateRange: null,
     maSp: '',
@@ -2731,7 +2731,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
             size="small"
             sticky={{ offsetHeader: headerOffset }}
             rowHoverable={false}
-            rowSelection={canEditStage(congDoan) && !allowedNhom ? {
+            rowSelection={canEditStage(congDoan) && !allowedNhom && !['ADMIN_PCPL1','ADMIN_PCPL2','ADMIN_PCPL3','ADMIN_DG','ADMIN_BBC1'].includes(user?.role) ? {
               selectedRowKeys,
               onChange: keys => setSelectedRowKeys(keys),
               preserveSelectedRowKeys: true,
@@ -2755,16 +2755,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                 setDetailOpen(true)
               },
             })}
-            pagination={{
-              ...pagination,
-              showSizeChanger: true,
-              showTotal: t => `Tổng ${t} bản ghi`,
-              onChange: (p, ps) => {
-                setPagination(prev => ({ ...prev, current: p, pageSize: ps }))
-                paginationRef.current = { current: p, pageSize: ps }
-                fetchData(p - 1, ps)
-              }
-            }}
+            pagination={false}
           />
           </div>
 
@@ -2852,10 +2843,10 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
 function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 50, total: 0 })
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 500, total: 0 })
   const [filters, setFilters] = useState({ dateRange: null, maSp: '', soLo: '', tenTrinh: '', maBravo: '' })
 
-  const fetchDone = useCallback(async (page = 0, size = 50, f = filters) => {
+  const fetchDone = useCallback(async (page = 0, size = 500, f = filters) => {
     setLoading(true)
     try {
       const { data: res } = await api.get('/work-schedule', {
@@ -2999,15 +2990,7 @@ function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
           onClick: () => onRowClick?.(r),
           style: { cursor: onRowClick ? 'pointer' : 'default' },
         })}
-        pagination={{
-          ...pagination,
-          showSizeChanger: true,
-          showTotal: t => `Tổng ${t} lịch đã hoàn thiện`,
-          onChange: (p, ps) => {
-            setPagination(prev => ({ ...prev, current: p, pageSize: ps }))
-            fetchDone(p - 1, ps)
-          }
-        }}
+        pagination={false}
       />
     </div>
   )
@@ -3017,11 +3000,11 @@ function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
 function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange }) {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 50, total: 0 })
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 500, total: 0 })
   const [selectedIds, setSelectedIds] = useState([])
   const [bulkLoading, setBulkLoading] = useState(false)
 
-  const fetchHidden = useCallback(async (page = 0, size = 50) => {
+  const fetchHidden = useCallback(async (page = 0, size = 500) => {
     setLoading(true)
     try {
       const { data: res } = await api.get('/work-schedule/hidden', {
@@ -3161,15 +3144,7 @@ function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange }) {
         scroll={{ x: 900 }}
         sticky={{ offsetHeader: 46 }}
         rowHoverable={false}
-        pagination={{
-          ...pagination,
-          showSizeChanger: true,
-          showTotal: t => `Tổng ${t} bản ghi đã ẩn`,
-          onChange: (p, ps) => {
-            setPagination(prev => ({ ...prev, current: p, pageSize: ps }))
-            fetchHidden(p - 1, ps)
-          }
-        }}
+        pagination={false}
       />
     </div>
   )
@@ -3340,6 +3315,16 @@ export default function WorkSchedulePage() {
     if (!allowedStages) return s
     return allowedStages.includes(s) ? s : allowedStages[0]
   })()
+  const [mergedView, setMergedView] = useState(() => {
+    try { return localStorage.getItem('ws_merged_view') === '1' } catch { return false }
+  })
+  const toggleMergedView = () => {
+    setMergedView(v => {
+      localStorage.setItem('ws_merged_view', v ? '0' : '1')
+      return !v
+    })
+  }
+
   const [activeTab, setActiveTab] = useState(() => {
     if (jumpInit?.stage) return defaultStage
     try {
@@ -3733,6 +3718,52 @@ export default function WorkSchedulePage() {
           onClose={() => setKphModalOpen(false)}
           onSaved={() => fetchDeviations(0)}
         />
+      ) : mergedView ? (
+        <>
+          {/* ── Thanh tiêu đề gộp ── */}
+          <div style={{
+            position: 'sticky', top: 0, zIndex: 10,
+            background: 'linear-gradient(90deg,#1e3a5f,#0e4d8a)',
+            display: 'flex', alignItems: 'center', gap: 10, padding: '7px 16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+          }}>
+            <Typography.Text strong style={{ color: '#DDE1E8', fontSize: 14, letterSpacing: 0.3 }}>
+              Lịch làm việc sản xuất — Tất cả tổ
+            </Typography.Text>
+            <div style={{ flex: 1 }} />
+            {isAdmin() && <SyncScheduleButton />}
+            {isAdmin() && <AdminApprovalPanel />}
+            <Button
+              size="small"
+              icon={<span style={{ fontSize: 12 }}>⊞</span>}
+              onClick={toggleMergedView}
+              style={{ fontSize: 11, borderColor: '#93c5fd', color: '#93c5fd', background: 'transparent' }}
+            >
+              Theo tổ (tabs)
+            </Button>
+          </div>
+
+          {/* ── Từng tổ hiển thị nối tiếp ── */}
+          {Object.entries(STAGE_CONFIG)
+            .filter(([stage]) => !allowedStages || allowedStages.includes(stage))
+            .map(([stage, config]) => (
+              <div key={stage} style={{ marginBottom: 0 }}>
+                <div style={{
+                  background: 'linear-gradient(90deg,#1e3a5f 0%,#1d4ed8 100%)',
+                  padding: '6px 16px', display: 'flex', alignItems: 'center', gap: 8,
+                }}>
+                  <span style={{ color: '#fff', fontWeight: 800, fontSize: 13 }}>{config.label}</span>
+                </div>
+                <StageTab
+                  congDoan={stage}
+                  config={config}
+                  onSaved={refreshDevCount}
+                  jumpTarget={jumpTarget?.stage === stage ? jumpTarget : null}
+                />
+              </div>
+            ))
+          }
+        </>
       ) : (
         <Tabs
           className="ws-tabs"
@@ -3749,6 +3780,14 @@ export default function WorkSchedulePage() {
             <Space style={{ paddingRight: 8 }}>
               {isAdmin() && <SyncScheduleButton />}
               {isAdmin() && <AdminApprovalPanel />}
+              <Button
+                size="small"
+                icon={<span style={{ fontSize: 12 }}>⊟</span>}
+                onClick={toggleMergedView}
+                style={{ fontSize: 11, borderColor: '#93c5fd', color: '#93c5fd', background: 'transparent' }}
+              >
+                Gộp 1 trang
+              </Button>
               <Typography.Text strong className="ws-tab-title-text" style={{ color: '#DDE1E8', fontSize: 14, letterSpacing: 0.3 }}>
                 Lịch làm việc sản xuất
               </Typography.Text>
