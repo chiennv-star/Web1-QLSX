@@ -67,29 +67,31 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
   }
 
   const stats = useMemo(() => {
-    const todaySL = {}, monthSL = {}, ydSL = {}, ydCong = {}, ydTotal = {}, ydDone = {}
+    const todaySL = {}, monthSL = {}, ydSL = {}
+    // HSCV: tỷ lệ % lô có số lô đã hoàn thành / tổng lô có số lô
+    const ydHscvDone = {}, ydHscvTotal = {}
     SUMMARY_DEPTS.forEach(d => {
       todaySL[d.key] = 0; monthSL[d.key] = 0
-      ydSL[d.key] = 0;    ydCong[d.key] = 0
-      ydTotal[d.key] = 0; ydDone[d.key] = 0
+      ydSL[d.key] = 0
+      ydHscvDone[d.key] = 0; ydHscvTotal[d.key] = 0
     })
     data.forEach(r => {
       const cd = getDeptKey(r)
       if (!SUMMARY_DEPTS.find(d => d.key === cd)) return
-      const isPending = r.status === 'PENDING' || r.status === 'IN_PROGRESS'
+      const isDone    = r.status !== 'PENDING' && r.status !== 'IN_PROGRESS'
+      const hasSoLo   = !!(r.soLo || '').trim()
       const sl = Number(r.sanLuong || 0)
-      const cong = Number(r.congThucHien || 0)
-      if (!isPending) {
-        if (r.ngay === today)          todaySL[cd] += sl
-        if (r.ngay >= monthStart)      monthSL[cd] += sl
-        if (r.ngay === yesterday) { ydSL[cd] += sl; ydCong[cd] += cong }
+      if (isDone) {
+        if (r.ngay === today)         todaySL[cd] += sl
+        if (r.ngay >= monthStart)     monthSL[cd] += sl
+        if (r.ngay === yesterday)     ydSL[cd] += sl
       }
-      if (r.ngay === yesterday) {
-        ydTotal[cd]++
-        if (!isPending) ydDone[cd]++
+      if (r.ngay === yesterday && hasSoLo) {
+        ydHscvTotal[cd]++
+        if (isDone) ydHscvDone[cd]++
       }
     })
-    return { todaySL, monthSL, ydSL, ydCong, ydTotal, ydDone }
+    return { todaySL, monthSL, ydSL, ydHscvDone, ydHscvTotal }
   }, [data, today, yesterday, monthStart])
 
   const todayRows = useMemo(() =>
@@ -196,13 +198,14 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
           ))}
           <div style={{ ...secHead, borderTop: '1px solid #a0bdd0' }}>HSCV {ref.subtract(1,'day').format('DD/MM')}</div>
           {SUMMARY_DEPTS.map(d => {
-            const sl = stats.ydSL[d.key] || 0
-            const cong = stats.ydCong[d.key] || 0
-            const hscv = cong > 0 ? (sl / cong).toLocaleString('vi-VN', { maximumFractionDigits: 2 }) : '—'
+            const done  = stats.ydHscvDone[d.key]  || 0
+            const total = stats.ydHscvTotal[d.key] || 0
+            const pct   = total > 0 ? ((done / total) * 100).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + '%' : '—'
+            const label = total > 0 ? `${pct} (${done}/${total})` : '—'
             return (
               <div key={d.key} style={deptRow}>
                 <span style={{ fontWeight: 600, color: '#1e3a5f' }}>{d.label}</span>
-                <span style={{ color: '#059669', fontWeight: 700 }}>{hscv}</span>
+                <span style={{ color: '#059669', fontWeight: 700 }}>{label}</span>
               </div>
             )
           })}
