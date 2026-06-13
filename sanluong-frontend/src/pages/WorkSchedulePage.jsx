@@ -3315,16 +3315,6 @@ export default function WorkSchedulePage() {
     if (!allowedStages) return s
     return allowedStages.includes(s) ? s : allowedStages[0]
   })()
-  const [mergedView, setMergedView] = useState(() => {
-    try { return localStorage.getItem('ws_merged_view') === '1' } catch { return false }
-  })
-  const toggleMergedView = () => {
-    setMergedView(v => {
-      localStorage.setItem('ws_merged_view', v ? '0' : '1')
-      return !v
-    })
-  }
-
   const [activeTab, setActiveTab] = useState(() => {
     if (jumpInit?.stage) return defaultStage
     try {
@@ -3718,52 +3708,6 @@ export default function WorkSchedulePage() {
           onClose={() => setKphModalOpen(false)}
           onSaved={() => fetchDeviations(0)}
         />
-      ) : mergedView ? (
-        <>
-          {/* ── Thanh tiêu đề gộp ── */}
-          <div style={{
-            position: 'sticky', top: 0, zIndex: 10,
-            background: 'linear-gradient(90deg,#1e3a5f,#0e4d8a)',
-            display: 'flex', alignItems: 'center', gap: 10, padding: '7px 16px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
-          }}>
-            <Typography.Text strong style={{ color: '#DDE1E8', fontSize: 14, letterSpacing: 0.3 }}>
-              Lịch làm việc sản xuất — Tất cả tổ
-            </Typography.Text>
-            <div style={{ flex: 1 }} />
-            {isAdmin() && <SyncScheduleButton />}
-            {isAdmin() && <AdminApprovalPanel />}
-            <Button
-              size="small"
-              icon={<span style={{ fontSize: 12 }}>⊞</span>}
-              onClick={toggleMergedView}
-              style={{ fontSize: 11, borderColor: '#93c5fd', color: '#93c5fd', background: 'transparent' }}
-            >
-              Theo tổ (tabs)
-            </Button>
-          </div>
-
-          {/* ── Từng tổ hiển thị nối tiếp ── */}
-          {Object.entries(STAGE_CONFIG)
-            .filter(([stage]) => !allowedStages || allowedStages.includes(stage))
-            .map(([stage, config]) => (
-              <div key={stage} style={{ marginBottom: 0 }}>
-                <div style={{
-                  background: 'linear-gradient(90deg,#1e3a5f 0%,#1d4ed8 100%)',
-                  padding: '6px 16px', display: 'flex', alignItems: 'center', gap: 8,
-                }}>
-                  <span style={{ color: '#fff', fontWeight: 800, fontSize: 13 }}>{config.label}</span>
-                </div>
-                <StageTab
-                  congDoan={stage}
-                  config={config}
-                  onSaved={refreshDevCount}
-                  jumpTarget={jumpTarget?.stage === stage ? jumpTarget : null}
-                />
-              </div>
-            ))
-          }
-        </>
       ) : (
         <Tabs
           className="ws-tabs"
@@ -3780,14 +3724,6 @@ export default function WorkSchedulePage() {
             <Space style={{ paddingRight: 8 }}>
               {isAdmin() && <SyncScheduleButton />}
               {isAdmin() && <AdminApprovalPanel />}
-              <Button
-                size="small"
-                icon={<span style={{ fontSize: 12 }}>⊟</span>}
-                onClick={toggleMergedView}
-                style={{ fontSize: 11, borderColor: '#93c5fd', color: '#93c5fd', background: 'transparent' }}
-              >
-                Gộp 1 trang
-              </Button>
               <Typography.Text strong className="ws-tab-title-text" style={{ color: '#DDE1E8', fontSize: 14, letterSpacing: 0.3 }}>
                 Lịch làm việc sản xuất
               </Typography.Text>
