@@ -175,32 +175,123 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
     fontSize: 13, color: TEXT, ...extra,
   })
 
+  // Chia departments làm 2 nửa cho progress bar 2 cột
+  const deptHalf1 = SUMMARY_DEPTS.slice(0, 3)
+  const deptHalf2 = SUMMARY_DEPTS.slice(3)
+
+  const BarItem = ({ d, compact }) => {
+    const val = stats.monthSL[d.key] || 0
+    const pct = Math.round((val / maxMonthSL) * 100)
+    return (
+      <div style={{ marginBottom: compact ? 4 : 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+          <span className="dsp-dept-label" style={{ fontSize: compact ? 11 : 13, fontWeight: 700, color: TEXT }}>{d.label}</span>
+          <span className="dsp-dept-val" style={{ fontSize: compact ? 12 : 14, fontWeight: 800, color: '#fff' }}>{val.toLocaleString('vi-VN')}</span>
+        </div>
+        <div className="dsp-bar-wrap" style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 4, height: compact ? 6 : 8, overflow: 'hidden' }}>
+          <div style={{ width: `${pct}%`, height: '100%', borderRadius: 4,
+            background: `linear-gradient(90deg,${ACCENT},#00ffcc)`, transition: 'width 0.6s ease' }} />
+        </div>
+      </div>
+    )
+  }
+
+  const DeptTable = ({ titleEl, rows, valFn, hscvFn }) => (
+    <div style={{ background: BG_SEC, borderRadius: 8, border: `1px solid ${BORDER}`, overflow: 'hidden', flex: 1 }}>
+      <div className="dsp-sec-title" style={secTitle}>{titleEl}</div>
+      <div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', padding: '4px 10px', borderBottom: `1px solid ${BORDER}` }}>
+          {['BỘ PHẬN','SẢN LƯỢNG','HSCV'].map((h, i) => (
+            <span key={h} style={{ fontSize: 10, color: DIM, fontWeight: 700, textAlign: i > 0 ? 'right' : 'left' }}>{h}</span>
+          ))}
+        </div>
+        {rows.map(d => {
+          const { sl, hscv, hscvColor } = valFn(d)
+          return (
+            <div key={d.key} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+              padding: '5px 10px', borderBottom: `1px solid rgba(255,255,255,0.04)` }}>
+              <span className="dsp-dept-label" style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>{d.label}</span>
+              <span className="dsp-dept-val" style={{ fontSize: 14, fontWeight: 800, color: sl > 0 ? '#4ade80' : DIM, textAlign: 'right' }}>
+                {sl.toLocaleString('vi-VN')}
+              </span>
+              <span style={{ fontSize: 12, color: hscvColor, textAlign: 'right', fontWeight: hscvColor !== DIM ? 700 : 400 }}>
+                {hscv}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+
   return (
     <>
       <style>{`
         .dsp-tv { box-sizing: border-box; }
+
+        /* ── Fullscreen: toàn màn hình TV ── */
         .dsp-tv:fullscreen {
           display: flex !important; flex-direction: column !important;
           width: 100vw !important; height: 100vh !important;
           overflow: hidden !important; border-radius: 0 !important;
           margin: 0 !important; padding: 0 !important;
         }
+        /* Body không scroll ngoài — tất cả section fit vừa màn hình */
         .dsp-tv:fullscreen .dsp-tv-body {
           flex: 1 1 0 !important; min-height: 0 !important; height: 0 !important;
-          overflow-y: auto !important;
+          overflow: hidden !important;
+          display: grid !important;
+          grid-template-columns: 57% 43% !important;
+          grid-template-rows: 1fr !important;
+          gap: 8px !important;
+          padding: 8px !important;
+          box-sizing: border-box !important;
         }
-        .dsp-tv:fullscreen .dsp-tv-title  { font-size: 2vw !important; }
-        .dsp-tv:fullscreen .dsp-tv-clock  { font-size: 3.5vw !important; }
-        .dsp-tv:fullscreen .dsp-tv-sub    { font-size: 1vw !important; }
-        .dsp-tv:fullscreen .dsp-sec-title { font-size: 1vw !important; padding: 0.6vh 1.2vw !important; }
-        .dsp-tv:fullscreen table th       { font-size: 1vw !important; padding: 0.5vh 0.8vw !important; }
-        .dsp-tv:fullscreen table td       { font-size: 1.1vw !important; padding: 0.6vh 0.8vw !important; }
-        .dsp-tv:fullscreen .dsp-dept-label { font-size: 1.2vw !important; }
-        .dsp-tv:fullscreen .dsp-dept-val   { font-size: 1.3vw !important; }
-        .dsp-tv:fullscreen .dsp-bar-wrap   { height: 10px !important; }
-        .dsp-tv:fullscreen .dsp-live-dot   { width: 10px !important; height: 10px !important; }
-        .dsp-tv-scroll { max-height: 220px; overflow-y: auto; }
-        .dsp-tv:fullscreen .dsp-tv-scroll  { max-height: none !important; }
+        /* Cột trái: chi tiết lô — fill toàn bộ chiều cao */
+        .dsp-tv:fullscreen .dsp-fs-left {
+          display: flex !important; flex-direction: column !important;
+          overflow: hidden !important; min-height: 0 !important;
+        }
+        .dsp-tv:fullscreen .dsp-chi-tiet-box {
+          flex: 1 1 0 !important; min-height: 0 !important;
+          display: flex !important; flex-direction: column !important;
+          overflow: hidden !important;
+        }
+        /* Scroll area của chi tiết lô fill hết phần còn lại */
+        .dsp-tv:fullscreen .dsp-tv-scroll {
+          flex: 1 1 0 !important; min-height: 0 !important;
+          max-height: none !important; overflow-y: auto !important;
+        }
+        /* Cột phải: tổng SL + ngày hôm nay/qua */
+        .dsp-tv:fullscreen .dsp-fs-right {
+          display: flex !important; flex-direction: column !important;
+          gap: 8px !important; overflow: hidden !important; min-height: 0 !important;
+        }
+        /* Tổng SL: compact, không co giãn */
+        .dsp-tv:fullscreen .dsp-tong-sl-box { flex: 0 0 auto !important; }
+        /* 2 bảng dưới: chiếm hết phần còn lại */
+        .dsp-tv:fullscreen .dsp-bottom-tables {
+          flex: 1 1 0 !important; min-height: 0 !important;
+          display: grid !important; grid-template-columns: 1fr 1fr !important;
+          gap: 8px !important; overflow: hidden !important;
+        }
+        .dsp-tv:fullscreen .dsp-bottom-tables > div { overflow: hidden !important; }
+
+        /* Font scale theo viewport */
+        .dsp-tv:fullscreen .dsp-tv-title  { font-size: 1.9vw !important; }
+        .dsp-tv:fullscreen .dsp-tv-clock  { font-size: 3.2vw !important; }
+        .dsp-tv:fullscreen .dsp-tv-sub    { font-size: 0.85vw !important; }
+        .dsp-tv:fullscreen .dsp-sec-title { font-size: 0.85vw !important; padding: 0.5vh 0.9vw !important; }
+        .dsp-tv:fullscreen table th       { font-size: 0.85vw !important; padding: 0.4vh 0.6vw !important; }
+        .dsp-tv:fullscreen table td       { font-size: 0.95vw !important; padding: 0.45vh 0.6vw !important; }
+        .dsp-tv:fullscreen .dsp-dept-label { font-size: 1vw !important; }
+        .dsp-tv:fullscreen .dsp-dept-val   { font-size: 1.1vw !important; }
+        .dsp-tv:fullscreen .dsp-bar-wrap   { height: 6px !important; }
+
+        /* Normal mode: scroll dọc bình thường */
+        .dsp-fs-left, .dsp-fs-right { display: contents; }
+        .dsp-tv-scroll { max-height: 240px; overflow-y: auto; }
+
         @keyframes dsp-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
         .dsp-live-dot { animation: dsp-pulse 1.8s infinite; }
       `}</style>
@@ -211,11 +302,10 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
           margin: '8px 0 4px', display: 'flex', flexDirection: 'column' }}
       >
         {/* ── HEADER ── */}
-        <div style={{ background: '#061020', padding: '12px 20px',
+        <div style={{ background: '#061020', padding: '10px 20px',
           borderBottom: `2px solid ${BORDER}`, display: 'grid',
-          gridTemplateColumns: 'auto 1fr auto', gap: 16, alignItems: 'center' }}
+          gridTemplateColumns: 'auto 1fr auto', gap: 16, alignItems: 'center', flexShrink: 0 }}
         >
-          {/* Left: dept badge */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
             <div style={{ background: ACCENT, color: '#061020', fontWeight: 900,
               fontSize: 11, padding: '3px 10px', borderRadius: 4, letterSpacing: '0.06em' }}>
@@ -223,20 +313,15 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
             </div>
             <div style={{ color: ACCENT, fontWeight: 900, fontSize: 18, lineHeight: 1 }}>QLSX</div>
           </div>
-
-          {/* Center: company + subtitle */}
           <div style={{ textAlign: 'center' }}>
             <div className="dsp-tv-title" style={{ fontWeight: 900, fontSize: 22,
               color: '#fff', letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1.2 }}>
               CÔNG TY CỔ PHẦN MỸ PHẨM THIÊN NHIÊN SONG AN
             </div>
-            <div className="dsp-tv-sub" style={{ fontSize: 11, color: DIM,
-              letterSpacing: '0.15em', marginTop: 3 }}>
+            <div className="dsp-tv-sub" style={{ fontSize: 11, color: DIM, letterSpacing: '0.15em', marginTop: 3 }}>
               BẢNG THEO DÕI SẢN LƯỢNG SẢN XUẤT
             </div>
           </div>
-
-          {/* Right: clock + date + live */}
           <div style={{ textAlign: 'right' }}>
             <div className="dsp-tv-clock" style={{ fontSize: 32, fontWeight: 900,
               color: '#fff', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
@@ -260,181 +345,128 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
           </div>
         </div>
 
-        {/* ── BODY ── */}
+        {/* ── BODY: normal=scroll dọc / fullscreen=2 cột cố định ── */}
         <div className="dsp-tv-body" style={{ flex: 1, overflowY: 'auto' }}>
 
-          {/* ── Section 1: Chi tiết lô SX hôm nay ── */}
-          <div style={{ margin: '10px 12px 0', background: BG_SEC, borderRadius: 8,
-            border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
-            <div className="dsp-sec-title" style={secTitle}>
-              Chi tiết lô sản xuất hôm nay · {ref.format('DD/MM')}
-              {todayRows.length > 0 && (
-                <span style={{ float: 'right', color: DIM, fontWeight: 400,
-                  fontSize: 11, textTransform: 'none', letterSpacing: 0 }}>
-                  Theo thời gian thực
-                </span>
-              )}
-            </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-              <colgroup>
-                <col style={{ width: '12%' }} /><col style={{ width: '36%' }} />
-                <col style={{ width: '14%' }} /><col style={{ width: '12%' }} />
-                <col style={{ width: '26%' }} />
-              </colgroup>
-              <thead>
-                <tr>{['BỘ PHẬN','TÊN SẢN PHẨM','SỐ LÔ','CỠ LÔ','TÌNH TRẠNG'].map(h =>
-                  <th key={h} style={thStyle}>{h}</th>)}</tr>
-              </thead>
-            </table>
-            <div ref={scrollRef} className="dsp-tv-scroll"
-              onMouseEnter={() => { isPausedRef.current = true }}
-              onMouseLeave={() => { isPausedRef.current = false }}
+          {/* CỘT TRÁI (fullscreen) / KHỐI 1 (normal): Chi tiết lô SX */}
+          <div className="dsp-fs-left">
+            <div className="dsp-chi-tiet-box"
+              style={{ margin: '10px 12px 0', background: BG_SEC, borderRadius: 8,
+                border: `1px solid ${BORDER}`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
             >
-              <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+              <div className="dsp-sec-title" style={{ ...secTitle, flexShrink: 0 }}>
+                Chi tiết lô sản xuất hôm nay · {ref.format('DD/MM')}
+                {todayRows.length > 0 && (
+                  <span style={{ float: 'right', color: DIM, fontWeight: 400, fontSize: 11,
+                    textTransform: 'none', letterSpacing: 0 }}>Theo thời gian thực</span>
+                )}
+              </div>
+              {/* Header bảng cố định */}
+              <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', flexShrink: 0 }}>
                 <colgroup>
                   <col style={{ width: '12%' }} /><col style={{ width: '36%' }} />
-                  <col style={{ width: '14%' }} /><col style={{ width: '12%' }} />
-                  <col style={{ width: '26%' }} />
+                  <col style={{ width: '13%' }} /><col style={{ width: '12%' }} />
+                  <col style={{ width: '27%' }} />
                 </colgroup>
-                <tbody>
-                  {todayRows.length === 0
-                    ? <tr><td colSpan={5} style={{ textAlign: 'center', color: DIM,
-                        padding: '32px 0', fontSize: 14 }}>
-                        <div style={{ fontSize: 28, marginBottom: 8 }}>⬜</div>
-                        Chưa có lô sản xuất nào hôm nay<br/>
-                        <span style={{ fontSize: 12, opacity: 0.7 }}>
-                          Dữ liệu lô sẽ tự động hiển thị khi các tổ bắt đầu khai báo trong ca làm việc.
-                        </span>
-                      </td></tr>
-                    : todayRows.map((r, i) => (
-                      <tr key={i} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.03)' }}>
-                        <td style={tdStyle({ textAlign: 'center', fontWeight: 800, color: ACCENT })}>{r.congDoan || '—'}</td>
-                        <td style={tdStyle({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 })} title={r.tenTrinh}>{r.tenTrinh || '—'}</td>
-                        <td style={tdStyle({ textAlign: 'center', fontFamily: 'monospace', fontWeight: 700, color: '#93c5fd' })}>{r.soLo || '—'}</td>
-                        <td style={tdStyle({ textAlign: 'right', fontWeight: 700, color: TEXT })}>{r.coLo != null ? Number(r.coLo).toLocaleString('vi-VN') : '—'}</td>
-                        <td style={tdStyle({ textAlign: 'center', padding: '5px 6px' })}>
-                          {r.status === 'PENDING'
-                            ? <span style={{ background: 'rgba(234,179,8,0.15)', color: '#fbbf24', fontWeight: 700, fontSize: 12, padding: '3px 8px', borderRadius: 4 }}>⌛ Chưa HT</span>
-                            : r.status === 'IN_PROGRESS'
-                              ? <span style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa', fontWeight: 700, fontSize: 12, padding: '3px 8px', borderRadius: 4 }}>▶ Đang TH</span>
-                              : <span style={{ background: 'rgba(34,197,94,0.15)', color: '#4ade80', fontWeight: 700, fontSize: 12, padding: '3px 8px', borderRadius: 4 }}>✓ Hoàn thành</span>}
-                        </td>
-                      </tr>
-                    ))
-                  }
-                </tbody>
+                <thead>
+                  <tr>{['BỘ PHẬN','TÊN SẢN PHẨM','SỐ LÔ','CỠ LÔ','TÌNH TRẠNG'].map(h =>
+                    <th key={h} style={thStyle}>{h}</th>)}</tr>
+                </thead>
               </table>
-            </div>
-            {todayRows.length > 6 && (
-              <div style={{ textAlign: 'center', fontSize: 11, color: DIM, padding: '4px',
-                borderTop: `1px solid ${BORDER}`, fontStyle: 'italic' }}>
-                {todayRows.length} dòng — tự động cuộn · di chuyển chuột để tạm dừng
+              {/* Rows — tự cuộn khi nhiều dòng */}
+              <div ref={scrollRef} className="dsp-tv-scroll"
+                onMouseEnter={() => { isPausedRef.current = true }}
+                onMouseLeave={() => { isPausedRef.current = false }}
+              >
+                <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                  <colgroup>
+                    <col style={{ width: '12%' }} /><col style={{ width: '36%' }} />
+                    <col style={{ width: '13%' }} /><col style={{ width: '12%' }} />
+                    <col style={{ width: '27%' }} />
+                  </colgroup>
+                  <tbody>
+                    {todayRows.length === 0
+                      ? <tr><td colSpan={5} style={{ textAlign: 'center', color: DIM, padding: '32px 0', fontSize: 14 }}>
+                          <div style={{ fontSize: 28, marginBottom: 8 }}>⬜</div>
+                          Chưa có lô sản xuất nào hôm nay<br/>
+                          <span style={{ fontSize: 12, opacity: 0.7 }}>
+                            Dữ liệu lô sẽ tự động hiển thị khi các tổ bắt đầu khai báo trong ca làm việc.
+                          </span>
+                        </td></tr>
+                      : todayRows.map((r, i) => (
+                        <tr key={i} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.03)' }}>
+                          <td style={tdStyle({ textAlign: 'center', fontWeight: 800, color: ACCENT })}>{r.congDoan || '—'}</td>
+                          <td style={tdStyle({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 })} title={r.tenTrinh}>{r.tenTrinh || '—'}</td>
+                          <td style={tdStyle({ textAlign: 'center', fontFamily: 'monospace', fontWeight: 700, color: '#93c5fd' })}>{r.soLo || '—'}</td>
+                          <td style={tdStyle({ textAlign: 'right', fontWeight: 700 })}>{r.coLo != null ? Number(r.coLo).toLocaleString('vi-VN') : '—'}</td>
+                          <td style={tdStyle({ textAlign: 'center', padding: '5px 6px' })}>
+                            {r.status === 'PENDING'
+                              ? <span style={{ background: 'rgba(234,179,8,0.15)', color: '#fbbf24', fontWeight: 700, fontSize: 12, padding: '3px 8px', borderRadius: 4 }}>⌛ Chưa HT</span>
+                              : r.status === 'IN_PROGRESS'
+                                ? <span style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa', fontWeight: 700, fontSize: 12, padding: '3px 8px', borderRadius: 4 }}>▶ Đang TH</span>
+                                : <span style={{ background: 'rgba(34,197,94,0.15)', color: '#4ade80', fontWeight: 700, fontSize: 12, padding: '3px 8px', borderRadius: 4 }}>✓ Hoàn thành</span>}
+                          </td>
+                        </tr>
+                      ))
+                    }
+                  </tbody>
+                </table>
               </div>
-            )}
+              {todayRows.length > 6 && (
+                <div style={{ textAlign: 'center', fontSize: 11, color: DIM, padding: '3px',
+                  borderTop: `1px solid ${BORDER}`, fontStyle: 'italic', flexShrink: 0 }}>
+                  {todayRows.length} dòng — tự động cuộn · di chuyển chuột để tạm dừng
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* ── Section 2: Tổng SL tháng (progress bars) ── */}
-          <div style={{ margin: '10px 12px 0', background: BG_SEC, borderRadius: 8,
-            border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
-            <div className="dsp-sec-title" style={secTitle}>
-              Tổng sản lượng tháng {ref.format('M')}
-              <span style={{ float: 'right', color: '#4ade80', fontWeight: 700,
-                fontSize: 12, textTransform: 'none', letterSpacing: 0 }}>
-                Tổng {totalMonthSL.toLocaleString('vi-VN')}
-              </span>
-            </div>
-            <div style={{ padding: '8px 14px 10px' }}>
-              {SUMMARY_DEPTS.map(d => {
-                const val = stats.monthSL[d.key] || 0
-                const pct = Math.round((val / maxMonthSL) * 100)
-                return (
-                  <div key={d.key} style={{ marginBottom: 8 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between',
-                      marginBottom: 3 }}>
-                      <span className="dsp-dept-label" style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>{d.label}</span>
-                      <span className="dsp-dept-val" style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{val.toLocaleString('vi-VN')}</span>
-                    </div>
-                    <div className="dsp-bar-wrap" style={{ background: 'rgba(255,255,255,0.08)',
-                      borderRadius: 4, height: 8, overflow: 'hidden' }}>
-                      <div style={{ width: `${pct}%`, height: '100%', borderRadius: 4,
-                        background: `linear-gradient(90deg, ${ACCENT}, #00ffcc)`,
-                        transition: 'width 0.6s ease' }} />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
+          {/* CỘT PHẢI (fullscreen) / KHỐI 2+3 (normal) */}
+          <div className="dsp-fs-right">
 
-          {/* ── Section 3 & 4: Hôm nay | Hôm qua (2 cột) ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
-            gap: 10, margin: '10px 12px 12px' }}>
-
-            {/* Ngày hôm nay */}
-            <div style={{ background: BG_SEC, borderRadius: 8,
-              border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
+            {/* Tổng SL tháng — 2 cột progress bars để tiết kiệm chiều cao */}
+            <div className="dsp-tong-sl-box"
+              style={{ margin: '10px 12px 0', background: BG_SEC, borderRadius: 8,
+                border: `1px solid ${BORDER}`, overflow: 'hidden' }}
+            >
               <div className="dsp-sec-title" style={secTitle}>
-                Ngày hôm nay · {ref.format('DD/MM')}
+                Tổng sản lượng tháng {ref.format('M')}
+                <span style={{ float: 'right', color: '#4ade80', fontWeight: 700,
+                  fontSize: 12, textTransform: 'none', letterSpacing: 0 }}>
+                  Tổng {totalMonthSL.toLocaleString('vi-VN')}
+                </span>
               </div>
-              <div style={{ padding: '4px 0' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
-                  padding: '4px 14px', borderBottom: `1px solid ${BORDER}` }}>
-                  <span style={{ fontSize: 11, color: DIM, fontWeight: 700 }}>BỘ PHẬN</span>
-                  <span style={{ fontSize: 11, color: DIM, fontWeight: 700, textAlign: 'right' }}>SẢN LƯỢNG</span>
-                  <span style={{ fontSize: 11, color: DIM, fontWeight: 700, textAlign: 'right' }}>HSCV</span>
-                </div>
-                {SUMMARY_DEPTS.map(d => (
-                  <div key={d.key} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
-                    padding: '6px 14px', borderBottom: `1px solid rgba(255,255,255,0.04)` }}>
-                    <span className="dsp-dept-label" style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>{d.label}</span>
-                    <span className="dsp-dept-val" style={{ fontSize: 14, fontWeight: 800,
-                      color: stats.todaySL[d.key] > 0 ? '#4ade80' : DIM, textAlign: 'right' }}>
-                      {(stats.todaySL[d.key] || 0).toLocaleString('vi-VN')}
-                    </span>
-                    <span style={{ fontSize: 12, color: DIM, textAlign: 'right' }}>—</span>
-                  </div>
-                ))}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px', padding: '8px 14px 10px' }}>
+                <div>{deptHalf1.map(d => <BarItem key={d.key} d={d} compact />)}</div>
+                <div>{deptHalf2.map(d => <BarItem key={d.key} d={d} compact />)}</div>
               </div>
             </div>
 
-            {/* Ngày hôm qua */}
-            <div style={{ background: BG_SEC, borderRadius: 8,
-              border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
-              <div className="dsp-sec-title" style={secTitle}>
-                Ngày hôm qua · {ref.subtract(1,'day').format('DD/MM')}
-              </div>
-              <div style={{ padding: '4px 0' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
-                  padding: '4px 14px', borderBottom: `1px solid ${BORDER}` }}>
-                  <span style={{ fontSize: 11, color: DIM, fontWeight: 700 }}>BỘ PHẬN</span>
-                  <span style={{ fontSize: 11, color: DIM, fontWeight: 700, textAlign: 'right' }}>SẢN LƯỢNG</span>
-                  <span style={{ fontSize: 11, color: DIM, fontWeight: 700, textAlign: 'right' }}>HSCV</span>
-                </div>
-                {SUMMARY_DEPTS.map(d => {
+            {/* Ngày hôm nay + hôm qua */}
+            <div className="dsp-bottom-tables"
+              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, margin: '10px 12px 12px' }}
+            >
+              <DeptTable
+                titleEl={<>Ngày hôm nay · {ref.format('DD/MM')}</>}
+                rows={SUMMARY_DEPTS}
+                valFn={d => ({ sl: stats.todaySL[d.key] || 0, hscv: '—', hscvColor: DIM })}
+              />
+              <DeptTable
+                titleEl={<>Ngày hôm qua · {ref.subtract(1,'day').format('DD/MM')}</>}
+                rows={SUMMARY_DEPTS}
+                valFn={d => {
                   const done  = stats.ydHscvDone[d.key]  || 0
                   const total = stats.ydHscvTotal[d.key] || 0
-                  const hscv  = total > 0
-                    ? `${Math.round(done/total*100)}% (${done}/${total})`
-                    : '—'
-                  return (
-                    <div key={d.key} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
-                      padding: '6px 14px', borderBottom: `1px solid rgba(255,255,255,0.04)` }}>
-                      <span className="dsp-dept-label" style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>{d.label}</span>
-                      <span className="dsp-dept-val" style={{ fontSize: 14, fontWeight: 800,
-                        color: stats.ydSL[d.key] > 0 ? '#7c3aed' : DIM, textAlign: 'right' }}>
-                        {(stats.ydSL[d.key] || 0).toLocaleString('vi-VN')}
-                      </span>
-                      <span style={{ fontSize: 12,
-                        color: total > 0 ? '#4ade80' : DIM, textAlign: 'right', fontWeight: total > 0 ? 700 : 400 }}>
-                        {hscv}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
+                  return {
+                    sl: stats.ydSL[d.key] || 0,
+                    hscv: total > 0 ? `${Math.round(done/total*100)}% (${done}/${total})` : '—',
+                    hscvColor: total > 0 ? '#4ade80' : DIM,
+                  }
+                }}
+              />
             </div>
 
-          </div>{/* end 2-col */}
+          </div>
         </div>{/* end body */}
       </div>
     </>
