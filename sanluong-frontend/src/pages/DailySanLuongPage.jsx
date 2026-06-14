@@ -1577,14 +1577,15 @@ function BaoCaoTab() {
 // ─── Page chính: wrapper Tabs ─────────────────────────────────────────────────
 
 export default function DailySanLuongPage() {
-  const { isAdmin, isAdminKH } = useAuth()
+  const { isAdmin, isAdminKH, isManHinh } = useAuth()
   const canApprove = isAdmin() || isAdminKH()
+  const manHinh = isManHinh()
   const location = useLocation()
 
   // Đọc ?tab= từ URL, fallback localStorage, rồi mới default 'daily'
   const tabFromUrl = new URLSearchParams(location.search).get('tab')
   const [activeTab, setActiveTab] = useState(
-    tabFromUrl || localStorage.getItem('dailysl_activeTab') || 'daily'
+    manHinh ? 'baocao' : (tabFromUrl || localStorage.getItem('dailysl_activeTab') || 'daily')
   )
 
   // Cập nhật activeTab khi URL thay đổi
@@ -1609,7 +1610,7 @@ export default function DailySanLuongPage() {
   }, [])
 
   const tabItems = [
-    {
+    ...(!manHinh ? [{
       key: 'daily',
       label: (
         <span>
@@ -1621,8 +1622,8 @@ export default function DailySanLuongPage() {
         </span>
       ),
       children: <DailyDetailTab />,
-    },
-    {
+    }] : []),
+    ...(!manHinh ? [{
       key: 'tonghop',
       label: (
         <span>
@@ -1631,7 +1632,7 @@ export default function DailySanLuongPage() {
         </span>
       ),
       children: <TongHopTab />,
-    },
+    }] : []),
     {
       key: 'baocao',
       label: (

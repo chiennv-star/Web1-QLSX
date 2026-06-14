@@ -47,6 +47,9 @@ export function AuthProvider({ children }) {
   // Kế toán: chỉ xem sản lượng, sản lượng theo ngày, chấm công
   const isKeToan = () => user?.role === 'KE_TOAN'
 
+  // Màn hình hiển thị: chỉ xem tab Báo cáo tổng hợp ngày
+  const isManHinh = () => user?.role === 'MAN_HINH'
+
   // Có thể thêm/sửa/xóa trong tab Kế hoạch (lịch kế hoạch): ADMIN + ADMIN_KH + TKSX
   const canEditPlan = () => ['ADMIN', 'ADMIN_KH', 'TKSX'].includes(user?.role)
 
@@ -160,7 +163,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAdmin, isAdminKH, isTKSX, isQuanDoc, isNhanVien, isHCNS, isKeToan, getMaNhanVien, getToNhom, canEditProduction, canEditProductMaster, canEditPlan, canEditLenh, canEditStage, isStageAdmin, canEditHangLoi, allowedEfficiencyTabs, getAllowedNhom, getAllowedStages, getAllowedEmployeeGroups, canDeleteSchedule }}>
+    <AuthContext.Provider value={{ user, login, logout, isAdmin, isAdminKH, isTKSX, isQuanDoc, isNhanVien, isHCNS, isKeToan, isManHinh, getMaNhanVien, getToNhom, canEditProduction, canEditProductMaster, canEditPlan, canEditLenh, canEditStage, isStageAdmin, canEditHangLoi, allowedEfficiencyTabs, getAllowedNhom, getAllowedStages, getAllowedEmployeeGroups, canDeleteSchedule }}>
       {children}
     </AuthContext.Provider>
   )

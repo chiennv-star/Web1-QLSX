@@ -28,6 +28,7 @@ const ROLE_MAP = {
   ADMIN_PCPL3:      { color: 'geekblue', label: 'Admin PCPL3' },
   HCNS:             { color: 'magenta',  label: 'HCNS' },
   KE_TOAN:          { color: 'orange',   label: 'Kế toán' },
+  MAN_HINH:         { color: 'cyan',     label: 'Màn hình hiển thị' },
 }
 
 export default function UserManagePage() {
@@ -363,6 +364,7 @@ export default function UserManagePage() {
               <optgroup label="── Bộ phận hỗ trợ ──" />
               <Option value="HCNS">HCNS (chỉ xem nhân viên)</Option>
               <Option value="KE_TOAN">Kế toán (sản lượng, sản lượng theo ngày, chấm công)</Option>
+              <Option value="MAN_HINH">Màn hình hiển thị (chỉ xem Báo cáo tổng hợp ngày)</Option>
             </Select>
           </Form.Item>
           {watchedRole?.startsWith('NHAN_VIEN') && (

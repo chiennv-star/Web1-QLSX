@@ -106,7 +106,7 @@ export default function MainLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [unreadByType, setUnreadByType] = useState({})
-  const { user, logout, isAdmin, isAdminKH, isTKSX, isQuanDoc, isStageAdmin, canEditHangLoi, isNhanVien, isHCNS, isKeToan } = useAuth()
+  const { user, logout, isAdmin, isAdminKH, isTKSX, isQuanDoc, isStageAdmin, canEditHangLoi, isNhanVien, isHCNS, isKeToan, isManHinh } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const screens = useBreakpoint()
@@ -160,6 +160,10 @@ export default function MainLayout() {
           label: 'Lịch làm việc',
         },
         { key: '/work-efficiency', icon: <TrophyOutlined />, label: 'Nhân Viên' },
+      ]
+    : isManHinh()
+    ? [
+        { key: '/daily-sl', icon: <BarChartOutlined />, label: 'Báo cáo tổng hợp' },
       ]
     : isHCNS()
     ? [
