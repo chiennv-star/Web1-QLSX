@@ -265,13 +265,15 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
         }
         /* Tổng SL: compact, không co giãn */
         .dsp-tv:fullscreen .dsp-tong-sl-box { flex: 0 0 auto !important; }
-        /* 2 bảng dưới: chiếm hết phần còn lại */
+        /* 2 bảng dưới: xếp dọc, chiếm hết phần còn lại */
         .dsp-tv:fullscreen .dsp-bottom-tables {
           flex: 1 1 0 !important; min-height: 0 !important;
-          display: grid !important; grid-template-columns: 1fr 1fr !important;
+          display: flex !important; flex-direction: column !important;
           gap: 8px !important; overflow: hidden !important;
         }
-        .dsp-tv:fullscreen .dsp-bottom-tables > div { overflow: hidden !important; }
+        .dsp-tv:fullscreen .dsp-bottom-tables > div {
+          flex: 1 1 0 !important; min-height: 0 !important; overflow: hidden !important;
+        }
 
         /* Font scale theo viewport */
         .dsp-tv:fullscreen .dsp-tv-title  { font-size: 1.9vw !important; }
