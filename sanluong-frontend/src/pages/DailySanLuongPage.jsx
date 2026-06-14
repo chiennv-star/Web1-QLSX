@@ -1522,7 +1522,7 @@ function BaoCaoTab() {
   const [loading, setLoading] = useState(false)
   const [refDate, setRefDate] = useState(dayjs())
   const [dateRange, setDateRange] = useState([
-    dayjs().subtract(6, 'day'), dayjs()
+    dayjs().startOf('month'), dayjs().endOf('month')
   ])
 
   const fetchData = useCallback(async (range = dateRange) => {
@@ -1559,16 +1559,9 @@ function BaoCaoTab() {
           onChange={d => {
             if (!d) return
             setRefDate(d)
-            // Mở rộng range fetch nếu ngày chọn nằm ngoài range hiện tại
-            const prev = dateRange?.[1]?.subtract(1, 'day') ?? d
-            const [from, to] = dateRange ?? [d, d]
-            const newFrom = d.isBefore(from) ? d.subtract(1, 'day') : from
-            const newTo   = d.isAfter(to)   ? d                      : to
-            if (!newFrom.isSame(from, 'day') || !newTo.isSame(to, 'day')) {
-              const newRange = [newFrom, newTo]
-              setDateRange(newRange)
-              fetchData(newRange)
-            }
+            const newRange = [d.startOf('month'), d.endOf('month')]
+            setDateRange(newRange)
+            fetchData(newRange)
           }}
         />
         <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>Khoảng tải:</span>
@@ -1583,8 +1576,9 @@ function BaoCaoTab() {
         >Truy xuất</Button>
         <Button size="small" icon={<ReloadOutlined />}
           onClick={() => {
-            const def = [dayjs().subtract(6, 'day'), dayjs()]
-            setRefDate(dayjs())
+            const today = dayjs()
+            const def = [today.startOf('month'), today.endOf('month')]
+            setRefDate(today)
             setDateRange(def)
             fetchData(def)
           }}
