@@ -175,10 +175,6 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
     fontSize: 13, color: TEXT, ...extra,
   })
 
-  // Chia departments làm 2 nửa cho progress bar 2 cột
-  const deptHalf1 = SUMMARY_DEPTS.slice(0, 3)
-  const deptHalf2 = SUMMARY_DEPTS.slice(3)
-
   const BarItem = ({ d, compact }) => {
     const val = stats.monthSL[d.key] || 0
     const pct = Math.round((val / maxMonthSL) * 100)
@@ -436,9 +432,8 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
                   Tổng {totalMonthSL.toLocaleString('vi-VN')}
                 </span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px', padding: '8px 14px 10px' }}>
-                <div>{deptHalf1.map(d => <BarItem key={d.key} d={d} compact />)}</div>
-                <div>{deptHalf2.map(d => <BarItem key={d.key} d={d} compact />)}</div>
+              <div style={{ padding: '8px 14px 10px' }}>
+                {SUMMARY_DEPTS.map(d => <BarItem key={d.key} d={d} />)}
               </div>
             </div>
 
