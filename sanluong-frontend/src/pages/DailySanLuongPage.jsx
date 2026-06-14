@@ -142,181 +142,182 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
     return () => { active = false }
   }, [todayRows.length])
 
-  const FS   = 15
-  const FSH  = 13
-  const th = {
-    background: '#E0FFFF', color: '#003344',
-    fontWeight: 800, fontSize: FSH,
-    padding: '7px 8px', border: '1px solid #CCFFFF',
-    textAlign: 'center', whiteSpace: 'nowrap', letterSpacing: '0.03em',
+  const [clock, setClock] = useState(() => dayjs().format('HH:mm'))
+  useEffect(() => {
+    const t = setInterval(() => setClock(dayjs().format('HH:mm')), 1000)
+    return () => clearInterval(t)
+  }, [])
+
+  const maxMonthSL    = Math.max(...SUMMARY_DEPTS.map(d => stats.monthSL[d.key] || 0), 1)
+  const totalMonthSL  = SUMMARY_DEPTS.reduce((s, d) => s + (stats.monthSL[d.key] || 0), 0)
+
+  // ── Design tokens ────────────────────────────────────────────────────────
+  const BG      = '#0a1628'
+  const BG_SEC  = '#0d1e35'
+  const ACCENT  = '#00cccc'
+  const BORDER  = 'rgba(0,204,204,0.3)'
+  const TEXT    = '#e2e8f0'
+  const DIM     = '#7da5c0'
+
+  const secTitle = {
+    fontSize: 12, fontWeight: 800, color: ACCENT, letterSpacing: '0.1em',
+    textTransform: 'uppercase', padding: '8px 14px 6px',
+    borderBottom: `1px solid ${BORDER}`, background: 'rgba(0,204,204,0.07)',
   }
-  const td = (extra = {}) => ({
-    padding: '6px 8px', border: '1px solid #cbd5e1',
-    fontSize: FS, ...extra,
+  const thStyle = {
+    background: 'rgba(0,204,204,0.12)', color: ACCENT,
+    fontWeight: 700, fontSize: 12, padding: '7px 10px',
+    borderBottom: `1px solid ${BORDER}`, textAlign: 'center',
+    whiteSpace: 'nowrap', letterSpacing: '0.04em',
+  }
+  const tdStyle = (extra = {}) => ({
+    padding: '7px 10px', borderBottom: '1px solid rgba(255,255,255,0.05)',
+    fontSize: 13, color: TEXT, ...extra,
   })
-  const secHead = {
-    background: '#E0FFFF', color: '#003344',
-    fontWeight: 800, fontSize: FSH,
-    textAlign: 'center', padding: '6px 8px',
-    borderBottom: '2px solid #CCFFFF', letterSpacing: '0.04em',
-    textTransform: 'uppercase',
-  }
-  const deptRow = {
-    display: 'flex', justifyContent: 'space-between',
-    padding: '6px 14px', borderBottom: '1px solid #e2e8f0', fontSize: FS,
-  }
 
   return (
     <>
       <style>{`
-        .daily-summary-panel:fullscreen {
-          display: flex !important;
-          flex-direction: column !important;
-          width: 100vw !important;
-          height: 100vh !important;
-          overflow: hidden !important;
-          background: #E0FFFF !important;
-          border-radius: 0 !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          box-sizing: border-box !important;
+        .dsp-tv { box-sizing: border-box; }
+        .dsp-tv:fullscreen {
+          display: flex !important; flex-direction: column !important;
+          width: 100vw !important; height: 100vh !important;
+          overflow: hidden !important; border-radius: 0 !important;
+          margin: 0 !important; padding: 0 !important;
         }
-        .daily-summary-panel:fullscreen .dsp-body {
-          flex: 1 1 0 !important;
-          min-height: 0 !important;
-          height: 0 !important;
-          overflow: hidden !important;
-          display: grid !important;
-          grid-template-columns: 22% 56% 22% !important;
-          grid-template-rows: 1fr !important;
-          align-items: stretch !important;
-          align-content: stretch !important;
-        }
-        .daily-summary-panel:fullscreen .dsp-body > div {
-          display: flex !important;
-          flex-direction: column !important;
-          height: 100% !important;
-          overflow: hidden !important;
-          box-sizing: border-box !important;
-        }
-        .daily-summary-panel:fullscreen .dsp-middle-scroll {
-          flex: 1 1 0 !important;
-          min-height: 0 !important;
-          max-height: none !important;
+        .dsp-tv:fullscreen .dsp-tv-body {
+          flex: 1 1 0 !important; min-height: 0 !important; height: 0 !important;
           overflow-y: auto !important;
         }
-        .daily-summary-panel:fullscreen table th,
-        .daily-summary-panel:fullscreen table td {
-          font-size: 1.15vw !important;
-          padding: 0.6vh 0.8vw !important;
-        }
-        .daily-summary-panel:fullscreen .dsp-dept-row {
-          font-size: 1.3vw !important;
-          padding: 0.7vh 1.2vw !important;
-        }
-        .daily-summary-panel:fullscreen .dsp-sec-head {
-          font-size: 1.1vw !important;
-          padding: 0.7vh 0.8vw !important;
-        }
-        .daily-summary-panel:fullscreen .dsp-header-title {
-          font-size: 1.8vw !important;
-        }
-        .daily-summary-panel:fullscreen .dsp-header-meta {
-          font-size: 1.1vw !important;
-        }
+        .dsp-tv:fullscreen .dsp-tv-title  { font-size: 2vw !important; }
+        .dsp-tv:fullscreen .dsp-tv-clock  { font-size: 3.5vw !important; }
+        .dsp-tv:fullscreen .dsp-tv-sub    { font-size: 1vw !important; }
+        .dsp-tv:fullscreen .dsp-sec-title { font-size: 1vw !important; padding: 0.6vh 1.2vw !important; }
+        .dsp-tv:fullscreen table th       { font-size: 1vw !important; padding: 0.5vh 0.8vw !important; }
+        .dsp-tv:fullscreen table td       { font-size: 1.1vw !important; padding: 0.6vh 0.8vw !important; }
+        .dsp-tv:fullscreen .dsp-dept-label { font-size: 1.2vw !important; }
+        .dsp-tv:fullscreen .dsp-dept-val   { font-size: 1.3vw !important; }
+        .dsp-tv:fullscreen .dsp-bar-wrap   { height: 10px !important; }
+        .dsp-tv:fullscreen .dsp-live-dot   { width: 10px !important; height: 10px !important; }
+        .dsp-tv-scroll { max-height: 220px; overflow-y: auto; }
+        .dsp-tv:fullscreen .dsp-tv-scroll  { max-height: none !important; }
+        @keyframes dsp-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .dsp-live-dot { animation: dsp-pulse 1.8s infinite; }
       `}</style>
-      <div
-        ref={panelRef}
-        className="daily-summary-panel"
-        style={{ margin: '8px 0 4px', border: '2px solid #CCFFFF', borderRadius: 8, overflow: 'hidden', background: '#E0FFFF', boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }}
+
+      <div ref={panelRef} className="dsp-tv"
+        style={{ background: BG, borderRadius: 10, overflow: 'hidden',
+          border: `1px solid ${BORDER}`, boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
+          margin: '8px 0 4px', display: 'flex', flexDirection: 'column' }}
       >
-        {/* Header */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2.5fr 1fr', background: '#E0FFFF', padding: '8px 16px', alignItems: 'center', borderBottom: '2px solid #CCFFFF' }}>
-          <div className="dsp-header-meta" style={{ fontSize: 14, color: '#003344', fontWeight: 700 }}>Bộ Phận: <span style={{ color: '#003344' }}>QLSX</span></div>
-          <div className="dsp-header-title" style={{ textAlign: 'center', fontWeight: 900, fontSize: 18, color: '#003344', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-            CÔNG TY CỔ PHẦN MỸ PHẨM THIÊN NHIÊN SONG AN
+        {/* ── HEADER ── */}
+        <div style={{ background: '#061020', padding: '12px 20px',
+          borderBottom: `2px solid ${BORDER}`, display: 'grid',
+          gridTemplateColumns: 'auto 1fr auto', gap: 16, alignItems: 'center' }}
+        >
+          {/* Left: dept badge */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <div style={{ background: ACCENT, color: '#061020', fontWeight: 900,
+              fontSize: 11, padding: '3px 10px', borderRadius: 4, letterSpacing: '0.06em' }}>
+              BỘ PHẬN
+            </div>
+            <div style={{ color: ACCENT, fontWeight: 900, fontSize: 18, lineHeight: 1 }}>QLSX</div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
-            <span className="dsp-header-meta" style={{ fontSize: 14, color: '#003344', fontWeight: 700 }}>Ngày: <span style={{ color: '#003344' }}>{ref.format('DD/MM/YYYY')}</span></span>
-            <button
-              onClick={toggleFullscreen}
-              title={isFullscreen ? 'Thoát toàn màn hình (Esc)' : 'Toàn màn hình'}
-              style={{
-                background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.4)',
-                borderRadius: 6, color: '#fff', cursor: 'pointer', padding: '4px 10px',
-                fontSize: 16, display: 'flex', alignItems: 'center', lineHeight: 1,
-              }}
-            >
-              {isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
-            </button>
+
+          {/* Center: company + subtitle */}
+          <div style={{ textAlign: 'center' }}>
+            <div className="dsp-tv-title" style={{ fontWeight: 900, fontSize: 22,
+              color: '#fff', letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1.2 }}>
+              CÔNG TY CỔ PHẦN MỸ PHẨM THIÊN NHIÊN SONG AN
+            </div>
+            <div className="dsp-tv-sub" style={{ fontSize: 11, color: DIM,
+              letterSpacing: '0.15em', marginTop: 3 }}>
+              BẢNG THEO DÕI SẢN LƯỢNG SẢN XUẤT
+            </div>
+          </div>
+
+          {/* Right: clock + date + live */}
+          <div style={{ textAlign: 'right' }}>
+            <div className="dsp-tv-clock" style={{ fontSize: 32, fontWeight: 900,
+              color: '#fff', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+              {clock}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, marginTop: 4 }}>
+              <span style={{ fontSize: 11, color: DIM }}>
+                {['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'][ref.day()]},&nbsp;{ref.format('DD/MM/YYYY')}
+              </span>
+              <div className="dsp-live-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} />
+              <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 700, letterSpacing: '0.08em' }}>TRỰC TIẾP</span>
+              <button onClick={toggleFullscreen}
+                title={isFullscreen ? 'Thoát toàn màn hình (Esc)' : 'Toàn màn hình'}
+                style={{ background: 'rgba(0,204,204,0.15)', border: `1px solid ${BORDER}`,
+                  borderRadius: 5, color: ACCENT, cursor: 'pointer', padding: '3px 8px',
+                  fontSize: 14, display: 'flex', alignItems: 'center', lineHeight: 1 }}
+              >
+                {isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* 3-column body */}
-        <div className="dsp-body" style={{ display: 'grid', gridTemplateColumns: '220px 1fr 220px' }}>
+        {/* ── BODY ── */}
+        <div className="dsp-tv-body" style={{ flex: 1, overflowY: 'auto' }}>
 
-          {/* LEFT */}
-          <div style={{ borderRight: '2px solid #CCFFFF' }}>
-            <div className="dsp-sec-head" style={secHead}>SẢN LƯỢNG NGÀY {ref.format('DD/MM')}</div>
-            {SUMMARY_DEPTS.map(d => (
-              <div key={d.key} className="dsp-dept-row" style={deptRow}>
-                <span style={{ fontWeight: 700, color: '#1e3a5f', fontSize: FS }}>{d.label}</span>
-                <span style={{ color: '#0284c7', fontWeight: 800, fontSize: FS + 1 }}>{(stats.todaySL[d.key] || 0).toLocaleString('vi-VN')}</span>
-              </div>
-            ))}
-            <div className="dsp-sec-head" style={{ ...secHead, borderTop: '2px solid #CCFFFF' }}>TỔNG SẢN LƯỢNG THÁNG</div>
-            {SUMMARY_DEPTS.map(d => (
-              <div key={d.key} className="dsp-dept-row" style={deptRow}>
-                <span style={{ fontWeight: 700, color: '#1e3a5f', fontSize: FS }}>{d.label}</span>
-                <span style={{ color: '#0369a1', fontWeight: 800, fontSize: FS + 1 }}>{(stats.monthSL[d.key] || 0).toLocaleString('vi-VN')}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* MIDDLE */}
-          <div style={{ borderRight: '2px solid #CCFFFF', display: 'flex', flexDirection: 'column' }}>
+          {/* ── Section 1: Chi tiết lô SX hôm nay ── */}
+          <div style={{ margin: '10px 12px 0', background: BG_SEC, borderRadius: 8,
+            border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
+            <div className="dsp-sec-title" style={secTitle}>
+              Chi tiết lô sản xuất hôm nay · {ref.format('DD/MM')}
+              {todayRows.length > 0 && (
+                <span style={{ float: 'right', color: DIM, fontWeight: 400,
+                  fontSize: 11, textTransform: 'none', letterSpacing: 0 }}>
+                  Theo thời gian thực
+                </span>
+              )}
+            </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <colgroup>
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '38%' }} />
-                <col style={{ width: '14%' }} />
-                <col style={{ width: '13%' }} />
-                <col style={{ width: '23%' }} />
+                <col style={{ width: '12%' }} /><col style={{ width: '36%' }} />
+                <col style={{ width: '14%' }} /><col style={{ width: '12%' }} />
+                <col style={{ width: '26%' }} />
               </colgroup>
               <thead>
-                <tr>{['BỘ PHẬN', 'TÊN SẢN PHẨM', 'SỐ LÔ', 'CỠ LÔ', 'TÌNH TRẠNG'].map(h => <th key={h} style={th}>{h}</th>)}</tr>
+                <tr>{['BỘ PHẬN','TÊN SẢN PHẨM','SỐ LÔ','CỠ LÔ','TÌNH TRẠNG'].map(h =>
+                  <th key={h} style={thStyle}>{h}</th>)}</tr>
               </thead>
             </table>
-            <div
-              ref={scrollRef}
-              className="dsp-middle-scroll"
+            <div ref={scrollRef} className="dsp-tv-scroll"
               onMouseEnter={() => { isPausedRef.current = true }}
               onMouseLeave={() => { isPausedRef.current = false }}
-              style={{ maxHeight: 380, overflowY: 'auto', flex: 1 }}
             >
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                 <colgroup>
-                  <col style={{ width: '12%' }} />
-                  <col style={{ width: '38%' }} />
-                  <col style={{ width: '14%' }} />
-                  <col style={{ width: '13%' }} />
-                  <col style={{ width: '23%' }} />
+                  <col style={{ width: '12%' }} /><col style={{ width: '36%' }} />
+                  <col style={{ width: '14%' }} /><col style={{ width: '12%' }} />
+                  <col style={{ width: '26%' }} />
                 </colgroup>
                 <tbody>
                   {todayRows.length === 0
-                    ? <tr><td colSpan={5} style={{ textAlign: 'center', color: '#94a3b8', padding: '20px', fontSize: FS }}>Không có dữ liệu hôm nay</td></tr>
+                    ? <tr><td colSpan={5} style={{ textAlign: 'center', color: DIM,
+                        padding: '32px 0', fontSize: 14 }}>
+                        <div style={{ fontSize: 28, marginBottom: 8 }}>⬜</div>
+                        Chưa có lô sản xuất nào hôm nay<br/>
+                        <span style={{ fontSize: 12, opacity: 0.7 }}>
+                          Dữ liệu lô sẽ tự động hiển thị khi các tổ bắt đầu khai báo trong ca làm việc.
+                        </span>
+                      </td></tr>
                     : todayRows.map((r, i) => (
-                      <tr key={i} style={{ background: i % 2 === 0 ? '#E0FFFF' : '#C5F5F5' }}>
-                        <td style={td({ textAlign: 'center', fontWeight: 800, color: '#1d4ed8' })}>{r.congDoan || '—'}</td>
-                        <td style={td({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 })} title={r.tenTrinh}>{r.tenTrinh || '—'}</td>
-                        <td style={td({ textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 })}>{r.soLo || '—'}</td>
-                        <td style={td({ textAlign: 'right', fontWeight: 700 })}>{r.coLo != null ? Number(r.coLo).toLocaleString('vi-VN') : '—'}</td>
-                        <td style={td({ textAlign: 'center', padding: '4px 6px' })}>
+                      <tr key={i} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.03)' }}>
+                        <td style={tdStyle({ textAlign: 'center', fontWeight: 800, color: ACCENT })}>{r.congDoan || '—'}</td>
+                        <td style={tdStyle({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 })} title={r.tenTrinh}>{r.tenTrinh || '—'}</td>
+                        <td style={tdStyle({ textAlign: 'center', fontFamily: 'monospace', fontWeight: 700, color: '#93c5fd' })}>{r.soLo || '—'}</td>
+                        <td style={tdStyle({ textAlign: 'right', fontWeight: 700, color: TEXT })}>{r.coLo != null ? Number(r.coLo).toLocaleString('vi-VN') : '—'}</td>
+                        <td style={tdStyle({ textAlign: 'center', padding: '5px 6px' })}>
                           {r.status === 'PENDING'
-                            ? <span style={{ background: '#fef3c7', color: '#d97706', fontWeight: 700, fontSize: FS - 1, padding: '2px 6px', borderRadius: 4, display: 'inline-block' }}>⌛ Chưa HT</span>
+                            ? <span style={{ background: 'rgba(234,179,8,0.15)', color: '#fbbf24', fontWeight: 700, fontSize: 12, padding: '3px 8px', borderRadius: 4 }}>⌛ Chưa HT</span>
                             : r.status === 'IN_PROGRESS'
-                              ? <span style={{ background: '#dbeafe', color: '#2563eb', fontWeight: 700, fontSize: FS - 1, padding: '2px 6px', borderRadius: 4, display: 'inline-block' }}>▶ Đang TH</span>
-                              : <span style={{ background: '#dcfce7', color: '#16a34a', fontWeight: 700, fontSize: FS - 1, padding: '2px 6px', borderRadius: 4, display: 'inline-block' }}>✓ Hoàn thành</span>}
+                              ? <span style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa', fontWeight: 700, fontSize: 12, padding: '3px 8px', borderRadius: 4 }}>▶ Đang TH</span>
+                              : <span style={{ background: 'rgba(34,197,94,0.15)', color: '#4ade80', fontWeight: 700, fontSize: 12, padding: '3px 8px', borderRadius: 4 }}>✓ Hoàn thành</span>}
                         </td>
                       </tr>
                     ))
@@ -325,36 +326,116 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
               </table>
             </div>
             {todayRows.length > 6 && (
-              <div style={{ textAlign: 'center', fontSize: 12, color: '#64748b', padding: '4px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', fontStyle: 'italic' }}>
+              <div style={{ textAlign: 'center', fontSize: 11, color: DIM, padding: '4px',
+                borderTop: `1px solid ${BORDER}`, fontStyle: 'italic' }}>
                 {todayRows.length} dòng — tự động cuộn · di chuyển chuột để tạm dừng
               </div>
             )}
           </div>
 
-          {/* RIGHT */}
-          <div>
-            <div className="dsp-sec-head" style={secHead}>Sản Lượng {ref.subtract(1,'day').format('DD/MM')}</div>
-            {SUMMARY_DEPTS.map(d => (
-              <div key={d.key} className="dsp-dept-row" style={deptRow}>
-                <span style={{ fontWeight: 700, color: '#1e3a5f', fontSize: FS }}>{d.label}</span>
-                <span style={{ color: '#7c3aed', fontWeight: 800, fontSize: FS + 1 }}>{(stats.ydSL[d.key] || 0).toLocaleString('vi-VN')}</span>
-              </div>
-            ))}
-            <div className="dsp-sec-head" style={{ ...secHead, borderTop: '2px solid #CCFFFF' }}>HSCV {ref.subtract(1,'day').format('DD/MM')}</div>
-            {SUMMARY_DEPTS.map(d => {
-              const done  = stats.ydHscvDone[d.key]  || 0
-              const total = stats.ydHscvTotal[d.key] || 0
-              const pct   = total > 0 ? ((done / total) * 100).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + '%' : '—'
-              const label = total > 0 ? `${pct} (${done}/${total})` : '—'
-              return (
-                <div key={d.key} className="dsp-dept-row" style={deptRow}>
-                  <span style={{ fontWeight: 700, color: '#1e3a5f', fontSize: FS }}>{d.label}</span>
-                  <span style={{ color: '#059669', fontWeight: 800, fontSize: FS }}>{label}</span>
-                </div>
-              )
-            })}
+          {/* ── Section 2: Tổng SL tháng (progress bars) ── */}
+          <div style={{ margin: '10px 12px 0', background: BG_SEC, borderRadius: 8,
+            border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
+            <div className="dsp-sec-title" style={secTitle}>
+              Tổng sản lượng tháng {ref.format('M')}
+              <span style={{ float: 'right', color: '#4ade80', fontWeight: 700,
+                fontSize: 12, textTransform: 'none', letterSpacing: 0 }}>
+                Tổng {totalMonthSL.toLocaleString('vi-VN')}
+              </span>
+            </div>
+            <div style={{ padding: '8px 14px 10px' }}>
+              {SUMMARY_DEPTS.map(d => {
+                const val = stats.monthSL[d.key] || 0
+                const pct = Math.round((val / maxMonthSL) * 100)
+                return (
+                  <div key={d.key} style={{ marginBottom: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between',
+                      marginBottom: 3 }}>
+                      <span className="dsp-dept-label" style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>{d.label}</span>
+                      <span className="dsp-dept-val" style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{val.toLocaleString('vi-VN')}</span>
+                    </div>
+                    <div className="dsp-bar-wrap" style={{ background: 'rgba(255,255,255,0.08)',
+                      borderRadius: 4, height: 8, overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', borderRadius: 4,
+                        background: `linear-gradient(90deg, ${ACCENT}, #00ffcc)`,
+                        transition: 'width 0.6s ease' }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
-        </div>
+
+          {/* ── Section 3 & 4: Hôm nay | Hôm qua (2 cột) ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
+            gap: 10, margin: '10px 12px 12px' }}>
+
+            {/* Ngày hôm nay */}
+            <div style={{ background: BG_SEC, borderRadius: 8,
+              border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
+              <div className="dsp-sec-title" style={secTitle}>
+                Ngày hôm nay · {ref.format('DD/MM')}
+              </div>
+              <div style={{ padding: '4px 0' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+                  padding: '4px 14px', borderBottom: `1px solid ${BORDER}` }}>
+                  <span style={{ fontSize: 11, color: DIM, fontWeight: 700 }}>BỘ PHẬN</span>
+                  <span style={{ fontSize: 11, color: DIM, fontWeight: 700, textAlign: 'right' }}>SẢN LƯỢNG</span>
+                  <span style={{ fontSize: 11, color: DIM, fontWeight: 700, textAlign: 'right' }}>HSCV</span>
+                </div>
+                {SUMMARY_DEPTS.map(d => (
+                  <div key={d.key} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+                    padding: '6px 14px', borderBottom: `1px solid rgba(255,255,255,0.04)` }}>
+                    <span className="dsp-dept-label" style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>{d.label}</span>
+                    <span className="dsp-dept-val" style={{ fontSize: 14, fontWeight: 800,
+                      color: stats.todaySL[d.key] > 0 ? '#4ade80' : DIM, textAlign: 'right' }}>
+                      {(stats.todaySL[d.key] || 0).toLocaleString('vi-VN')}
+                    </span>
+                    <span style={{ fontSize: 12, color: DIM, textAlign: 'right' }}>—</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Ngày hôm qua */}
+            <div style={{ background: BG_SEC, borderRadius: 8,
+              border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
+              <div className="dsp-sec-title" style={secTitle}>
+                Ngày hôm qua · {ref.subtract(1,'day').format('DD/MM')}
+              </div>
+              <div style={{ padding: '4px 0' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+                  padding: '4px 14px', borderBottom: `1px solid ${BORDER}` }}>
+                  <span style={{ fontSize: 11, color: DIM, fontWeight: 700 }}>BỘ PHẬN</span>
+                  <span style={{ fontSize: 11, color: DIM, fontWeight: 700, textAlign: 'right' }}>SẢN LƯỢNG</span>
+                  <span style={{ fontSize: 11, color: DIM, fontWeight: 700, textAlign: 'right' }}>HSCV</span>
+                </div>
+                {SUMMARY_DEPTS.map(d => {
+                  const done  = stats.ydHscvDone[d.key]  || 0
+                  const total = stats.ydHscvTotal[d.key] || 0
+                  const hscv  = total > 0
+                    ? `${Math.round(done/total*100)}% (${done}/${total})`
+                    : '—'
+                  return (
+                    <div key={d.key} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+                      padding: '6px 14px', borderBottom: `1px solid rgba(255,255,255,0.04)` }}>
+                      <span className="dsp-dept-label" style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>{d.label}</span>
+                      <span className="dsp-dept-val" style={{ fontSize: 14, fontWeight: 800,
+                        color: stats.ydSL[d.key] > 0 ? '#7c3aed' : DIM, textAlign: 'right' }}>
+                        {(stats.ydSL[d.key] || 0).toLocaleString('vi-VN')}
+                      </span>
+                      <span style={{ fontSize: 12,
+                        color: total > 0 ? '#4ade80' : DIM, textAlign: 'right', fontWeight: total > 0 ? 700 : 400 }}>
+                        {hscv}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+          </div>{/* end 2-col */}
+        </div>{/* end body */}
       </div>
     </>
   )
