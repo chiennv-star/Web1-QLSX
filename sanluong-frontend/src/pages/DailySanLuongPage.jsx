@@ -182,20 +182,26 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
           box-sizing: border-box !important;
         }
         .daily-summary-panel:fullscreen .dsp-body {
-          flex: 1 !important;
+          flex: 1 1 0 !important;
           min-height: 0 !important;
+          height: 0 !important;
           overflow: hidden !important;
           display: grid !important;
           grid-template-columns: 22% 56% 22% !important;
+          grid-template-rows: 1fr !important;
           align-items: stretch !important;
+          align-content: stretch !important;
         }
         .daily-summary-panel:fullscreen .dsp-body > div {
           display: flex !important;
           flex-direction: column !important;
+          height: 100% !important;
           overflow: hidden !important;
+          box-sizing: border-box !important;
         }
         .daily-summary-panel:fullscreen .dsp-middle-scroll {
-          flex: 1 !important;
+          flex: 1 1 0 !important;
+          min-height: 0 !important;
           max-height: none !important;
           overflow-y: auto !important;
         }
