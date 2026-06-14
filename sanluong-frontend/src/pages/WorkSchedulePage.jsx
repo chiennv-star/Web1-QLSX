@@ -2207,49 +2207,10 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   useEffect(() => { fetchData(0) }, [congDoan])
 
   useEffect(() => {
-    const handler = () => {
-      if (detailOpen) return  // pause khi drawer đang mở
-      fetchData(paginationRef.current.current - 1, paginationRef.current.pageSize, undefined, { silent: true })
-    }
-    window.addEventListener('app:silent-refresh', handler)
-    return () => window.removeEventListener('app:silent-refresh', handler)
-  }, [fetchData, detailOpen])
-
-  useEffect(() => {
     const handler = () => fetchData(0, paginationRef.current.pageSize)
     window.addEventListener('app:force-refresh', handler)
     return () => window.removeEventListener('app:force-refresh', handler)
   }, [fetchData])
-
-  // ── Auto-refresh mỗi 3 giây, giữ nguyên trang + filter ──────────────────
-  const AUTO_REFRESH_SEC = 3
-  const [arCountdown, setArCountdown] = useState(AUTO_REFRESH_SEC)
-  const [arLastAt,    setArLastAt]    = useState(null)
-
-  useEffect(() => {
-    setArCountdown(AUTO_REFRESH_SEC)
-    const tick = setInterval(() => {
-      if (detailOpen) return  // dừng hoàn toàn khi drawer đang mở
-      setArCountdown(c => {
-        if (c <= 1) {
-          const active = document.activeElement
-          const isTyping = active && ['INPUT', 'TEXTAREA', 'SELECT'].includes(active.tagName)
-          if (!isTyping) {
-            fetchData(
-              paginationRef.current.current - 1,
-              paginationRef.current.pageSize,
-              undefined,
-              { silent: true }
-            )
-            setArLastAt(new Date())
-          }
-          return AUTO_REFRESH_SEC
-        }
-        return c - 1
-      })
-    }, 1000)
-    return () => clearInterval(tick)
-  }, [fetchData, detailOpen])
 
   // Sau khi dữ liệu tải xong, tìm hàng khớp jumpTarget và highlight/scroll
   useEffect(() => {
@@ -2653,10 +2614,6 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                   )}
                   <Button size="small" type="primary" icon={<SearchOutlined />} onClick={() => fetchData(0)} />
                   <Button size="small" icon={<ReloadOutlined />} onClick={handleReset} />
-                  <span style={{ fontSize: 11, color: arCountdown <= 10 ? '#1677ff' : '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                    <SyncOutlined spin={arCountdown <= 5} style={{ fontSize: 10 }} />
-                    {arCountdown}s
-                  </span>
                 </div>
 
                 {/* Filter inputs — desktop: always; mobile: collapsible */}
@@ -2703,16 +2660,6 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                         Thêm mới
                       </Button>
                     )}
-                    <Tooltip title={arLastAt ? `Lần cuối: ${arLastAt.toLocaleTimeString('vi-VN')}` : 'Tự động làm mới dữ liệu'}>
-                      <span style={{
-                        marginLeft: 4, fontSize: 11, color: arCountdown <= 10 ? '#1677ff' : '#94a3b8',
-                        display: 'inline-flex', alignItems: 'center', gap: 3, cursor: 'default',
-                        transition: 'color 0.3s',
-                      }}>
-                        <SyncOutlined spin={arCountdown <= 5} style={{ fontSize: 10 }} />
-                        {arCountdown}s
-                      </span>
-                    </Tooltip>
                   </span>
                 </div>
               </div>
