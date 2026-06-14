@@ -147,7 +147,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
   const th = {
     background: '#00CCCC', color: '#003344',
     fontWeight: 800, fontSize: FSH,
-    padding: '7px 8px', border: '1px solid #009999',
+    padding: '7px 8px', border: '1px solid #FF0033',
     textAlign: 'center', whiteSpace: 'nowrap', letterSpacing: '0.03em',
   }
   const td = (extra = {}) => ({
@@ -158,7 +158,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
     background: '#00CCCC', color: '#003344',
     fontWeight: 800, fontSize: FSH,
     textAlign: 'center', padding: '6px 8px',
-    borderBottom: '2px solid #009999', letterSpacing: '0.04em',
+    borderBottom: '2px solid #FF0033', letterSpacing: '0.04em',
     textTransform: 'uppercase',
   }
   const deptRow = {
@@ -192,10 +192,10 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
       <div
         ref={panelRef}
         className="daily-summary-panel"
-        style={{ margin: '8px 0 4px', border: '2px solid #009999', borderRadius: 8, overflow: 'hidden', background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }}
+        style={{ margin: '8px 0 4px', border: '2px solid #FF0033', borderRadius: 8, overflow: 'hidden', background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }}
       >
         {/* Header */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2.5fr 1fr', background: 'linear-gradient(90deg,#009999,#00CCCC)', padding: '8px 16px', alignItems: 'center', borderBottom: '2px solid #009999' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2.5fr 1fr', background: '#00CCCC', padding: '8px 16px', alignItems: 'center', borderBottom: '2px solid #FF0033' }}>
           <div style={{ fontSize: 14, color: '#003344', fontWeight: 700 }}>Bộ Phận: <span style={{ color: '#fff' }}>QLSX</span></div>
           <div style={{ textAlign: 'center', fontWeight: 900, fontSize: 18, color: '#fff', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
             CÔNG TY CỔ PHẦN MỸ PHẨM THIÊN NHIÊN SONG AN
@@ -220,7 +220,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
         <div className="dsp-body" style={{ display: 'grid', gridTemplateColumns: '220px 1fr 220px' }}>
 
           {/* LEFT */}
-          <div style={{ borderRight: '2px solid #009999' }}>
+          <div style={{ borderRight: '2px solid #FF0033' }}>
             <div style={secHead}>SẢN LƯỢNG NGÀY {ref.format('DD/MM')}</div>
             {SUMMARY_DEPTS.map(d => (
               <div key={d.key} style={deptRow}>
@@ -228,7 +228,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
                 <span style={{ color: '#0284c7', fontWeight: 800, fontSize: FS + 1 }}>{(stats.todaySL[d.key] || 0).toLocaleString('vi-VN')}</span>
               </div>
             ))}
-            <div style={{ ...secHead, borderTop: '2px solid #009999' }}>TỔNG SẢN LƯỢNG THÁNG</div>
+            <div style={{ ...secHead, borderTop: '2px solid #FF0033' }}>TỔNG SẢN LƯỢNG THÁNG</div>
             {SUMMARY_DEPTS.map(d => (
               <div key={d.key} style={deptRow}>
                 <span style={{ fontWeight: 700, color: '#1e3a5f', fontSize: FS }}>{d.label}</span>
@@ -238,7 +238,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
           </div>
 
           {/* MIDDLE */}
-          <div style={{ borderRight: '2px solid #009999', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ borderRight: '2px solid #FF0033', display: 'flex', flexDirection: 'column' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <colgroup>
                 <col style={{ width: '12%' }} />
@@ -304,7 +304,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
                 <span style={{ color: '#7c3aed', fontWeight: 800, fontSize: FS + 1 }}>{(stats.ydSL[d.key] || 0).toLocaleString('vi-VN')}</span>
               </div>
             ))}
-            <div style={{ ...secHead, borderTop: '2px solid #009999' }}>HSCV {ref.subtract(1,'day').format('DD/MM')}</div>
+            <div style={{ ...secHead, borderTop: '2px solid #FF0033' }}>HSCV {ref.subtract(1,'day').format('DD/MM')}</div>
             {SUMMARY_DEPTS.map(d => {
               const done  = stats.ydHscvDone[d.key]  || 0
               const total = stats.ydHscvTotal[d.key] || 0
