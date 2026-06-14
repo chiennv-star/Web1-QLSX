@@ -172,21 +172,51 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
         .daily-summary-panel:fullscreen {
           display: flex !important;
           flex-direction: column !important;
+          width: 100vw !important;
           height: 100vh !important;
-          overflow: hidden;
-          background: #fff;
+          overflow: hidden !important;
+          background: #fff !important;
           border-radius: 0 !important;
           margin: 0 !important;
+          padding: 0 !important;
+          box-sizing: border-box !important;
         }
         .daily-summary-panel:fullscreen .dsp-body {
-          flex: 1;
-          min-height: 0;
-          overflow: hidden;
+          flex: 1 !important;
+          min-height: 0 !important;
+          overflow: hidden !important;
           display: grid !important;
-          grid-template-columns: 280px 1fr 280px !important;
+          grid-template-columns: 22% 56% 22% !important;
+          align-items: stretch !important;
+        }
+        .daily-summary-panel:fullscreen .dsp-body > div {
+          display: flex !important;
+          flex-direction: column !important;
+          overflow: hidden !important;
         }
         .daily-summary-panel:fullscreen .dsp-middle-scroll {
-          max-height: calc(100vh - 140px) !important;
+          flex: 1 !important;
+          max-height: none !important;
+          overflow-y: auto !important;
+        }
+        .daily-summary-panel:fullscreen table th,
+        .daily-summary-panel:fullscreen table td {
+          font-size: 1.15vw !important;
+          padding: 0.6vh 0.8vw !important;
+        }
+        .daily-summary-panel:fullscreen .dsp-dept-row {
+          font-size: 1.3vw !important;
+          padding: 0.7vh 1.2vw !important;
+        }
+        .daily-summary-panel:fullscreen .dsp-sec-head {
+          font-size: 1.1vw !important;
+          padding: 0.7vh 0.8vw !important;
+        }
+        .daily-summary-panel:fullscreen .dsp-header-title {
+          font-size: 1.8vw !important;
+        }
+        .daily-summary-panel:fullscreen .dsp-header-meta {
+          font-size: 1.1vw !important;
         }
       `}</style>
       <div
@@ -196,12 +226,12 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
       >
         {/* Header */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 2.5fr 1fr', background: '#00CCCC', padding: '8px 16px', alignItems: 'center', borderBottom: '2px solid #FFFFFF' }}>
-          <div style={{ fontSize: 14, color: '#003344', fontWeight: 700 }}>Bộ Phận: <span style={{ color: '#fff' }}>QLSX</span></div>
-          <div style={{ textAlign: 'center', fontWeight: 900, fontSize: 18, color: '#fff', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+          <div className="dsp-header-meta" style={{ fontSize: 14, color: '#003344', fontWeight: 700 }}>Bộ Phận: <span style={{ color: '#fff' }}>QLSX</span></div>
+          <div className="dsp-header-title" style={{ textAlign: 'center', fontWeight: 900, fontSize: 18, color: '#fff', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
             CÔNG TY CỔ PHẦN MỸ PHẨM THIÊN NHIÊN SONG AN
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
-            <span style={{ fontSize: 14, color: '#003344', fontWeight: 700 }}>Ngày: <span style={{ color: '#fff' }}>{ref.format('DD/MM/YYYY')}</span></span>
+            <span className="dsp-header-meta" style={{ fontSize: 14, color: '#003344', fontWeight: 700 }}>Ngày: <span style={{ color: '#fff' }}>{ref.format('DD/MM/YYYY')}</span></span>
             <button
               onClick={toggleFullscreen}
               title={isFullscreen ? 'Thoát toàn màn hình (Esc)' : 'Toàn màn hình'}
@@ -221,16 +251,16 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
 
           {/* LEFT */}
           <div style={{ borderRight: '2px solid #FFFFFF' }}>
-            <div style={secHead}>SẢN LƯỢNG NGÀY {ref.format('DD/MM')}</div>
+            <div className="dsp-sec-head" style={secHead}>SẢN LƯỢNG NGÀY {ref.format('DD/MM')}</div>
             {SUMMARY_DEPTS.map(d => (
-              <div key={d.key} style={deptRow}>
+              <div key={d.key} className="dsp-dept-row" style={deptRow}>
                 <span style={{ fontWeight: 700, color: '#1e3a5f', fontSize: FS }}>{d.label}</span>
                 <span style={{ color: '#0284c7', fontWeight: 800, fontSize: FS + 1 }}>{(stats.todaySL[d.key] || 0).toLocaleString('vi-VN')}</span>
               </div>
             ))}
-            <div style={{ ...secHead, borderTop: '2px solid #FFFFFF' }}>TỔNG SẢN LƯỢNG THÁNG</div>
+            <div className="dsp-sec-head" style={{ ...secHead, borderTop: '2px solid #FFFFFF' }}>TỔNG SẢN LƯỢNG THÁNG</div>
             {SUMMARY_DEPTS.map(d => (
-              <div key={d.key} style={deptRow}>
+              <div key={d.key} className="dsp-dept-row" style={deptRow}>
                 <span style={{ fontWeight: 700, color: '#1e3a5f', fontSize: FS }}>{d.label}</span>
                 <span style={{ color: '#0369a1', fontWeight: 800, fontSize: FS + 1 }}>{(stats.monthSL[d.key] || 0).toLocaleString('vi-VN')}</span>
               </div>
@@ -297,21 +327,21 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
 
           {/* RIGHT */}
           <div>
-            <div style={secHead}>Sản Lượng {ref.subtract(1,'day').format('DD/MM')}</div>
+            <div className="dsp-sec-head" style={secHead}>Sản Lượng {ref.subtract(1,'day').format('DD/MM')}</div>
             {SUMMARY_DEPTS.map(d => (
-              <div key={d.key} style={deptRow}>
+              <div key={d.key} className="dsp-dept-row" style={deptRow}>
                 <span style={{ fontWeight: 700, color: '#1e3a5f', fontSize: FS }}>{d.label}</span>
                 <span style={{ color: '#7c3aed', fontWeight: 800, fontSize: FS + 1 }}>{(stats.ydSL[d.key] || 0).toLocaleString('vi-VN')}</span>
               </div>
             ))}
-            <div style={{ ...secHead, borderTop: '2px solid #FFFFFF' }}>HSCV {ref.subtract(1,'day').format('DD/MM')}</div>
+            <div className="dsp-sec-head" style={{ ...secHead, borderTop: '2px solid #FFFFFF' }}>HSCV {ref.subtract(1,'day').format('DD/MM')}</div>
             {SUMMARY_DEPTS.map(d => {
               const done  = stats.ydHscvDone[d.key]  || 0
               const total = stats.ydHscvTotal[d.key] || 0
               const pct   = total > 0 ? ((done / total) * 100).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + '%' : '—'
               const label = total > 0 ? `${pct} (${done}/${total})` : '—'
               return (
-                <div key={d.key} style={deptRow}>
+                <div key={d.key} className="dsp-dept-row" style={deptRow}>
                   <span style={{ fontWeight: 700, color: '#1e3a5f', fontSize: FS }}>{d.label}</span>
                   <span style={{ color: '#059669', fontWeight: 800, fontSize: FS }}>{label}</span>
                 </div>
