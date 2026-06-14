@@ -175,7 +175,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
           width: 100vw !important;
           height: 100vh !important;
           overflow: hidden !important;
-          background: #fff !important;
+          background: #FFE4B5 !important;
           border-radius: 0 !important;
           margin: 0 !important;
           padding: 0 !important;
@@ -228,7 +228,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
       <div
         ref={panelRef}
         className="daily-summary-panel"
-        style={{ margin: '8px 0 4px', border: '2px solid #CCFFFF', borderRadius: 8, overflow: 'hidden', background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }}
+        style={{ margin: '8px 0 4px', border: '2px solid #CCFFFF', borderRadius: 8, overflow: 'hidden', background: '#FFE4B5', boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }}
       >
         {/* Header */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 2.5fr 1fr', background: '#00CCCC', padding: '8px 16px', alignItems: 'center', borderBottom: '2px solid #CCFFFF' }}>
@@ -306,7 +306,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
                   {todayRows.length === 0
                     ? <tr><td colSpan={5} style={{ textAlign: 'center', color: '#94a3b8', padding: '20px', fontSize: FS }}>Không có dữ liệu hôm nay</td></tr>
                     : todayRows.map((r, i) => (
-                      <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#eff6ff' }}>
+                      <tr key={i} style={{ background: i % 2 === 0 ? '#FFE4B5' : '#FFD4A0' }}>
                         <td style={td({ textAlign: 'center', fontWeight: 800, color: '#1d4ed8' })}>{r.congDoan || '—'}</td>
                         <td style={td({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 })} title={r.tenTrinh}>{r.tenTrinh || '—'}</td>
                         <td style={td({ textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 })}>{r.soLo || '—'}</td>
