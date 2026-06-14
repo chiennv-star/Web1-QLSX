@@ -2304,11 +2304,11 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
 
   const columns = [
     {
-      title: '#', key: 'stt', width: 48, fixed: 'left', align: 'center',
+      title: 'STT', key: 'stt', width: 48, fixed: 'left', align: 'center',
       render: (_, __, index) => {
         const pageSize = pagination.pageSize || 20
         const currentPage = pagination.current || 1
-        return <span style={{ color: '#8c8c8c', fontSize: 12 }}>{pagination.total - (currentPage - 1) * pageSize - index}</span>
+        return <span style={{ color: '#8c8c8c', fontSize: 12 }}>{(currentPage - 1) * pageSize + index + 1}</span>
       },
     },
     {
