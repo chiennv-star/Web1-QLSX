@@ -145,7 +145,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
   const FS   = 15
   const FSH  = 13
   const th = {
-    background: '#00CCCC', color: '#003344',
+    background: '#FFE4B5', color: '#003344',
     fontWeight: 800, fontSize: FSH,
     padding: '7px 8px', border: '1px solid #CCFFFF',
     textAlign: 'center', whiteSpace: 'nowrap', letterSpacing: '0.03em',
@@ -155,7 +155,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
     fontSize: FS, ...extra,
   })
   const secHead = {
-    background: '#00CCCC', color: '#003344',
+    background: '#FFE4B5', color: '#003344',
     fontWeight: 800, fontSize: FSH,
     textAlign: 'center', padding: '6px 8px',
     borderBottom: '2px solid #CCFFFF', letterSpacing: '0.04em',
@@ -175,7 +175,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
           width: 100vw !important;
           height: 100vh !important;
           overflow: hidden !important;
-          background: #FFE4B5 !important;
+          background: #fff !important;
           border-radius: 0 !important;
           margin: 0 !important;
           padding: 0 !important;
@@ -228,16 +228,16 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
       <div
         ref={panelRef}
         className="daily-summary-panel"
-        style={{ margin: '8px 0 4px', border: '2px solid #CCFFFF', borderRadius: 8, overflow: 'hidden', background: '#FFE4B5', boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }}
+        style={{ margin: '8px 0 4px', border: '2px solid #CCFFFF', borderRadius: 8, overflow: 'hidden', background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.12)' }}
       >
         {/* Header */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2.5fr 1fr', background: '#00CCCC', padding: '8px 16px', alignItems: 'center', borderBottom: '2px solid #CCFFFF' }}>
-          <div className="dsp-header-meta" style={{ fontSize: 14, color: '#003344', fontWeight: 700 }}>Bộ Phận: <span style={{ color: '#fff' }}>QLSX</span></div>
-          <div className="dsp-header-title" style={{ textAlign: 'center', fontWeight: 900, fontSize: 18, color: '#fff', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2.5fr 1fr', background: '#FFE4B5', padding: '8px 16px', alignItems: 'center', borderBottom: '2px solid #CCFFFF' }}>
+          <div className="dsp-header-meta" style={{ fontSize: 14, color: '#7c4a00', fontWeight: 700 }}>Bộ Phận: <span style={{ color: '#7c4a00' }}>QLSX</span></div>
+          <div className="dsp-header-title" style={{ textAlign: 'center', fontWeight: 900, fontSize: 18, color: '#7c4a00', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
             CÔNG TY CỔ PHẦN MỸ PHẨM THIÊN NHIÊN SONG AN
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
-            <span className="dsp-header-meta" style={{ fontSize: 14, color: '#003344', fontWeight: 700 }}>Ngày: <span style={{ color: '#fff' }}>{ref.format('DD/MM/YYYY')}</span></span>
+            <span className="dsp-header-meta" style={{ fontSize: 14, color: '#7c4a00', fontWeight: 700 }}>Ngày: <span style={{ color: '#7c4a00' }}>{ref.format('DD/MM/YYYY')}</span></span>
             <button
               onClick={toggleFullscreen}
               title={isFullscreen ? 'Thoát toàn màn hình (Esc)' : 'Toàn màn hình'}
@@ -306,7 +306,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
                   {todayRows.length === 0
                     ? <tr><td colSpan={5} style={{ textAlign: 'center', color: '#94a3b8', padding: '20px', fontSize: FS }}>Không có dữ liệu hôm nay</td></tr>
                     : todayRows.map((r, i) => (
-                      <tr key={i} style={{ background: i % 2 === 0 ? '#FFE4B5' : '#FFD4A0' }}>
+                      <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#eff6ff' }}>
                         <td style={td({ textAlign: 'center', fontWeight: 800, color: '#1d4ed8' })}>{r.congDoan || '—'}</td>
                         <td style={td({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 })} title={r.tenTrinh}>{r.tenTrinh || '—'}</td>
                         <td style={td({ textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 })}>{r.soLo || '—'}</td>
