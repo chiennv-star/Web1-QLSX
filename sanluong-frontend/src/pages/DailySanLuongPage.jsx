@@ -89,10 +89,12 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
 
   const stats = useMemo(() => {
     const todaySL = {}, monthSL = {}, ydSL = {}
+    const todayHscvDone = {}, todayHscvTotal = {}
     const ydHscvDone = {}, ydHscvTotal = {}
     SUMMARY_DEPTS.forEach(d => {
       todaySL[d.key] = 0; monthSL[d.key] = 0
       ydSL[d.key] = 0
+      todayHscvDone[d.key] = 0; todayHscvTotal[d.key] = 0
       ydHscvDone[d.key] = 0; ydHscvTotal[d.key] = 0
     })
     data.forEach(r => {
@@ -106,12 +108,16 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
         if (r.ngay >= monthStart)     monthSL[cd] += sl
         if (r.ngay === yesterday)     ydSL[cd] += sl
       }
+      if (r.ngay === today && hasSoLo) {
+        todayHscvTotal[cd]++
+        if (isDone) todayHscvDone[cd]++
+      }
       if (r.ngay === yesterday && hasSoLo) {
         ydHscvTotal[cd]++
         if (isDone) ydHscvDone[cd]++
       }
     })
-    return { todaySL, monthSL, ydSL, ydHscvDone, ydHscvTotal }
+    return { todaySL, monthSL, ydSL, todayHscvDone, todayHscvTotal, ydHscvDone, ydHscvTotal }
   }, [data, today, yesterday, monthStart])
 
   const todayRows = useMemo(() =>
@@ -446,7 +452,15 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
               <DeptTable
                 titleEl={<>Ngày hôm nay · {ref.format('DD/MM')}</>}
                 rows={SUMMARY_DEPTS}
-                valFn={d => ({ sl: stats.todaySL[d.key] || 0, hscv: '—', hscvColor: DIM })}
+                valFn={d => {
+                  const done  = stats.todayHscvDone[d.key]  || 0
+                  const total = stats.todayHscvTotal[d.key] || 0
+                  return {
+                    sl: stats.todaySL[d.key] || 0,
+                    hscv: total > 0 ? `${Math.round(done/total*100)}% (${done}/${total})` : '—',
+                    hscvColor: total > 0 ? '#4ade80' : DIM,
+                  }
+                }}
               />
               <DeptTable
                 titleEl={<>Ngày hôm qua · {ref.subtract(1,'day').format('DD/MM')}</>}
