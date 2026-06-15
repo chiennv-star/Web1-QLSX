@@ -60,9 +60,11 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
   const monthStart = ref.startOf('month').format('YYYY-MM-DD')
 
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const panelRef    = useRef(null)
-  const scrollRef   = useRef(null)
-  const isPausedRef = useRef(false)
+  const panelRef      = useRef(null)
+  const scrollRef     = useRef(null)
+  const isPausedRef   = useRef(false)
+  const scrollRefYd   = useRef(null)
+  const isPausedRefYd = useRef(false)
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement)
@@ -128,6 +130,10 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
     data.filter(r => r.ngay === today && r.status !== 'IN_PROGRESS'),
   [data, today])
 
+  const yesterdayRows = useMemo(() =>
+    data.filter(r => r.ngay === yesterday && r.status !== 'IN_PROGRESS'),
+  [data, yesterday])
+
   // Tự động cuộn bảng giữa khi có nhiều dòng
   useEffect(() => {
     const el = scrollRef.current
@@ -151,6 +157,29 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
     run()
     return () => { active = false }
   }, [todayRows.length])
+
+  useEffect(() => {
+    const el = scrollRefYd.current
+    if (!el) return
+    el.scrollTop = 0
+    if (yesterdayRows.length <= 6) return
+    let active = true
+    const run = async () => {
+      while (active) {
+        await delay(40)
+        if (!active || isPausedRefYd.current) continue
+        el.scrollTop += 1
+        if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) {
+          await delay(2500)
+          if (!active) break
+          el.scrollTop = 0
+          await delay(800)
+        }
+      }
+    }
+    run()
+    return () => { active = false }
+  }, [yesterdayRows.length])
 
   const [clock, setClock] = useState(() => dayjs().format('HH:mm'))
   useEffect(() => {
@@ -260,10 +289,11 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
           padding: 8px !important;
           box-sizing: border-box !important;
         }
-        /* Cột trái: chi tiết lô — fill toàn bộ chiều cao */
+        /* Cột trái: 2 bảng chi tiết stack dọc, mỗi bảng 50% */
         .dsp-tv:fullscreen .dsp-fs-left {
           display: flex !important; flex-direction: column !important;
           overflow: hidden !important; min-height: 0 !important;
+          gap: 8px !important;
         }
         .dsp-tv:fullscreen .dsp-chi-tiet-box {
           flex: 1 1 0 !important; min-height: 0 !important;
@@ -363,8 +393,10 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
         {/* ── BODY: normal=scroll dọc / fullscreen=2 cột cố định ── */}
         <div className="dsp-tv-body" style={{ flex: 1, overflowY: 'auto' }}>
 
-          {/* CỘT TRÁI (fullscreen) / KHỐI 1 (normal): Chi tiết lô SX */}
+          {/* CỘT TRÁI (fullscreen) / KHỐI 1 (normal): Chi tiết lô SX hôm nay + hôm qua */}
           <div className="dsp-fs-left">
+
+            {/* ── Chi tiết hôm nay ── */}
             <div className="dsp-chi-tiet-box"
               style={{ margin: '10px 12px 0', background: BG_SEC, borderRadius: 8,
                 border: `1px solid ${BORDER}`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
@@ -376,7 +408,6 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
                     textTransform: 'none', letterSpacing: 0 }}>Theo thời gian thực</span>
                 )}
               </div>
-              {/* Header bảng cố định */}
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', flexShrink: 0 }}>
                 <colgroup>
                   <col style={{ width: '12%' }} /><col style={{ width: '36%' }} />
@@ -388,7 +419,6 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
                     <th key={h} style={thStyle}>{h}</th>)}</tr>
                 </thead>
               </table>
-              {/* Rows — tự cuộn khi nhiều dòng */}
               <div ref={scrollRef} className="dsp-tv-scroll"
                 onMouseEnter={() => { isPausedRef.current = true }}
                 onMouseLeave={() => { isPausedRef.current = false }}
@@ -401,12 +431,9 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
                   </colgroup>
                   <tbody>
                     {todayRows.length === 0
-                      ? <tr><td colSpan={5} style={{ textAlign: 'center', color: DIM, padding: '32px 0', fontSize: 14 }}>
-                          <div style={{ fontSize: 28, marginBottom: 8 }}>⬜</div>
-                          Chưa có lô sản xuất nào hôm nay<br/>
-                          <span style={{ fontSize: 12, opacity: 0.7 }}>
-                            Dữ liệu lô sẽ tự động hiển thị khi các tổ bắt đầu khai báo trong ca làm việc.
-                          </span>
+                      ? <tr><td colSpan={5} style={{ textAlign: 'center', color: DIM, padding: '24px 0', fontSize: 13 }}>
+                          <div style={{ fontSize: 24, marginBottom: 6 }}>⬜</div>
+                          Chưa có lô sản xuất nào hôm nay
                         </td></tr>
                       : todayRows.map((r, i) => (
                         <tr key={i} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.03)' }}>
@@ -434,6 +461,68 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
                 </div>
               )}
             </div>
+
+            {/* ── Chi tiết hôm qua ── */}
+            <div className="dsp-chi-tiet-box"
+              style={{ margin: '0 12px 10px', background: BG_SEC, borderRadius: 8,
+                border: `1px solid ${BORDER}`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+            >
+              <div className="dsp-sec-title" style={{ ...secTitle, flexShrink: 0 }}>
+                Chi tiết lô sản xuất hôm qua · {ref.subtract(1,'day').format('DD/MM')}
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', flexShrink: 0 }}>
+                <colgroup>
+                  <col style={{ width: '12%' }} /><col style={{ width: '36%' }} />
+                  <col style={{ width: '13%' }} /><col style={{ width: '12%' }} />
+                  <col style={{ width: '27%' }} />
+                </colgroup>
+                <thead>
+                  <tr>{['BỘ PHẬN','TÊN SẢN PHẨM','SỐ LÔ','CỠ LÔ','TÌNH TRẠNG'].map(h =>
+                    <th key={h} style={thStyle}>{h}</th>)}</tr>
+                </thead>
+              </table>
+              <div ref={scrollRefYd} className="dsp-tv-scroll"
+                onMouseEnter={() => { isPausedRefYd.current = true }}
+                onMouseLeave={() => { isPausedRefYd.current = false }}
+              >
+                <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                  <colgroup>
+                    <col style={{ width: '12%' }} /><col style={{ width: '36%' }} />
+                    <col style={{ width: '13%' }} /><col style={{ width: '12%' }} />
+                    <col style={{ width: '27%' }} />
+                  </colgroup>
+                  <tbody>
+                    {yesterdayRows.length === 0
+                      ? <tr><td colSpan={5} style={{ textAlign: 'center', color: DIM, padding: '24px 0', fontSize: 13 }}>
+                          Không có dữ liệu hôm qua
+                        </td></tr>
+                      : yesterdayRows.map((r, i) => (
+                        <tr key={i} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.03)' }}>
+                          <td style={tdStyle({ textAlign: 'center', fontWeight: 800, color: ACCENT })}>{r.congDoan || '—'}</td>
+                          <td style={tdStyle({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 })} title={r.tenTrinh}>{r.tenTrinh || '—'}</td>
+                          <td style={tdStyle({ textAlign: 'center', fontFamily: 'monospace', fontWeight: 700, color: '#93c5fd' })}>{r.soLo || '—'}</td>
+                          <td style={tdStyle({ textAlign: 'right', fontWeight: 700 })}>{r.coLo != null ? Number(r.coLo).toLocaleString('vi-VN') : '—'}</td>
+                          <td style={tdStyle({ textAlign: 'center', padding: '5px 6px' })}>
+                            {r.status === 'PENDING'
+                              ? <span style={{ background: 'rgba(234,179,8,0.15)', color: '#fbbf24', fontWeight: 700, fontSize: 12, padding: '3px 8px', borderRadius: 4 }}>⌛ Chưa HT</span>
+                              : r.status === 'IN_PROGRESS'
+                                ? <span style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa', fontWeight: 700, fontSize: 12, padding: '3px 8px', borderRadius: 4 }}>▶ Đang TH</span>
+                                : <span style={{ background: 'rgba(34,197,94,0.15)', color: '#4ade80', fontWeight: 700, fontSize: 12, padding: '3px 8px', borderRadius: 4 }}>✓ Hoàn thành</span>}
+                          </td>
+                        </tr>
+                      ))
+                    }
+                  </tbody>
+                </table>
+              </div>
+              {yesterdayRows.length > 6 && (
+                <div style={{ textAlign: 'center', fontSize: 11, color: DIM, padding: '3px',
+                  borderTop: `1px solid ${BORDER}`, fontStyle: 'italic', flexShrink: 0 }}>
+                  {yesterdayRows.length} dòng — tự động cuộn · di chuyển chuột để tạm dừng
+                </div>
+              )}
+            </div>
+
           </div>
 
           {/* CỘT PHẢI (fullscreen) / KHỐI 2+3 (normal) */}
