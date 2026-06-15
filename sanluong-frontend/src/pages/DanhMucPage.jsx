@@ -27,6 +27,7 @@ const ROLE_MAP = {
   ADMIN_KH:    { color: 'cyan',     label: 'Admin Kế hoạch' },
   TKSX:        { color: 'lime',     label: 'TKSX' },
   QUAN_DOC:    { color: 'default',  label: 'Quản lý Đọc' },
+  MAN_HINH:    { color: 'cyan',     label: 'Màn hình hiển thị' },
   ADMIN_PC:    { color: 'purple',   label: 'Admin PC' },
   ADMIN_BBC1:  { color: 'volcano',  label: 'Admin BBC1' },
   ADMIN_PL:    { color: 'purple',   label: 'Admin PL' },

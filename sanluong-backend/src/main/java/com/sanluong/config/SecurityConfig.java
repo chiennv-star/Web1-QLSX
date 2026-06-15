@@ -41,7 +41,7 @@ public class SecurityConfig {
         "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3"
     };
     private static final String[] ALL_ROLES = {
-        "ADMIN", "TKSX", "QUAN_DOC",
+        "ADMIN", "TKSX", "QUAN_DOC", "MAN_HINH",
         "NHAN_VIEN", "NHAN_VIEN_PCPL1", "NHAN_VIEN_PCPL2", "NHAN_VIEN_PCPL3", "NHAN_VIEN_BBC1", "NHAN_VIEN_DG",
         "ADMIN_PC", "ADMIN_BBC1", "ADMIN_PL", "ADMIN_DG", "ADMIN_KH",
         "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3", "HCNS", "KE_TOAN"
