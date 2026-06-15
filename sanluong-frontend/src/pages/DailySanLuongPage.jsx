@@ -78,8 +78,6 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
     }
   }
 
-  const [nsTbMap, setNsTbMap] = useState({}) // maSp → nangSuatTrungBinh
-
   const getDeptKey = (r) => {
     let cd = r.congDoan?.toUpperCase()
     if (cd === 'PC') {
@@ -517,6 +515,7 @@ function DailyDetailTab() {
   const [rejectNote, setRejectNote] = useState('')
   const [rejectingId, setRejectingId] = useState(null)
   const [actionLoading, setActionLoading] = useState({})
+  const [nsTbMap, setNsTbMap] = useState({}) // maSp → slTrungBinh (năng suất trung bình)
   const filterRef = useRef(null)
   const [filterH, setFilterH] = useState(0)
   useEffect(() => {
