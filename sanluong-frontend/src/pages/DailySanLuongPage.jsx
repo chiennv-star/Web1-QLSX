@@ -459,10 +459,11 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
                 valFn={d => {
                   const done  = stats.todayHscvDone[d.key]  || 0
                   const total = stats.todayHscvTotal[d.key] || 0
+                  const pct   = total > 0 ? Math.round(done / total * 100) : null
                   return {
                     sl: stats.todaySL[d.key] || 0,
-                    hscv: total > 0 ? `${Math.round(done/total*100)}% (${done}/${total})` : '—',
-                    hscvColor: total > 0 ? '#4ade80' : DIM,
+                    hscv: pct != null ? `${pct}% (${done}/${total})` : '—',
+                    hscvColor: pct == null ? DIM : pct >= 75 ? '#4ade80' : pct >= 50 ? '#facc15' : '#f87171',
                   }
                 }}
               />
@@ -472,13 +473,23 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
                 valFn={d => {
                   const done  = stats.ydHscvDone[d.key]  || 0
                   const total = stats.ydHscvTotal[d.key] || 0
+                  const pct   = total > 0 ? Math.round(done / total * 100) : null
                   return {
                     sl: stats.ydSL[d.key] || 0,
-                    hscv: total > 0 ? `${Math.round(done/total*100)}% (${done}/${total})` : '—',
-                    hscvColor: total > 0 ? '#4ade80' : DIM,
+                    hscv: pct != null ? `${pct}% (${done}/${total})` : '—',
+                    hscvColor: pct == null ? DIM : pct >= 75 ? '#4ade80' : pct >= 50 ? '#facc15' : '#f87171',
                   }
                 }}
               />
+            </div>
+            <div style={{ display: 'flex', gap: 14, padding: '6px 12px 10px', justifyContent: 'center' }}>
+              {[['#f87171','< 50%','Thấp'],['#facc15','50–75%','Trung bình'],['#4ade80','≥ 75%','Tốt']].map(([c, range, label]) => (
+                <span key={range} style={{ fontSize: 11, color: DIM, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: c, display: 'inline-block' }} />
+                  <span style={{ color: c, fontWeight: 700 }}>{range}</span>
+                  <span>· {label}</span>
+                </span>
+              ))}
             </div>
 
           </div>
