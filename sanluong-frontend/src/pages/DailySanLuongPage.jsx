@@ -112,8 +112,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
       }
       const ns   = r.nangSuat != null ? Number(r.nangSuat)
         : (r.congThucHien && r.sanLuong ? Number(r.sanLuong) / Number(r.congThucHien) : null)
-      const nsTb = r.nangSuatTrungBinh != null ? Number(r.nangSuatTrungBinh)
-        : (r.maSp ? nsTbMap[r.maSp] ?? null : null)
+      const nsTb = r.nangSuatTrungBinh != null ? Number(r.nangSuatTrungBinh) : null
       const isDat = isDone && ns != null && nsTb != null && ns >= nsTb
       if (r.ngay === today && hasSoLo && isDone) {
         todayHscvTotal[cd]++
@@ -125,7 +124,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
       }
     })
     return { todaySL, monthSL, ydSL, todayHscvDone, todayHscvTotal, ydHscvDone, ydHscvTotal }
-  }, [data, today, yesterday, monthStart, nsTbMap])
+  }, [data, today, yesterday, monthStart])
 
   const todayRows = useMemo(() =>
     data.filter(r => r.ngay === today && r.status !== 'IN_PROGRESS'),
