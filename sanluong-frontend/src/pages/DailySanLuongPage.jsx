@@ -220,8 +220,15 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
               <span className="dsp-dept-val" style={{ fontSize: 14, fontWeight: 800, color: sl > 0 ? '#4ade80' : DIM, textAlign: 'right' }}>
                 {sl.toLocaleString('vi-VN')}
               </span>
-              <span style={{ fontSize: 12, color: hscvColor, textAlign: 'right', fontWeight: hscvColor !== DIM ? 700 : 400 }}>
-                {hscv}
+              <span style={{ textAlign: 'right' }}>
+                {hscvColor === DIM
+                  ? <span style={{ fontSize: 12, color: DIM }}>—</span>
+                  : <span style={{
+                      fontSize: 11, fontWeight: 700, color: '#0d1117',
+                      background: hscvColor, borderRadius: 20,
+                      padding: '2px 8px', display: 'inline-block',
+                    }}>{hscv}</span>
+                }
               </span>
             </div>
           )
