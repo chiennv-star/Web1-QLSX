@@ -108,17 +108,22 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
         if (r.ngay >= monthStart)     monthSL[cd] += sl
         if (r.ngay === yesterday)     ydSL[cd] += sl
       }
-      if (r.ngay === today && hasSoLo) {
+      const ns   = r.nangSuat != null ? Number(r.nangSuat)
+        : (r.congThucHien && r.sanLuong ? Number(r.sanLuong) / Number(r.congThucHien) : null)
+      const nsTb = r.nangSuatTrungBinh != null ? Number(r.nangSuatTrungBinh)
+        : (r.maSp ? nsTbMap[r.maSp] ?? null : null)
+      const isDat = isDone && ns != null && nsTb != null && ns >= nsTb
+      if (r.ngay === today && hasSoLo && isDone) {
         todayHscvTotal[cd]++
-        if (isDone) todayHscvDone[cd]++
+        if (isDat) todayHscvDone[cd]++
       }
-      if (r.ngay === yesterday && hasSoLo) {
+      if (r.ngay === yesterday && hasSoLo && isDone) {
         ydHscvTotal[cd]++
-        if (isDone) ydHscvDone[cd]++
+        if (isDat) ydHscvDone[cd]++
       }
     })
     return { todaySL, monthSL, ydSL, todayHscvDone, todayHscvTotal, ydHscvDone, ydHscvTotal }
-  }, [data, today, yesterday, monthStart])
+  }, [data, today, yesterday, monthStart, nsTbMap])
 
   const todayRows = useMemo(() =>
     data.filter(r => r.ngay === today && r.status !== 'IN_PROGRESS'),
