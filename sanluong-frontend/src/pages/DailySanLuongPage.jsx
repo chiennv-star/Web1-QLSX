@@ -197,7 +197,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
       <div className="dsp-sec-title" style={secTitle}>{titleEl}</div>
       <div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', padding: '4px 10px', borderBottom: `1px solid ${BORDER}` }}>
-          {['BỘ PHẬN','SẢN LƯỢNG','HSCV'].map((h, i) => (
+          {['BỘ PHẬN','SẢN LƯỢNG','Hiệu Suất CV'].map((h, i) => (
             <span key={h} style={{ fontSize: 10, color: DIM, fontWeight: 700, textAlign: i > 0 ? 'right' : 'left' }}>{h}</span>
           ))}
         </div>
@@ -237,7 +237,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
           flex: 1 1 0 !important; min-height: 0 !important; height: 0 !important;
           overflow: hidden !important;
           display: grid !important;
-          grid-template-columns: 57% 43% !important;
+          grid-template-columns: 71% 29% !important;
           grid-template-rows: 1fr !important;
           gap: 8px !important;
           padding: 8px !important;
