@@ -676,7 +676,9 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
           <Col span={6}>
             {editItem?.coLo != null && editItem?.id ? (
               <Form.Item label="Cỡ lô"
-                help={<span style={{ fontSize: 10, color: '#94a3b8' }}>Đã khoá — dùng "Đổi Cỡ Lô"</span>}>
+                help={soLuongDon != null
+                  ? <span style={{ fontSize: 10, color: '#1D4ED8' }}>SL đơn: {Number(soLuongDon).toLocaleString('vi-VN')}</span>
+                  : <span style={{ fontSize: 10, color: '#94a3b8' }}>Đã khoá — dùng "Đổi Cỡ Lô"</span>}>
                 <Space.Compact style={{ width: '100%' }}>
                   <div style={{
                     flex: 1, height: 32, lineHeight: '32px', padding: '0 11px',
@@ -696,24 +698,37 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
                 </Space.Compact>
               </Form.Item>
             ) : (
-              <Form.Item label="Cỡ lô" name="coLo">
+              <Form.Item label="Cỡ lô" name="coLo"
+                help={soLuongDon != null
+                  ? <span style={{ fontSize: 10, color: '#1D4ED8' }}>SL đơn: {Number(soLuongDon).toLocaleString('vi-VN')}</span>
+                  : undefined}>
                 <InputNumber style={{ width: '100%' }} min={0} step={100} />
               </Form.Item>
             )}
           </Col>
           <Col span={6}>
-            <Form.Item label="Số lượng đơn">
-              <div style={{
-                height: 32, display: 'flex', alignItems: 'center', padding: '0 11px',
-                background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6,
-              }}>
-                {soLuongDon != null
-                  ? <span style={{ fontWeight: 700, color: '#1D4ED8', fontSize: 13 }}>
-                      {Number(soLuongDon).toLocaleString('vi-VN')}
-                    </span>
-                  : <span style={{ color: '#d9d9d9', fontSize: 12 }}>Chưa có đơn hàng</span>
-                }
-              </div>
+            <Form.Item
+              label={
+                <Space size={4}>
+                  <span>Số lô</span>
+                  {!editItem && congDoan === 'PL' && soLoLookupLoading &&
+                    <SyncOutlined spin style={{ color: '#1677ff' }} />}
+                  {!editItem && congDoan === 'PL' && !soLoLookupLoading && soLoSuggestions.length > 1 &&
+                    <Tag color="orange" style={{ margin: 0, fontSize: 10 }}>Nhiều lô</Tag>}
+                </Space>
+              }
+              name="soLo"
+            >
+              {!editItem && congDoan === 'PL' && soLoSuggestions.length > 1 ? (
+                <Select placeholder="Chọn số lô từ PC" allowClear>
+                  {soLoSuggestions.map(s => <Option key={s} value={s}>{s}</Option>)}
+                </Select>
+              ) : (
+                <Input
+                  placeholder={!editItem && congDoan === 'PL' && soLoLookupLoading ? 'Đang tra cứu…' : 'VD: 180626'}
+                  style={{ fontFamily: 'monospace', fontWeight: 700 }}
+                />
+              )}
             </Form.Item>
           </Col>
           <Col span={6}>
@@ -723,36 +738,6 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
             </Form.Item>
           </Col>
         </Row>
-
-
-        {congDoan === 'PL' && !editItem && (
-          <Row gutter={12}>
-            <Col span={12}>
-              <Form.Item
-                label={
-                  <Space size={4}>
-                    <span>Số Lô (từ pha chế)</span>
-                    {soLoLookupLoading && <SyncOutlined spin style={{ color: '#1677ff' }} />}
-                    {!soLoLookupLoading && soLoSuggestions.length > 1 &&
-                      <Tag color="orange" style={{ margin: 0, fontSize: 10 }}>Nhiều lô — chọn 1</Tag>}
-                  </Space>
-                }
-                name="soLo"
-              >
-                {soLoSuggestions.length > 1 ? (
-                  <Select placeholder="Chọn số lô từ PCPL1/PCPL2" allowClear>
-                    {soLoSuggestions.map(s => <Option key={s} value={s}>{s}</Option>)}
-                  </Select>
-                ) : (
-                  <Input
-                    placeholder={soLoLookupLoading ? 'Đang tra cứu từ PCPL1/PCPL2…' : 'Chọn đơn hàng để tra cứu tự động'}
-                    style={{ fontFamily: 'monospace', fontWeight: 700 }}
-                  />
-                )}
-              </Form.Item>
-            </Col>
-          </Row>
-        )}
 
         <Row gutter={12}>
           <Col span={7}>
