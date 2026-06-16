@@ -2095,8 +2095,8 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const allowedNhom = forcedNhom || (congDoan === 'PC' ? getAllowedNhom() : null)
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 500, total: 0 })
-  const paginationRef = useRef({ current: 1, pageSize: 500 })
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 1000, total: 0 })
+  const paginationRef = useRef({ current: 1, pageSize: 1000 })
   const [filters, setFilters] = useState({
     dateRange: null,
     maSp: '',
@@ -2155,7 +2155,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
     return parseInt(`${yy}${mm}${dd}`, 10)
   }
 
-  const fetchData = useCallback(async (page = 0, size = 20, f = filters, { silent = false } = {}) => {
+  const fetchData = useCallback(async (page = 0, size = 1000, f = filters, { silent = false } = {}) => {
     if (!silent) setLoading(true)
     try {
       const params = {
@@ -2306,7 +2306,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
     {
       title: 'STT', key: 'stt', width: 48, fixed: 'left', align: 'center',
       render: (_, __, index) => {
-        const pageSize = pagination.pageSize || 20
+        const pageSize = pagination.pageSize || 1000
         const currentPage = pagination.current || 1
         return <span style={{ color: '#8c8c8c', fontSize: 12 }}>{(currentPage - 1) * pageSize + index + 1}</span>
       },
@@ -2790,10 +2790,10 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
 function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 500, total: 0 })
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 1000, total: 0 })
   const [filters, setFilters] = useState({ dateRange: null, maSp: '', soLo: '', tenTrinh: '', maBravo: '' })
 
-  const fetchDone = useCallback(async (page = 0, size = 500, f = filters) => {
+  const fetchDone = useCallback(async (page = 0, size = 1000, f = filters) => {
     setLoading(true)
     try {
       const { data: res } = await api.get('/work-schedule', {
@@ -2947,11 +2947,11 @@ function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
 function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange }) {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 500, total: 0 })
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 1000, total: 0 })
   const [selectedIds, setSelectedIds] = useState([])
   const [bulkLoading, setBulkLoading] = useState(false)
 
-  const fetchHidden = useCallback(async (page = 0, size = 500) => {
+  const fetchHidden = useCallback(async (page = 0, size = 1000) => {
     setLoading(true)
     try {
       const { data: res } = await api.get('/work-schedule/hidden', {
