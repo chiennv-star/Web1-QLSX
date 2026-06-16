@@ -84,6 +84,8 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
   const [isDirty, setIsDirty] = useState(false)
   const [dhPickerOpen,    setDhPickerOpen]    = useState(false) // gợi ý đơn hàng khi gõ maDonHang
   const [dhInput,         setDhInput]         = useState('')    // giá trị đang gõ maDonHang
+  const [soLoSuggestions,    setSoLoSuggestions]    = useState([])    // danh sách soLo gợi ý từ PCPL1/PCPL2
+  const [soLoLookupLoading,  setSoLoLookupLoading]  = useState(false) // đang tra cứu soLo từ PC
 
   // Đồng bộ currentCoLo khi mở modal với editItem mới
   useEffect(() => {
@@ -146,6 +148,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
       setLoHistory([])
       setDhPickerOpen(false)
       setDhInput('')
+      setSoLoSuggestions([])
     }
   }, [open, editItem])
 
@@ -244,6 +247,30 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
     // Removed: was looking up maDonHang from Lệnh SX
   }
 
+  // Tra cứu soLo từ PCPL1/PCPL2 cho PCPL3 — lọc theo maDonHang + coLo
+  const lookupSoLoFromPC = useCallback(async (maDonHang, coLo) => {
+    if (!maDonHang) return
+    setSoLoLookupLoading(true)
+    setSoLoSuggestions([])
+    form.setFieldsValue({ soLo: '' })
+    try {
+      const { data } = await api.get('/work-schedule', {
+        params: { maDonHang, congDoan: 'PC', source: 'PLAN', page: 0, size: 100 }
+      })
+      const records = (data.content || []).filter(r => r.soLo)
+      const filtered = coLo != null
+        ? records.filter(r => Number(r.coLo) === Number(coLo))
+        : records
+      const uniqueSoLo = [...new Set(filtered.map(r => r.soLo))]
+      if (uniqueSoLo.length === 1) {
+        form.setFieldsValue({ soLo: uniqueSoLo[0] })
+      } else if (uniqueSoLo.length > 1) {
+        setSoLoSuggestions(uniqueSoLo)
+      }
+    } catch { /* silent */ }
+    finally { setSoLoLookupLoading(false) }
+  }, [form])
+
   // Lookup by Mã SP → auto-fill tenTrinh
   const handleMaSpChange = (e) => {
     const val = e.target.value?.trim()
@@ -318,7 +345,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
         maDonHang: values.maDonHang?.trim() || (editItem ? editItem.maDonHang : null) || null,
         maSp:      values.maSp      || null,
         tenTrinh:  values.tenTrinh  || null,
-        soLo:      editItem?.soLo    || null,
+        soLo:      values.soLo || editItem?.soLo || null,
         coLo:      values.coLo      ?? editItem?.coLo ?? null,
         [congField]:   values.cong          ?? null,
         phongThucHien: values.phongThucHien || null,
@@ -472,6 +499,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
                         setBravoInput('')
                         setBravoStatus('found')
                         if (dh.maDonHang) setDonHangStatus('found')
+                        if (congDoan === 'PL') lookupSoLoFromPC(dh.maDonHang, dh.soLuongDatHang)
                       }}
                       style={{ padding: '6px 10px', cursor: 'pointer', borderBottom: '1px solid #f5f5f5', transition: 'background 0.1s' }}
                       onMouseEnter={e => e.currentTarget.style.background = '#f0f7ff'}
@@ -574,6 +602,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
                             setDhInput('')
                             setDonHangStatus('found')
                             if (dh.maBravo) setBravoStatus('found')
+                            if (congDoan === 'PL') lookupSoLoFromPC(dh.maDonHang, dh.soLuongDatHang)
                           }}
                           style={{ padding: '7px 10px', cursor: 'pointer', borderBottom: '1px solid #f5f5f5', transition: 'background 0.1s', opacity: isDoneDh ? 0.7 : 1, background: isDoneDh ? '#fafff8' : undefined }}
                           onMouseEnter={e => e.currentTarget.style.background = '#f0f7ff'}
@@ -695,6 +724,35 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
           </Col>
         </Row>
 
+
+        {congDoan === 'PL' && !editItem && (
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item
+                label={
+                  <Space size={4}>
+                    <span>Số Lô (từ pha chế)</span>
+                    {soLoLookupLoading && <SyncOutlined spin style={{ color: '#1677ff' }} />}
+                    {!soLoLookupLoading && soLoSuggestions.length > 1 &&
+                      <Tag color="orange" style={{ margin: 0, fontSize: 10 }}>Nhiều lô — chọn 1</Tag>}
+                  </Space>
+                }
+                name="soLo"
+              >
+                {soLoSuggestions.length > 1 ? (
+                  <Select placeholder="Chọn số lô từ PCPL1/PCPL2" allowClear>
+                    {soLoSuggestions.map(s => <Option key={s} value={s}>{s}</Option>)}
+                  </Select>
+                ) : (
+                  <Input
+                    placeholder={soLoLookupLoading ? 'Đang tra cứu từ PCPL1/PCPL2…' : 'Chọn đơn hàng để tra cứu tự động'}
+                    style={{ fontFamily: 'monospace', fontWeight: 700 }}
+                  />
+                )}
+              </Form.Item>
+            </Col>
+          </Row>
+        )}
 
         <Row gutter={12}>
           <Col span={7}>
