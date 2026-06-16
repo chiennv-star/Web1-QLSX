@@ -126,13 +126,14 @@ public class WorkScheduleController {
             @RequestParam(required = false) String tenTrinh,
             @RequestParam(required = false) String soLo,
             @RequestParam(required = false) String maBravo,
+            @RequestParam(required = false) String maDonHang,
             @RequestParam(required = false) String tinhTrang,
             @RequestParam(required = false) String congDoan,
             @RequestParam(required = false) String source,
             @RequestParam(required = false) String toNhom,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(service.search(fromDate, toDate, maSp, tenTrinh, soLo, maBravo, tinhTrang, congDoan, source, toNhom, page, size));
+        return ResponseEntity.ok(service.search(fromDate, toDate, maSp, tenTrinh, soLo, maBravo, maDonHang, tinhTrang, congDoan, source, toNhom, page, size));
     }
 
     @GetMapping("/suggestions")

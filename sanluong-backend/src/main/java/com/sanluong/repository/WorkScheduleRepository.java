@@ -28,6 +28,7 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
           AND (:tenTrinh IS NULL OR w.tenTrinh LIKE %:tenTrinh%)
           AND (:soLo IS NULL OR w.soLo LIKE %:soLo%)
           AND (:maBravo IS NULL OR w.maBravo LIKE %:maBravo%)
+          AND (:maDonHang IS NULL OR w.maDonHang = :maDonHang)
           AND (:tinhTrang IS NULL OR w.tinhTrang = :tinhTrang)
           AND (:congDoan IS NULL OR w.congDoan = :congDoan)
           AND (:source IS NULL
@@ -43,6 +44,7 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
             @Param("tenTrinh") String tenTrinh,
             @Param("soLo") String soLo,
             @Param("maBravo") String maBravo,
+            @Param("maDonHang") String maDonHang,
             @Param("tinhTrang") String tinhTrang,
             @Param("congDoan") String congDoan,
             @Param("source") String source,
@@ -60,6 +62,7 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
           AND (:tenTrinh IS NULL OR w.tenTrinh LIKE %:tenTrinh%)
           AND (:soLo IS NULL OR w.soLo LIKE %:soLo%)
           AND (:maBravo IS NULL OR w.maBravo LIKE %:maBravo%)
+          AND (:maDonHang IS NULL OR w.maDonHang = :maDonHang)
           AND (:tinhTrang IS NULL OR w.tinhTrang = :tinhTrang)
           AND (:congDoan IS NULL OR w.congDoan = :congDoan)
           AND (:source IS NULL
@@ -74,6 +77,7 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
             @Param("tenTrinh") String tenTrinh,
             @Param("soLo") String soLo,
             @Param("maBravo") String maBravo,
+            @Param("maDonHang") String maDonHang,
             @Param("tinhTrang") String tinhTrang,
             @Param("congDoan") String congDoan,
             @Param("source") String source,

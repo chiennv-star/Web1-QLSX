@@ -93,13 +93,14 @@ public class WorkScheduleService {
 
     public Page<WorkSchedule> search(LocalDate fromDate, LocalDate toDate,
                                       String maSp, String tenTrinh, String soLo, String maBravo,
-                                      String tinhTrang, String congDoan, String source,
+                                      String maDonHang, String tinhTrang, String congDoan, String source,
                                       String toNhom, int page, int size) {
         List<WorkSchedule> all = repository.searchAll(fromDate, toDate,
                 isEmpty(maSp) ? null : maSp,
                 isEmpty(tenTrinh) ? null : tenTrinh,
                 isEmpty(soLo) ? null : soLo,
                 isEmpty(maBravo) ? null : maBravo,
+                isEmpty(maDonHang) ? null : maDonHang,
                 isEmpty(tinhTrang) ? null : tinhTrang,
                 isEmpty(congDoan) ? null : congDoan,
                 isEmpty(source) ? null : source,
