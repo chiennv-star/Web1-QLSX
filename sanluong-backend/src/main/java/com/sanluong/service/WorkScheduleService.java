@@ -36,6 +36,7 @@ public class WorkScheduleService {
     private final KhoachEventPublisher eventPublisher;
     private final WorkScheduleSessionRepository sessionRepository;
     private final NotificationService notificationService;
+    private final DonHangService donHangService;
 
     public WorkScheduleService(WorkScheduleRepository repository,
                                 ProductionRecordRepository productionRepo,
@@ -43,7 +44,8 @@ public class WorkScheduleService {
                                 WorkScheduleCoLoHistoryRepository coLoHistoryRepo,
                                 KhoachEventPublisher eventPublisher,
                                 WorkScheduleSessionRepository sessionRepository,
-                                NotificationService notificationService) {
+                                NotificationService notificationService,
+                                @Lazy DonHangService donHangService) {
         this.repository = repository;
         this.productionRepo = productionRepo;
         this.productMasterRepository = productMasterRepository;
@@ -51,6 +53,7 @@ public class WorkScheduleService {
         this.eventPublisher = eventPublisher;
         this.sessionRepository = sessionRepository;
         this.notificationService = notificationService;
+        this.donHangService = donHangService;
     }
 
     /** Enrich hasLsx: đánh dấu các bản ghi có ProductionRecord.lsx = soLo */
@@ -600,6 +603,8 @@ public class WorkScheduleService {
         w.setDeletedBy(username);
         repository.save(w);
         eventPublisher.publishKhoachUpdated();
+        if (w.getMaBravo() != null && w.getMaDonHang() != null)
+            donHangService.syncFromKhoachFor(w.getMaBravo(), w.getMaDonHang(), username);
     }
 
     public java.util.List<WorkSchedule> findTrash() {
@@ -613,6 +618,8 @@ public class WorkScheduleService {
         w.setDeletedBy(null);
         repository.save(w);
         eventPublisher.publishKhoachUpdated();
+        if (w.getMaBravo() != null && w.getMaDonHang() != null)
+            donHangService.syncFromKhoachFor(w.getMaBravo(), w.getMaDonHang(), "system");
     }
 
     public void deletePermanent(Long id) {
@@ -630,6 +637,15 @@ public class WorkScheduleService {
         list.forEach(w -> { w.setDeletedAt(now); w.setDeletedBy(username); });
         repository.saveAll(list);
         eventPublisher.publishKhoachUpdated();
+        // Sync lại tinhTrangSx cho các đơn hàng bị ảnh hưởng
+        list.stream()
+            .filter(w -> w.getMaBravo() != null && w.getMaDonHang() != null)
+            .map(w -> w.getMaBravo() + "||" + w.getMaDonHang())
+            .distinct()
+            .forEach(key -> {
+                String[] parts = key.split("\\|\\|", 2);
+                donHangService.syncFromKhoachFor(parts[0], parts[1], username);
+            });
         return list.size();
     }
 
