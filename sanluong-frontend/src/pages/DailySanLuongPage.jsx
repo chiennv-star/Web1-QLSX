@@ -127,7 +127,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
   }, [data, today, yesterday, monthStart])
 
   const todayRows = useMemo(() =>
-    data.filter(r => r.ngay === today && r.status !== 'IN_PROGRESS'),
+    data.filter(r => r.ngay === today),
   [data, today])
 
   const yesterdayRows = useMemo(() =>

@@ -3356,7 +3356,7 @@ export default function KhoachPage() {
         children: <DonHangPage />,
       },
     ] : []),
-  ], [canViewExtra]) // eslint-disable-line react-hooks/exhaustive-deps
+  ], [canViewExtra, filterSlot]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
