@@ -2173,6 +2173,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       const PCPL_CONFLICT = { PCPL1: 'PCPL2', PCPL2: 'PCPL1' }
       const conflictNhom = PCPL_CONFLICT[congDoan]
       const sorted = [...res.content]
+        .filter(r => r.tinhTrang !== 'done')
         .filter(r => !conflictNhom || !r.toNhom || r.toNhom !== conflictNhom)
         .sort((a, b) => parseSoLo(b.soLo) - parseSoLo(a.soLo))
       setData(sorted)
