@@ -1510,7 +1510,7 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
       const sy = window.scrollY
       await fetchData(undefined, { silent: true })
       requestAnimationFrame(() => window.scrollTo({ top: sy, behavior: 'instant' }))
-      syncToDonHang(payload)
+      syncToDonHang(payload).then(() => fetchDonHang())
     } catch { message.error('Xếp kế hoạch thất bại') }
   }
 
@@ -1603,7 +1603,7 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
         const sy = window.scrollY
         await fetchData(undefined, { silent: true })
         requestAnimationFrame(() => window.scrollTo({ top: sy, behavior: 'instant' }))
-        syncToDonHang(payload)
+        syncToDonHang(payload).then(() => fetchDonHang())
       } catch { message.error('Xếp kế hoạch thất bại') }
       return
     }
@@ -1645,7 +1645,7 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
       await api.post('/work-schedule', payload)
       message.success(`Đã xếp "${(dh.tenSanPham || dh.maDonHang || '').substring(0, 30)}" → ${toNhom} · ${dayjs(toDate).format('DD/MM/YYYY')}`)
       { const sy = window.scrollY; await fetchData(undefined, { silent: true }); requestAnimationFrame(() => window.scrollTo({ top: sy, behavior: 'instant' })) }
-      syncToDonHang(payload)
+      syncToDonHang(payload).then(() => fetchDonHang())
     } catch { message.error('Xếp kế hoạch thất bại') }
     finally { scheduleSelectInFlightRef.current = false }
   }
@@ -1690,7 +1690,7 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
           `Đã thêm "${(dh.tenSanPham || dh.maDonHang || '').substring(0, 30)}" → ${toNhom} · ${dayjs(toDate).format('DD/MM/YYYY')}`
         )
         { const sy = window.scrollY; await fetchData(undefined, { silent: true }); requestAnimationFrame(() => window.scrollTo({ top: sy, behavior: 'instant' })) }
-        syncToDonHang(payload)
+        syncToDonHang(payload).then(() => fetchDonHang())
       } catch { message.error('Kéo thả thất bại') }
       return
     }
@@ -1708,7 +1708,7 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
       })
       message.success(`Đã chuyển sang ${dayjs(toDate).format('DD/MM/YYYY')}${toNhom !== rec.toNhom ? ` · ${toNhom}` : ''}`)
       { const sy = window.scrollY; await fetchData(undefined, { silent: true }); requestAnimationFrame(() => window.scrollTo({ top: sy, behavior: 'instant' })) }
-      syncToDonHang({ ...rec, ngayThucHien: toDate, toNhom })
+      syncToDonHang({ ...rec, ngayThucHien: toDate, toNhom }).then(() => fetchDonHang())
     } catch { message.error('Kéo thả thất bại') }
   }
 
@@ -1763,7 +1763,7 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
       await api.post('/work-schedule', payload)
       message.success(`Đã dán vào ${dayjs(toDate).format('DD/MM/YYYY')}${toNhom !== src.toNhom ? ` · ${toNhom}` : ''}`)
       { const sy = window.scrollY; await fetchData(undefined, { silent: true }); requestAnimationFrame(() => window.scrollTo({ top: sy, behavior: 'instant' })) }
-      syncToDonHang(payload)
+      syncToDonHang(payload).then(() => fetchDonHang())
     } catch { message.error('Dán thất bại') }
     finally { pasteInFlightRef.current = false }
   }
@@ -3212,7 +3212,7 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
           const scrollY = window.scrollY
           await fetchData(undefined, { silent: true })
           requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'instant' }))
-          syncToDonHang(payload)
+          syncToDonHang(payload).then(() => fetchDonHang())
         }}
       />
 

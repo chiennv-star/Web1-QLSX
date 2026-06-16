@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
-  Table, Input, Select, Tag, Tooltip, message, Button,
+  Table, Input, Select, Tag, Tooltip, message, Button, Badge,
   Modal, Form, DatePicker, InputNumber, Divider,
 } from 'antd'
 import { Rnd } from 'react-rnd'
@@ -444,6 +444,15 @@ export default function LenhSanXuatTab() {
     return () => window.removeEventListener('resize', calcH)
   }, [])
 
+  const [missingLichSxCount, setMissingLichSxCount] = useState(0)
+
+  const fetchMissingCount = useCallback(async () => {
+    try {
+      const { data: res } = await api.get('/lenh-san-xuat/pending-sync-count')
+      setMissingLichSxCount(res.count || 0)
+    } catch { /* non-blocking */ }
+  }, [])
+
   const fetchLenh = useCallback(async () => {
     setLoading(true)
     try {
@@ -471,7 +480,8 @@ export default function LenhSanXuatTab() {
   const fetchAll = useCallback(() => {
     fetchLenh()
     fetchPending()
-  }, [fetchLenh, fetchPending])
+    fetchMissingCount()
+  }, [fetchLenh, fetchPending, fetchMissingCount])
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
@@ -876,19 +886,22 @@ export default function LenhSanXuatTab() {
           >
             Đồng bộ SL
           </Button>
-          <Button
-            icon={<SyncOutlined />} size="small"
-            onClick={async () => {
-              try {
-                const { data: r } = await api.post('/lenh-san-xuat/sync-lich-sx')
-                message.success(`Đã tạo ${r.created} bản ghi Lịch SX còn thiếu`)
-                fetchAll()
-              } catch { message.error('Đồng bộ Lịch SX thất bại') }
-            }}
-            style={{ fontSize: 11 }}
-          >
-            Đồng bộ Lịch SX
-          </Button>
+          <Badge count={missingLichSxCount} size="small" offset={[-4, 4]}>
+            <Button
+              icon={<SyncOutlined />} size="small"
+              onClick={async () => {
+                try {
+                  const { data: r } = await api.post('/lenh-san-xuat/sync-lich-sx')
+                  message.success(`Đã tạo ${r.created} bản ghi Lịch SX còn thiếu`)
+                  setMissingLichSxCount(0)
+                  fetchAll()
+                } catch { message.error('Đồng bộ Lịch SX thất bại') }
+              }}
+              style={{ fontSize: 11 }}
+            >
+              Đồng bộ Lịch SX
+            </Button>
+          </Badge>
           <Button
             type="primary" icon={<PlusOutlined />} size="small"
             onClick={() => { setEditItem(null); setModalOpen(true) }}

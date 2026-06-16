@@ -31,10 +31,12 @@ export default function TongHopSanLuongPage() {
       const saved = localStorage.getItem('tonghop_dateRange')
       if (saved) {
         const [f, t] = JSON.parse(saved)
-        return [dayjs(f), dayjs(t)]
+        const from = dayjs(f), to = dayjs(t)
+        // Nếu khoảng ngày đã lưu < 25 ngày thì bỏ qua, dùng default 1 tháng
+        if (to.diff(from, 'day') >= 25) return [from, to]
       }
     } catch {}
-    return [dayjs().subtract(13, 'day'), dayjs()]
+    return [dayjs().subtract(1, 'month'), dayjs()]
   })
 
   const stickyRef = useRef(null)
@@ -74,7 +76,7 @@ export default function TongHopSanLuongPage() {
 
   const handleReset = () => {
     localStorage.removeItem('tonghop_dateRange')
-    const def = [dayjs().subtract(13, 'day'), dayjs()]
+    const def = [dayjs().subtract(1, 'month'), dayjs()]
     setDateRange(def)
     fetchData(def)
   }

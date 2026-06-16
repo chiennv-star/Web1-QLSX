@@ -71,4 +71,22 @@ public interface LenhSanXuatRepository extends JpaRepository<LenhSanXuat, Long> 
     @Query("SELECT l FROM LenhSanXuat l WHERE l.deletedAt IS NOT NULL ORDER BY l.deletedAt DESC")
     List<LenhSanXuat> findAllDeleted();
 
+    // Đếm lệnh đã ban hành nhưng chưa có WorkSchedule nào khớp (thiếu lịch SX)
+    @Query(value = """
+        SELECT COUNT(DISTINCT l.id)
+        FROM lenh_san_xuat l
+        WHERE l.deleted_at IS NULL
+          AND l.da_ban_hanh = true
+          AND l.ma_bravo IS NOT NULL
+          AND l.so_lo IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM work_schedule w
+              WHERE (w.source = 'SCHEDULE' OR w.source IS NULL)
+                AND w.ma_bravo = l.ma_bravo
+                AND w.so_lo = l.so_lo
+                AND w.deleted_at IS NULL
+          )
+        """, nativeQuery = true)
+    int countMissingLichSX();
+
 }

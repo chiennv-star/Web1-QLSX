@@ -250,6 +250,10 @@ public class LenhSanXuatService {
                 .count();
     }
 
+    public int countMissingLichSX() {
+        return repo.countMissingLichSX();
+    }
+
     /** Ban hành hàng loạt theo danh sách ID */
     @Transactional
     public int banHanhBulk(List<Long> ids, String username) {

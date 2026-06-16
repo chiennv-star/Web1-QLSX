@@ -81,6 +81,43 @@ public class WorkScheduleController {
         throw new AccessDeniedException("Không có quyền chỉnh sửa công đoạn: " + congDoan);
     }
 
+    // Trả về congDoan filter phù hợp với quyền của user
+    // ADMIN/ADMIN_KH/TKSX/QUAN_DOC: không lọc (null = tất cả)
+    // Stage admin: buộc filter về công đoạn của mình
+    private static final java.util.Map<String, String> STAGE_ADMIN_MAP = java.util.Map.of(
+            "ROLE_ADMIN_BBC1",  "BBC1",
+            "ROLE_ADMIN_DG",    "DG",
+            "ROLE_ADMIN_PCPL1", "PCPL1",
+            "ROLE_ADMIN_PCPL2", "PCPL2",
+            "ROLE_ADMIN_PCPL3", "PL",
+            "ROLE_ADMIN_PL",    "PL"
+    );
+    private static final java.util.Set<String> UNRESTRICTED_ROLES = java.util.Set.of(
+            "ROLE_ADMIN", "ROLE_ADMIN_KH", "ROLE_TKSX", "ROLE_QUAN_DOC", "ROLE_ADMIN_PC"
+    );
+
+    private String enforceStageFilter(Authentication auth, String requestedCongDoan) {
+        boolean unrestricted = auth.getAuthorities().stream()
+                .anyMatch(a -> UNRESTRICTED_ROLES.contains(a.getAuthority()));
+        if (unrestricted) return requestedCongDoan;
+        for (var a : auth.getAuthorities()) {
+            String mapped = STAGE_ADMIN_MAP.get(a.getAuthority());
+            if (mapped != null) return mapped; // bỏ qua filter client, dùng quyền server
+        }
+        return requestedCongDoan;
+    }
+
+    // Validate bulk-unhide: mỗi record phải thuộc công đoạn user có quyền
+    private void checkAdminOrStageForIds(List<Long> ids, Authentication auth) {
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        if (isAdmin) return;
+        for (Long id : ids) {
+            WorkSchedule w = service.getById(id);
+            checkStagePermission(auth, w.getCongDoan(), w.getSource());
+        }
+    }
+
     @GetMapping
     public ResponseEntity<Page<WorkSchedule>> search(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
@@ -185,7 +222,10 @@ public class WorkScheduleController {
     // Cập nhật một field duy nhất (congPc, congPl, slPc, ...) — dùng cho sync từ session
     @PatchMapping("/{id}/patch-field")
     public ResponseEntity<Void> patchField(@PathVariable Long id,
-                                            @RequestBody Map<String, Object> body) {
+                                            @RequestBody Map<String, Object> body,
+                                            Authentication auth) {
+        WorkSchedule w = service.getById(id);
+        checkStagePermission(auth, w.getCongDoan(), w.getSource());
         String field = (String) body.get("field");
         Object rawValue = body.get("value");
         java.math.BigDecimal value = rawValue == null ? null
@@ -215,7 +255,8 @@ public class WorkScheduleController {
     }
 
     @PostMapping("/bulk-unhide")
-    public ResponseEntity<Integer> bulkUnhide(@RequestBody List<Long> ids) {
+    public ResponseEntity<Integer> bulkUnhide(@RequestBody List<Long> ids, Authentication auth) {
+        checkAdminOrStageForIds(ids, auth);
         return ResponseEntity.ok(service.bulkUnhide(ids));
     }
 
@@ -225,8 +266,11 @@ public class WorkScheduleController {
             @RequestParam(required = false) String source,
             @RequestParam(required = false) String toNhom,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size) {
-        return ResponseEntity.ok(service.findHidden(congDoan, source, toNhom, page, size));
+            @RequestParam(defaultValue = "50") int size,
+            Authentication auth) {
+        // Stage admin chỉ được xem record ẩn của công đoạn mình quản lý
+        String filteredCongDoan = enforceStageFilter(auth, congDoan);
+        return ResponseEntity.ok(service.findHidden(filteredCongDoan, source, toNhom, page, size));
     }
 
     @DeleteMapping("/{id}")

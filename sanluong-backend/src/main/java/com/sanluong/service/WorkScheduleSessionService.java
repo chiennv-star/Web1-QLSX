@@ -55,6 +55,12 @@ public class WorkScheduleSessionService {
         return repository.findByWorkScheduleIdOrderByNgayAscIdAsc(scheduleId);
     }
 
+    public WorkScheduleSession getById(Long id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Không tìm thấy session: " + id));
+    }
+
     public WorkScheduleSession create(WorkScheduleSessionDto dto) {
         WorkScheduleSession s = new WorkScheduleSession();
         mapFromDto(s, dto);

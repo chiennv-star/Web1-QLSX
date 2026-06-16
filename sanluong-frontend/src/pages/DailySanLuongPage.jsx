@@ -1798,6 +1798,7 @@ export default function DailySanLuongPage() {
         .sl-page-tabs > .ant-tabs-nav {
           background: rgb(32,178,170) !important;
           padding: 0 12px; margin: 0 !important; box-shadow: 0 2px 12px rgba(0,0,0,0.22);
+          position: sticky !important; top: 0; z-index: 10;
         }
         .sl-page-tabs > .ant-tabs-nav .ant-tabs-tab {
           color: #ffffff !important; border: none !important; background: transparent !important;

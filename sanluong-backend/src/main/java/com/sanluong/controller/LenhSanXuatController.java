@@ -131,7 +131,7 @@ public class LenhSanXuatController {
 
     @GetMapping("/pending-sync-count")
     public ResponseEntity<Map<String, Integer>> pendingSyncCount() {
-        return ResponseEntity.ok(Map.of("count", service.countPendingSync()));
+        return ResponseEntity.ok(Map.of("count", service.countMissingLichSX()));
     }
 
     @PostMapping("/sync-san-luong")
