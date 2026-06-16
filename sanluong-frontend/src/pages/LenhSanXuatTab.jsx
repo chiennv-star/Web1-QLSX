@@ -682,7 +682,7 @@ export default function LenhSanXuatTab() {
       render: (v) => v ? <Tag color="default" style={{ fontWeight: 600, fontSize: 11 }}>{v}</Tag> : '—',
     },
     {
-      title: 'TÊN SẢN PHẨM', dataIndex: 'tenSanPham', ellipsis: true, width: 200,
+      title: 'TÊN SẢN PHẨM', dataIndex: 'tenSanPham', width: 280,
       render: (v, r) => (
         <Tooltip title={`${v || ''}${r.chuY ? ' ⚠ ' + r.chuY : ''}`}>
           <span style={{ fontWeight: 500, fontSize: 12 }}>
