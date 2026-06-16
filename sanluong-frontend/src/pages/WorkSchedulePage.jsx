@@ -2258,6 +2258,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   }
 
   const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [bulkHiding, setBulkHiding] = useState(false)
   const [selectedRowKeys, setSelectedRowKeys] = useState([])
 
   const handleDeleteAll = async () => {
@@ -2295,6 +2296,20 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       message.success('Đã ẩn bản ghi — xem trong tab "Đã ẩn"')
       parentOnSaved?.()
     } catch { message.error('Ẩn thất bại') }
+  }
+
+  const handleBulkHideSelected = async () => {
+    if (selectedRowKeys.length === 0) return
+    setBulkHiding(true)
+    try {
+      const count = await api.post('/work-schedule/bulk-hide', selectedRowKeys)
+      message.success(`Đã ẩn ${count.data} bản ghi — xem trong tab "Đã ẩn"`)
+      setSelectedRowKeys([])
+      setHiddenCount(c => c + selectedRowKeys.length)
+      fetchData(0)
+      parentOnSaved?.()
+    } catch { message.error('Ẩn thất bại') }
+    finally { setBulkHiding(false) }
   }
 
   useEffect(() => {
@@ -2642,6 +2657,19 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                   <span className="ws-desktop-actions">
                     <Button size="small" type="primary" icon={<SearchOutlined />} onClick={() => fetchData(0)}>Tìm</Button>
                     <Button size="small" icon={<ReloadOutlined />} onClick={handleReset} />
+                    {canEditStage(congDoan) && selectedRowKeys.length > 0 && (
+                      <Popconfirm
+                        title={`Ẩn ${selectedRowKeys.length} bản ghi đã chọn?`}
+                        okText="Ẩn" cancelText="Hủy"
+                        okButtonProps={{ loading: bulkHiding }}
+                        onConfirm={handleBulkHideSelected}
+                      >
+                        <Button size="small" icon={<EyeInvisibleOutlined />} loading={bulkHiding}
+                          style={{ fontWeight: 700, color: '#595959' }}>
+                          Ẩn đã chọn ({selectedRowKeys.length})
+                        </Button>
+                      </Popconfirm>
+                    )}
                     {canEditStage(congDoan) && selectedRowKeys.length > 0 && canDeleteSchedule() && (
                       <Popconfirm
                         title={`Xóa ${selectedRowKeys.length} bản ghi đã chọn?`}

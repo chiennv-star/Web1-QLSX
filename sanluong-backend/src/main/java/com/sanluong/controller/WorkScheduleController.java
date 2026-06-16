@@ -255,6 +255,12 @@ public class WorkScheduleController {
         return ResponseEntity.ok(service.setHidden(id, hidden));
     }
 
+    @PostMapping("/bulk-hide")
+    public ResponseEntity<Integer> bulkHide(@RequestBody List<Long> ids, Authentication auth) {
+        checkAdminOrStageForIds(ids, auth);
+        return ResponseEntity.ok(service.bulkHide(ids));
+    }
+
     @PostMapping("/bulk-unhide")
     public ResponseEntity<Integer> bulkUnhide(@RequestBody List<Long> ids, Authentication auth) {
         checkAdminOrStageForIds(ids, auth);

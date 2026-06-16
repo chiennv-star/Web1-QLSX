@@ -133,6 +133,15 @@ public class WorkScheduleService {
         return saved;
     }
 
+    public int bulkHide(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return 0;
+        List<WorkSchedule> list = repository.findAllById(ids);
+        list.forEach(w -> w.setHidden(true));
+        repository.saveAll(list);
+        eventPublisher.publishKhoachUpdated();
+        return list.size();
+    }
+
     public int bulkUnhide(List<Long> ids) {
         if (ids == null || ids.isEmpty()) return 0;
         List<WorkSchedule> list = repository.findAllById(ids);
