@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import {
   DatePicker, Button, Spin, message, Modal, Form, Alert,
   Input, InputNumber, Select, Space, Row, Col, Tooltip, Tag, Dropdown, Tabs, List, Badge, Progress, Popover, AutoComplete,
@@ -1374,7 +1375,7 @@ function KhoachTongHopContent({ onViewCalendar }) {
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
-function KhoachContent({ miniPickerMode = false }) {
+function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
   const { canEditPlan } = useAuth()
   const canEdit = canEditPlan()
 
@@ -2026,91 +2027,85 @@ function KhoachContent({ miniPickerMode = false }) {
         </div>
       )}
 
-      {/* ── Sticky header: filter bar + hidden weeks ── */}
-      <div style={{
-        position: 'sticky',
-        top: 47,
-        zIndex: 10,
-        background: '#fff',
-        paddingTop: 8,
-        paddingBottom: 4,
-        boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-      }}>
-        <div style={{ marginBottom: hiddenWeeks.length > 0 ? 6 : 0, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Button
-            icon={<CalendarOutlined />}
-            onClick={() => setShowDatePicker(v => !v)}
-            style={{
-              borderColor: showDatePicker ? '#1D4ED8' : '#d9d9d9',
-              color: showDatePicker ? '#1D4ED8' : '#595959',
-              fontWeight: 500,
-              minWidth: 200,
-            }}
-          >
-            {dateRange?.[0]?.format('DD/MM/YYYY') || '...'}&nbsp;→&nbsp;{dateRange?.[1]?.format('DD/MM/YYYY') || '...'}
-          </Button>
-          {showDatePicker && (
-            <RangePicker
-              value={dateRange}
-              format="DD/MM/YYYY"
-              onChange={r => { if (r) { setDateRange(r); saveDateRange(r) }; setShowDatePicker(false) }}
-              placeholder={['Từ ngày', 'Đến ngày']}
-              style={{ width: 260 }}
-              autoFocus
-              open
-              onOpenChange={open => { if (!open) setShowDatePicker(false) }}
-            />
-          )}
-          <Button type="primary" icon={<SearchOutlined />} onClick={() => {
-            setCollapsedWeeks(new Set())
-            fetchData()
-          }}>Tìm</Button>
-          <Button icon={<ReloadOutlined />} onClick={() => {
-            const r = [defaultFrom, defaultTo]
-            setDateRange(r)
-            saveDateRange(r)
-            setCollapsedWeeks(new Set())
-            fetchData(r)
-            setShowDatePicker(false)
-          }} />
-
-          {weekChunks.length > 0 && (
-            <Button onClick={() => setCollapsedWeeks(
-              collapsedWeeks.size === weekChunks.length
-                ? new Set()
-                : new Set(weekChunks.map(wk => wk.weekIdx))
-            )}>
-              {collapsedWeeks.size === weekChunks.length ? 'Hiện tất cả' : 'Ẩn tất cả'}
+      {/* ── Filter bar controls (portal → tab nav khi filterSlot có, fallback sticky) ── */}
+      {(() => {
+        const filterControls = (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
+            ...(filterSlot ? { padding: '0 8px' } : { marginBottom: hiddenWeeks.length > 0 ? 6 : 0 }) }}>
+            <Button
+              icon={<CalendarOutlined />}
+              onClick={() => setShowDatePicker(v => !v)}
+              style={{
+                borderColor: showDatePicker ? '#1D4ED8' : '#d9d9d9',
+                color: showDatePicker ? '#1D4ED8' : '#595959',
+                fontWeight: 500,
+                minWidth: 200,
+              }}
+            >
+              {dateRange?.[0]?.format('DD/MM/YYYY') || '...'}&nbsp;→&nbsp;{dateRange?.[1]?.format('DD/MM/YYYY') || '...'}
             </Button>
-          )}
-          {canEdit && !miniPickerMode && (
-            <Tooltip title={showDonHang ? 'Ẩn bảng Đơn Hàng' : 'Hiện bảng Đơn Hàng'}>
-              <Button
-                icon={<FileTextOutlined />}
-                type={showDonHang ? 'primary' : 'default'}
-                style={showDonHang ? { borderColor: '#2d6a2d', background: '#2d6a2d' } : { borderColor: '#2d6a2d', color: '#2d6a2d' }}
-                onClick={() => setShowDonHang(v => !v)}
-              >
-                ĐƠN HÀNG
+            {showDatePicker && (
+              <RangePicker
+                value={dateRange}
+                format="DD/MM/YYYY"
+                onChange={r => { if (r) { setDateRange(r); saveDateRange(r) }; setShowDatePicker(false) }}
+                placeholder={['Từ ngày', 'Đến ngày']}
+                style={{ width: 260 }}
+                autoFocus
+                open
+                onOpenChange={open => { if (!open) setShowDatePicker(false) }}
+              />
+            )}
+            <Button type="primary" icon={<SearchOutlined />} onClick={() => {
+              setCollapsedWeeks(new Set())
+              fetchData()
+            }}>Tìm</Button>
+            <Button icon={<ReloadOutlined />} onClick={() => {
+              const r = [defaultFrom, defaultTo]
+              setDateRange(r)
+              saveDateRange(r)
+              setCollapsedWeeks(new Set())
+              fetchData(r)
+              setShowDatePicker(false)
+            }} />
+            {weekChunks.length > 0 && (
+              <Button onClick={() => setCollapsedWeeks(
+                collapsedWeeks.size === weekChunks.length
+                  ? new Set()
+                  : new Set(weekChunks.map(wk => wk.weekIdx))
+              )}>
+                {collapsedWeeks.size === weekChunks.length ? 'Hiện tất cả' : 'Ẩn tất cả'}
               </Button>
-            </Tooltip>
-          )}
-          {canEdit && (
-            <Tooltip title={isMultiSelectMode ? 'Thoát chế độ chọn nhiều' : 'Chọn nhiều bản ghi để xóa'}>
-              <Button
-                icon={<CheckSquareOutlined />}
-                type={isMultiSelectMode ? 'primary' : 'default'}
-                danger={isMultiSelectMode}
-                onClick={toggleMultiSelectMode}
-              >
-                Chọn nhiều
-              </Button>
-            </Tooltip>
-          )}
-        </div>
+            )}
+            {canEdit && !miniPickerMode && (
+              <Tooltip title={showDonHang ? 'Ẩn bảng Đơn Hàng' : 'Hiện bảng Đơn Hàng'}>
+                <Button
+                  icon={<FileTextOutlined />}
+                  type={showDonHang ? 'primary' : 'default'}
+                  style={showDonHang ? { borderColor: '#2d6a2d', background: '#2d6a2d' } : { borderColor: '#2d6a2d', color: '#2d6a2d' }}
+                  onClick={() => setShowDonHang(v => !v)}
+                >
+                  ĐƠN HÀNG
+                </Button>
+              </Tooltip>
+            )}
+            {canEdit && (
+              <Tooltip title={isMultiSelectMode ? 'Thoát chế độ chọn nhiều' : 'Chọn nhiều bản ghi để xóa'}>
+                <Button
+                  icon={<CheckSquareOutlined />}
+                  type={isMultiSelectMode ? 'primary' : 'default'}
+                  danger={isMultiSelectMode}
+                  onClick={toggleMultiSelectMode}
+                >
+                  Chọn nhiều
+                </Button>
+              </Tooltip>
+            )}
+          </div>
+        )
 
-        {hiddenWeeks.length > 0 && (
-          <div style={{ marginBottom: 6, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+        const hiddenWeeksRow = hiddenWeeks.length > 0 && (
+          <div style={{ padding: '4px 0 2px', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ fontSize: 12, color: '#8c8c8c' }}>Tuần đã ẩn:</span>
             {hiddenWeeks.map(wk => {
               const startStr = dayjs(wk.dates[0]).format('DD/MM')
@@ -2131,8 +2126,38 @@ function KhoachContent({ miniPickerMode = false }) {
               Hiện tất cả
             </Button>
           </div>
-        )}
-      </div>
+        )
+
+        if (filterSlot) {
+          // Filter controls đã được portal vào tab nav — chỉ giữ hiddenWeeks sticky nếu có
+          return (
+            <>
+              {createPortal(filterControls, filterSlot)}
+              {hiddenWeeks.length > 0 && (
+                <div style={{
+                  position: 'sticky', top: 47, zIndex: 10,
+                  background: '#fff', padding: '4px 0 4px',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                }}>
+                  {hiddenWeeksRow}
+                </div>
+              )}
+            </>
+          )
+        }
+
+        // Fallback: render sticky filter bar + hiddenWeeks trong content area
+        return (
+          <div style={{
+            position: 'sticky', top: 47, zIndex: 10,
+            background: '#fff', paddingTop: 8, paddingBottom: 4,
+            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+          }}>
+            {filterControls}
+            {hiddenWeeksRow}
+          </div>
+        )
+      })()}
 
       {loading ? (
         <Spin style={{ display: 'block', margin: '80px auto' }} />
@@ -3282,6 +3307,7 @@ export default function KhoachPage() {
   // Khởi tạo từ URL → auto-reload sẽ đọc lại đúng tab cũ
   const [activeTab, setActiveTab] = useState(getTabFromUrl)
   const [lenhSxKey, setLenhSxKey] = useState(0)
+  const [filterSlot, setFilterSlot] = useState(null)
 
   // Khi user click tab: cập nhật state + ghi vào URL
   const handleTabChange = (key) => {
@@ -3297,6 +3323,11 @@ export default function KhoachPage() {
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
 
+  // Reset filterSlot khi rời khỏi tab khoach
+  useEffect(() => {
+    if (activeTab !== 'khoach') setFilterSlot(null)
+  }, [activeTab])
+
   // Đảm bảo URL luôn có ?tab= ngay khi mount lần đầu
   useEffect(() => {
     setTabInUrl(activeTab)
@@ -3311,7 +3342,7 @@ export default function KhoachPage() {
     {
       key: 'khoach',
       label: <span><CalendarOutlined style={{ marginRight: 5 }} />Kế hoạch</span>,
-      children: <KhoachContent />,
+      children: <KhoachContent filterSlot={filterSlot} />,
     },
     ...(canViewExtra ? [
       {
@@ -3403,6 +3434,11 @@ export default function KhoachPage() {
         size="middle"
         style={{ marginTop: -8 }}
         tabBarStyle={{ marginBottom: 0 }}
+        tabBarExtraContent={{
+          right: activeTab === 'khoach'
+            ? <div ref={setFilterSlot} style={{ display: 'flex', alignItems: 'center' }} />
+            : null,
+        }}
       />
     </>
   )
