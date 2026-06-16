@@ -131,7 +131,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
   [data, today])
 
   const yesterdayRows = useMemo(() =>
-    data.filter(r => r.ngay === yesterday && r.status !== 'IN_PROGRESS'),
+    data.filter(r => r.ngay === yesterday),
   [data, yesterday])
 
   // Tự động cuộn bảng giữa khi có nhiều dòng
