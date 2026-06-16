@@ -10,6 +10,7 @@ import {
   CopyOutlined, ScissorOutlined, CloseCircleOutlined, FileTextOutlined,
   CalendarOutlined, ShoppingOutlined, HistoryOutlined, SwapOutlined, BarChartOutlined,
   FormOutlined, UnorderedListOutlined, CheckSquareOutlined,
+  FullscreenOutlined, FullscreenExitOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
@@ -3308,6 +3309,22 @@ export default function KhoachPage() {
   const [activeTab, setActiveTab] = useState(getTabFromUrl)
   const [lenhSxKey, setLenhSxKey] = useState(0)
   const [filterSlot, setFilterSlot] = useState(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', handler)
+    return () => document.removeEventListener('fullscreenchange', handler)
+  }, [])
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen?.()
+    } else {
+      document.exitFullscreen?.()
+    }
+  }
 
   // Khi user click tab: cập nhật state + ghi vào URL
   const handleTabChange = (key) => {
@@ -3359,7 +3376,7 @@ export default function KhoachPage() {
   ], [canViewExtra, filterSlot]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <>
+    <div ref={containerRef} style={{ background: '#fff', height: isFullscreen ? '100vh' : undefined, overflow: isFullscreen ? 'auto' : undefined }}>
       <style>{`
         /* ── Tab button styles ── */
         .khoach-tabs .ant-tabs-tab {
@@ -3435,11 +3452,20 @@ export default function KhoachPage() {
         style={{ marginTop: -8 }}
         tabBarStyle={{ marginBottom: 0 }}
         tabBarExtraContent={{
+          left: (
+            <Tooltip title={isFullscreen ? 'Thoát toàn màn hình (Esc)' : 'Mở rộng toàn màn hình'}>
+              <Button
+                icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+                onClick={toggleFullscreen}
+                style={{ marginRight: 8, marginLeft: 4 }}
+              />
+            </Tooltip>
+          ),
           right: activeTab === 'khoach'
             ? <div ref={setFilterSlot} style={{ display: 'flex', alignItems: 'center' }} />
             : null,
         }}
       />
-    </>
+    </div>
   )
 }
