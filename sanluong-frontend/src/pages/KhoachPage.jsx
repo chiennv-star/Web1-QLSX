@@ -2524,7 +2524,7 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
                       {weekChunks.map(wk =>
                         collapsedWeeks.has(wk.weekIdx)
                           ? null
-                          : wk.dates.map(d => <col key={d} style={{ width: 175 }} />)
+                          : wk.dates.map(d => <col key={d} style={{ width: 219 }} />)
                       )}
                       <col style={{ width: 58 }} />
                     </colgroup>
