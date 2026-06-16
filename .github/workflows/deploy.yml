@@ -37,6 +37,7 @@ jobs:
           context: ./sanluong-backend
           push: true
           tags: ${{ env.BACKEND_IMAGE }}:latest
+          no-cache: true
 
       - name: Build & push Frontend image
         uses: docker/build-push-action@v6
@@ -44,6 +45,7 @@ jobs:
           context: ./sanluong-frontend
           push: true
           tags: ${{ env.FRONTEND_IMAGE }}:latest
+          no-cache: true
 
   # ── Job 2: SSH vào server, pull image mới và restart ────────────────────────
   deploy:
