@@ -86,6 +86,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
   const [dhInput,         setDhInput]         = useState('')    // giá trị đang gõ maDonHang
   const [soLoSuggestions,    setSoLoSuggestions]    = useState([])    // danh sách soLo gợi ý từ PCPL1/PCPL2
   const [soLoLookupLoading,  setSoLoLookupLoading]  = useState(false) // đang tra cứu soLo từ PC
+  const [soLoOptions,        setSoLoOptions]        = useState([])    // AutoComplete options cho Số lô
 
   // Đồng bộ currentCoLo khi mở modal với editItem mới
   useEffect(() => {
@@ -132,6 +133,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
       }
 
       setLoHistory([])
+      setSoLoOptions([])
     } else {
       const cd = GROUP_DEFAULT_CD[defaultToNhom] || 'PC'
       setCongDoan(cd)
@@ -149,6 +151,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
       setDhPickerOpen(false)
       setDhInput('')
       setSoLoSuggestions([])
+      setSoLoOptions([])
     }
   }, [open, editItem])
 
@@ -270,6 +273,24 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
     } catch { /* silent */ }
     finally { setSoLoLookupLoading(false) }
   }, [form])
+
+  // Gợi ý Số lô từ lịch PCPL2 (PC) và PCPL3 (PL) của cùng maDonHang
+  const fetchSoLoOptions = useCallback(async (maDonHang) => {
+    if (!maDonHang) return
+    try {
+      const [r1, r2] = await Promise.all([
+        api.get('/work-schedule', { params: { maDonHang, congDoan: 'PC', page: 0, size: 100 } }),
+        api.get('/work-schedule', { params: { maDonHang, congDoan: 'PL', page: 0, size: 100 } }),
+      ])
+      const all = [...(r1.data.content || []), ...(r2.data.content || [])]
+      const seen = new Set()
+      const unique = all
+        .filter(r => r.soLo)
+        .sort((a, b) => (b.ngayThucHien || '').localeCompare(a.ngayThucHien || ''))
+        .filter(r => { if (seen.has(r.soLo)) return false; seen.add(r.soLo); return true })
+      setSoLoOptions(unique.map(r => ({ value: r.soLo, label: r.soLo })))
+    } catch { /* silent */ }
+  }, [])
 
   // Lookup by Mã SP → auto-fill tenTrinh
   const handleMaSpChange = (e) => {
@@ -713,22 +734,28 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
                   <span>Số lô</span>
                   {!editItem && congDoan === 'PL' && soLoLookupLoading &&
                     <SyncOutlined spin style={{ color: '#1677ff' }} />}
-                  {!editItem && congDoan === 'PL' && !soLoLookupLoading && soLoSuggestions.length > 1 &&
-                    <Tag color="orange" style={{ margin: 0, fontSize: 10 }}>Nhiều lô</Tag>}
                 </Space>
               }
               name="soLo"
             >
-              {!editItem && congDoan === 'PL' && soLoSuggestions.length > 1 ? (
-                <Select placeholder="Chọn số lô từ PC" allowClear>
-                  {soLoSuggestions.map(s => <Option key={s} value={s}>{s}</Option>)}
-                </Select>
-              ) : (
-                <Input
-                  placeholder={!editItem && congDoan === 'PL' && soLoLookupLoading ? 'Đang tra cứu…' : 'VD: 180626'}
-                  style={{ fontFamily: 'monospace', fontWeight: 700 }}
-                />
-              )}
+              <AutoComplete
+                options={congDoan === 'PL'
+                  ? (soLoOptions.length > 0
+                      ? soLoOptions
+                      : soLoSuggestions.map(s => ({ value: s, label: s })))
+                  : []}
+                filterOption={(input, opt) =>
+                  (opt?.value || '').toLowerCase().includes(input.toLowerCase())}
+                placeholder={!editItem && congDoan === 'PL' && soLoLookupLoading ? 'Đang tra cứu…' : 'VD: 180626'}
+                allowClear
+                style={{ fontFamily: 'monospace', fontWeight: 700 }}
+                onFocus={() => {
+                  if (congDoan === 'PL' && soLoOptions.length === 0) {
+                    const maDH = form.getFieldValue('maDonHang') || editItem?.maDonHang
+                    if (maDH) fetchSoLoOptions(maDH)
+                  }
+                }}
+              />
             </Form.Item>
           </Col>
           <Col span={6}>
