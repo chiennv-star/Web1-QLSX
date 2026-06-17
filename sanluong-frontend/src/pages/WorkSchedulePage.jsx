@@ -3550,7 +3550,7 @@ function AdminApprovalPanel() {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function WorkSchedulePage() {
-  const { isAdmin, getAllowedStages, getAllowedNhom, user } = useAuth()
+  const { isAdmin, isStageAdmin, getAllowedStages, getAllowedNhom, user } = useAuth()
   const allowedStages = getAllowedStages()
   const allowedNhom = getAllowedNhom()
   const location = useLocation()
@@ -3760,7 +3760,7 @@ export default function WorkSchedulePage() {
       ),
       children: <WipPage />,
     }] : []),
-    ...(!allowedStages ? [{
+    ...(!allowedStages || isStageAdmin() ? [{
       key: 'deviation',
       label: (
         <Space>

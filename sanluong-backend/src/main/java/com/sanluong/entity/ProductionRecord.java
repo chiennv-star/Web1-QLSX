@@ -111,6 +111,9 @@ public class ProductionRecord {
     @Column(name = "mo_ta", length = 500)
     private String moTa;
 
+    @Column(name = "ghi_chu_hieu_suat", length = 1000)
+    private String ghiChuHieuSuat;
+
     // ── Trạng thái xử lý hàng lỗi (auto-sync từ HangLoi khi lưu) ──
     @Column(name = "hl_so_luong_tra_ve", precision = 12, scale = 2)
     private BigDecimal hlSoLuongTraVe;
@@ -301,6 +304,8 @@ public class ProductionRecord {
     public void setPcpl2TrangThai(String pcpl2TrangThai) { this.pcpl2TrangThai = pcpl2TrangThai; }
     public String getMoTa() { return moTa; }
     public void setMoTa(String moTa) { this.moTa = moTa; }
+    public String getGhiChuHieuSuat() { return ghiChuHieuSuat; }
+    public void setGhiChuHieuSuat(String ghiChuHieuSuat) { this.ghiChuHieuSuat = ghiChuHieuSuat; }
     public BigDecimal getHlSoLuongTraVe() { return hlSoLuongTraVe; }
     public void setHlSoLuongTraVe(BigDecimal v) { this.hlSoLuongTraVe = v; }
     public String getHlLiDoTraVe() { return hlLiDoTraVe; }

@@ -394,11 +394,11 @@ function TienDoTab({ filtersRef, searchTick, headerOffset = 120 }) {
     title: <span style={{ fontWeight: 700 }}>{STAGE_LABELS[s]}</span>,
     key: s,
     align: 'center',
-    onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff', textAlign: 'center' } }),
+    onHeaderCell: () => ({ style: { background: '#006666', color: '#fff', textAlign: 'center' } }),
     children: [
       {
         title: 'Ngày', key: `${s}_days`, width: 62, align: 'center',
-        onHeaderCell: () => ({ style: { background: '#4dd9d9', color: '#fff' } }),
+        onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
         render: (_, r) => {
           const days = r[s]?.soDays
           const tt = r[s]?.tinhTrang
@@ -413,7 +413,7 @@ function TienDoTab({ filtersRef, searchTick, headerOffset = 120 }) {
       },
       {
         title: 'TT', key: `${s}_tt`, width: 62, align: 'center',
-        onHeaderCell: () => ({ style: { background: '#4dd9d9', color: '#fff' } }),
+        onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
         render: (_, r) => {
           const tt = r[s]?.tinhTrang
           if (!tt) return <span style={{ color: '#d9d9d9' }}>—</span>
@@ -430,21 +430,21 @@ function TienDoTab({ filtersRef, searchTick, headerOffset = 120 }) {
 
   const columns = [
     { title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', fixed: 'left', width: 88,
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: v => <b style={{ color: '#1d4ed8', fontSize: 12 }}>{v}</b> },
     { title: 'Tên sản phẩm', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 190, ellipsis: true,
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: v => <span style={{ fontSize: 12 }}>{v || '—'}</span> },
     { title: 'Số Lô', dataIndex: 'soLo', key: 'soLo', width: 80,
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v}</span> },
     { title: 'Cỡ Lô', dataIndex: 'coLo', key: 'coLo', width: 76, align: 'center',
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff', textTransform: 'none' } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff', textTransform: 'none' } }),
       render: v => <span>{fmtNum(v)}</span> },
     ...stageGroups,
     {
       title: 'Tổng ngày', key: 'tongNgay', width: 88, align: 'center', fixed: 'right',
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: (_, r) => {
         const total = STAGES.reduce((acc, s) => acc + (r[s]?.soDays || 0), 0)
         return total > 0
@@ -464,7 +464,7 @@ function TienDoTab({ filtersRef, searchTick, headerOffset = 120 }) {
   return (
     <div>
       <style>{`
-        .tiendo-table .ant-table-thead > tr > th { background: #33CCCC !important; color: #fff !important; font-weight: 700 !important; font-size: 11px !important; padding: 6px 6px !important; text-align: center !important; text-transform: none !important; border-right: 1px solid rgba(255,255,255,0.35) !important; }
+        .tiendo-table .ant-table-thead > tr > th { background: #006666 !important; color: #fff !important; font-weight: 700 !important; font-size: 11px !important; padding: 6px 6px !important; text-align: center !important; text-transform: none !important; border-right: 1px solid rgba(255,255,255,0.35) !important; }
         .tiendo-table .ant-table-thead > tr > th::before { display: none !important; }
         .tiendo-table .ant-table-tbody > tr > td { border-right: 1px solid #e2e8f0 !important; border-bottom: 1px solid #e8edf3 !important; }
         .tiendo-table .ant-table-tbody > tr:nth-child(even) > td { background: #f8fffe !important; }
@@ -540,63 +540,63 @@ function SanLuongKeToanTab({ data = [], loading = false, pagination = {}, onPagi
 
   const columns = [
     { title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 105, fixed: 'left',
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: v => v ? <span style={{ color: '#1d4ed8' }}>{v}</span> : '—' },
     { title: 'Mã SP', dataIndex: 'maTp', key: 'maTp', width: 95, fixed: 'left',
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: v => v ? <span style={{ color: '#595959' }}>{v}</span> : '—' },
     { title: 'Tên sản phẩm', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 210,
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: v => <span>{v || '—'}</span> },
     { title: 'Mã lô SP', dataIndex: 'lsx', key: 'lsx', width: 145, align: 'center',
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: v => v ? <span style={{ fontFamily: 'monospace', color: '#595959' }}>{v}</span> : '—' },
     { title: 'Ngày SX', dataIndex: 'createdAt', key: 'ngaySx', width: 90, align: 'center',
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: v => v ? <span style={{ fontSize: 11 }}>{dayjs(v).format('DD/MM/YYYY')}</span> : '—' },
     { title: 'Số Lượng', dataIndex: 'soLuong', key: 'soLuong', width: 90, align: 'center',
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: v => <span style={{ color: '#1d4ed8' }}>{fmtN(v)}</span> },
     { title: 'GIAI ĐOẠN', align: 'center',
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff', textAlign: 'center' } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff', textAlign: 'center' } }),
       children: [
         { title: 'PC',   dataIndex: 'pcTrangThai',   key: 'pc_tt',   width: 80, align: 'center',
-          onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }), render: stageTag },
+          onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }), render: stageTag },
         { title: 'PL',   dataIndex: 'plTrangThai',   key: 'pl_tt',   width: 80, align: 'center',
-          onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }), render: stageTag },
+          onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }), render: stageTag },
         { title: 'ĐG',   dataIndex: 'dgTrangThai',   key: 'dg_tt',   width: 80, align: 'center',
-          onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }), render: stageTag },
+          onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }), render: stageTag },
         { title: 'BBC1', dataIndex: 'bbc1TrangThai', key: 'bbc1_tt', width: 80, align: 'center',
-          onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }), render: stageTag },
+          onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }), render: stageTag },
       ] },
     { title: 'SP Trung Gian', dataIndex: 'pcPl', key: 'spTrungGian', width: 100, align: 'center',
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: fmtN },
     { title: 'Tổng BTP', dataIndex: 'dg2', key: 'tongBtp', width: 90, align: 'center',
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: v => <span style={{ color: '#389e0d' }}>{fmtN(v)}</span> },
     { title: 'CÔNG CÁC CÔNG ĐOẠN', align: 'center',
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff', textAlign: 'center' } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff', textAlign: 'center' } }),
       children: [
         { title: 'GNNL', dataIndex: 'temDb',     key: 'temDb',     width: 75, align: 'center',
-          onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }), render: fmtCong },
+          onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }), render: fmtCong },
         { title: 'BBC1', dataIndex: 'bbc1_3',    key: 'bbc1_3c',   width: 75, align: 'center',
-          onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }), render: fmtCong },
+          onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }), render: fmtCong },
         { title: 'PC',   dataIndex: 'pcChiPhi',  key: 'pcChiPhi',  width: 75, align: 'center',
-          onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }), render: fmtCong },
+          onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }), render: fmtCong },
         { title: 'PL',   dataIndex: 'plChiPhi',  key: 'plChiPhi',  width: 75, align: 'center',
-          onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }), render: fmtCong },
+          onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }), render: fmtCong },
         { title: 'ĐG',   dataIndex: 'dgChiPhi',  key: 'dgChiPhi',  width: 75, align: 'center',
-          onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }), render: fmtCong },
+          onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }), render: fmtCong },
       ] },
     { title: 'BTP Chờ ĐG', dataIndex: 'doDangDg', key: 'doDangDg', width: 100, align: 'center',
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: fmtN },
     { title: 'TP Nhập Kho', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 100, align: 'center',
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: v => <span style={{ color: '#389e0d' }}>{fmtN(v)}</span> },
     { title: 'Chênh lệch BTP/Nhập kho', key: 'chenhLech', width: 140, align: 'center', fixed: 'right',
-      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff' } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: (_, r) => {
         const cl = (parseInt(r.dg2) || 0) - (r.tpNhapKho || 0)
         return <span style={{ color: cl !== 0 ? '#cf1322' : '#389e0d' }}>{fmtN(cl)}</span>
@@ -606,7 +606,7 @@ function SanLuongKeToanTab({ data = [], loading = false, pagination = {}, onPagi
   return (
     <div>
       <style>{`
-        .ketoan-table .ant-table-thead > tr > th { background: #33CCCC !important; color: #fff !important; font-weight: 700 !important; font-size: 11px !important; padding: 7px 8px !important; text-align: center !important; border-right: 1px solid rgba(255,255,255,0.35) !important; border-bottom: 1px solid rgba(255,255,255,0.35) !important; }
+        .ketoan-table .ant-table-thead > tr > th { background: #006666 !important; color: #fff !important; font-weight: 700 !important; font-size: 11px !important; padding: 7px 8px !important; text-align: center !important; border-right: 1px solid rgba(255,255,255,0.35) !important; border-bottom: 1px solid rgba(255,255,255,0.35) !important; }
         .ketoan-table .ant-table-thead > tr > th::before { display: none !important; }
         .ketoan-table .ant-table-tbody > tr:nth-child(odd) > td  { background: #fff !important; }
         .ketoan-table .ant-table-tbody > tr:nth-child(even) > td { background: #f8faff !important; }
@@ -631,6 +631,277 @@ function SanLuongKeToanTab({ data = [], loading = false, pagination = {}, onPagi
           showSizeChanger: true,
           pageSizeOptions: ['20', '50', '100'],
           showTotal: t => `Tổng ${t} bản ghi`,
+          onChange: onPaginationChange,
+        }}
+      />
+    </div>
+  )
+}
+
+// ── Hiệu suất tab ────────────────────────────────────────────────────────────
+function HieuSuatTab({ data = [], loading = false, pagination = {}, onPaginationChange, headerOffset = 120 }) {
+  const { isAdmin, isAdminKH, user } = useAuth()
+  const canEditNote = () => ['ADMIN', 'ADMIN_KH', 'ADMIN_PL', 'ADMIN_DG'].includes(user?.role)
+  const [sortField, setSortField] = useState('hs_pl')
+  const [sortOrder, setSortOrder] = useState('descend')
+  const [editingNote, setEditingNote] = useState({}) // { [id]: string }
+  const [savingNote, setSavingNote]   = useState({})
+
+  const saveNote = async (id, text) => {
+    setSavingNote(s => ({ ...s, [id]: true }))
+    try {
+      await api.patch(`/production/${id}/ghi-chu-hieu-suat`, { ghiChu: text })
+      setEditingNote(s => { const n = { ...s }; delete n[id]; return n })
+    } catch { message.error('Lưu ghi chú thất bại') }
+    finally { setSavingNote(s => ({ ...s, [id]: false })) }
+  }
+
+  const trangThaiTag = (v) => {
+    if (v === 'done')  return <span style={{ display:'inline-block', padding:'2px 8px', borderRadius:10, fontSize:11, fontWeight:700, color:'#16a34a', background:'#f0fdf4', border:'1px solid #86efac' }}>Done</span>
+    if (v === 'doing') return <span style={{ display:'inline-block', padding:'2px 8px', borderRadius:10, fontSize:11, fontWeight:700, color:'#0369a1', background:'#eff6ff', border:'1px solid #93c5fd' }}>Doing</span>
+    return <span style={{ color:'#d9d9d9', fontSize:11 }}>—</span>
+  }
+
+  const calcHs = (r) => {
+    const slPl  = parseInt(r.pcPl)   || 0
+    const slDg  = parseInt(r.dg2)    || 0
+    const qaPl  = r.plQaLayMau || 0
+    const qaDg  = r.dgQaLayMau || 0
+    const coLo  = r.soLuong || 0
+    const hsPl  = coLo  > 0 ? ((slPl + qaPl) / coLo  * 100) : null
+    const hsDg  = slPl  > 0 ? ((slDg + qaDg) / slPl  * 100) : null
+    return { slPl, slDg, qaPl, qaDg, coLo, hsPl, hsDg }
+  }
+
+  const hsColor = (v) => v == null ? '#bbb' : v >= 99 ? '#16a34a' : v >= 95 ? '#d46b08' : '#cf1322'
+  const hsBg    = (v) => v == null ? '#f5f5f5' : v >= 99 ? '#f6ffed' : v >= 95 ? '#fff7e6' : '#fff1f0'
+  const hsBdr   = (v) => v == null ? '#d9d9d9' : v >= 99 ? '#95de64' : v >= 95 ? '#ffd591' : '#ffa39e'
+  const hsFill  = (v) => v == null ? '#e5e7eb' : v >= 99 ? '#52c41a' : v >= 95 ? '#fa8c16' : '#ff4d4f'
+
+  const ProgressBar = ({ value }) => {
+    if (value == null) return <span style={{ color: '#bbb', fontSize: 12 }}>—</span>
+    const capped = Math.min(value, 110)
+    const over   = value > 100
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ flex: 1, height: 14, background: '#f0f0f0', borderRadius: 7, overflow: 'hidden', minWidth: 80 }}>
+            <div style={{
+              height: '100%', width: `${Math.min(capped / 110 * 100, 100)}%`,
+              background: hsFill(value), borderRadius: 7,
+              transition: 'width 0.4s ease',
+            }} />
+          </div>
+          <span style={{
+            fontWeight: 800, fontSize: 13, minWidth: 52, textAlign: 'right',
+            color: hsColor(value),
+          }}>
+            {value.toFixed(1)}%{over && <span style={{ fontSize: 10, marginLeft: 2, color: '#722ed1' }}>↑</span>}
+          </span>
+        </div>
+      </div>
+    )
+  }
+
+  const enriched = data.map(r => ({ ...r, ...calcHs(r) }))
+
+  // Thống kê phân bố
+  const stats = (field) => {
+    const vals = enriched.map(r => r[field]).filter(v => v != null)
+    if (!vals.length) return null
+    const good = vals.filter(v => v >= 99).length
+    const mid  = vals.filter(v => v >= 95 && v < 99).length
+    const bad  = vals.filter(v => v < 95).length
+    const avg  = vals.reduce((a, b) => a + b, 0) / vals.length
+    return { good, mid, bad, avg, total: vals.length }
+  }
+
+  const stPl = stats('hsPl')
+  const stDg = stats('hsDg')
+
+  const columns = [
+    {
+      title: '#', width: 42, align: 'center', fixed: 'left',
+      render: (_, __, idx) => <span style={{ color: '#94a3b8', fontSize: 11 }}>{idx + 1}</span>,
+    },
+    {
+      title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 105, fixed: 'left',
+      ...colSearch('maBravo'),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
+      render: v => v ? <span style={{ color: '#1d4ed8', fontWeight: 700, fontFamily: 'monospace', fontSize: 12 }}>{v}</span> : '—',
+    },
+    {
+      title: 'Tên sản phẩm', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 220,
+      ...colSearch('tienTrinh'),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
+      render: v => <Tooltip title={v}><span style={{ fontSize: 12 }}>{v || '—'}</span></Tooltip>,
+    },
+    {
+      title: 'LSX', dataIndex: 'lsx', key: 'lsx', width: 80, align: 'center',
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
+      render: v => <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#595959' }}>{v || '—'}</span>,
+    },
+    {
+      title: 'Cỡ lô', dataIndex: 'soLuong', key: 'soLuong', width: 80, align: 'right',
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
+      render: v => <span style={{ color: '#1d4ed8', fontWeight: 600, fontSize: 12 }}>{v ? Number(v).toLocaleString('vi-VN') : '—'}</span>,
+    },
+    {
+      title: 'TT PL', dataIndex: 'plTrangThai', key: 'plTrangThai', width: 80, align: 'center',
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
+      filters: [{ text: 'Done', value: 'done' }, { text: 'Doing', value: 'doing' }],
+      onFilter: (v, r) => r.plTrangThai === v,
+      render: trangThaiTag,
+    },
+    {
+      title: 'TT ĐG', dataIndex: 'dgTrangThai', key: 'dgTrangThai', width: 80, align: 'center',
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
+      filters: [{ text: 'Done', value: 'done' }, { text: 'Doing', value: 'doing' }],
+      onFilter: (v, r) => r.dgTrangThai === v,
+      render: trangThaiTag,
+    },
+    {
+      title: 'Hiệu suất PL', key: 'hs_pl', width: 220,
+      sorter: (a, b) => (a.hsPl ?? -1) - (b.hsPl ?? -1),
+      sortOrder: sortField === 'hs_pl' ? sortOrder : undefined,
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
+      render: (_, r) => (
+        <div style={{
+          background: hsBg(r.hsPl), border: `1px solid ${hsBdr(r.hsPl)}`,
+          borderRadius: 6, padding: '5px 10px',
+        }}>
+          <ProgressBar value={r.hsPl} />
+          {r.hsPl != null && (
+            <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>
+              ({Number(r.slPl).toLocaleString('vi-VN')} + {Number(r.qaPl).toLocaleString('vi-VN')}) / {Number(r.coLo).toLocaleString('vi-VN')}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: 'Hiệu suất ĐG', key: 'hs_dg', width: 220,
+      sorter: (a, b) => (a.hsDg ?? -1) - (b.hsDg ?? -1),
+      sortOrder: sortField === 'hs_dg' ? sortOrder : undefined,
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
+      render: (_, r) => (
+        <div style={{
+          background: hsBg(r.hsDg), border: `1px solid ${hsBdr(r.hsDg)}`,
+          borderRadius: 6, padding: '5px 10px',
+        }}>
+          <ProgressBar value={r.hsDg} />
+          {r.hsDg != null && (
+            <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>
+              ({Number(r.slDg).toLocaleString('vi-VN')} + {Number(r.qaDg).toLocaleString('vi-VN')}) / {Number(r.slPl).toLocaleString('vi-VN')}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: 'Ghi chú', key: 'ghiChu', width: 220,
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
+      render: (_, r) => {
+        const isEditing = r.id in editingNote
+        const canEdit   = canEditNote()
+        if (isEditing) {
+          return (
+            <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
+              <Input.TextArea
+                autoFocus
+                rows={2}
+                size="small"
+                value={editingNote[r.id]}
+                onChange={e => setEditingNote(s => ({ ...s, [r.id]: e.target.value }))}
+                onPressEnter={e => { if (!e.shiftKey) { e.preventDefault(); saveNote(r.id, editingNote[r.id]) } }}
+                style={{ fontSize: 12, resize: 'none', flex: 1 }}
+              />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Button size="small" type="primary" loading={savingNote[r.id]}
+                  style={{ background: '#006666', borderColor: '#006666', fontSize: 11, padding: '0 6px' }}
+                  onClick={() => saveNote(r.id, editingNote[r.id])}>Lưu</Button>
+                <Button size="small" style={{ fontSize: 11, padding: '0 6px' }}
+                  onClick={() => setEditingNote(s => { const n = { ...s }; delete n[r.id]; return n })}>Hủy</Button>
+              </div>
+            </div>
+          )
+        }
+        return (
+          <div
+            onClick={() => canEdit && setEditingNote(s => ({ ...s, [r.id]: r.ghiChuHieuSuat || '' }))}
+            style={{
+              minHeight: 32, padding: '4px 8px', borderRadius: 5, fontSize: 12,
+              border: canEdit ? '1px dashed #d9d9d9' : 'none',
+              cursor: canEdit ? 'text' : 'default',
+              color: r.ghiChuHieuSuat ? '#374151' : '#bbb',
+              background: r.ghiChuHieuSuat ? '#fefce8' : 'transparent',
+              whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+            }}
+          >
+            {r.ghiChuHieuSuat || (canEdit ? <span style={{ fontSize: 11 }}>Nhấn để thêm ghi chú…</span> : '—')}
+          </div>
+        )
+      },
+    },
+  ]
+
+  const StatBand = ({ label, s, color }) => !s ? null : (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '6px 14px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+      <span style={{ fontWeight: 700, color, fontSize: 13, minWidth: 90 }}>{label}</span>
+      <span style={{ color: '#16a34a', fontSize: 12 }}>✅ {s.good} đạt</span>
+      <span style={{ color: '#d46b08', fontSize: 12 }}>⚠ {s.mid} gần đạt</span>
+      <span style={{ color: '#cf1322', fontSize: 12 }}>❌ {s.bad} chưa đạt</span>
+      <span style={{ color: '#888', fontSize: 12, marginLeft: 4 }}>| TB: <strong style={{ color }}>{s.avg.toFixed(1)}%</strong></span>
+    </div>
+  )
+
+  return (
+    <div>
+      <style>{`
+        .hs-table .ant-table-thead > tr > th { font-size: 12px; padding: 7px 10px; white-space: nowrap; background: #006666 !important; color: #fff !important; }
+        .hs-table .ant-table-thead > tr > th::before { display: none !important; }
+        .hs-table .ant-table-tbody > tr > td { padding: 5px 8px; vertical-align: middle; }
+        .hs-table .ant-table-tbody > tr:hover > td { background: #f8fafc !important; }
+      `}</style>
+
+      {/* Summary banner */}
+      <div style={{ display: 'flex', gap: 10, padding: '10px 12px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
+        <StatBand label="Hiệu suất PL" s={stPl} color="#15803d" />
+        <StatBand label="Hiệu suất ĐG" s={stDg} color="#b45309" />
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, color: '#94a3b8' }}>
+          <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: '#52c41a', marginRight: 4 }} />≥ 99%</span>
+          <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: '#fa8c16', marginRight: 4 }} />95–99%</span>
+          <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: '#ff4d4f', marginRight: 4 }} />{'< 95%'}</span>
+        </div>
+      </div>
+
+      <Table
+        className="hs-table"
+        columns={columns}
+        dataSource={enriched}
+        rowKey="id"
+        loading={loading}
+        size="small"
+        scroll={{ x: 900 }}
+        sticky={{ offsetHeader: headerOffset }}
+        rowClassName={(r) => {
+          const minHs = Math.min(r.hsPl ?? 999, r.hsDg ?? 999)
+          if (minHs < 95)  return 'row-alt'
+          return ''
+        }}
+        onChange={(_, __, sorter) => {
+          if (sorter?.field || sorter?.columnKey) {
+            setSortField(sorter.columnKey || sorter.field)
+            setSortOrder(sorter.order || 'descend')
+          }
+        }}
+        pagination={{
+          ...pagination,
+          size: 'small',
+          showSizeChanger: true,
+          pageSizeOptions: ['100', '500', '1000'],
+          showTotal: t => `Tổng ${t} bản ghi`,
+          style: { margin: '8px 0 0' },
           onChange: onPaginationChange,
         }}
       />
@@ -668,6 +939,12 @@ export default function DashboardPage() {
   const [doneLoading, setDoneLoading] = useState(false)
   const [donePagination, setDonePagination] = useState({ current: 1, pageSize: 20, total: 0 })
   const donePaginationRef = useRef({ current: 1, pageSize: 20 })
+
+  // Tab "Hiệu suất" — trang độc lập, 1000 rows/page
+  const [hsData, setHsData] = useState([])
+  const [hsLoading, setHsLoading] = useState(false)
+  const [hsPagination, setHsPagination] = useState({ current: 1, pageSize: 1000, total: 0 })
+  const hsPaginationRef = useRef({ current: 1, pageSize: 1000 })
   const [statsMonth, setStatsMonth] = useState(null)
   const [stats, setStats] = useState(null)
   const [statsLoading, setStatsLoading] = useState(false)
@@ -803,6 +1080,21 @@ export default function DashboardPage() {
     }
   }, [filters])
 
+  const fetchHsData = useCallback(async (page = 0, size = 1000, f = filters, { silent = false } = {}) => {
+    if (!silent) setHsLoading(true)
+    try {
+      const params = { page, size, ...f, hoanThanh: false }
+      const { data: res } = await api.get('/production', { params })
+      const sorted = [...res.content].sort((a, b) => parseLsx(b.lsx) - parseLsx(a.lsx))
+      setHsData(sorted)
+      setHsPagination(p => ({ ...p, total: res.totalElements }))
+    } catch {
+      message.error('Không thể tải dữ liệu hiệu suất')
+    } finally {
+      if (!silent) setHsLoading(false)
+    }
+  }, [filters])
+
   useEffect(() => {
     paginationRef.current = { current: pagination.current, pageSize: pagination.pageSize }
     sessionStorage.setItem(DASHBOARD_STATE_KEY, JSON.stringify({
@@ -818,6 +1110,7 @@ export default function DashboardPage() {
     if (savedState) fetchData(savedState.page - 1, savedState.pageSize, savedState.filters)
     else fetchData(0)
     fetchDoneData(0)
+    fetchHsData(0)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -849,8 +1142,10 @@ export default function DashboardPage() {
   const handleSearch = () => {
     setPagination(p => ({ ...p, current: 1 }))
     setDonePagination(p => ({ ...p, current: 1 }))
+    setHsPagination(p => ({ ...p, current: 1 }))
     fetchData(0)
     fetchDoneData(0)
+    fetchHsData(0)
   }
 
   const handleReset = () => {
@@ -858,6 +1153,7 @@ export default function DashboardPage() {
     setFilters(empty)
     fetchData(0, pagination.pageSize, empty)
     fetchDoneData(0, donePagination.pageSize, empty)
+    fetchHsData(0, hsPagination.pageSize, empty)
   }
 
   const handleHide = async (id) => {
@@ -1278,7 +1574,7 @@ export default function DashboardPage() {
         .db-toolbar { position: sticky; top: 0; z-index: 20; }
         /* ── Table header ── */
         .prod-table .ant-table-thead > tr > th {
-          background: #33CCCC !important;
+          background: #006666 !important;
           color: #ffffff !important;
           font-size: 11px; font-weight: 700; text-align: center !important;
           text-transform: uppercase; letter-spacing: 0.05em;
@@ -1287,7 +1583,7 @@ export default function DashboardPage() {
         }
         .prod-table .ant-table-thead > tr > th::before { display: none !important; }
         .prod-table .ant-table-thead > tr:first-child > th {
-          background: #33CCCC !important;
+          background: #006666 !important;
           color: #ffffff !important;
           font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
         }
@@ -1530,6 +1826,7 @@ export default function DashboardPage() {
         onChange={key => {
           setActiveTab(key)
           if (key === 'done_list') fetchDoneData(donePaginationRef.current.current - 1, donePaginationRef.current.pageSize)
+          if (key === 'hieu_suat') fetchHsData(hsPaginationRef.current.current - 1, hsPaginationRef.current.pageSize)
         }}
         size="small"
         style={{ marginTop: 0 }}
@@ -1671,7 +1968,22 @@ export default function DashboardPage() {
               }}
               headerOffset={headerOffset}
             />,
-          }
+          },
+          {
+            key: 'hieu_suat',
+            label: <Space size={4}><BarChartOutlined style={{ color: '#16a34a' }} /><span style={{ color: '#15803d', fontWeight: 600 }}>Hiệu suất</span></Space>,
+            children: <HieuSuatTab
+              data={hsData}
+              loading={hsLoading}
+              pagination={hsPagination}
+              onPaginationChange={(page, pageSize) => {
+                setHsPagination(p => ({ ...p, current: page, pageSize }))
+                hsPaginationRef.current = { current: page, pageSize }
+                fetchHsData(page - 1, pageSize)
+              }}
+              headerOffset={headerOffset}
+            />,
+          },
         ]}
       />
 

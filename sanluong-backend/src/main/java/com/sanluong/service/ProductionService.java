@@ -443,6 +443,13 @@ public class ProductionService {
         repository.save(r);
     }
 
+    public ProductionRecord updateGhiChuHieuSuat(Long id, String ghiChu) {
+        ProductionRecord r = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));
+        r.setGhiChuHieuSuat(ghiChu);
+        return repository.save(r);
+    }
+
     public byte[] exportExcel(String maTp, String maBravo, String tienTrinh,
                                String lsx, String trangThai) throws IOException {
         List<ProductionRecord> records = repository.searchAll(
@@ -550,6 +557,7 @@ public class ProductionService {
         r.setSoSpCong(dto.getSoSpCong());
         r.setSlTrungBinh(dto.getSlTrungBinh());
         r.setMoTa(dto.getMoTa());
+        r.setGhiChuHieuSuat(dto.getGhiChuHieuSuat());
         r.setQaLayMau(dto.getQaLayMau());
         if (dto.getPhatLenh() != null) r.setPhatLenh(dto.getPhatLenh());
     }

@@ -34,6 +34,7 @@ public class ProductionRecordDto {
     private BigDecimal soSpCong;
     private BigDecimal slTrungBinh;
     private String moTa;
+    private String ghiChuHieuSuat;
     // ── Hàng lỗi (auto-sync từ HangLoi) ──
     private BigDecimal hlSoLuongTraVe;
     private String hlLiDoTraVe;
@@ -111,6 +112,8 @@ public class ProductionRecordDto {
     public void setSlTrungBinh(BigDecimal slTrungBinh) { this.slTrungBinh = slTrungBinh; }
     public String getMoTa() { return moTa; }
     public void setMoTa(String moTa) { this.moTa = moTa; }
+    public String getGhiChuHieuSuat() { return ghiChuHieuSuat; }
+    public void setGhiChuHieuSuat(String v) { this.ghiChuHieuSuat = v; }
     public BigDecimal getHlSoLuongTraVe() { return hlSoLuongTraVe; }
     public void setHlSoLuongTraVe(BigDecimal v) { this.hlSoLuongTraVe = v; }
     public String getHlLiDoTraVe() { return hlLiDoTraVe; }

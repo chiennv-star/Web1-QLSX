@@ -15,12 +15,12 @@ const fmtSL   = v => (v || 0).toLocaleString('vi-VN')
 const fmtCong = (v, d = 4) => (v || 0).toLocaleString('vi-VN', { minimumFractionDigits: d, maximumFractionDigits: d })
 
 const STAGES = [
-  { key: 'PCPL1', label: 'PCPL 1', slColor: '#389e0d', congColor: '#722ed1', bg: '#eff6ff', border: '#93c5fd', headerBg: '#1d4ed8', kpiBg: '#1d4ed8', kpiBorder: '#93c5fd' },
-  { key: 'PCPL2', label: 'PCPL 2', slColor: '#389e0d', congColor: '#722ed1', bg: '#e0f2fe', border: '#7dd3fc', headerBg: '#0369a1', kpiBg: '#0369a1', kpiBorder: '#7dd3fc' },
-  { key: 'PL',    label: 'PL',     slColor: '#389e0d', congColor: '#722ed1', bg: '#ecfeff', border: '#67e8f9', headerBg: '#0e7490', kpiBg: '#0e7490', kpiBorder: '#67e8f9' },
-  { key: 'DG',    label: 'ĐG',     slColor: '#389e0d', congColor: '#722ed1', bg: '#fffbeb', border: '#fde68a', headerBg: '#b45309', kpiBg: '#b45309', kpiBorder: '#fde68a' },
-  { key: 'BBC1',  label: 'BBC1',   slColor: '#389e0d', congColor: '#722ed1', bg: '#f5f3ff', border: '#c4b5fd', headerBg: '#6d28d9', kpiBg: '#6d28d9', kpiBorder: '#c4b5fd' },
-  { key: 'CC',    label: 'CC',     slColor: '#389e0d', congColor: '#722ed1', bg: '#fdf2f8', border: '#f9a8d4', headerBg: '#be185d', kpiBg: '#be185d', kpiBorder: '#f9a8d4' },
+  { key: 'PCPL1', label: 'PCPL 1', slColor: '#389e0d', congColor: '#722ed1', bg: '#eff6ff', border: '#93c5fd', headerBg: '#006666', kpiBg: '#1d4ed8', kpiBorder: '#93c5fd' },
+  { key: 'PCPL2', label: 'PCPL 2', slColor: '#389e0d', congColor: '#722ed1', bg: '#e0f2fe', border: '#7dd3fc', headerBg: '#006666', kpiBg: '#0369a1', kpiBorder: '#7dd3fc' },
+  { key: 'PL',    label: 'PL',     slColor: '#389e0d', congColor: '#722ed1', bg: '#ecfeff', border: '#67e8f9', headerBg: '#006666', kpiBg: '#0e7490', kpiBorder: '#67e8f9' },
+  { key: 'DG',    label: 'ĐG',     slColor: '#389e0d', congColor: '#722ed1', bg: '#fffbeb', border: '#fde68a', headerBg: '#006666', kpiBg: '#b45309', kpiBorder: '#fde68a' },
+  { key: 'BBC1',  label: 'BBC1',   slColor: '#389e0d', congColor: '#722ed1', bg: '#f5f3ff', border: '#c4b5fd', headerBg: '#006666', kpiBg: '#6d28d9', kpiBorder: '#c4b5fd' },
+  { key: 'CC',    label: 'CC',     slColor: '#389e0d', congColor: '#722ed1', bg: '#fdf2f8', border: '#f9a8d4', headerBg: '#006666', kpiBg: '#be185d', kpiBorder: '#f9a8d4' },
 ]
 
 export default function TongHopSanLuongPage() {
@@ -126,7 +126,7 @@ export default function TongHopSanLuongPage() {
     {
       title: 'NGÀY', dataIndex: 'ngay', key: 'ngay',
       width: 110, fixed: 'left', align: 'center',
-      onHeaderCell: () => ({ style: { background: '#1e3a5f', color: '#e0f2fe', fontSize: 11 } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#e0f2fe', fontSize: 11 } }),
       render: v => (
         <span style={{ fontWeight: 700, color: '#1D4ED8' }}>
           {dayjs(v).format('DD/MM/YYYY')}
@@ -180,7 +180,7 @@ export default function TongHopSanLuongPage() {
       width: 110,
       align: 'right',
       fixed: 'right',
-      onHeaderCell: () => ({ style: { background: '#1e3a5f', color: '#7dd3fc', fontSize: 11 } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#7dd3fc', fontSize: 11 } }),
       render: (_, r) => {
         const total = STAGES.reduce((sum, s) => sum + (r[s.key]?.sl || 0), 0)
         return total
@@ -197,7 +197,7 @@ export default function TongHopSanLuongPage() {
       width: 105,
       align: 'right',
       fixed: 'right',
-      onHeaderCell: () => ({ style: { background: '#1e3a5f', color: '#7dd3fc', fontSize: 11 } }),
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#7dd3fc', fontSize: 11 } }),
       render: (_, r) => {
         const total = STAGES.reduce((sum, s) => sum + (r[s.key]?.cong || 0), 0)
         return total

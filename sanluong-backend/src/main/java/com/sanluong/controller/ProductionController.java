@@ -140,6 +140,13 @@ public class ProductionController {
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/{id}/ghi-chu-hieu-suat")
+    public ResponseEntity<ProductionRecord> updateGhiChuHieuSuat(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(productionService.updateGhiChuHieuSuat(id, body.get("ghiChu")));
+    }
+
     @GetMapping("/wip-dg")
     public ResponseEntity<List<ProductionRecord>> getWipDg() {
         return ResponseEntity.ok(productionService.getWipDg());
