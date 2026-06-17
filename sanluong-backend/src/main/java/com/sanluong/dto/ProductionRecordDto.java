@@ -26,6 +26,7 @@ public class ProductionRecordDto {
     private BigDecimal pcChiPhi;
     private BigDecimal plChiPhi;
     private BigDecimal dgChiPhi;
+    private BigDecimal ccChiPhi;
     private BigDecimal sigmaCong;
     private BigDecimal temDb;
     private Integer doDangDg;
@@ -94,6 +95,8 @@ public class ProductionRecordDto {
     public void setPlChiPhi(BigDecimal plChiPhi) { this.plChiPhi = plChiPhi; }
     public BigDecimal getDgChiPhi() { return dgChiPhi; }
     public void setDgChiPhi(BigDecimal dgChiPhi) { this.dgChiPhi = dgChiPhi; }
+    public BigDecimal getCcChiPhi() { return ccChiPhi; }
+    public void setCcChiPhi(BigDecimal ccChiPhi) { this.ccChiPhi = ccChiPhi; }
     public BigDecimal getSigmaCong() { return sigmaCong; }
     public void setSigmaCong(BigDecimal sigmaCong) { this.sigmaCong = sigmaCong; }
     public BigDecimal getTemDb() { return temDb; }

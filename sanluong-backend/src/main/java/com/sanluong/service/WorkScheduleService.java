@@ -536,6 +536,9 @@ public class WorkScheduleService {
                     int dgDg = r.getDgQaLayMau() != null ? r.getDgQaLayMau() : 0;
                     r.setQaLayMau(plDg + dgDg > 0 ? plDg + dgDg : null);
                 }
+                case "CC" -> {
+                    if (w.getCongCc() != null) r.setCcChiPhi(w.getCongCc());
+                }
             }
         }
         productionRepo.saveAll(records);

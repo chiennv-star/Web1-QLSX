@@ -1041,10 +1041,11 @@ export default function DashboardPage() {
         { title: 'PC',    dataIndex: 'pcChiPhi', key: 'pcChiPhi', width: 72, align: 'center', render: v => v ? <span style={{ color: '#1677ff' }}>{v}</span> : '—' },
         { title: 'PL',    dataIndex: 'plChiPhi', key: 'plChiPhi', width: 72, align: 'center', render: v => v ? <span style={{ color: '#389e0d' }}>{v}</span> : '—' },
         { title: 'ĐG',    dataIndex: 'dgChiPhi', key: 'dgChiPhi', width: 72, align: 'center', render: v => v ? <span style={{ color: '#d48806' }}>{v}</span> : '—' },
+        { title: 'CC',    dataIndex: 'ccChiPhi', key: 'ccChiPhi', width: 72, align: 'center', render: v => v ? <span style={{ color: '#08979c' }}>{v}</span> : '—' },
         {
           title: 'Σ', key: 'sigmaCong', width: 88, align: 'center',
           render: (_, r) => {
-            const s = (r.temDb || 0) + (r.bbc1_3 || 0) + (r.pcChiPhi || 0) + (r.plChiPhi || 0) + (r.dgChiPhi || 0)
+            const s = (r.temDb || 0) + (r.bbc1_3 || 0) + (r.pcChiPhi || 0) + (r.plChiPhi || 0) + (r.dgChiPhi || 0) + (r.ccChiPhi || 0)
             return s ? <span style={{ color: '#1D4ED8' }}>{s.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> : <span style={{ color: '#bbb' }}>—</span>
           }
         },
@@ -1092,7 +1093,7 @@ export default function DashboardPage() {
     {
       title: 'SP/Công', key: 'spCong', width: 88, align: 'center',
       render: (_, r) => {
-        const sc = (r.bbc1_3 || 0) + (r.pcChiPhi || 0) + (r.plChiPhi || 0) + (r.dgChiPhi || 0)
+        const sc = (r.bbc1_3 || 0) + (r.pcChiPhi || 0) + (r.plChiPhi || 0) + (r.dgChiPhi || 0) + (r.ccChiPhi || 0)
         const slDg = parseFloat(r.dg2)
         if (!sc || !slDg) return <span style={{ color: '#bbb' }}>—</span>
         return <span style={{ color: '#1677ff' }}>{(slDg / sc).toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</span>

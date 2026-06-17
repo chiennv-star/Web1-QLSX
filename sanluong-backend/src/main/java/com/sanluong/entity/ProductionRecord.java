@@ -75,6 +75,9 @@ public class ProductionRecord {
     @Column(name = "dg_chi_phi", precision = 10, scale = 4)
     private BigDecimal dgChiPhi;
 
+    @Column(name = "cc_chi_phi", precision = 10, scale = 4)
+    private BigDecimal ccChiPhi;
+
     @Column(name = "sigma_cong", precision = 10, scale = 4)
     private BigDecimal sigmaCong;
 
@@ -274,6 +277,8 @@ public class ProductionRecord {
     public void setPlChiPhi(BigDecimal plChiPhi) { this.plChiPhi = plChiPhi; }
     public BigDecimal getDgChiPhi() { return dgChiPhi; }
     public void setDgChiPhi(BigDecimal dgChiPhi) { this.dgChiPhi = dgChiPhi; }
+    public BigDecimal getCcChiPhi() { return ccChiPhi; }
+    public void setCcChiPhi(BigDecimal ccChiPhi) { this.ccChiPhi = ccChiPhi; }
     public BigDecimal getSigmaCong() { return sigmaCong; }
     public void setSigmaCong(BigDecimal sigmaCong) { this.sigmaCong = sigmaCong; }
     public BigDecimal getTemDb() { return temDb; }
