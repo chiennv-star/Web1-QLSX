@@ -330,7 +330,7 @@ function StageTimelineTab({ filtersRef, searchTick, headerOffset = 120 }) {
           scroll={{ x: 1200 }}
           bordered
           rowHoverable={false}
-          sticky={{ offsetHeader: headerOffset + 36 }}
+          sticky={{ offsetHeader: headerOffset }}
           pagination={{ pageSize: 50, showSizeChanger: true, showTotal: t => `Tổng ${t} sản phẩm`, size: 'small' }}
           rowSelection={canDelete ? { selectedRowKeys, onChange: setSelectedRowKeys } : undefined}
         />
@@ -345,7 +345,7 @@ function StageTimelineTab({ filtersRef, searchTick, headerOffset = 120 }) {
           scroll={{ x: 900 }}
           bordered
           rowHoverable={false}
-          sticky={{ offsetHeader: headerOffset + 36 }}
+          sticky={{ offsetHeader: headerOffset }}
           pagination={{ pageSize: 50, showSizeChanger: true, showTotal: t => `Tổng ${t} sản phẩm`, size: 'small' }}
           rowSelection={canDelete ? { selectedRowKeys, onChange: setSelectedRowKeys } : undefined}
         />
@@ -493,7 +493,7 @@ function TienDoTab({ filtersRef, searchTick, headerOffset = 120 }) {
         size="small"
         scroll={{ x: 900 }}
         bordered
-        sticky={{ offsetHeader: headerOffset + 36 }}
+        sticky={{ offsetHeader: headerOffset }}
         pagination={{ pageSize: 50, showSizeChanger: true, showTotal: t => `Tổng ${t} sản phẩm`, size: 'small' }}
         summary={() => (
           <Table.Summary.Row style={{ fontWeight: 700 }}>
