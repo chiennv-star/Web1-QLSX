@@ -294,15 +294,15 @@ export default function TongHopSanLuongPage() {
         .tonghop-table .ant-table-tbody > tr:hover .ant-table-cell-fix-left,
         .tonghop-table .ant-table-tbody > tr:hover .ant-table-cell-fix-right { background: #99CCCC !important; }
         .tonghop-table .ant-table-summary > tr > td {
-          background: #e8f4fd !important;
-          color: #0000AA !important;
+          background: #006666 !important;
+          color: #ffffff !important;
           font-weight: 700 !important;
           font-size: 13px !important;
           padding: 9px 12px !important;
-          border-top: 2px solid #3b82f6 !important;
+          border-top: 2px solid #004444 !important;
         }
         .tonghop-table .ant-table-summary .ant-table-cell-fix-left,
-        .tonghop-table .ant-table-summary .ant-table-cell-fix-right { background: #e8f4fd !important; }
+        .tonghop-table .ant-table-summary .ant-table-cell-fix-right { background: #006666 !important; }
         .tonghop-table .ant-table-fixed-left .ant-table-tbody > tr > td,
         .tonghop-table .ant-table-fixed-right .ant-table-tbody > tr > td {
           border-right: 1px solid #e2e8f0 !important;
