@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Table, Input, Select, Tag, Tooltip, message, Button, Badge,
-  Modal, Form, DatePicker, InputNumber, Divider,
+  Modal, Form, DatePicker, InputNumber, Divider, AutoComplete, Spin,
 } from 'antd'
 import { Rnd } from 'react-rnd'
 import SkeletonTable from '../components/SkeletonTable'
@@ -44,9 +44,15 @@ function SoLoInputCell({ workScheduleId, valRef, onPressEnter }) {
 function LenhModal({ open, editItem, onClose, onSaved }) {
   const [form]   = Form.useForm()
   const [saving, setSaving] = useState(false)
+  const [bravoOptions, setBravoOptions] = useState([])
+  const [bravoStatus,  setBravoStatus]  = useState(null) // null | 'loading' | 'found' | 'not_found'
+  const bravoTimerRef       = useRef(null)
+  const justSelectedBravo   = useRef(false)
 
   useEffect(() => {
     if (!open) return
+    setBravoOptions([])
+    setBravoStatus(null)
     if (editItem) {
       form.setFieldsValue({
         ...editItem,
@@ -59,6 +65,51 @@ function LenhModal({ open, editItem, onClose, onSaved }) {
       form.resetFields()
     }
   }, [open, editItem, form])
+
+  const handleBravoSearch = (val) => {
+    if (bravoTimerRef.current) clearTimeout(bravoTimerRef.current)
+    if (!val || val.length < 2) { setBravoOptions([]); return }
+    bravoTimerRef.current = setTimeout(async () => {
+      try {
+        const { data } = await api.get('/product-master', { params: { keyword: val, page: 0, size: 12 } })
+        const items = (data.content || []).filter(p => p.maBravo)
+        setBravoOptions(items.map(p => ({
+          value: p.maBravo,
+          label: (
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <span style={{ fontWeight: 700, color: '#1677ff', fontFamily: 'monospace', minWidth: 90, flexShrink: 0 }}>{p.maBravo}</span>
+              {p.tienTrinh && <span style={{ color: '#6b7280', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.tienTrinh}</span>}
+            </div>
+          ),
+          raw: p,
+        })))
+      } catch { setBravoOptions([]) }
+    }, 300)
+  }
+
+  const handleBravoSelect = (val, option) => {
+    justSelectedBravo.current = true
+    const p = option.raw
+    form.setFieldsValue({ maBravo: p.maBravo, maSp: p.maTp || '', tenSanPham: p.tienTrinh || '' })
+    setBravoStatus('found')
+    setBravoOptions([])
+    setTimeout(() => { justSelectedBravo.current = false }, 150)
+  }
+
+  const handleBravoChange = (val) => {
+    if (justSelectedBravo.current) return
+    const trimmed = (typeof val === 'string' ? val : val?.target?.value)?.trim()
+    if (bravoTimerRef.current) clearTimeout(bravoTimerRef.current)
+    if (!trimmed) { setBravoStatus(null); return }
+    setBravoStatus('loading')
+    bravoTimerRef.current = setTimeout(async () => {
+      try {
+        const { data: master } = await api.get(`/product-master/lookup-by-bravo/${encodeURIComponent(trimmed)}`)
+        form.setFieldsValue({ maSp: master.maTp || '', tenSanPham: master.tienTrinh || '' })
+        setBravoStatus('found')
+      } catch { setBravoStatus('not_found') }
+    }, 500)
+  }
 
   const handleOk = async () => {
     try {
@@ -99,7 +150,26 @@ function LenhModal({ open, editItem, onClose, onSaved }) {
     >
       <Form form={form} layout="vertical" size="small">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0 16px' }}>
-          <Form.Item name="maBravo"    label="Mã Bravo">      <Input placeholder="VD: 10203251" /></Form.Item>
+          <Form.Item
+            name="maBravo"
+            label={
+              <span>Mã Bravo{' '}
+                {bravoStatus === 'loading'   && <Spin size="small" style={{ marginLeft: 4 }} />}
+                {bravoStatus === 'found'     && <span style={{ color: '#52c41a', fontSize: 11 }}>✓ Tìm thấy</span>}
+                {bravoStatus === 'not_found' && <span style={{ color: '#ff4d4f', fontSize: 11 }}>✗ Không tìm thấy</span>}
+              </span>
+            }
+          >
+            <AutoComplete
+              options={bravoOptions}
+              onSearch={handleBravoSearch}
+              onSelect={handleBravoSelect}
+              onChange={handleBravoChange}
+              placeholder="VD: 10203251"
+              allowClear
+              dropdownStyle={{ minWidth: 340 }}
+            />
+          </Form.Item>
           <Form.Item name="maSp"       label="Mã SP">         <Input placeholder="VD: TP251" /></Form.Item>
           <Form.Item name="tenSanPham" label="Tên sản phẩm">  <Input /></Form.Item>
           <Form.Item name="soLo"       label="Số lô">         <Input placeholder="VD: 080626" /></Form.Item>
