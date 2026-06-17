@@ -2190,6 +2190,8 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const navigate = useNavigate()
   const { canEditStage, getAllowedNhom, isNhanVien, canDeleteSchedule, user } = useAuth()
   const allowedNhom = forcedNhom || (congDoan === 'PC' ? getAllowedNhom() : null)
+  const AUTO_DEFAULT_NHOM = { DG: 'ĐG', BBC1: 'BBC1' }
+  const defaultModalNhom = allowedNhom || AUTO_DEFAULT_NHOM[congDoan] || null
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 1000, total: 0 })
@@ -3084,7 +3086,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         open={modalOpen}
         editItem={editItem}
         congDoan={congDoan}
-        defaultToNhom={allowedNhom}
+        defaultToNhom={defaultModalNhom}
         extraFormFields={config.extraFormFields}
         onClose={() => setModalOpen(false)}
         onSaved={onSaved}
