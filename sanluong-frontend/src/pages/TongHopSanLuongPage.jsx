@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+﻿import React, { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import {
   Table, Button, Typography, message, DatePicker, Tooltip, Tag
 } from 'antd'
@@ -40,9 +40,10 @@ export default function TongHopSanLuongPage() {
   })
 
   const stickyRef = useRef(null)
-  const [stickyH, setStickyH] = useState(110)
-  useEffect(() => {
+  const [stickyH, setStickyH] = useState(0)
+  useLayoutEffect(() => {
     if (!stickyRef.current) return
+    setStickyH(stickyRef.current.getBoundingClientRect().height)
     const obs = new ResizeObserver(([e]) => setStickyH(e.contentRect.height))
     obs.observe(stickyRef.current)
     return () => obs.disconnect()
