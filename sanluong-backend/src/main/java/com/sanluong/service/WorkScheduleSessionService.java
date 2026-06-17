@@ -129,7 +129,7 @@ public class WorkScheduleSessionService {
         BigDecimal sl   = totalSl.compareTo(BigDecimal.ZERO)   == 0 ? null : totalSl;
 
         switch (ws.getCongDoan()) {
-            case "PC"   -> { ws.setCongPc(cong);   ws.setSlPc(sl);   }
+            case "PC", "PCPL1", "PCPL2" -> { ws.setCongPc(cong);   ws.setSlPc(sl);   }
             case "BBC1" -> { ws.setCongBbc1(cong); ws.setSlBbc1(sl); }
             case "PL"   -> { ws.setCongPl(cong);   ws.setSlPl(sl);   }
             case "DG"   -> { ws.setCongDg(cong);   ws.setSlDg(sl);   }

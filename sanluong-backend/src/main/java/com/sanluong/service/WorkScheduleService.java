@@ -569,7 +569,7 @@ public class WorkScheduleService {
     public void updateSlOnly(Long workScheduleId, String congDoan, java.math.BigDecimal newSl) {
         WorkSchedule w = getById(workScheduleId);
         switch (congDoan) {
-            case "PC"   -> w.setSlPc(newSl);
+            case "PC", "PCPL1", "PCPL2" -> w.setSlPc(newSl);
             case "BBC1" -> w.setSlBbc1(newSl);
             case "PL"   -> w.setSlPl(newSl);
             case "DG"   -> w.setSlDg(newSl);
