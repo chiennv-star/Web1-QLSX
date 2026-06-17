@@ -82,7 +82,6 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
   const [bravoOptions,    setBravoOptions]    = useState([])    // autocomplete suggestions
   const justSelectedBravo = useRef(false)
   const [isDirty, setIsDirty] = useState(false)
-  const [dhPickerOpen,    setDhPickerOpen]    = useState(false) // gợi ý đơn hàng khi gõ maDonHang
   const [dhInput,         setDhInput]         = useState('')    // giá trị đang gõ maDonHang
   const [soLoSuggestions,    setSoLoSuggestions]    = useState([])    // danh sách soLo gợi ý từ PCPL1/PCPL2
   const [soLoLookupLoading,  setSoLoLookupLoading]  = useState(false) // đang tra cứu soLo từ PC
@@ -205,44 +204,96 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
     setTimeout(() => { justSelectedBravo.current = false }, 150)
   }
 
-  // Lookup by Mã Đơn Hàng → auto-fill maBravo + maSp + soLuongDon from DonHang
-  const handleMaDonHangChange = (e) => {
-    const val = e.target.value?.trim()
+  // AutoComplete options cho Mã ĐH — tính từ donHangList + dhInput (filter query)
+  const dhOptions = useMemo(() => {
+    const q = (dhInput || '').toLowerCase()
+    const matchFn = dh => !q
+      || dh.maDonHang?.toLowerCase().includes(q)
+      || (dh.maBravo || '').toLowerCase().includes(q)
+      || (dh.tenSanPham || '').toLowerCase().includes(q)
+    const activeDh = donHangList.filter(dh => dh.tinhTrangSx !== 'done' && dh.maDonHang && matchFn(dh)).slice(0, 20)
+    const doneDh   = q ? donHangList.filter(dh => dh.tinhTrangSx === 'done' && dh.maDonHang && matchFn(dh)).slice(0, 10) : []
+    if (activeDh.length === 0 && doneDh.length === 0) return []
+    const makeOpt = (dh) => {
+      const slConLai = dh.slConLai ?? ((Number(dh.soLuongDatHang) || 0) - (Number(dh.slDaXepKh) || 0))
+      return {
+        value: dh.maDonHang,
+        label: (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: '#1677ff' }}>{dh.maDonHang}</span>
+              {dh.maBravo && <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#8c8c8c' }}>· {dh.maBravo}</span>}
+              {dh.tinhTrangDatHang === 'rat_gap' && <Tag color="red" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>Rất GẤP</Tag>}
+              {dh.tinhTrangDatHang === 'gap' && <Tag color="orange" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>GẤP</Tag>}
+              {dh.tinhTrangSx === 'done' && <Tag color="success" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>✓ Đã xếp PC</Tag>}
+            </div>
+            <div style={{ fontSize: 11, color: '#374151', marginTop: 1 }}>{dh.tenSanPham || dh.maSp || '(Chưa có tên)'}</div>
+            <div style={{ fontSize: 11, color: '#64748b', marginTop: 1, display: 'flex', gap: 10 }}>
+              {dh.soLuongDatHang != null && <span>SL ĐH: <b style={{ color: '#1e293b' }}>{Number(dh.soLuongDatHang).toLocaleString('vi-VN')}</b></span>}
+              {slConLai > 0  && <span style={{ color: '#d97706' }}>Còn lại: <b>{slConLai.toLocaleString('vi-VN')}</b></span>}
+              {slConLai <= 0 && dh.soLuongDatHang != null && <span style={{ color: '#16a34a' }}>✓ Đã xếp đủ</span>}
+              {dh.soLo && <span style={{ color: '#8c8c8c' }}>Lô: {dh.soLo}</span>}
+            </div>
+          </div>
+        ),
+        dh,
+      }
+    }
+    const groups = []
+    if (activeDh.length > 0) {
+      groups.push({
+        label: <span style={{ fontWeight: 700, fontSize: 11, color: '#1d4ed8' }}>📋 {activeDh.length} đơn hàng chưa hoàn thành{doneDh.length > 0 ? ` · ${doneDh.length} đã hoàn thành PC` : ''} — nhấn để điền tự động</span>,
+        options: activeDh.map(makeOpt),
+      })
+    }
+    if (doneDh.length > 0) {
+      groups.push({
+        label: <span style={{ fontStyle: 'italic', fontSize: 10, color: '#888' }}>— Đã hoàn thành pha chế — có thể xếp lịch phân liều —</span>,
+        options: doneDh.map(makeOpt),
+      })
+    }
+    return groups
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [donHangList, dhInput])
+
+  // Khi user gõ vào AutoComplete Mã ĐH — cập nhật filter + debounce exact-match lookup
+  const handleDhSearch = (val) => {
     setDhInput(val || '')
-    setDhPickerOpen(true)
+    const trimmed = (val || '').trim()
     if (donHangTimerRef.current) clearTimeout(donHangTimerRef.current)
-    if (!val) { setDonHangStatus(null); setSoLuongDon(null); return }
+    if (!trimmed) { setDonHangStatus(null); setSoLuongDon(null); return }
     setDonHangStatus('loading')
-    donHangTimerRef.current = setTimeout(async () => {
-      try {
-        const { data: dhRes } = await api.get('/don-hang')
-        const dhList = Array.isArray(dhRes) ? dhRes : (dhRes.content || [])
-        const dh = dhList.find(d => d.maDonHang === val)
-        if (dh) {
-          setDonHangStatus('found')
-          const updates = {}
-          if (!form.getFieldValue('maBravo') && dh.maBravo) {
-            updates.maBravo = dh.maBravo
-            setBravoStatus('found')
-          }
-          if (!form.getFieldValue('maSp') && dh.maSp) {
-            updates.maSp = dh.maSp
-            setLookupStatus('found')
-          }
-          if (!form.getFieldValue('tenTrinh') && dh.tenSanPham) {
-            updates.tenTrinh = dh.tenSanPham
-          }
-          if (Object.keys(updates).length > 0) form.setFieldsValue(updates)
-          setSoLuongDon(dh.soLuongDatHang)
-          if (!form.getFieldValue('coLo') && dh.soLuongDatHang != null) {
-            form.setFieldsValue({ coLo: Number(dh.soLuongDatHang) })
-          }
-        } else {
-          setDonHangStatus('not_found')
-          setSoLuongDon(null)
-        }
-      } catch { setDonHangStatus(null) }
-    }, 500)
+    donHangTimerRef.current = setTimeout(() => {
+      const dh = donHangList.find(d => d.maDonHang === trimmed)
+      if (dh) {
+        setDonHangStatus('found')
+        const updates = {}
+        if (!form.getFieldValue('maBravo') && dh.maBravo) { updates.maBravo = dh.maBravo; setBravoStatus('found') }
+        if (!form.getFieldValue('maSp')    && dh.maSp)    { updates.maSp    = dh.maSp;    setLookupStatus('found') }
+        if (!form.getFieldValue('tenTrinh') && dh.tenSanPham) updates.tenTrinh = dh.tenSanPham
+        if (Object.keys(updates).length > 0) form.setFieldsValue(updates)
+        setSoLuongDon(dh.soLuongDatHang)
+        if (!form.getFieldValue('coLo') && dh.soLuongDatHang != null) form.setFieldsValue({ coLo: Number(dh.soLuongDatHang) })
+      } else {
+        setDonHangStatus('not_found')
+        setSoLuongDon(null)
+      }
+    }, 300)
+  }
+
+  // Khi user chọn 1 đơn hàng từ dropdown — điền tự động các trường liên quan
+  const handleDhSelect = (_val, option) => {
+    const dh = option.dh
+    const updates = {}
+    if (dh.maBravo)                { updates.maBravo  = dh.maBravo;  setBravoStatus('found') }
+    if (dh.tenSanPham || dh.maSp)  updates.tenTrinh  = dh.tenSanPham || dh.maSp
+    if (dh.maSp)                   updates.maSp      = dh.maSp
+    if (dh.soLo)                   updates.soLo      = dh.soLo
+    if (dh.soLuongDatHang != null) { updates.coLo = Number(dh.soLuongDatHang); setSoLuongDon(dh.soLuongDatHang) }
+    if (Object.keys(updates).length > 0) form.setFieldsValue(updates)
+    setDonHangStatus('found')
+    if (congDoan === 'PL') lookupSoLoFromPC(dh.maDonHang, dh.soLuongDatHang)
+    setDhInput('')
   }
 
   // Lookup by Số Lô — no longer uses Lệnh SX
@@ -603,90 +654,28 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
               {!editItem && donHangStatus === 'not_found' && <Tag color="orange" style={{ margin: 0, fontSize: 10 }}>Không tìm thấy</Tag>}
             </Space>
           </LCell>
-          <VCell last relative>
+          <VCell last>
             <Form.Item name="maDonHang" noStyle rules={[{ required: true, message: 'Nhập mã đơn hàng' }]}>
-              <Input size="small"
-                onChange={editItem ? undefined : handleMaDonHangChange}
-                onBlur={editItem ? undefined : () => setTimeout(() => setDhPickerOpen(false), 200)}
-                onFocus={editItem ? undefined : (e) => { setDhInput(e.target.value?.trim() || ''); setDhPickerOpen(true) }}
-                disabled={!!editItem}
-                allowClear={!editItem}
-                placeholder="VD: DH-002"
-                autoComplete="off"
-                style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', background: editItem ? '#f8fafc' : undefined, width: '100%' }}
-              />
+              {editItem ? (
+                <Input size="small"
+                  disabled
+                  style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', background: '#f8fafc', width: '100%' }}
+                />
+              ) : (
+                <AutoComplete
+                  options={dhOptions}
+                  onSearch={handleDhSearch}
+                  onSelect={handleDhSelect}
+                  onChange={(val) => { if (!val) { setDonHangStatus(null); setSoLuongDon(null); setDhInput('') } }}
+                  filterOption={false}
+                  allowClear
+                  placeholder="VD: DH-002"
+                  popupMatchSelectWidth={460}
+                  notFoundContent={dhInput ? <span style={{ padding: '8px 12px', fontSize: 12, color: '#888', display: 'block' }}>Không có đơn hàng phù hợp</span> : null}
+                  style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', width: '100%' }}
+                />
+              )}
             </Form.Item>
-            {/* ── Dropdown gợi ý đơn hàng theo maDonHang ── */}
-            {!editItem && dhPickerOpen && (() => {
-              const q = (dhInput || '').toLowerCase()
-              const matchFn = dh => !q || dh.maDonHang.toLowerCase().includes(q) || (dh.maBravo || '').toLowerCase().includes(q) || (dh.tenSanPham || '').toLowerCase().includes(q)
-              const activeDh = donHangList.filter(dh => dh.tinhTrangSx !== 'done' && dh.maDonHang && matchFn(dh)).slice(0, 20)
-              const doneDh   = q ? donHangList.filter(dh => dh.tinhTrangSx === 'done' && dh.maDonHang && matchFn(dh)).slice(0, 10) : []
-              const filtered = [...activeDh, ...doneDh]
-              if (filtered.length === 0) return null
-              return (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1050, background: '#fff', border: '1px solid #d9d9d9', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.13)', maxHeight: 300, overflowY: 'auto' }}>
-                  <div style={{ padding: '6px 10px', fontWeight: 700, fontSize: 11, color: '#1d4ed8', borderBottom: '1px solid #f0f0f0', background: '#f8fbff' }}>
-                    📋 {activeDh.length} đơn hàng chưa hoàn thành{doneDh.length > 0 ? ` · ${doneDh.length} đã hoàn thành PC` : ''} — nhấn để điền tự động
-                  </div>
-                  {filtered.map((dh, dhIdx) => {
-                    const isDoneDh = dh.tinhTrangSx === 'done'
-                    const isFirstDone = isDoneDh && dhIdx === activeDh.length
-                    const slConLai = dh.slConLai ?? ((Number(dh.soLuongDatHang) || 0) - (Number(dh.slDaXepKh) || 0))
-                    const isRatGap = dh.tinhTrangDatHang === 'rat_gap'
-                    const isGap    = dh.tinhTrangDatHang === 'gap'
-                    return (
-                      <React.Fragment key={dh.id}>
-                        {isFirstDone && (
-                          <div style={{ padding: '4px 10px', fontSize: 10, color: '#888', background: '#f5f5f5', borderBottom: '1px solid #e8e8e8', fontStyle: 'italic' }}>
-                            — Đã hoàn thành pha chế — có thể xếp lịch phân liều —
-                          </div>
-                        )}
-                        <div
-                          onMouseDown={e => {
-                            e.preventDefault()
-                            const updates = {}
-                            if (dh.maDonHang)              updates.maDonHang = dh.maDonHang
-                            if (dh.maBravo)                updates.maBravo   = dh.maBravo
-                            if (dh.tenSanPham || dh.maSp)  updates.tenTrinh  = dh.tenSanPham || dh.maSp
-                            if (dh.maSp)                   updates.maSp      = dh.maSp
-                            if (dh.soLo)                   updates.soLo      = dh.soLo
-                            if (dh.soLuongDatHang != null) {
-                              updates.coLo = Number(dh.soLuongDatHang)
-                              setSoLuongDon(dh.soLuongDatHang)
-                            }
-                            form.setFieldsValue(updates)
-                            setDhPickerOpen(false)
-                            setDhInput('')
-                            setDonHangStatus('found')
-                            if (dh.maBravo) setBravoStatus('found')
-                            if (congDoan === 'PL') lookupSoLoFromPC(dh.maDonHang, dh.soLuongDatHang)
-                          }}
-                          style={{ padding: '7px 10px', cursor: 'pointer', borderBottom: '1px solid #f5f5f5', transition: 'background 0.1s', opacity: isDoneDh ? 0.7 : 1, background: isDoneDh ? '#fafff8' : undefined }}
-                          onMouseEnter={e => e.currentTarget.style.background = '#f0f7ff'}
-                          onMouseLeave={e => e.currentTarget.style.background = isDoneDh ? '#fafff8' : ''}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: '#1677ff' }}>{dh.maDonHang}</span>
-                            {dh.maBravo && <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#8c8c8c' }}>· {dh.maBravo}</span>}
-                            {isRatGap && <Tag color="red" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>Rất GẤP</Tag>}
-                            {!isRatGap && isGap && <Tag color="orange" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>GẤP</Tag>}
-                            {isDoneDh && <Tag color="success" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>✓ Đã xếp PC</Tag>}
-                          </div>
-                          <div style={{ fontSize: 11, color: '#374151', marginTop: 2, lineHeight: 1.4 }}>{dh.tenSanPham || dh.maSp || '(Chưa có tên)'}</div>
-                          <div style={{ fontSize: 11, color: '#64748b', marginTop: 1, display: 'flex', gap: 10 }}>
-                            {dh.soLuongDatHang != null && <span>SL ĐH: <b style={{ color: '#1e293b' }}>{Number(dh.soLuongDatHang).toLocaleString('vi-VN')}</b></span>}
-                            {slConLai > 0 && <span style={{ color: '#d97706' }}>Còn lại: <b>{slConLai.toLocaleString('vi-VN')}</b></span>}
-                            {slConLai <= 0 && dh.soLuongDatHang != null && <span style={{ color: '#16a34a' }}>✓ Đã xếp đủ</span>}
-                            {dh.soLo && <span style={{ color: '#8c8c8c' }}>Lô: {dh.soLo}</span>}
-                          </div>
-                        </div>
-                      </React.Fragment>
-                    )
-                  })}
-                </div>
-              )
-            })()}
           </VCell>
 
           {/* Row 4: Tiến trình */}
