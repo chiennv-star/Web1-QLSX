@@ -695,9 +695,9 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
             <Form.Item name="tenTrinh" noStyle rules={[{ required: true, message: 'Nhập tiến trình' }]}>
               <TextArea
                 disabled={!!editItem}
-                autoSize={{ minRows: 2, maxRows: 4 }}
+                rows={2}
                 placeholder="Tên sản phẩm / quy trình"
-                style={{ background: editItem ? '#f8fafc' : undefined, color: editItem ? '#374151' : undefined, width: '100%' }}
+                style={{ background: editItem ? '#f8fafc' : undefined, color: editItem ? '#374151' : undefined, width: '100%', resize: 'none' }}
               />
             </Form.Item>
           </VCell>
@@ -794,7 +794,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
           <LCell>Chú ý</LCell>
           <VCell last>
             <Form.Item name="chuY" noStyle>
-              <TextArea size="small" rows={1} autoSize={{ minRows: 1, maxRows: 3 }} style={{ width: '100%' }} />
+              <TextArea size="small" rows={1} style={{ width: '100%', resize: 'none' }} />
             </Form.Item>
           </VCell>
 
@@ -803,7 +803,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
           <VCell span={3} last>
             <Form.Item name="saiLech" noStyle>
               <TextArea rows={2} placeholder="Ghi GẤP hoặc nội dung sai lệch nếu có…"
-                style={{ borderColor: '#fa8c16', width: '100%' }} />
+                style={{ borderColor: '#fa8c16', width: '100%', resize: 'none' }} />
             </Form.Item>
           </VCell>
 
