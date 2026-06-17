@@ -1327,7 +1327,7 @@ export default function DonHangPage() {
     <>
       <style>{`
         .dh-table .ant-table-thead > tr > th {
-          background: rgb(72,209,204) !important; color: #ffffff !important;
+          background: #006666 !important; color: #ffffff !important;
           font-size: 11px !important; font-weight: 700 !important; text-transform: uppercase;
           padding: 7px 8px !important; white-space: nowrap; letter-spacing: 0.4px;
           border-right: 1px solid rgba(255,255,255,0.3) !important;
@@ -1344,7 +1344,7 @@ export default function DonHangPage() {
         .dh-row-done { background: #f0fdf4 !important; }
         .dh-row-done:hover > td { background: #dcfce7 !important; }
         .dh-row-hidden { opacity: 0.5; }
-        .dh-table-done .ant-table-thead > tr > th { background: #166534 !important; border-right: 1px solid #15803d !important; }
+        .dh-table-done .ant-table-thead > tr > th { background: #006666 !important; border-right: 1px solid #005555 !important; }
       `}</style>
 
       {/* ── Sticky header wrapper ── */}
