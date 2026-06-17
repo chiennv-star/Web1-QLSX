@@ -1,15 +1,17 @@
 ﻿import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import {
   Table, Button, Typography, message, DatePicker, Select,
-  Tabs, Tag, Tooltip, Badge, Statistic, Drawer
+  Tabs, Tag, Tooltip, Badge, Statistic, Drawer, Modal, Form, TimePicker, Input, Popconfirm
 } from 'antd'
 import {
   SearchOutlined, ReloadOutlined, FileDoneOutlined,
-  TeamOutlined, ClockCircleOutlined, RiseOutlined, ApartmentOutlined, LoginOutlined
+  TeamOutlined, ClockCircleOutlined, RiseOutlined, ApartmentOutlined, LoginOutlined,
+  EditOutlined, PlusOutlined, DeleteOutlined
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
 import api from '../api/axios'
+import { useAuth } from '../context/AuthContext'
 
 dayjs.extend(isoWeek)
 
@@ -70,6 +72,9 @@ function KpiCard({ icon, label, value, sub, accent }) {
 }
 
 export default function ChamCongPage() {
+  const { canEditAttendance } = useAuth()
+  const canEdit = canEditAttendance()
+
   const [period, setPeriod]       = useState('week')
   const [dateRange, setDateRange] = useState(getWeekRange())
   const [deptFilter, setDeptFilter] = useState(null)
@@ -452,6 +457,12 @@ export default function ChamCongPage() {
   const [timeDetailEntries, setTimeDetailEntries] = useState([])
   const [timeDetailLoading, setTimeDetailLoading] = useState(false)
 
+  const [editEntryModal, setEditEntryModal] = useState(false)
+  const [editingEntry, setEditingEntry] = useState(null)
+  const [editingDay, setEditingDay] = useState(null)
+  const [editForm] = Form.useForm()
+  const [editSaving, setEditSaving] = useState(false)
+
   // Toàn bộ nhân viên, điền dữ liệu công nếu có
   const allEmpRows = useMemo(() => {
     if (!allEmps.length) return empRows
@@ -498,6 +509,60 @@ export default function ChamCongPage() {
     setTimeDetailOpen(true)
     fetchDetailEntries(record.maNhanVien, month)
   }, [fetchDetailEntries])
+
+  const openEditEntry = useCallback((entry, dayObj) => {
+    setEditingEntry(entry || null)
+    setEditingDay(dayObj)
+    editForm.setFieldsValue({
+      gioVao:      entry?.gioVao      ? dayjs(`2000-01-01T${entry.gioVao}`)      : null,
+      gioRa:       entry?.gioRa       ? dayjs(`2000-01-01T${entry.gioRa}`)       : null,
+      caThucHien:  entry?.caThucHien  || undefined,
+      ghiChu:      entry?.ghiChu      || '',
+    })
+    setEditEntryModal(true)
+  }, [editForm])
+
+  const handleSaveEntry = async () => {
+    try {
+      const values = await editForm.validateFields()
+      setEditSaving(true)
+      const payload = {
+        maNhanVien: timeDetailEmp.maNhanVien,
+        ngay:        editingDay.format('YYYY-MM-DD'),
+        gioVao:      values.gioVao ? values.gioVao.format('HH:mm:ss') : null,
+        gioRa:       values.gioRa  ? values.gioRa.format('HH:mm:ss')  : null,
+        caThucHien:  values.caThucHien || null,
+        ghiChu:      values.ghiChu || null,
+      }
+      if (editingEntry?.id) {
+        await api.put(`/attendance/time-entries/${editingEntry.id}`, payload)
+      } else {
+        await api.post('/attendance/time-entries', payload)
+      }
+      message.success('Lưu thành công')
+      setEditEntryModal(false)
+      fetchDetailEntries(timeDetailEmp.maNhanVien, timeDetailMonth)
+    } catch (err) {
+      if (err?.response) message.error(err.response.data?.message || 'Lưu thất bại')
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
+  const handleDeleteEntry = async () => {
+    if (!editingEntry?.id) return
+    setEditSaving(true)
+    try {
+      await api.delete(`/attendance/time-entries/${editingEntry.id}`)
+      message.success('Đã xóa bản ghi')
+      setEditEntryModal(false)
+      fetchDetailEntries(timeDetailEmp.maNhanVien, timeDetailMonth)
+    } catch {
+      message.error('Xóa thất bại')
+    } finally {
+      setEditSaving(false)
+    }
+  }
 
   const deptSubTabs = useMemo(() => [
     {
@@ -916,13 +981,18 @@ export default function ChamCongPage() {
                     const isToday = isCurrentMonth && today.date() === day
                     const isSun = di === 6
                     const cong = entry ? calcCong(entry) : 0
+                    const dayObj = timeDetailMonth.clone().date(day)
                     return (
                       <div key={di} style={{
                         minHeight: 78,
                         background: entry ? '#EBF5FF' : '#fafafa',
                         border: isToday ? '2px solid #1D4ED8' : '1px solid #E5E7EB',
                         borderRadius: 4, padding: '4px 5px',
-                      }}>
+                        position: 'relative',
+                        cursor: canEdit ? 'pointer' : 'default',
+                      }}
+                        onClick={canEdit ? () => openEditEntry(entry || null, dayObj) : undefined}
+                      >
                         {/* Date number */}
                         <div style={{
                           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -931,6 +1001,15 @@ export default function ChamCongPage() {
                           fontSize: 11, fontWeight: 700,
                           color: isToday ? '#fff' : isSun ? '#cf1322' : '#374151',
                         }}>{day}</div>
+                        {/* Edit / Add icon */}
+                        {canEdit && (
+                          <div style={{ position: 'absolute', top: 3, right: 4, fontSize: 10 }}>
+                            {entry
+                              ? <EditOutlined style={{ color: '#1D4ED8', opacity: 0.5 }} />
+                              : <PlusOutlined style={{ color: '#bbb' }} />
+                            }
+                          </div>
+                        )}
                         {entry ? (
                           <div style={{ lineHeight: 1.5 }}>
                             {entry.caThucHien && (
@@ -969,6 +1048,57 @@ export default function ChamCongPage() {
           )
         })()}
       </Drawer>
+
+      {/* ── Modal chỉnh sửa / thêm bản ghi giờ ra vào ── */}
+      <Modal
+        open={editEntryModal}
+        onCancel={() => setEditEntryModal(false)}
+        title={
+          <span style={{ fontWeight: 700, fontSize: 14 }}>
+            {editingEntry ? `Sửa chấm công — ${editingDay?.format('DD/MM/YYYY')}` : `Thêm chấm công — ${editingDay?.format('DD/MM/YYYY')}`}
+          </span>
+        }
+        footer={[
+          editingEntry && (
+            <Popconfirm
+              key="del"
+              title="Xóa bản ghi này?"
+              onConfirm={handleDeleteEntry}
+              okText="Xóa" cancelText="Hủy"
+              okButtonProps={{ danger: true }}
+            >
+              <Button danger icon={<DeleteOutlined />} loading={editSaving} style={{ float: 'left' }}>
+                Xóa
+              </Button>
+            </Popconfirm>
+          ),
+          <Button key="cancel" onClick={() => setEditEntryModal(false)}>Hủy</Button>,
+          <Button key="save" type="primary" loading={editSaving} onClick={handleSaveEntry}>Lưu</Button>,
+        ]}
+        destroyOnClose
+        width={360}
+      >
+        <Form form={editForm} layout="vertical" size="small" style={{ marginTop: 8 }}>
+          <Form.Item name="caThucHien" label="Ca thực hiện" rules={[{ required: true, message: 'Vui lòng chọn ca' }]}>
+            <Select placeholder="Chọn ca" allowClear>
+              <Select.Option value="HC">HC – Hành Chính</Select.Option>
+              <Select.Option value="TC">TC – Tăng Ca</Select.Option>
+              <Select.Option value="OT">OT – Overtime</Select.Option>
+            </Select>
+          </Form.Item>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Form.Item name="gioVao" label="Giờ vào">
+              <TimePicker format="HH:mm" minuteStep={5} style={{ width: '100%' }} placeholder="--:--" />
+            </Form.Item>
+            <Form.Item name="gioRa" label="Giờ ra">
+              <TimePicker format="HH:mm" minuteStep={5} style={{ width: '100%' }} placeholder="--:--" />
+            </Form.Item>
+          </div>
+          <Form.Item name="ghiChu" label="Ghi chú">
+            <Input placeholder="Ghi chú (tùy chọn)" maxLength={255} />
+          </Form.Item>
+        </Form>
+      </Modal>
     </>
   )
 }

@@ -81,6 +81,9 @@ export function AuthProvider({ children }) {
   // Là admin công đoạn (không phải admin toàn quyền)
   const isStageAdmin = () => STAGE_ROLES.includes(user?.role)
 
+  // Có thể thêm/sửa/xóa bản ghi Công Ra Vào (chấm công giờ): ADMIN + HCNS
+  const canEditAttendance = () => ['ADMIN', 'HCNS'].includes(user?.role)
+
   // Có thể nhập/sửa xử lý hàng lỗi: tất cả ADMIN_* + TKSX
   const canEditHangLoi = () => [
     'ADMIN', 'TKSX',
@@ -163,7 +166,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAdmin, isAdminKH, isTKSX, isQuanDoc, isNhanVien, isHCNS, isKeToan, isManHinh, getMaNhanVien, getToNhom, canEditProduction, canEditProductMaster, canEditPlan, canEditLenh, canEditStage, isStageAdmin, canEditHangLoi, allowedEfficiencyTabs, getAllowedNhom, getAllowedStages, getAllowedEmployeeGroups, canDeleteSchedule }}>
+    <AuthContext.Provider value={{ user, login, logout, isAdmin, isAdminKH, isTKSX, isQuanDoc, isNhanVien, isHCNS, isKeToan, isManHinh, getMaNhanVien, getToNhom, canEditProduction, canEditProductMaster, canEditPlan, canEditLenh, canEditStage, isStageAdmin, canEditHangLoi, canEditAttendance, allowedEfficiencyTabs, getAllowedNhom, getAllowedStages, getAllowedEmployeeGroups, canDeleteSchedule }}>
       {children}
     </AuthContext.Provider>
   )
