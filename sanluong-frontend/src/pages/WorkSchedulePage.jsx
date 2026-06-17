@@ -187,6 +187,9 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const [slHistory, setSlHistory] = useState({})
   const [contextMenu, setContextMenu] = useState(null)
   const [pendingDaySet, setPendingDaySet] = useState(new Set())
+  const [renamingDay, setRenamingDay] = useState(null)   // ngayKey đang đổi ngày
+  const [renameDayVal, setRenameDayVal] = useState('')   // giá trị ngày mới
+  const [renameSaving, setRenameSaving] = useState(false)
   // ── Inline edit form ──
   const [infoForm] = Form.useForm()
   const watchedToNhom = Form.useWatch('toNhom', infoForm)
@@ -645,6 +648,50 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     } catch { message.error('Xóa thất bại') }
   }
 
+  const renameDayKey = async (oldKey, newKey) => {
+    if (!newKey || newKey === oldKey) { setRenamingDay(null); return }
+    const rows = sessions.filter(s => (s.ngay || 'unknown') === oldKey)
+    if (rows.length === 0) { setRenamingDay(null); return }
+    setRenameSaving(true)
+    try {
+      await Promise.all(rows.map(s =>
+        s.id ? api.put(`/work-schedule-session/${s.id}`, { ...s, ngay: newKey, workScheduleId: schedule.id }) : Promise.resolve()
+      ))
+      setSessions(prev => prev.map(s => (s.ngay || 'unknown') === oldKey ? { ...s, ngay: newKey } : s))
+      setDaySlMap(prev => {
+        const next = { ...prev }
+        if (next[oldKey] !== undefined) { next[newKey] = next[oldKey]; delete next[oldKey] }
+        return next
+      })
+      setSavedSlKeys(prev => {
+        const next = new Set(prev)
+        if (next.has(oldKey)) { next.delete(oldKey); next.add(newKey) }
+        return next
+      })
+      setOpenTabs(prev => prev.map(t => t === oldKey ? newKey : t))
+      message.success('Đã đổi ngày thành công')
+    } catch { message.error('Đổi ngày thất bại') }
+    finally { setRenameSaving(false); setRenamingDay(null) }
+  }
+
+  const deleteDaySessions = async (ngayKey) => {
+    const rows = sessions.filter(s => (s.ngay || 'unknown') === ngayKey)
+    try {
+      await Promise.all(rows.filter(s => s.id).map(s => api.delete(`/work-schedule-session/${s.id}`)))
+      setSessions(prev => prev.filter(s => (s.ngay || 'unknown') !== ngayKey))
+      setOpenTabs(prev => prev.filter(t => t !== ngayKey))
+      setSavedSlKeys(prev => { const n = new Set(prev); n.delete(ngayKey); return n })
+      setDaySlMap(prev => {
+        const next = { ...prev }
+        delete next[ngayKey]
+        const newTong = Object.values(next).reduce((a, v) => a + (parseFloat(v) || 0), 0)
+        syncSl(newTong)
+        return next
+      })
+      message.success('Đã xóa ngày sản xuất')
+    } catch { message.error('Xóa ngày thất bại') }
+  }
+
   const saveDaySl = async (ngayKey) => {
     const val = daySlMap[ngayKey]
     if (val === '' || val === undefined) return
@@ -787,6 +834,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
               <th style={{ ...subHeadStyle, textAlign: 'right' }}>Tổng công</th>
               <th style={{ ...subHeadStyle, textAlign: 'right' }}>Sản lượng ngày</th>
               <th style={{ ...subHeadStyle, textAlign: 'right' }}>Năng suất</th>
+              {canEditDetail && <th style={{ ...subHeadStyle, textAlign: 'center', width: 36 }}></th>}
             </tr>
           </thead>
           <tbody>
@@ -808,8 +856,32 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                 <tr key={k} style={{ cursor: 'pointer', background: isOpen ? '#f6ffed' : '' }}
                   onClick={() => openDetail(k)}>
                   <td style={{ ...cellStyle, color: '#1677ff', fontWeight: 600 }}>
-                    {k !== 'unknown' && dayjs(k).isValid() ? dayjs(k).format('DD/MM/YYYY') : k}
-                    {isOpen && <Tag color="green" style={{ marginLeft: 6, fontSize: 11 }}>Đang mở</Tag>}
+                    {renamingDay === k ? (
+                      <Space size={4} onClick={e => e.stopPropagation()}>
+                        <input type="date" style={{ ...inputStyle, width: 130, fontSize: 12 }}
+                          value={renameDayVal}
+                          onChange={e => setRenameDayVal(e.target.value)}
+                          autoFocus
+                        />
+                        <Button size="small" type="primary" loading={renameSaving}
+                          disabled={!renameDayVal}
+                          onClick={() => renameDayKey(k, renameDayVal)}
+                          style={{ fontSize: 11, padding: '0 6px' }}>✓</Button>
+                        <Button size="small" onClick={() => setRenamingDay(null)}
+                          style={{ fontSize: 11, padding: '0 6px' }}>✕</Button>
+                      </Space>
+                    ) : (
+                      <Space size={4}>
+                        <span>{k !== 'unknown' && dayjs(k).isValid() ? dayjs(k).format('DD/MM/YYYY') : k}</span>
+                        {isOpen && <Tag color="green" style={{ margin: 0, fontSize: 11 }}>Đang mở</Tag>}
+                        {canEditDetail && (
+                          <Button size="small" type="text" icon={<EditOutlined />}
+                            onClick={e => { e.stopPropagation(); setRenamingDay(k); setRenameDayVal(k) }}
+                            style={{ color: '#8c8c8c', padding: '0 2px', height: 18, minWidth: 18, fontSize: 11 }}
+                          />
+                        )}
+                      </Space>
+                    )}
                   </td>
                   <td style={{ ...cellStyle, textAlign: 'right' }}>{rows.length}</td>
                   <td style={{ ...cellStyle, textAlign: 'right' }}>{tong ? tong.toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : '—'}</td>
@@ -839,6 +911,19 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                       )
                     })()}
                   </td>
+                  {canEditDetail && (
+                    <td style={{ ...cellStyle, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                      <Popconfirm
+                        title={`Xóa toàn bộ dữ liệu ngày ${k !== 'unknown' && dayjs(k).isValid() ? dayjs(k).format('DD/MM/YYYY') : k}?`}
+                        description={`Sẽ xóa ${rows.length} bản ghi sản xuất.`}
+                        onConfirm={() => deleteDaySessions(k)}
+                        okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }}
+                      >
+                        <Button size="small" type="text" danger icon={<DeleteOutlined />}
+                          style={{ padding: '0 4px', height: 20 }} />
+                      </Popconfirm>
+                    </td>
+                  )}
                 </tr>
               )
             })}
@@ -867,6 +952,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                   <td style={{ ...cellStyle, textAlign: 'right', color: '#aaa' }}>—</td>
                   <td style={{ ...cellStyle, textAlign: 'right', color: '#aaa' }}>—</td>
                   <td style={{ ...cellStyle, textAlign: 'right', color: '#aaa' }}>—</td>
+                  {canEditDetail && <td style={cellStyle} />}
                 </tr>
               )
             })}
@@ -1250,7 +1336,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   })), [openTabs, sessions, daySlMap, savedSlKeys, slEditOriginal, slHistory, pendingDays,
        pendingDaySet, editingKeys, batchEditDays, batchSaving, saving, savingDay,
        nsTrungBinh, employees, vaiTroOptions, canEditDetail, multiAddModal, maNvErrorKeys,
-       tongCong, tongSanLuong, ngayKeys])
+       tongCong, tongSanLuong, ngayKeys, renamingDay, renameDayVal, renameSaving])
 
   const handleDrawerClose = () => {
     if (isDirty) {

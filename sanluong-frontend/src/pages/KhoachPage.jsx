@@ -56,6 +56,26 @@ function checkUrgent(r) {
   return t.includes('GẤP') || t.includes('GAP')
 }
 
+// ── Plan Modal helpers — defined outside component so reference is stable ─────
+const LCell = ({ children }) => (
+  <div style={{ padding: '7px 10px', background: '#f1f5f9', fontWeight: 600, fontSize: 12,
+    color: '#64748b', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0',
+    display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+    {children}
+  </div>
+)
+const VCell = ({ children, last, span, relative }) => (
+  <div style={{
+    padding: '5px 8px', borderBottom: '1px solid #e2e8f0', minWidth: 0,
+    ...(last ? {} : { borderRight: '1px solid #e2e8f0' }),
+    ...(span ? { gridColumn: `span ${span}` } : {}),
+    ...(relative ? { position: 'relative', overflow: 'visible' } : {}),
+    display: 'flex', alignItems: 'center',
+  }}>
+    {children}
+  </div>
+)
+
 // ── Plan Modal ────────────────────────────────────────────────────────────────
 function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSaved, onReloadData, donHangList = [], donHangLoading = false }) {
   const [form]         = Form.useForm()
@@ -119,7 +139,6 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
       setBravoStatus(null)
       setDonHangStatus(null)
       setSoLuongDon(null)
-      setDhPickerOpen(false)
       setDhInput('')
 
       // Auto-fetch SL đơn từ DonHang
@@ -147,7 +166,6 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
       setDonHangStatus(null)
       setSoLuongDon(null)
       setLoHistory([])
-      setDhPickerOpen(false)
       setDhInput('')
       setSoLoSuggestions([])
       setSoLoOptions([])
@@ -458,25 +476,6 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
       onClose()
     }
   }
-
-  const LCell = ({ children }) => (
-    <div style={{ padding: '7px 10px', background: '#f1f5f9', fontWeight: 600, fontSize: 12,
-      color: '#64748b', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0',
-      display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-      {children}
-    </div>
-  )
-  const VCell = ({ children, last, span, relative }) => (
-    <div style={{
-      padding: '5px 8px', borderBottom: '1px solid #e2e8f0', minWidth: 0,
-      ...(last ? {} : { borderRight: '1px solid #e2e8f0' }),
-      ...(span ? { gridColumn: `span ${span}` } : {}),
-      ...(relative ? { position: 'relative', overflow: 'visible' } : {}),
-      display: 'flex', alignItems: 'center',
-    }}>
-      {children}
-    </div>
-  )
 
   return (
     <Modal
