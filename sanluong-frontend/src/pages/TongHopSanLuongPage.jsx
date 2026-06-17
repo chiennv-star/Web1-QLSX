@@ -257,6 +257,7 @@ export default function TongHopSanLuongPage() {
       {/* ── CSS ── */}
       <style>{`
         .tonghop-table .ant-table-thead > tr > th {
+          background: #006666 !important;
           color: #ffffff !important;
           text-align: center !important;
           text-transform: uppercase;
@@ -341,21 +342,21 @@ export default function TongHopSanLuongPage() {
             <Table.Summary fixed="bottom">
               <Table.Summary.Row>
                 <Table.Summary.Cell index={0} align="center">
-                  <strong style={{ color: '#0000AA', fontSize: 11, letterSpacing: 0.5 }}>TỔNG TRANG</strong>
+                  <strong style={{ color: '#ffffff', fontSize: 11, letterSpacing: 0.5 }}>TỔNG TRANG</strong>
                 </Table.Summary.Cell>
                 {STAGES.flatMap((s, i) => [
                   <Table.Summary.Cell key={`sl${i}`} index={i * 2 + 1} align="right">
-                    <strong style={{ color: '#0000AA' }}>{fmtSL(tot[s.key].sl)}</strong>
+                    <strong style={{ color: '#ffffff' }}>{fmtSL(tot[s.key].sl)}</strong>
                   </Table.Summary.Cell>,
                   <Table.Summary.Cell key={`cong${i}`} index={i * 2 + 2} align="right">
-                    <strong style={{ color: '#0000AA' }}>{fmtCong(tot[s.key].cong, 2)}</strong>
+                    <strong style={{ color: '#ffffff' }}>{fmtCong(tot[s.key].cong, 2)}</strong>
                   </Table.Summary.Cell>,
                 ])}
                 <Table.Summary.Cell index={13} align="right">
-                  <strong style={{ color: '#0000AA', fontSize: 13 }}>{fmtSL(gSl)}</strong>
+                  <strong style={{ color: '#ffffff', fontSize: 13 }}>{fmtSL(gSl)}</strong>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={14} align="right">
-                  <strong style={{ color: '#0000AA', fontSize: 13 }}>{fmtCong(gCong, 2)}</strong>
+                  <strong style={{ color: '#ffffff', fontSize: 13 }}>{fmtCong(gCong, 2)}</strong>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
             </Table.Summary>
