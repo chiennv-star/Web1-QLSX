@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react'
+﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   Table, Button, Space, Typography, Input, Select, DatePicker,
   Modal, Form, InputNumber, Tag, Popconfirm, message,
@@ -1234,7 +1234,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     )
   }
 
-  const tabItems = openTabs.map(key => ({
+  const tabItems = useMemo(() => openTabs.map(key => ({
     key,
     label: key === 'list'
       ? <Space size={4}><EyeOutlined />Chi tiết</Space>
@@ -1245,7 +1245,10 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
         {key === 'list' ? renderListTab() : renderDayTab(key)}
       </>
     ),
-  }))
+  })), [openTabs, sessions, daySlMap, savedSlKeys, slEditOriginal, slHistory, pendingDays,
+       pendingDaySet, editingKeys, batchEditDays, batchSaving, saving, savingDay,
+       nsTrungBinh, employees, vaiTroOptions, canEditDetail, multiAddModal, maNvErrorKeys,
+       tongCong, tongSanLuong, ngayKeys])
 
   const handleDrawerClose = () => {
     if (isDirty) {
@@ -1274,12 +1277,12 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       <style>{`
           .erp-info-form .ant-form-item { margin-bottom: 0 !important; }
           .erp-info-form .ant-form-item-label { display: none !important; }
-          .erp-info-form .ant-input, .erp-info-form .ant-input-number-input { font-size: 12px !important; color: #00CC00 !important; }
+          .erp-info-form .ant-input, .erp-info-form .ant-input-number-input { font-size: 12px !important; color: #000055 !important; }
           .erp-info-form .ant-select-selector { font-size: 12px !important; }
           .erp-info-form .ant-input-number { width: 100% !important; }
           .erp-info-form .ant-picker { width: 100% !important; font-size: 12px !important; }
-          .erp-info-form .ant-picker-input input { color: #00CC00 !important; }
-          .erp-info-form .ant-select-selection-item { color: #00CC00 !important; }
+          .erp-info-form .ant-picker-input input { color: #000055 !important; }
+          .erp-info-form .ant-select-selection-item { color: #000055 !important; }
 
           /* ── Ô trống: nền #99CCCC, placeholder #669966 ── */
           .erp-info-form input.ant-input:placeholder-shown { background-color: #99CCCC !important; }
@@ -1330,35 +1333,35 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
         `}</style>
 
       {/* ── [1] Gradient header — luôn cố định, không bao giờ cuộn ── */}
-      <div style={{ flexShrink: 0, background: '#669999', padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span style={{ fontSize: 22, flexShrink: 0 }}>⚙️</span>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ color: '#fff', fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div style={{ flexShrink: 0, background: '#00CC99', padding: '8px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span style={{ fontSize: 20, flexShrink: 0 }}>⚙️</span>
+        <div style={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'nowrap', overflow: 'hidden' }}>
+          <span style={{ color: '#fff', fontWeight: 800, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1 }}>
             {schedule?.tenTrinh || schedule?.maSp || 'Chi tiết sản xuất'}
-          </div>
-          <div style={{ color: '#93c5fd', fontSize: 11, marginTop: 2, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            {schedule?.maSp      && <span>SP: <b style={{ color: '#bfdbfe' }}>{schedule.maSp}</b></span>}
-            {schedule?.soLo      && <span>Lô: <b style={{ color: '#fcd34d' }}>{schedule.soLo}</b></span>}
-            {schedule?.congDoan  && <span>Công đoạn: <b style={{ color: '#a5f3fc' }}>{schedule.congDoan}</b></span>}
-            {schedule?.ngayThucHien && <span>Ngày: <b style={{ color: '#6ee7b7' }}>{dayjs(schedule.ngayThucHien).format('DD/MM/YYYY')}</b></span>}
+          </span>
+          <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, display: 'flex', gap: 14, flexShrink: 0, whiteSpace: 'nowrap' }}>
+            {schedule?.maSp      && <span>SP: <b style={{ color: '#fff' }}>{schedule.maSp}</b></span>}
+            {schedule?.soLo      && <span>Lô: <b style={{ color: '#fff' }}>{schedule.soLo}</b></span>}
+            {schedule?.congDoan  && <span>Công đoạn: <b style={{ color: '#fff' }}>{schedule.congDoan}</b></span>}
+            {schedule?.ngayThucHien && <span>Ngày: <b style={{ color: '#fff' }}>{dayjs(schedule.ngayThucHien).format('DD/MM/YYYY')}</b></span>}
           </div>
         </div>
         {isInfoEditing ? (
           <div style={{ display: 'flex', gap: 8 }}>
             <Button size="small"
               onClick={() => { setIsInfoEditing(false); setIsDirty(false); setLookupStatus(null); infoForm.setFieldsValue({ ...schedule, ngayThucHien: schedule?.ngayThucHien ? dayjs(schedule.ngayThucHien) : null }) }}
-              style={{ fontWeight: 600, fontSize: 11, background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.35)', color: '#fff', borderRadius: 6, height: 32 }}>
+              style={{ fontWeight: 600, fontSize: 11, background: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.6)', color: '#fff', borderRadius: 6, height: 32 }}>
               Hủy
             </Button>
             <Button type="primary" loading={infoSaving} onClick={saveInfo}
-              style={{ flexShrink: 0, background: '#16a34a', borderColor: '#16a34a', fontWeight: 700, height: 32, minWidth: 110, fontSize: 12, borderRadius: 6,
-                ...(isDirty ? { boxShadow: '0 0 0 3px rgba(22,163,74,0.5)' } : {}) }}>
+              style={{ flexShrink: 0, background: '#006666', borderColor: '#006666', fontWeight: 700, height: 32, minWidth: 110, fontSize: 12, borderRadius: 6,
+                ...(isDirty ? { boxShadow: '0 0 0 3px rgba(0,102,102,0.5)' } : {}) }}>
               Cập nhật
             </Button>
           </div>
         ) : canEditDetail ? (
           <Button onClick={() => setIsInfoEditing(true)}
-            style={{ flexShrink: 0, background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.35)', fontWeight: 700, height: 36, minWidth: 130, fontSize: 12, borderRadius: 6, backdropFilter: 'blur(4px)', color: '#fff' }}>
+            style={{ flexShrink: 0, background: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.6)', fontWeight: 700, height: 36, minWidth: 130, fontSize: 12, borderRadius: 6, color: '#fff' }}>
             Cập nhật
           </Button>
         ) : null}
