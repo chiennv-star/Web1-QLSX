@@ -408,63 +408,122 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
     }
   }
 
+  const LCell = ({ children }) => (
+    <div style={{ padding: '7px 10px', background: '#f1f5f9', fontWeight: 600, fontSize: 12,
+      color: '#64748b', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0',
+      display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+      {children}
+    </div>
+  )
+  const VCell = ({ children, last, span, relative }) => (
+    <div style={{
+      padding: '5px 8px', borderBottom: '1px solid #e2e8f0', minWidth: 0,
+      ...(last ? {} : { borderRight: '1px solid #e2e8f0' }),
+      ...(span ? { gridColumn: `span ${span}` } : {}),
+      ...(relative ? { position: 'relative', overflow: 'visible' } : {}),
+      display: 'flex', alignItems: 'center',
+    }}>
+      {children}
+    </div>
+  )
+
   return (
     <Modal
-      title={editItem ? 'Chỉnh sửa kế hoạch' : 'Thêm kế hoạch mới'}
+      title={null}
       open={open}
-      onOk={onOk}
       onCancel={handleClose}
-      okText={editItem ? 'Cập nhật' : 'Lưu'}
-      cancelText="Hủy"
+      footer={
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <Button onClick={handleClose}>Hủy</Button>
+          <Button type="primary" onClick={onOk}
+            style={isDirty ? { boxShadow: '0 0 0 3px rgba(22,119,255,0.45)', fontWeight: 700 } : {}}>
+            {editItem ? 'Cập nhật' : 'Lưu'}
+          </Button>
+        </div>
+      }
       width={740}
       destroyOnClose
-      okButtonProps={isDirty ? {
-        style: { boxShadow: '0 0 0 3px rgba(22,119,255,0.45)', fontWeight: 700 }
-      } : {}}
+      styles={{ body: { padding: 0 } }}
     >
-      <Form form={form} layout="vertical" style={{ marginTop: 12 }} onValuesChange={() => setIsDirty(true)}>
-        <Row gutter={16}>
-          <Col span={8}>
-            <Form.Item label="Ngày thực hiện" name="ngayThucHien" rules={[{ required: true, message: 'Chọn ngày' }]}>
-              <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+      {/* Header */}
+      <div style={{ background: '#1e4570', padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ fontSize: 20 }}>📋</span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ color: '#fff', fontWeight: 800, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {editItem
+              ? (editItem.tenTrinh || editItem.maBravo || 'Chỉnh sửa kế hoạch')
+              : 'Thêm kế hoạch mới'}
+          </div>
+          {editItem && (
+            <div style={{ color: '#93c5fd', fontSize: 11, marginTop: 1, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {editItem.maBravo   && <span>Bravo: <b style={{ color: '#bfdbfe' }}>{editItem.maBravo}</b></span>}
+              {editItem.maSp      && <span>SP: <b>{editItem.maSp}</b></span>}
+              {editItem.maDonHang && <span>ĐH: <b style={{ color: '#c4b5fd' }}>{editItem.maDonHang}</b></span>}
+              {editItem.toNhom    && <span>Tổ: <b>{editItem.toNhom}</b></span>}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <Form form={form} component="div" autoComplete="off" style={{ padding: '12px 16px 4px' }} onValuesChange={() => setIsDirty(true)}>
+        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 120px 1fr', border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'visible', marginBottom: 10 }}>
+
+          {/* Row 1: Ngày TH — Tổ/Nhóm */}
+          <LCell>Ngày TH <span style={{ color: '#ef4444' }}>*</span></LCell>
+          <VCell>
+            <Form.Item name="ngayThucHien" noStyle rules={[{ required: true, message: 'Chọn ngày' }]}>
+              <DatePicker size="small" style={{ width: '100%' }} format="DD/MM/YYYY" />
             </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item label="Tổ/Nhóm" name="toNhom" rules={[{ required: true }]}>
-              <Select>
+          </VCell>
+          <LCell>Tổ/Nhóm <span style={{ color: '#ef4444' }}>*</span></LCell>
+          <VCell last>
+            <Form.Item name="toNhom" noStyle rules={[{ required: true }]}>
+              <Select size="small" style={{ width: '100%' }}>
                 {TO_GROUPS.map(g => <Option key={g.key} value={g.key}>{g.label}</Option>)}
               </Select>
             </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item label="Công đoạn" name="congDoan" rules={[{ required: true }]}>
-              <Select onChange={val => setCongDoan(val)}>
+          </VCell>
+
+          {/* Row 2: Công đoạn — Mã SP */}
+          <LCell>Công đoạn <span style={{ color: '#ef4444' }}>*</span></LCell>
+          <VCell>
+            <Form.Item name="congDoan" noStyle rules={[{ required: true }]}>
+              <Select size="small" style={{ width: '100%' }} onChange={val => setCongDoan(val)}>
                 {Object.entries(CONG_DOAN_LABEL).map(([v, l]) =>
                   <Option key={v} value={v}>{l}</Option>
                 )}
               </Select>
             </Form.Item>
-          </Col>
-        </Row>
+          </VCell>
+          <LCell>Mã SP</LCell>
+          <VCell last>
+            <Form.Item name="maSp" noStyle>
+              <Input size="small"
+                onChange={editItem ? undefined : handleMaSpChange}
+                disabled={!!editItem}
+                allowClear={!editItem}
+                placeholder="Tự điền khi tra Bravo"
+                style={{ color: '#1D4ED8', fontWeight: 600, width: '100%', background: editItem ? '#f8fafc' : undefined }}
+              />
+            </Form.Item>
+          </VCell>
 
-        <Row gutter={12}>
-          <Col span={8} style={{ position: 'relative' }}>
-            <Form.Item
-              label={
-                <Space size={4}>
-                  <span>Mã Bravo</span>
-                  {!editItem && bravoStatus === 'loading'   && <SyncOutlined spin style={{ color: '#1677ff' }} />}
-                  {!editItem && bravoStatus === 'found'     && <CheckCircleOutlined style={{ color: '#52c41a' }} />}
-                  {!editItem && bravoStatus === 'not_found' && <Tag color="red" style={{ margin: 0, fontSize: 10 }}>?</Tag>}
-                </Space>
-              }
-              name="maBravo"
-            >
+          {/* Row 3: Mã Bravo — Mã ĐH */}
+          <LCell>
+            <Space size={4}>
+              <span>Mã Bravo</span>
+              {!editItem && bravoStatus === 'loading'   && <SyncOutlined spin style={{ color: '#1677ff' }} />}
+              {!editItem && bravoStatus === 'found'     && <CheckCircleOutlined style={{ color: '#52c41a' }} />}
+              {!editItem && bravoStatus === 'not_found' && <Tag color="red" style={{ margin: 0, fontSize: 10 }}>?</Tag>}
+            </Space>
+          </LCell>
+          <VCell relative>
+            <Form.Item name="maBravo" noStyle>
               {editItem ? (
-                <Input
+                <Input size="small"
                   disabled
                   placeholder="VD: 10602153"
-                  style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', background: '#f8fafc' }}
+                  style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', background: '#f8fafc', width: '100%' }}
                 />
               ) : (
                 <AutoComplete
@@ -475,7 +534,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
                   allowClear
                   placeholder="Gõ tên SP hoặc mã Bravo..."
                   popupMatchSelectWidth={380}
-                  style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}
+                  style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', width: '100%' }}
                 />
               )}
             </Form.Item>
@@ -491,13 +550,9 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
                   position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1050,
                   background: '#fff', border: '1px solid #d9d9d9',
                   borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.13)',
-                  maxHeight: 280, overflowY: 'auto', marginTop: -16,
+                  maxHeight: 280, overflowY: 'auto',
                 }}>
-                  <div style={{
-                    padding: '6px 10px', fontWeight: 700, fontSize: 11,
-                    color: '#1d4ed8', borderBottom: '1px solid #f0f0f0',
-                    background: '#f8fbff',
-                  }}>
+                  <div style={{ padding: '6px 10px', fontWeight: 700, fontSize: 11, color: '#1d4ed8', borderBottom: '1px solid #f0f0f0', background: '#f8fbff' }}>
                     📋 {filtered.length} đơn hàng — nhấn để điền tự động
                   </div>
                   {filtered.map(dh => (
@@ -530,14 +585,8 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
                         {dh.tenSanPham || dh.maSp || '(Chưa có tên)'}
                       </div>
                       <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>
-                        <span style={{ fontFamily: 'monospace', color: '#1677ff', fontWeight: 600 }}>
-                          {dh.maDonHang || '—'}
-                        </span>
-                        {dh.soLuongDatHang != null && (
-                          <span style={{ marginLeft: 8, color: '#389e0d', fontWeight: 600 }}>
-                            SL: {Number(dh.soLuongDatHang).toLocaleString('vi-VN')}
-                          </span>
-                        )}
+                        <span style={{ fontFamily: 'monospace', color: '#1677ff', fontWeight: 600 }}>{dh.maDonHang || '—'}</span>
+                        {dh.soLuongDatHang != null && <span style={{ marginLeft: 8, color: '#389e0d', fontWeight: 600 }}>SL: {Number(dh.soLuongDatHang).toLocaleString('vi-VN')}</span>}
                         {dh.soLo && <span style={{ marginLeft: 8, color: '#8c8c8c' }}>Lô: {dh.soLo}</span>}
                       </div>
                     </div>
@@ -545,21 +594,18 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
                 </div>
               )
             })()}
-          </Col>
-          <Col span={10} style={{ position: 'relative' }}>
-            <Form.Item
-              label={
-                <Space size={4}>
-                  <span>Mã Đơn Hàng</span>
-                  {!editItem && donHangStatus === 'loading'   && <SyncOutlined spin style={{ color: '#1677ff' }} />}
-                  {!editItem && donHangStatus === 'found'     && <CheckCircleOutlined style={{ color: '#52c41a' }} />}
-                  {!editItem && donHangStatus === 'not_found' && <Tag color="orange" style={{ margin: 0, fontSize: 10 }}>Không tìm thấy</Tag>}
-                </Space>
-              }
-              name="maDonHang"
-              rules={[{ required: true, message: 'Nhập mã đơn hàng' }]}
-            >
-              <Input
+          </VCell>
+          <LCell>
+            <Space size={4}>
+              <span>Mã ĐH <span style={{ color: '#ef4444' }}>*</span></span>
+              {!editItem && donHangStatus === 'loading'   && <SyncOutlined spin style={{ color: '#1677ff' }} />}
+              {!editItem && donHangStatus === 'found'     && <CheckCircleOutlined style={{ color: '#52c41a' }} />}
+              {!editItem && donHangStatus === 'not_found' && <Tag color="orange" style={{ margin: 0, fontSize: 10 }}>Không tìm thấy</Tag>}
+            </Space>
+          </LCell>
+          <VCell last relative>
+            <Form.Item name="maDonHang" noStyle rules={[{ required: true, message: 'Nhập mã đơn hàng' }]}>
+              <Input size="small"
                 onChange={editItem ? undefined : handleMaDonHangChange}
                 onBlur={editItem ? undefined : () => setTimeout(() => setDhPickerOpen(false), 200)}
                 onFocus={editItem ? undefined : (e) => { setDhInput(e.target.value?.trim() || ''); setDhPickerOpen(true) }}
@@ -567,7 +613,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
                 allowClear={!editItem}
                 placeholder="VD: DH-002"
                 autoComplete="off"
-                style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', background: editItem ? '#f8fafc' : undefined }}
+                style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', background: editItem ? '#f8fafc' : undefined, width: '100%' }}
               />
             </Form.Item>
             {/* ── Dropdown gợi ý đơn hàng theo maDonHang ── */}
@@ -579,17 +625,8 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
               const filtered = [...activeDh, ...doneDh]
               if (filtered.length === 0) return null
               return (
-                <div style={{
-                  position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1050,
-                  background: '#fff', border: '1px solid #d9d9d9',
-                  borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.13)',
-                  maxHeight: 300, overflowY: 'auto', marginTop: -16,
-                }}>
-                  <div style={{
-                    padding: '6px 10px', fontWeight: 700, fontSize: 11,
-                    color: '#1d4ed8', borderBottom: '1px solid #f0f0f0',
-                    background: '#f8fbff',
-                  }}>
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1050, background: '#fff', border: '1px solid #d9d9d9', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.13)', maxHeight: 300, overflowY: 'auto' }}>
+                  <div style={{ padding: '6px 10px', fontWeight: 700, fontSize: 11, color: '#1d4ed8', borderBottom: '1px solid #f0f0f0', background: '#f8fbff' }}>
                     📋 {activeDh.length} đơn hàng chưa hoàn thành{doneDh.length > 0 ? ` · ${doneDh.length} đã hoàn thành PC` : ''} — nhấn để điền tự động
                   </div>
                   {filtered.map((dh, dhIdx) => {
@@ -630,31 +667,17 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
                           onMouseLeave={e => e.currentTarget.style.background = isDoneDh ? '#fafff8' : ''}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: '#1677ff' }}>
-                              {dh.maDonHang}
-                            </span>
-                            {dh.maBravo && (
-                              <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#8c8c8c' }}>
-                                · {dh.maBravo}
-                              </span>
-                            )}
+                            <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: '#1677ff' }}>{dh.maDonHang}</span>
+                            {dh.maBravo && <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#8c8c8c' }}>· {dh.maBravo}</span>}
                             {isRatGap && <Tag color="red" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>Rất GẤP</Tag>}
                             {!isRatGap && isGap && <Tag color="orange" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>GẤP</Tag>}
                             {isDoneDh && <Tag color="success" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>✓ Đã xếp PC</Tag>}
                           </div>
-                          <div style={{ fontSize: 11, color: '#374151', marginTop: 2, lineHeight: 1.4 }}>
-                            {dh.tenSanPham || dh.maSp || '(Chưa có tên)'}
-                          </div>
+                          <div style={{ fontSize: 11, color: '#374151', marginTop: 2, lineHeight: 1.4 }}>{dh.tenSanPham || dh.maSp || '(Chưa có tên)'}</div>
                           <div style={{ fontSize: 11, color: '#64748b', marginTop: 1, display: 'flex', gap: 10 }}>
-                            {dh.soLuongDatHang != null && (
-                              <span>SL ĐH: <b style={{ color: '#1e293b' }}>{Number(dh.soLuongDatHang).toLocaleString('vi-VN')}</b></span>
-                            )}
-                            {slConLai > 0 && (
-                              <span style={{ color: '#d97706' }}>Còn lại: <b>{slConLai.toLocaleString('vi-VN')}</b></span>
-                            )}
-                            {slConLai <= 0 && dh.soLuongDatHang != null && (
-                              <span style={{ color: '#16a34a' }}>✓ Đã xếp đủ</span>
-                            )}
+                            {dh.soLuongDatHang != null && <span>SL ĐH: <b style={{ color: '#1e293b' }}>{Number(dh.soLuongDatHang).toLocaleString('vi-VN')}</b></span>}
+                            {slConLai > 0 && <span style={{ color: '#d97706' }}>Còn lại: <b>{slConLai.toLocaleString('vi-VN')}</b></span>}
+                            {slConLai <= 0 && dh.soLuongDatHang != null && <span style={{ color: '#16a34a' }}>✓ Đã xếp đủ</span>}
                             {dh.soLo && <span style={{ color: '#8c8c8c' }}>Lô: {dh.soLo}</span>}
                           </div>
                         </div>
@@ -664,91 +687,84 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
                 </div>
               )
             })()}
-          </Col>
-          <Col span={6}>
-            <Form.Item label="Mã SP" name="maSp">
-              <Input
-                onChange={editItem ? undefined : handleMaSpChange}
+          </VCell>
+
+          {/* Row 4: Tiến trình */}
+          <LCell>Tiến trình <span style={{ color: '#ef4444' }}>*</span></LCell>
+          <VCell span={3} last>
+            <Form.Item name="tenTrinh" noStyle rules={[{ required: true, message: 'Nhập tiến trình' }]}>
+              <TextArea
                 disabled={!!editItem}
-                allowClear={!editItem}
-                placeholder="Tự điền khi tra Bravo"
-                style={{ background: editItem ? '#f8fafc' : undefined }}
+                autoSize={{ minRows: 2, maxRows: 4 }}
+                placeholder="Tên sản phẩm / quy trình"
+                style={{ background: editItem ? '#f8fafc' : undefined, color: editItem ? '#374151' : undefined, width: '100%' }}
               />
             </Form.Item>
-          </Col>
-        </Row>
+          </VCell>
 
-        <Form.Item label="Tiến trình" name="tenTrinh" rules={[{ required: true, message: 'Nhập tiến trình' }]}>
-          <TextArea
-            disabled={!!editItem}
-            autoSize={{ minRows: 2, maxRows: 4 }}
-            placeholder="Tên sản phẩm / quy trình"
-            style={{ background: editItem ? '#f8fafc' : undefined, color: editItem ? '#374151' : undefined }}
-          />
-        </Form.Item>
-
-        <Row gutter={12}>
-          <Col span={6}>
-            <Form.Item label={CONG_LABEL_MAP[congDoan] || 'Công'} name="cong"
-              rules={[{ required: true, message: 'Bắt buộc nhập' }]}>
-              <InputNumber style={{ width: '100%' }} step={0.5} min={0} />
+          {/* Row 5: Công — Cỡ lô */}
+          <LCell>{CONG_LABEL_MAP[congDoan] || 'Công'} <span style={{ color: '#ef4444' }}>*</span></LCell>
+          <VCell>
+            <Form.Item name="cong" noStyle rules={[{ required: true, message: 'Bắt buộc nhập' }]}>
+              <InputNumber size="small" style={{ width: '100%' }} step={0.5} min={0} />
             </Form.Item>
-          </Col>
-          <Col span={6}>
+          </VCell>
+          <LCell>
+            Cỡ lô
+            {soLuongDon != null && (
+              <span style={{ fontSize: 10, color: '#1D4ED8', marginLeft: 4, fontWeight: 400 }}>
+                ({Number(soLuongDon).toLocaleString('vi-VN')})
+              </span>
+            )}
+          </LCell>
+          <VCell last>
             {editItem?.coLo != null && editItem?.id ? (
-              <Form.Item label="Cỡ lô"
-                help={soLuongDon != null
-                  ? <span style={{ fontSize: 10, color: '#1D4ED8' }}>SL đơn: {Number(soLuongDon).toLocaleString('vi-VN')}</span>
-                  : <span style={{ fontSize: 10, color: '#94a3b8' }}>Đã khoá — dùng "Đổi Cỡ Lô"</span>}>
+              <>
                 <Space.Compact style={{ width: '100%' }}>
                   <div style={{
-                    flex: 1, height: 32, lineHeight: '32px', padding: '0 11px',
+                    flex: 1, height: 24, lineHeight: '24px', padding: '0 8px',
                     border: '1px solid #d9d9d9', borderRadius: '6px 0 0 6px',
-                    background: '#f5f5f5', color: '#000', fontSize: 14,
+                    background: '#f5f5f5', color: '#000', fontSize: 13,
                     overflow: 'hidden', whiteSpace: 'nowrap',
                   }}>
                     {currentCoLo != null ? Number(currentCoLo).toLocaleString('vi-VN') : Number(editItem.coLo).toLocaleString('vi-VN')}
                   </div>
                   <Tooltip title="Thay đổi Cỡ Lô và lưu lịch sử">
-                    <Button type="default"
+                    <Button size="small" type="default"
                       style={{ color: '#d46b08', borderColor: '#ffd591', background: '#fff7e6', fontSize: 11, padding: '0 8px' }}
                       onClick={openDoiCoLo}>
                       Đổi
                     </Button>
                   </Tooltip>
                 </Space.Compact>
-              </Form.Item>
+                <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 6, whiteSpace: 'nowrap' }}>Đã khoá</span>
+              </>
             ) : (
-              <Form.Item label="Cỡ lô" name="coLo"
-                help={soLuongDon != null
-                  ? <span style={{ fontSize: 10, color: '#1D4ED8' }}>SL đơn: {Number(soLuongDon).toLocaleString('vi-VN')}</span>
-                  : undefined}>
-                <InputNumber style={{ width: '100%' }} min={0} step={100} />
+              <Form.Item name="coLo" noStyle>
+                <InputNumber size="small" style={{ width: '100%' }} min={0} step={100} />
               </Form.Item>
             )}
-          </Col>
-          <Col span={6}>
-            <Form.Item
-              label={
-                <Space size={4}>
-                  <span>Số lô</span>
-                  {!editItem && congDoan === 'PL' && soLoLookupLoading &&
-                    <SyncOutlined spin style={{ color: '#1677ff' }} />}
-                </Space>
-              }
-              name="soLo"
-            >
+          </VCell>
+
+          {/* Row 6: Số lô — Phòng SX */}
+          <LCell>
+            <Space size={4}>
+              <span>Số lô</span>
+              {!editItem && congDoan === 'PL' && soLoLookupLoading && <SyncOutlined spin style={{ color: '#1677ff' }} />}
+            </Space>
+          </LCell>
+          <VCell>
+            <Form.Item name="soLo" noStyle>
               <AutoComplete
                 options={congDoan === 'PL'
                   ? (soLoOptions.length > 0
                       ? soLoOptions
                       : soLoSuggestions.map(s => ({ value: s, label: s })))
                   : []}
-                filterOption={(input, opt) =>
-                  (opt?.value || '').toLowerCase().includes(input.toLowerCase())}
+                filterOption={(input, opt) => (opt?.value || '').toLowerCase().includes(input.toLowerCase())}
                 placeholder={!editItem && congDoan === 'PL' && soLoLookupLoading ? 'Đang tra cứu…' : 'VD: 180626'}
                 allowClear
-                style={{ fontFamily: 'monospace', fontWeight: 700 }}
+                style={{ fontFamily: 'monospace', fontWeight: 700, width: '100%' }}
                 onFocus={() => {
                   if (congDoan === 'PL' && soLoOptions.length === 0) {
                     const maDH = form.getFieldValue('maDonHang') || editItem?.maDonHang
@@ -757,40 +773,46 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
                 }}
               />
             </Form.Item>
-          </Col>
-          <Col span={6}>
-            <Form.Item label="Phòng Sản Xuất" name="phongThucHien"
-              rules={[{ required: true, message: 'Bắt buộc chọn phòng' }]}>
-              <PhongThucHienSelect style={{ width: '100%' }} placeholder="VD: Phòng 1, Khu A..." />
+          </VCell>
+          <LCell>Phòng SX <span style={{ color: '#ef4444' }}>*</span></LCell>
+          <VCell last>
+            <Form.Item name="phongThucHien" noStyle rules={[{ required: true, message: 'Bắt buộc chọn phòng' }]}>
+              <PhongThucHienSelect size="small" style={{ width: '100%' }} placeholder="VD: Phòng 1, Khu A..." />
             </Form.Item>
-          </Col>
-        </Row>
+          </VCell>
 
-        <Row gutter={12}>
-          <Col span={7}>
-            <Form.Item label="Tình trạng" name="tinhTrang">
-              <Select allowClear placeholder="Chọn">
+          {/* Row 7: Tình trạng — Chú ý */}
+          <LCell>Tình trạng</LCell>
+          <VCell>
+            <Form.Item name="tinhTrang" noStyle>
+              <Select size="small" allowClear placeholder="Chọn" style={{ width: '100%' }}>
                 <Option value="gap">🟣 Gấp</Option>
                 <Option value="rat_gap">🔴 Rất gấp</Option>
               </Select>
             </Form.Item>
-          </Col>
-          <Col span={17}>
-            <Form.Item label="Chú ý" name="chuY">
-              <TextArea rows={1} autoSize={{ minRows: 1, maxRows: 3 }} />
+          </VCell>
+          <LCell>Chú ý</LCell>
+          <VCell last>
+            <Form.Item name="chuY" noStyle>
+              <TextArea size="small" rows={1} autoSize={{ minRows: 1, maxRows: 3 }} style={{ width: '100%' }} />
             </Form.Item>
-          </Col>
-        </Row>
+          </VCell>
 
-        <Form.Item label="Sai lệch / GẤP" name="saiLech" style={{ marginBottom: 0 }}>
-          <TextArea rows={2} placeholder="Ghi GẤP hoặc nội dung sai lệch nếu có…"
-            style={{ borderColor: '#fa8c16' }} />
-        </Form.Item>
+          {/* Row 8: Sai lệch / GẤP */}
+          <LCell>Sai lệch / GẤP</LCell>
+          <VCell span={3} last>
+            <Form.Item name="saiLech" noStyle>
+              <TextArea rows={2} placeholder="Ghi GẤP hoặc nội dung sai lệch nếu có…"
+                style={{ borderColor: '#fa8c16', width: '100%' }} />
+            </Form.Item>
+          </VCell>
+
+        </div>
       </Form>
 
       {/* ── Lịch sử đổi lô (chỉ hiển thị khi có data) ── */}
       {loHistory.length > 0 && (
-        <div style={{ marginTop: 16, padding: '12px 14px', background: '#fff7e6', borderRadius: 8, border: '1px solid #ffd591' }}>
+        <div style={{ margin: '0 16px 12px', padding: '12px 14px', background: '#fff7e6', borderRadius: 8, border: '1px solid #ffd591' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <Space>
               <SwapOutlined style={{ color: '#d46b08' }} />
