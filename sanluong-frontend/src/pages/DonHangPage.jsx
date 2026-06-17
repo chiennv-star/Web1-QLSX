@@ -72,7 +72,7 @@ function ImportExcelModal({ open, onClose, onDone }) {
 
   return (
     <Modal
-      open={open} onCancel={handleClose} destroyOnClose
+      open={open} onCancel={handleClose} destroyOnClose transitionName=""
       title={
         <Space>
           <FileExcelOutlined style={{ color: '#217346' }} />
@@ -290,7 +290,7 @@ function DonHangModal({ open, editItem, onClose, onSaved, existingMaDonHangs = [
 
   return (
     <Modal
-      open={open} onCancel={handleClose} onOk={onOk}
+      open={open} onCancel={handleClose} onOk={onOk} transitionName=""
       title={
         <Space>
           {editItem ? <EditOutlined style={{ color: '#1D4ED8' }} /> : <PlusOutlined style={{ color: '#1D4ED8' }} />}
@@ -544,7 +544,7 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
 
   return (
     <Modal open={open} onCancel={onClose} footer={null} title={null}
-      width="100%" destroyOnClose
+      width="100%" destroyOnClose transitionName=""
       styles={{ body: { padding: 0 }, wrapper: { pointerEvents: 'none' } }}
       style={{ top: 0, padding: 0, margin: 0, maxWidth: 'none', pointerEvents: 'none' }}
       wrapClassName="dh-detail-modal"
@@ -835,7 +835,7 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
       <Modal
         open={doiSlOpen} onCancel={() => setDoiSlOpen(false)}
         onOk={handleDoiSl} okText="Xác nhận đổi SL" cancelText="Hủy"
-        confirmLoading={doiSlLoading} destroyOnClose
+        confirmLoading={doiSlLoading} destroyOnClose transitionName=""
         title={<Space><ThunderboltOutlined style={{ color: '#d46b08' }} /><span style={{ fontWeight: 700 }}>Đổi Số Lượng Đặt Hàng</span></Space>}
         width={480}
       >

@@ -482,6 +482,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
       title={null}
       open={open}
       onCancel={handleClose}
+      transitionName=""
       footer={
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <Button onClick={handleClose}>Hủy</Button>
@@ -845,6 +846,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
       <Modal
         open={loHistoryOpen}
         onCancel={() => setLoHistoryOpen(false)}
+        transitionName=""
         footer={null}
         title={
           <Space>
@@ -889,7 +891,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
       <Modal
         open={doiCoLoOpen} onCancel={() => setDoiCoLoOpen(false)}
         onOk={handleDoiCoLo} okText="Xác nhận đổi Cỡ Lô" cancelText="Hủy"
-        confirmLoading={doiCoLoLoading} destroyOnClose
+        confirmLoading={doiCoLoLoading} destroyOnClose transitionName=""
         title={<Space><ScissorOutlined style={{ color: '#d46b08' }} /><span style={{ fontWeight: 700 }}>Đổi Cỡ Lô Kế Hoạch</span></Space>}
         width={460}
       >
