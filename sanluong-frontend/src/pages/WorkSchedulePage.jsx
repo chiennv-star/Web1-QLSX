@@ -678,16 +678,16 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     const rows = sessions.filter(s => (s.ngay || 'unknown') === ngayKey)
     try {
       await Promise.all(rows.filter(s => s.id).map(s => api.delete(`/work-schedule-session/${s.id}`)))
-      setSessions(prev => prev.filter(s => (s.ngay || 'unknown') !== ngayKey))
+      const remainingSessions = sessions.filter(s => (s.ngay || 'unknown') !== ngayKey)
+      setSessions(remainingSessions)
       setOpenTabs(prev => prev.filter(t => t !== ngayKey))
       setSavedSlKeys(prev => { const n = new Set(prev); n.delete(ngayKey); return n })
-      setDaySlMap(prev => {
-        const next = { ...prev }
-        delete next[ngayKey]
-        const newTong = Object.values(next).reduce((a, v) => a + (parseFloat(v) || 0), 0)
-        syncSl(newTong)
-        return next
-      })
+      const nextSlMap = { ...daySlMap }
+      delete nextSlMap[ngayKey]
+      setDaySlMap(nextSlMap)
+      const newTong = Object.values(nextSlMap).reduce((a, v) => a + (parseFloat(v) || 0), 0)
+      syncSl(newTong)
+      syncCong(remainingSessions)
       message.success('Đã xóa ngày sản xuất')
     } catch { message.error('Xóa ngày thất bại') }
   }
