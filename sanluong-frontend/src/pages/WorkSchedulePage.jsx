@@ -1421,7 +1421,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
         `}</style>
 
       {/* ── [1] Gradient header — luôn cố định, không bao giờ cuộn ── */}
-      <div style={{ flexShrink: 0, background: '#3366CC', padding: '8px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ flexShrink: 0, background: '#006666', padding: '8px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <span style={{ fontSize: 20, flexShrink: 0 }}>⚙️</span>
         <div style={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'nowrap', overflow: 'hidden' }}>
           <span style={{ color: '#fff', fontWeight: 800, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1 }}>
