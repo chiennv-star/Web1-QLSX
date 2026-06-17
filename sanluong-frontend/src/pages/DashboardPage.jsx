@@ -1091,6 +1091,38 @@ export default function DashboardPage() {
       ],
     },
     {
+      title: <span style={{ color: '#16a34a' }}>Hiệu suất</span>,
+      onHeaderCell: () => ({ style: { cursor: 'default' } }),
+      children: [
+        {
+          title: 'PL', key: 'hs_pl', width: 80, align: 'center',
+          render: (_, r) => {
+            const slPl = parseInt(r.pcPl) || 0
+            const qa   = r.plQaLayMau || 0
+            const coLo = r.soLuong || 0
+            if (!coLo) return <span style={{ color: '#d9d9d9' }}>—</span>
+            const pct = ((slPl + qa) / coLo * 100).toFixed(1)
+            const n   = parseFloat(pct)
+            const color = n >= 99 ? '#16a34a' : n >= 95 ? '#d46b08' : '#cf1322'
+            return <span style={{ fontWeight: 700, color }}>{pct}%</span>
+          },
+        },
+        {
+          title: 'ĐG', key: 'hs_dg', width: 80, align: 'center',
+          render: (_, r) => {
+            const slDg = parseInt(r.dg2)  || 0
+            const qa   = r.dgQaLayMau || 0
+            const slPl = parseInt(r.pcPl) || 0
+            if (!slPl) return <span style={{ color: '#d9d9d9' }}>—</span>
+            const pct = ((slDg + qa) / slPl * 100).toFixed(1)
+            const n   = parseFloat(pct)
+            const color = n >= 99 ? '#16a34a' : n >= 95 ? '#d46b08' : '#cf1322'
+            return <span style={{ fontWeight: 700, color }}>{pct}%</span>
+          },
+        },
+      ],
+    },
+    {
       title: 'SP/Công', key: 'spCong', width: 88, align: 'center',
       render: (_, r) => {
         const sc = (r.bbc1_3 || 0) + (r.pcChiPhi || 0) + (r.plChiPhi || 0) + (r.dgChiPhi || 0) + (r.ccChiPhi || 0)

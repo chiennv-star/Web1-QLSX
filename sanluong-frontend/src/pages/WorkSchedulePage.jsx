@@ -1448,7 +1448,13 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
             </Button>
           </div>
         ) : canEditDetail ? (
-          <Button onClick={() => setIsInfoEditing(true)}
+          <Button onClick={async () => {
+            if (tongSanLuong > 0 || sessions.length > 0) {
+              await syncSl(tongSanLuong)
+              await syncCong(sessions)
+            }
+            setIsInfoEditing(true)
+          }}
             style={{ flexShrink: 0, background: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.6)', fontWeight: 700, height: 36, minWidth: 130, fontSize: 12, borderRadius: 6, color: '#fff' }}>
             Cập nhật
           </Button>

@@ -469,22 +469,10 @@ public class WorkScheduleService {
                     oldNgay, oldToNhom);
         }
         syncToProduction(saved);
-        // PCPL1/PCPL2: nếu toNhom thay đổi → đồng bộ sang record còn lại (cùng maBravo + soLo + maDonHang)
+        // PCPL1/PCPL2: khi toNhom thay đổi → tự ẩn record PCPL đối diện
         if (("PCPL1".equals(saved.getCongDoan()) || "PCPL2".equals(saved.getCongDoan()))
                 && !Objects.equals(oldToNhom, saved.getToNhom())) {
-            String siblingCongDoan = "PCPL1".equals(saved.getCongDoan()) ? "PCPL2" : "PCPL1";
-            repository.searchAll(null, null, null, null,
-                    isEmpty(saved.getSoLo())     ? null : saved.getSoLo(),
-                    isEmpty(saved.getMaBravo())  ? null : saved.getMaBravo(),
-                    null, null, siblingCongDoan, "SCHEDULE", null)
-                .stream()
-                .filter(sib -> Objects.equals(sib.getMaDonHang(), saved.getMaDonHang()))
-                .findFirst()
-                .ifPresent(sib -> {
-                    sib.setToNhom(saved.getToNhom());
-                    sib.setUpdatedBy(username);
-                    repository.save(sib);
-                });
+            autoHidePcplSibling(saved);
         }
         eventPublisher.publishKhoachUpdated();
         return saved;
@@ -518,7 +506,17 @@ public class WorkScheduleService {
                     if (w.getSlBbc1()   != null) r.setBbc1_2(String.valueOf(w.getSlBbc1().intValue()));
                     r.setBbc1TrangThai(trangThai);
                 }
-                case "PL", "PCPL1" -> {
+                case "PCPL1" -> {
+                    // PCPL1 đồng vai trò PC trong bảng sản lượng + QA như PL
+                    if (w.getSlPc()   != null) r.setSlPc(String.valueOf(w.getSlPc().intValue()));
+                    if (w.getCongPc() != null) r.setPcChiPhi(w.getCongPc());
+                    r.setPcTrangThai(trangThai);
+                    r.setPlQaLayMau(w.getQaLayMau());
+                    int plPcpl1 = r.getPlQaLayMau() != null ? r.getPlQaLayMau() : 0;
+                    int dgPcpl1 = r.getDgQaLayMau() != null ? r.getDgQaLayMau() : 0;
+                    r.setQaLayMau(plPcpl1 + dgPcpl1 > 0 ? plPcpl1 + dgPcpl1 : null);
+                }
+                case "PL" -> {
                     if (w.getCongPl() != null) r.setPlChiPhi(w.getCongPl());
                     if (w.getSlPl()   != null) r.setPcPl(String.valueOf(w.getSlPl().intValue()));
                     r.setPlTrangThai(trangThai);
@@ -664,6 +662,7 @@ public class WorkScheduleService {
         String value = (toNhom == null || toNhom.isBlank()) ? null : toNhom.trim();
         list.forEach(w -> w.setToNhom(value));
         repository.saveAll(list);
+        list.forEach(this::autoHidePcplSibling);
         eventPublisher.publishKhoachUpdated();
         return list.size();
     }
@@ -830,6 +829,25 @@ public class WorkScheduleService {
             info.setSoDays(distinctDays.size());
         }
         return info;
+    }
+
+    /** Khi gán toNhom cho PCPL1/PCPL2 → tự ẩn record PCPL đối diện cùng lô */
+    private void autoHidePcplSibling(WorkSchedule w) {
+        if (!("PCPL1".equals(w.getCongDoan()) || "PCPL2".equals(w.getCongDoan()))) return;
+        String siblingCongDoan = "PCPL1".equals(w.getCongDoan()) ? "PCPL2" : "PCPL1";
+        boolean shouldHide = !isEmpty(w.getToNhom());
+        repository.searchAll(null, null,
+                isEmpty(w.getMaSp())    ? null : w.getMaSp(),
+                null,
+                isEmpty(w.getSoLo())    ? null : w.getSoLo(),
+                isEmpty(w.getMaBravo()) ? null : w.getMaBravo(),
+                null, null, siblingCongDoan, "SCHEDULE", null)
+            .stream()
+            .filter(sib -> w.getMaDonHang() == null || Objects.equals(sib.getMaDonHang(), w.getMaDonHang()))
+            .forEach(sib -> {
+                sib.setHidden(shouldHide ? Boolean.TRUE : null);
+                repository.save(sib);
+            });
     }
 
     private boolean isEmpty(String s) { return s == null || s.isBlank(); }

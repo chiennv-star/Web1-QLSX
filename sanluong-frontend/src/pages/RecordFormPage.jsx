@@ -24,7 +24,7 @@ const STAGES = [
   { key: 'pc',   label: 'PC',   sub: 'Pha chế',  color: '#1677ff', bg: '#e6f4ff', border: '#91caff', statusField: 'pcTrangThai',   slField: 'slPc',   congField: 'pcChiPhi'  },
   { key: 'pl',   label: 'PL',   sub: 'Phân liều', color: '#52c41a', bg: '#f6ffed', border: '#b7eb8f', statusField: 'plTrangThai',   slField: 'pcPl',   congField: 'plChiPhi'  },
   { key: 'dg',   label: 'ĐG',   sub: 'Đóng gói', color: '#fa8c16', bg: '#fff7e6', border: '#ffd591', statusField: 'dgTrangThai',   slField: 'dg2',    congField: 'dgChiPhi'  },
-  { key: 'bbc1', label: 'BBC1', sub: 'Bán thành phẩm', color: '#722ed1', bg: '#f9f0ff', border: '#d3adf7', statusField: 'bbc1TrangThai', slField: 'bbc1_2', congField: 'bbc1_3'   },
+  { key: 'bbc1', label: 'BBC1', sub: 'Bao bì cấp 1', color: '#722ed1', bg: '#f9f0ff', border: '#d3adf7', statusField: 'bbc1TrangThai', slField: 'bbc1_2', congField: 'bbc1_3'   },
 ]
 
 const statusBadge = (val) => {
@@ -84,7 +84,10 @@ export default function RecordFormPage() {
   const watchMaTp    = Form.useWatch('maTp',     form) || ''
   const watchTienTrinh = Form.useWatch('tienTrinh', form) || ''
   const watchLsx     = Form.useWatch('lsx',      form) || ''
-  const watchSlPc    = Form.useWatch('slPc',     form) || 0
+  const watchSlPc       = Form.useWatch('slPc',        form) || 0
+  const watchBbc1_2     = Form.useWatch('bbc1_2',      form) || 0
+  const watchPlQaLayMau = Form.useWatch('plQaLayMau',  form) || 0
+  const watchDgQaLayMau = Form.useWatch('dgQaLayMau',  form) || 0
 
   const fetchHangLoiList = async (maTp, lsx) => {
     if (!maTp || !lsx) return
@@ -246,6 +249,7 @@ export default function RecordFormPage() {
     }
   }
 
+  const stageSLValues = { pc: parseFloat(watchSlPc) || 0, pl: watchPcPl || 0, dg: watchDg2 || 0, bbc1: watchBbc1_2 || 0 }
   const sigmaCong    = (watchGnnl + watchBbc1 + watchPc + watchPl + watchDg).toFixed(4)
   const chenhLechBtp = (parseInt(watchDg2) || 0) - (parseInt(watchPcPl) || 0)
   const doDangDgCalc = (parseInt(watchSoLuong) || 0) - (parseInt(watchDg2) || 0)
@@ -544,47 +548,42 @@ export default function RecordFormPage() {
       {/* ── Sticky top bar ── */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 30,
-        background: '#BBBBBB', borderBottom: '2px solid #999999',
+        background: '#fff', borderBottom: '1px solid #e2e8f0',
         padding: '0 16px', height: 48,
         display: 'flex', alignItems: 'center', gap: 12,
-        boxShadow: '0 2px 8px rgba(0,0,0,.15)',
+        boxShadow: '0 1px 4px rgba(0,0,0,.08)',
       }}>
         <Button size="small" icon={<ArrowLeftOutlined />} onClick={() => navigate('/')}
-          style={{ fontWeight: 600, fontSize: 11, background: 'rgba(255,255,255,.3)', borderColor: 'rgba(255,255,255,.5)', color: '#1e293b' }}>
+          style={{ fontWeight: 600, fontSize: 11, background: '#1D4ED8', borderColor: '#1D4ED8', color: '#fff' }}>
           Quay lại
         </Button>
-        <div style={{ width: 1, height: 24, background: 'rgba(0,0,0,.15)', flexShrink: 0 }} />
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: '#374151', fontSize: 11, fontWeight: 600, flexShrink: 0 }}>
-            {isEdit ? '✏ Chỉnh sửa bản ghi' : '＋ Thêm mới'}
-          </span>
-          {(watchMaBravo || watchMaTp) && <>
-            <span style={{ color: 'rgba(0,0,0,.2)', flexShrink: 0 }}>|</span>
-            {watchMaBravo && <span style={{ color: '#1D4ED8', fontFamily: 'monospace', fontWeight: 800, fontSize: 15, flexShrink: 0 }}>{watchMaBravo}</span>}
-            {watchMaTp    && <span style={{ color: '#374151', fontSize: 13, flexShrink: 0 }}>({watchMaTp})</span>}
-            {watchTienTrinh && <span style={{ color: '#1e293b', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{watchTienTrinh.length > 55 ? watchTienTrinh.slice(0,55)+'…' : watchTienTrinh}</span>}
-            {watchLsx && <span style={{ color: '#c2410c', fontFamily: 'monospace', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>LSX: {watchLsx}</span>}
+        <div style={{ width: 1, height: 24, background: '#e2e8f0', flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+          {watchMaBravo && <span style={{ color: '#1D4ED8', fontFamily: 'monospace', fontWeight: 800, fontSize: 15, flexShrink: 0 }}>{watchMaBravo}</span>}
+          {watchMaTp    && <span style={{ color: '#374151', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>{watchMaTp}</span>}
+          {watchTienTrinh && <>
+            <span style={{ color: '#cbd5e1', flexShrink: 0 }}>·</span>
+            <span style={{ color: '#475569', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{watchTienTrinh.length > 60 ? watchTienTrinh.slice(0,60)+'…' : watchTienTrinh}</span>
           </>}
+          {watchLsx && <>
+            <span style={{ color: '#cbd5e1', flexShrink: 0 }}>·</span>
+            <span style={{ color: '#c2410c', fontFamily: 'monospace', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>LSX {watchLsx}</span>
+          </>}
+          {!watchMaBravo && !watchMaTp && <span style={{ color: '#94a3b8', fontSize: 12 }}>{isEdit ? 'Chỉnh sửa bản ghi' : 'Thêm mới'}</span>}
         </div>
         <Space size={6}>
-          <Button size="small" onClick={() => navigate('/')}
-            style={{ fontSize: 11, background: 'rgba(255,255,255,.3)', borderColor: 'rgba(0,0,0,.2)', color: '#1e293b' }}>
-            Quay lại
-          </Button>
-          {/* Chế độ xem: hiện nút Sửa lệnh + Phát Lệnh */}
           {ro && canEditProd && (
-            <Button type="primary" size="small" icon={<EditOutlined />}
+            <Button size="small" icon={<EditOutlined />}
               onClick={() => setIsEditing(true)}
-              style={{ fontWeight: 700, fontSize: 11, background: '#d97706', borderColor: '#d97706' }}>
+              style={{ fontWeight: 700, fontSize: 11, background: '#d97706', borderColor: '#d97706', color: '#fff' }}>
               Sửa lệnh
             </Button>
           )}
-          {/* Chế độ sửa: hiện nút Hủy sửa + Lưu */}
           {!ro && isEdit && (
             <Button size="small"
               onClick={() => setIsEditing(false)}
-              style={{ fontSize: 11, background: 'rgba(255,255,255,.3)', borderColor: 'rgba(0,0,0,.2)', color: '#1e293b' }}>
-              Hủy sửa
+              style={{ fontSize: 11, borderColor: '#d1d5db', color: '#374151' }}>
+              Hủy
             </Button>
           )}
           {canEditProd && !ro && (
@@ -592,8 +591,8 @@ export default function RecordFormPage() {
               icon={<SaveOutlined />}
               loading={saving}
               onClick={() => form.submit()}
-              style={{ fontWeight: 700, fontSize: 11, background: '#99CCCC', borderColor: '#99CCCC' }}>
-              {isEdit ? 'Lưu' : 'Lưu mới'}
+              style={{ fontWeight: 700, fontSize: 11, background: '#1D4ED8', borderColor: '#1D4ED8' }}>
+              {isEdit ? 'Lưu thay đổi' : 'Lưu mới'}
             </Button>
           )}
         </Space>
@@ -611,75 +610,62 @@ export default function RecordFormPage() {
                 onChange={handleScheduleSelect}
                 optionFilterProp="label" options={suggestionOptions} />
             </div>
-            {/* Hidden field để giữ maDonHang trong form state khi gọi getFieldsValue() */}
             <Form.Item name="maDonHang" hidden><Input /></Form.Item>
-            {/* Identity fields — 2-row table layout */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-              <tbody>
-                {/* Row 1: Mã Bravo | Mã TP | Lô SX | Cỡ lô */}
-                <tr style={{ borderBottom: '1px solid #f0f2f5' }}>
-                  <td style={{ padding: '6px 10px', background: '#f8fafc', color: '#64748b', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap', width: '10%' }}>
-                    * Mã Bravo {lookupBadge()}
-                  </td>
-                  <td style={{ padding: '4px 8px', width: '15%' }}>
-                    <Form.Item name="maBravo" rules={[{ required: true, message: 'Nhập Mã Bravo' }]} style={{ marginBottom: 0 }}>
-                      <AutoComplete
-                        options={bravoOptions}
-                        onSearch={handleBravoSearch}
-                        onSelect={handleBravoSelect}
-                        onChange={handleMaBravoChange}
-                        disabled={ro}
-                        placeholder="VD: 10601364"
-                        allowClear
-                        popupMatchSelectWidth={360}
-                        style={{ fontWeight: 800, color: '#1677ff', fontFamily: 'monospace' }}
-                      />
-                    </Form.Item>
-                  </td>
-                  <td style={{ padding: '6px 10px', background: '#f8fafc', color: '#64748b', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap', width: '8%' }}>
-                    Mã TP
-                  </td>
-                  <td style={{ padding: '4px 8px', width: '12%' }}>
-                    <Form.Item name="maTp" style={{ marginBottom: 0 }}>
-                      <Input onChange={handleMaTpChange} placeholder="Tự động điền" disabled={ro}
-                        style={{ fontWeight: 700, color: '#374151', fontSize: 12 }} />
-                    </Form.Item>
-                  </td>
-                  <td style={{ padding: '6px 10px', background: '#f8fafc', color: '#d46b08', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap', width: '8%' }}>
-                    Lô SX (LSX)
-                  </td>
-                  <td style={{ padding: '4px 8px', width: '13%' }}>
-                    <Form.Item name="lsx" style={{ marginBottom: 0 }}>
-                      <Input disabled
-                        style={{ fontFamily: 'monospace', fontWeight: 700, color: '#d46b08',
-                          background: '#fffbf0', cursor: 'not-allowed' }} />
-                    </Form.Item>
-                  </td>
-                  <td style={{ padding: '6px 10px', background: '#f8fafc', color: '#64748b', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap', width: '8%' }}>
-                    Cỡ lô
-                  </td>
-                  <td style={{ padding: '4px 8px', width: '14%' }}>
-                    <Form.Item name="soLuong" style={{ marginBottom: 0 }}>
-                      <InputNumber style={{ width: '100%', fontWeight: 700 }} min={0} disabled={ro}
-                        formatter={v => v ? Number(v).toLocaleString('vi-VN') : '0'}
-                        parser={v => v ? v.replace(/[^\d]/g, '') : 0} />
-                    </Form.Item>
-                  </td>
-                </tr>
-                {/* Row 2: Tiến trình / Tên sản phẩm */}
-                <tr>
-                  <td style={{ padding: '6px 10px', background: '#f8fafc', color: '#64748b', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap' }}>
-                    Tiến trình
-                  </td>
-                  <td colSpan={7} style={{ padding: '4px 8px' }}>
-                    <Form.Item name="tienTrinh" style={{ marginBottom: 0 }}>
-                      <Input.TextArea placeholder="Tự động điền hoặc nhập tay" autoSize={{ minRows: 1, maxRows: 2 }} disabled={ro}
-                        style={{ fontSize: 12, resize: 'none' }} />
-                    </Form.Item>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            {/* Identity fields — single row */}
+            <div style={{ display: 'flex', alignItems: 'stretch', fontSize: 12 }}>
+              {/* Mã Bravo */}
+              <div style={{ padding: '8px 12px', borderRight: '1px solid #f0f2f5', minWidth: 150 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 }}>
+                  * Mã Bravo {lookupBadge()}
+                </div>
+                <Form.Item name="maBravo" rules={[{ required: true, message: 'Nhập Mã Bravo' }]} style={{ marginBottom: 0 }}>
+                  <AutoComplete
+                    options={bravoOptions}
+                    onSearch={handleBravoSearch}
+                    onSelect={handleBravoSelect}
+                    onChange={handleMaBravoChange}
+                    disabled={ro}
+                    placeholder="VD: 10601364"
+                    allowClear
+                    popupMatchSelectWidth={360}
+                    style={{ fontWeight: 800, color: '#1677ff', fontFamily: 'monospace' }}
+                  />
+                </Form.Item>
+              </div>
+              {/* Mã TP */}
+              <div style={{ padding: '8px 12px', borderRight: '1px solid #f0f2f5', minWidth: 110 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 }}>Mã TP</div>
+                <Form.Item name="maTp" style={{ marginBottom: 0 }}>
+                  <Input onChange={handleMaTpChange} placeholder="Tự động điền" disabled={ro}
+                    style={{ fontWeight: 700, color: '#1D4ED8', fontSize: 12 }} />
+                </Form.Item>
+              </div>
+              {/* Tiến trình */}
+              <div style={{ flex: 1, padding: '8px 12px', borderRight: '1px solid #f0f2f5' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 }}>Tiến trình</div>
+                <Form.Item name="tienTrinh" style={{ marginBottom: 0 }}>
+                  <Input.TextArea placeholder="Tự động điền hoặc nhập tay" autoSize={{ minRows: 1, maxRows: 2 }} disabled={ro}
+                    style={{ fontSize: 12, resize: 'none' }} />
+                </Form.Item>
+              </div>
+              {/* Lô SX */}
+              <div style={{ padding: '8px 12px', borderRight: '1px solid #f0f2f5', minWidth: 130 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#d46b08', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 }}>Số Lô (LSX)</div>
+                <Form.Item name="lsx" style={{ marginBottom: 0 }}>
+                  <Input disabled
+                    style={{ fontFamily: 'monospace', fontWeight: 700, color: '#d46b08', background: '#fffbf0', border: '1.5px solid #ffd591', borderRadius: 4, cursor: 'not-allowed' }} />
+                </Form.Item>
+              </div>
+              {/* Cỡ lô */}
+              <div style={{ padding: '8px 12px', minWidth: 110 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 }}>Cỡ lô</div>
+                <Form.Item name="soLuong" style={{ marginBottom: 0 }}>
+                  <InputNumber style={{ width: '100%', fontWeight: 700 }} min={0} disabled={ro}
+                    formatter={v => v ? Number(v).toLocaleString('vi-VN') : '0'}
+                    parser={v => v ? v.replace(/[^\d]/g, '') : 0} />
+                </Form.Item>
+              </div>
+            </div>
           </div>
 
           {/* ── Tabs ── */}
@@ -712,10 +698,10 @@ export default function RecordFormPage() {
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                           <thead>
                             <tr style={{ background: '#f0f4f8', borderBottom: '2px solid #e2e8f0' }}>
-                              <th style={{ padding: '7px 14px', textAlign: 'left', fontWeight: 800, fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, width: '15%' }}>Công đoạn</th>
-                              <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 800, fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, width: '25%' }}>Tình trạng</th>
-                              <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 800, fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, width: '30%' }}>Sản lượng</th>
-                              <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 800, fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, width: '30%' }}>Công</th>
+                              <th style={{ padding: '7px 14px', textAlign: 'left', fontWeight: 800, fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, width: '18%' }}>Công đoạn</th>
+                              <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 800, fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, width: '22%' }}>Tình trạng</th>
+                              <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 800, fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, width: '35%' }}>Sản lượng / Tiến độ</th>
+                              <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 800, fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, width: '25%' }}>Công</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -724,6 +710,9 @@ export default function RecordFormPage() {
                               const isDoing = stageStatusMap[s.key] === 'doing'
                               const rowBg   = isDone ? '#f0fdf4' : isDoing ? '#fffbeb' : '#fff'
                               const rowBdr  = isDone ? '#bbf7d0' : isDoing ? '#fde68a' : '#f0f2f5'
+                              const slVal   = stageSLValues[s.key] || 0
+                              const pct     = watchSoLuong > 0 ? Math.min(100, Math.round((slVal / watchSoLuong) * 100)) : 0
+                              const barColor = isDone ? '#16a34a' : s.color
                               return (
                                 <tr key={s.key} style={{ borderBottom: `1px solid ${rowBdr}`, background: rowBg }}>
                                   <td style={{ padding: '6px 14px', whiteSpace: 'nowrap' }}>
@@ -746,9 +735,17 @@ export default function RecordFormPage() {
                                     </Form.Item>
                                   </td>
                                   <td style={{ padding: '4px 10px' }}>
-                                    <Form.Item name={s.slField} style={{ marginBottom: 0 }}>
-                                      <Input size="small" placeholder="0" disabled={ro} style={{ fontWeight: 700, textAlign: 'right', fontFamily: 'monospace' }} />
-                                    </Form.Item>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                      <Form.Item name={s.slField} style={{ marginBottom: 0, width: 90 }}>
+                                        <Input size="small" placeholder="0" disabled={ro} style={{ fontWeight: 700, textAlign: 'right', fontFamily: 'monospace' }} />
+                                      </Form.Item>
+                                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <div style={{ flex: 1, height: 6, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+                                          <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 4, transition: 'width .3s' }} />
+                                        </div>
+                                        <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700, minWidth: 34, textAlign: 'right' }}>{pct}%</span>
+                                      </div>
+                                    </div>
                                   </td>
                                   <td style={{ padding: '4px 10px' }}>
                                     <Form.Item name={s.congField} style={{ marginBottom: 0 }}>
@@ -776,141 +773,118 @@ export default function RecordFormPage() {
                                 </Form.Item>
                               </td>
                             </tr>
-                            <tr style={{ borderTop: '1px dashed #e2e8f0', background: '#f8fafc' }}>
-                              <td colSpan={2} style={{ padding: '6px 14px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                  <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.4, whiteSpace: 'nowrap' }}>BBC1 Ngày phối</span>
-                                  <Form.Item name="bbc1_1" style={{ marginBottom: 0, flex: 1 }}>
-                                    <Input size="small" placeholder="DDMMYY" disabled={ro} style={{ fontFamily: 'monospace', fontWeight: 600, maxWidth: 110 }} />
-                                  </Form.Item>
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* ── Số liệu sản xuất ── */}
+                      <div style={{ borderTop: '6px solid #f0f2f5' }}>
+                        <div className="sec-h">📊 Số liệu sản xuất</div>
+
+                        {/* Bảng 1: SP trung gian / TP nhập kho / QA lấy mẫu / SL trung bình */}
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                          <tbody>
+                            <tr style={{ borderBottom: '1px solid #f0f2f5' }}>
+                              <td style={{ padding: '7px 14px', background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap', width: '22%' }}>SP Trung gian</td>
+                              <td style={{ padding: '4px 10px', width: '28%' }}>
+                                <Form.Item name="spTrungGian" style={{ marginBottom: 0 }}>
+                                  <InputNumber size="small" style={{ width: '100%', fontWeight: 600 }} min={0} disabled={ro}
+                                    formatter={v => v ? Number(v).toLocaleString('vi-VN') : '0'}
+                                    parser={v => v ? v.replace(/[^\d]/g, '') : 0} />
+                                </Form.Item>
+                              </td>
+                              <td style={{ padding: '7px 14px', background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap', width: '22%' }}>TP Nhập kho</td>
+                              <td style={{ padding: '4px 10px', width: '28%' }}>
+                                <Form.Item name="tpNhapKho" style={{ marginBottom: 0 }}>
+                                  <InputNumber size="small" style={{ width: '100%', fontWeight: 600 }} min={0} disabled={ro}
+                                    formatter={v => v ? Number(v).toLocaleString('vi-VN') : '0'}
+                                    parser={v => v ? v.replace(/[^\d]/g, '') : 0} />
+                                </Form.Item>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{ padding: '7px 14px', background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap' }}>QA Lấy mẫu</td>
+                              <td style={{ padding: '4px 10px' }}>
+                                <Form.Item name="qaLayMau" style={{ marginBottom: 0 }}>
+                                  <InputNumber size="small" style={{ width: '100%', fontWeight: 600 }} min={0} disabled={ro}
+                                    formatter={v => v ? Number(v).toLocaleString('vi-VN') : '0'}
+                                    parser={v => v ? v.replace(/[^\d]/g, '') : 0} />
+                                </Form.Item>
+                              </td>
+                              <td style={{ padding: '7px 14px', background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap' }}>SL Trung bình</td>
+                              <td style={{ padding: '4px 10px' }}>
+                                <Form.Item name="slTrungBinh" style={{ marginBottom: 0 }}>
+                                  <InputNumber size="small" style={{ width: '100%', fontWeight: 600 }} min={0} disabled={ro} precision={2} />
+                                </Form.Item>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+
+                        {/* Bảng 2: Chênh lệch BTP / Dở dang ĐG */}
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, borderTop: '3px solid #f0f2f5' }}>
+                          <tbody>
+                            <tr>
+                              <td style={{ padding: '7px 14px', background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.3, width: '22%' }}>
+                                Chênh lệch BTP <span style={{ fontWeight: 400, color: '#aaa', textTransform: 'none', fontSize: 11 }}>(tự tính)</span>
+                              </td>
+                              <td style={{ padding: '5px 10px', width: '28%' }}>
+                                <div className="cv" style={{
+                                  color: chenhLechBtp > 0 ? '#cf1322' : chenhLechBtp < 0 ? '#389e0d' : '#595959',
+                                  background: chenhLechBtp > 0 ? '#fff1f0' : chenhLechBtp < 0 ? '#f6ffed' : '#f8f8f8',
+                                  border: `1px solid ${chenhLechBtp > 0 ? '#ffa39e' : chenhLechBtp < 0 ? '#b7eb8f' : '#e2e8f0'}`,
+                                }}>
+                                  {Number(chenhLechBtp).toLocaleString('vi-VN')}
                                 </div>
                               </td>
-                              <td colSpan={2} style={{ padding: '6px 10px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                  <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.4, whiteSpace: 'nowrap' }}>SL PC</span>
-                                  <Form.Item name="slPc" style={{ marginBottom: 0, flex: 1 }}>
-                                    <Input size="small" placeholder="0" disabled={ro} style={{ fontWeight: 700, maxWidth: 110 }} />
-                                  </Form.Item>
+                              <td style={{ padding: '7px 14px', background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.3, width: '22%' }}>
+                                Dở dang ĐG <span style={{ fontWeight: 400, color: '#aaa', textTransform: 'none', fontSize: 11 }}>(tự tính)</span>
+                              </td>
+                              <td style={{ padding: '5px 10px', width: '28%' }}>
+                                <div className="cv" style={{ color: '#d46b08', background: '#fff7e6', border: '1px solid #ffd591' }}>
+                                  {Number(doDangDgCalc).toLocaleString('vi-VN')}
                                 </div>
                               </td>
                             </tr>
                           </tbody>
                         </table>
-                      </div>
 
-                      {/* ── Số liệu + Chi phí ── */}
-                      <div style={{ borderTop: '6px solid #f0f2f5' }}>
-                        <Row gutter={0}>
-                          {/* Số liệu sản xuất */}
-                          <Col xs={24} md={12} style={{ borderRight: '1px solid #e8edf2' }}>
-                            <div className="sec-h">📊 Số liệu sản xuất</div>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                        {/* Bảng 3: Hiệu suất */}
+                        {(() => {
+                          const hsPl = watchSoLuong > 0
+                            ? ((watchPcPl + watchPlQaLayMau) / watchSoLuong * 100)
+                            : null
+                          const hsDg = watchPcPl > 0
+                            ? ((watchDg2 + watchDgQaLayMau) / watchPcPl * 100)
+                            : null
+                          const hsColor = (v) => v == null ? '#bbb' : v >= 99 ? '#16a34a' : v >= 95 ? '#d46b08' : '#cf1322'
+                          const hsBg    = (v) => v == null ? '#f8f8f8' : v >= 99 ? '#f6ffed' : v >= 95 ? '#fff7e6' : '#fff1f0'
+                          const hsBdr   = (v) => v == null ? '#e2e8f0' : v >= 99 ? '#b7eb8f' : v >= 95 ? '#ffd591' : '#ffa39e'
+                          return (
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, borderTop: '3px solid #f0f2f5' }}>
                               <tbody>
-                                {[
-                                  { label: 'SP Trung gian', name: 'spTrungGian', type: 'num' },
-                                  { label: 'TP Nhập kho',   name: 'tpNhapKho',   type: 'num' },
-                                  { label: 'QA Lấy mẫu',   name: 'qaLayMau',     type: 'num' },
-                                  { label: 'SL Trung bình', name: 'slTrungBinh',  type: 'dec2' },
-                                ].map(f => (
-                                  <tr key={f.name} style={{ borderBottom: '1px solid #f0f2f5' }}>
-                                    <td style={{ padding: '7px 12px', background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap', width: '40%' }}>
-                                      {f.label}
-                                    </td>
-                                    <td style={{ padding: '4px 10px' }}>
-                                      <Form.Item name={f.name} style={{ marginBottom: 0 }}>
-                                        <InputNumber size="small" style={{ width: '100%', fontWeight: 600 }} min={0} disabled={ro}
-                                          step={f.type === 'dec' ? 0.01 : 1}
-                                          precision={f.type === 'dec' ? 2 : f.type === 'dec2' ? 2 : 0}
-                                          formatter={f.type === 'num' ? (v => v ? Number(v).toLocaleString('vi-VN') : '0') : undefined}
-                                          parser={f.type === 'num' ? (v => v ? v.replace(/[^\d]/g, '') : 0) : undefined} />
-                                      </Form.Item>
-                                    </td>
-                                  </tr>
-                                ))}
-                                <tr style={{ borderBottom: '1px solid #f0f2f5' }}>
-                                  <td style={{ padding: '7px 12px', background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                                    Chênh lệch BTP <span style={{ fontWeight: 400, color: '#aaa', textTransform: 'none', fontSize: 12 }}>(tự tính)</span>
+                                <tr>
+                                  <td style={{ padding: '7px 14px', background: '#f0fdf4', color: '#15803d', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.3, width: '22%' }}>
+                                    Hiệu suất PL <span style={{ fontWeight: 400, color: '#aaa', textTransform: 'none', fontSize: 11 }}>(tự tính)</span>
                                   </td>
-                                  <td style={{ padding: '5px 10px' }}>
-                                    <div className="cv" style={{
-                                      color: chenhLechBtp > 0 ? '#cf1322' : chenhLechBtp < 0 ? '#389e0d' : '#595959',
-                                      background: chenhLechBtp > 0 ? '#fff1f0' : chenhLechBtp < 0 ? '#f6ffed' : '#f8f8f8',
-                                      border: `1px solid ${chenhLechBtp > 0 ? '#ffa39e' : chenhLechBtp < 0 ? '#b7eb8f' : '#e2e8f0'}`,
-                                    }}>
-                                      {Number(chenhLechBtp).toLocaleString('vi-VN')}
+                                  <td style={{ padding: '5px 10px', width: '28%' }}>
+                                    <div className="cv" style={{ color: hsColor(hsPl), background: hsBg(hsPl), border: `1px solid ${hsBdr(hsPl)}` }}>
+                                      {hsPl != null ? hsPl.toFixed(1) + '%' : '—'}
                                     </div>
                                   </td>
-                                </tr>
-                                <tr>
-                                  <td style={{ padding: '7px 12px', background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                                    Dở dang ĐG <span style={{ fontWeight: 400, color: '#aaa', textTransform: 'none', fontSize: 12 }}>(tự tính)</span>
+                                  <td style={{ padding: '7px 14px', background: '#f0fdf4', color: '#15803d', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.3, width: '22%' }}>
+                                    Hiệu suất ĐG <span style={{ fontWeight: 400, color: '#aaa', textTransform: 'none', fontSize: 11 }}>(tự tính)</span>
                                   </td>
-                                  <td style={{ padding: '5px 10px' }}>
-                                    <div className="cv" style={{ color: '#d46b08', background: '#fff7e6', border: '1px solid #ffd591' }}>
-                                      {Number(doDangDgCalc).toLocaleString('vi-VN')}
+                                  <td style={{ padding: '5px 10px', width: '28%' }}>
+                                    <div className="cv" style={{ color: hsColor(hsDg), background: hsBg(hsDg), border: `1px solid ${hsBdr(hsDg)}` }}>
+                                      {hsDg != null ? hsDg.toFixed(1) + '%' : '—'}
                                     </div>
                                   </td>
                                 </tr>
                               </tbody>
                             </table>
-                          </Col>
-
-                          {/* Chi phí tổng hợp */}
-                          <Col xs={24} md={12}>
-                            <div className="sec-h">⚙ Chi phí tổng hợp (Công)</div>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-                              <tbody>
-                                {[
-                                  { key: 'gnnl', label: 'GNNL', color: '#c41d7f', val: watchGnnl },
-                                  ...STAGES.map(s => ({
-                                    key: s.key, label: s.label, color: s.color,
-                                    val: s.key === 'pc' ? watchPc : s.key === 'pl' ? watchPl : s.key === 'dg' ? watchDg : watchBbc1,
-                                  })),
-                                ].map(s => {
-                                  const pct = parseFloat(sigmaCong) > 0 ? (s.val / parseFloat(sigmaCong) * 100).toFixed(1) : 0
-                                  return (
-                                    <tr key={s.key} style={{ borderBottom: '1px solid #f0f2f5' }}>
-                                      <td style={{ padding: '7px 12px', background: '#f8fafc', fontWeight: 700, fontSize: 14, color: s.color, width: '28%', whiteSpace: 'nowrap' }}>
-                                        {s.label}
-                                      </td>
-                                      <td style={{ padding: '7px 12px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                          <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#007700', fontSize: 14, minWidth: 70 }}>
-                                            {Number(s.val).toFixed(4)}
-                                          </span>
-                                          <div style={{ flex: 1, height: 5, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
-                                            <div style={{ width: `${pct}%`, height: '100%', background: s.color, borderRadius: 4, transition: 'width .3s' }} />
-                                          </div>
-                                          <span style={{ color: '#9ca3af', fontSize: 13, fontWeight: 600, minWidth: 38, textAlign: 'right' }}>({pct}%)</span>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  )
-                                })}
-                                <tr style={{ borderBottom: '1px solid #f0f2f5' }}>
-                                  <td style={{ padding: '7px 12px', background: '#e6f4ff', fontWeight: 700, fontSize: 13, color: '#1677ff', textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                                    Σ Tổng công
-                                  </td>
-                                  <td style={{ padding: '5px 10px', background: '#e6f4ff' }}>
-                                    <div className="cv" style={{ color: '#1677ff', background: '#fff', border: '1px solid #91caff' }}>
-                                      {sigmaCong}
-                                    </div>
-                                  </td>
-                                </tr>
-                                <tr>
-                                  <td style={{ padding: '7px 12px', background: '#f8fafc', fontWeight: 700, fontSize: 13, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                                    SP / Công
-                                  </td>
-                                  <td style={{ padding: '5px 10px' }}>
-                                    <div className="cv" style={{ color: '#007700', background: '#f1f5f9', border: '1px solid #cbd5e1' }}>
-                                      {spCong}
-                                    </div>
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </Col>
-                        </Row>
+                          )
+                        })()}
                       </div>
 
                       {/* ── Ghi chú ── */}
