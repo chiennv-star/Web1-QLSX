@@ -549,16 +549,21 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       caSanXuat: s.caSanXuat || null, isTangCa: s.isTangCa || false,
     }
     try {
-      let updated
       if (s.id) {
         const { data } = await api.put(`/work-schedule-session/${s.id}`, payload)
-        updated = sessions.map(r => r.id === s.id ? normalizeSession(data) : r)
+        setSessions(prev => {
+          const updated = prev.map(r => r.id === s.id ? normalizeSession(data) : r)
+          syncCong(updated)
+          return updated
+        })
       } else {
         const { data } = await api.post('/work-schedule-session', payload)
-        updated = sessions.map(r => r._tempId === s._tempId ? normalizeSession(data) : r)
+        setSessions(prev => {
+          const updated = prev.map(r => r._tempId === s._tempId ? normalizeSession(data) : r)
+          syncCong(updated)
+          return updated
+        })
       }
-      setSessions(updated)
-      syncCong(updated)
       setEditingKeys(prev => { const next = new Set(prev); next.delete(key); return next })
       onRefresh?.()
       message.success('Đã lưu')
@@ -1021,7 +1026,6 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                   parser={v => v ? v.replace(/[^\d]/g, '') : ''}
                   onChange={v => setDaySlMap(prev => ({ ...prev, [ngayKey]: v != null ? String(v) : '' }))}
                   onPressEnter={() => saveDaySl(ngayKey)}
-                  autoFocus
                 />
                 <Button size="small" type="primary" loading={savingDay === ngayKey}
                   disabled={slVal === '' || slVal == null || !hasSavedRow}
@@ -1336,7 +1340,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   })), [openTabs, sessions, daySlMap, savedSlKeys, slEditOriginal, slHistory, pendingDays,
        pendingDaySet, editingKeys, batchEditDays, batchSaving, saving, savingDay,
        nsTrungBinh, employees, vaiTroOptions, canEditDetail, multiAddModal, maNvErrorKeys,
-       tongCong, tongSanLuong, ngayKeys, renamingDay, renameDayVal, renameSaving])
+       tongCong, tongSanLuong, ngayKeys, renamingDay, renameDayVal, renameSaving,
+       schedule, contextMenu])
 
   const handleDrawerClose = () => {
     if (isDirty) {
