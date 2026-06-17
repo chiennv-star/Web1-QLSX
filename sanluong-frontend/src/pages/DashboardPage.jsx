@@ -331,7 +331,7 @@ function StageTimelineTab({ filtersRef, searchTick, headerOffset = 120 }) {
           bordered
           rowHoverable={false}
           sticky={{ offsetHeader: headerOffset }}
-          pagination={{ pageSize: 50, showSizeChanger: true, showTotal: t => `Tổng ${t} sản phẩm`, size: 'small' }}
+          pagination={{ pageSize: 1000, pageSizeOptions: ['100', '500', '1000'], showSizeChanger: true, showTotal: t => `Tổng ${t} sản phẩm`, size: 'small' }}
           rowSelection={canDelete ? { selectedRowKeys, onChange: setSelectedRowKeys } : undefined}
         />
       ) : (
@@ -346,7 +346,7 @@ function StageTimelineTab({ filtersRef, searchTick, headerOffset = 120 }) {
           bordered
           rowHoverable={false}
           sticky={{ offsetHeader: headerOffset }}
-          pagination={{ pageSize: 50, showSizeChanger: true, showTotal: t => `Tổng ${t} sản phẩm`, size: 'small' }}
+          pagination={{ pageSize: 1000, pageSizeOptions: ['100', '500', '1000'], showSizeChanger: true, showTotal: t => `Tổng ${t} sản phẩm`, size: 'small' }}
           rowSelection={canDelete ? { selectedRowKeys, onChange: setSelectedRowKeys } : undefined}
         />
       )}
@@ -494,7 +494,7 @@ function TienDoTab({ filtersRef, searchTick, headerOffset = 120 }) {
         scroll={{ x: 900 }}
         bordered
         sticky={{ offsetHeader: headerOffset }}
-        pagination={{ pageSize: 50, showSizeChanger: true, showTotal: t => `Tổng ${t} sản phẩm`, size: 'small' }}
+        pagination={{ pageSize: 1000, pageSizeOptions: ['100', '500', '1000'], showSizeChanger: true, showTotal: t => `Tổng ${t} sản phẩm`, size: 'small' }}
         summary={() => (
           <Table.Summary.Row style={{ fontWeight: 700 }}>
             <Table.Summary.Cell index={0} colSpan={4} align="center">
@@ -937,8 +937,8 @@ export default function DashboardPage() {
   // Tab "Đã hoàn thành"
   const [doneData, setDoneData] = useState([])
   const [doneLoading, setDoneLoading] = useState(false)
-  const [donePagination, setDonePagination] = useState({ current: 1, pageSize: 20, total: 0 })
-  const donePaginationRef = useRef({ current: 1, pageSize: 20 })
+  const [donePagination, setDonePagination] = useState({ current: 1, pageSize: 1000, total: 0 })
+  const donePaginationRef = useRef({ current: 1, pageSize: 1000 })
 
   // Tab "Hiệu suất" — trang độc lập, 1000 rows/page
   const [hsData, setHsData] = useState([])
@@ -987,10 +987,10 @@ export default function DashboardPage() {
 
   const [pagination, setPagination] = useState({
     current: savedState?.page || 1,
-    pageSize: savedState?.pageSize || 20,
+    pageSize: savedState?.pageSize || 1000,
     total: 0
   })
-  const paginationRef = useRef({ current: savedState?.page || 1, pageSize: savedState?.pageSize || 20 })
+  const paginationRef = useRef({ current: savedState?.page || 1, pageSize: savedState?.pageSize || 1000 })
 
   useEffect(() => {
     if (toolbarRef.current) setHeaderOffset(toolbarRef.current.offsetHeight + 4)
@@ -1849,7 +1849,7 @@ export default function DashboardPage() {
                   ...pagination,
                   size: 'small',
                   showSizeChanger: true,
-                  pageSizeOptions: ['20', '50', '100'],
+                  pageSizeOptions: ['100', '500', '1000'],
                   showTotal: total => `Tổng ${total} bản ghi`,
                   style: { margin: '8px 0 0' },
                   onChange: (page, pageSize) => {
@@ -1911,7 +1911,7 @@ export default function DashboardPage() {
                   ...donePagination,
                   size: 'small',
                   showSizeChanger: true,
-                  pageSizeOptions: ['20', '50', '100'],
+                  pageSizeOptions: ['100', '500', '1000'],
                   showTotal: total => `Tổng ${total} bản ghi đã hoàn thành`,
                   style: { margin: '8px 0 0' },
                   onChange: (page, pageSize) => {
