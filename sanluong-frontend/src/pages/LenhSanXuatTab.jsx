@@ -21,6 +21,27 @@ const fmtNum = (v) => v != null && v !== '' ? Number(v).toLocaleString('vi-VN') 
 const TO_LIST  = ['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG']
 const TO_COLOR = { PCPL1: 'cyan', PCPL2: 'geekblue', PCPL3: 'blue', BBC1: 'orange', 'ĐG': 'purple' }
 
+// ── LenhModal layout helpers ──────────────────────────────────────────────────
+const LLCell = ({ children }) => (
+  <div style={{
+    padding: '7px 10px', background: '#f1f5f9', fontWeight: 600, fontSize: 12,
+    color: '#64748b', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0',
+    display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+  }}>
+    {children}
+  </div>
+)
+const LVCell = ({ children, last, span }) => (
+  <div style={{
+    padding: '5px 8px', borderBottom: '1px solid #e2e8f0', minWidth: 0,
+    ...(last ? {} : { borderRight: '1px solid #e2e8f0' }),
+    ...(span ? { gridColumn: `span ${span}` } : {}),
+    display: 'flex', alignItems: 'center',
+  }}>
+    {children}
+  </div>
+)
+
 // ── Isolated input per row — avoids parent re-render on keystroke ─────────────
 function SoLoInputCell({ workScheduleId, valRef, onPressEnter }) {
   const [val, setVal] = useState('')
@@ -140,71 +161,167 @@ function LenhModal({ open, editItem, onClose, onSaved }) {
   return (
     <Modal
       open={open}
-      title={editItem ? 'Cập nhật Lệnh Sản Xuất' : 'Thêm Lệnh Sản Xuất'}
+      title={null}
       onCancel={onClose}
-      onOk={handleOk}
-      confirmLoading={saving}
-      width={760}
-      okText={editItem ? 'Lưu' : 'Thêm'}
-      cancelText="Hủy"
-    >
-      <Form form={form} layout="vertical" size="small">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0 16px' }}>
-          <Form.Item
-            name="maBravo"
-            label={
-              <span>Mã Bravo{' '}
-                {bravoStatus === 'loading'   && <Spin size="small" style={{ marginLeft: 4 }} />}
-                {bravoStatus === 'found'     && <span style={{ color: '#52c41a', fontSize: 11 }}>✓ Tìm thấy</span>}
-                {bravoStatus === 'not_found' && <span style={{ color: '#ff4d4f', fontSize: 11 }}>✗ Không tìm thấy</span>}
-              </span>
-            }
-          >
-            <AutoComplete
-              options={bravoOptions}
-              onSearch={handleBravoSearch}
-              onSelect={handleBravoSelect}
-              onChange={handleBravoChange}
-              placeholder="VD: 10203251"
-              allowClear
-              dropdownStyle={{ minWidth: 340 }}
-            />
-          </Form.Item>
-          <Form.Item name="maSp"       label="Mã SP">         <Input placeholder="VD: TP251" /></Form.Item>
-          <Form.Item name="tenSanPham" label="Tên sản phẩm">  <Input /></Form.Item>
-          <Form.Item name="soLo"       label="Số lô">         <Input placeholder="VD: 080626" /></Form.Item>
-          <Form.Item name="maDonHang"  label="Mã đơn hàng">   <Input placeholder="VD: 251250526" /></Form.Item>
-          <Form.Item name="soLuong"    label="Cỡ lô">
-            <InputNumber
-              style={{ width: '100%' }}
-              formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
-              parser={v => v ? Number(v.replace(/\./g, '').replace(',', '.')) : null}
-            />
-          </Form.Item>
-          <Form.Item name="tinhTrang"  label="Ưu tiên">
-            <Select allowClear placeholder="Không gấp">
-              <Option value="gap">Gấp</Option>
-              <Option value="rat_gap">Rất gấp</Option>
-            </Select>
-          </Form.Item>
-          <Form.Item name="toThucHien" label="Tổ thực hiện">
-            <Select allowClear placeholder="Chưa phân công">
-              {TO_LIST.map(t => <Option key={t} value={t}>{t}</Option>)}
-            </Select>
-          </Form.Item>
-          <Form.Item name="phongThucHien" label="Phòng TH"><Input /></Form.Item>
-          <Form.Item name="ngayThucHien"  label="Ngày TH">
-            <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
-          </Form.Item>
-          <Form.Item name="ngayKetThuc"   label="Ngày kết thúc">
-            <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
-          </Form.Item>
-          <Form.Item name="ngayPhatLenh"  label="Ngày phát lệnh">
-            <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
-          </Form.Item>
+      footer={
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <Button onClick={onClose}>Hủy</Button>
+          <Button type="primary" loading={saving} onClick={handleOk}>
+            {editItem ? 'Lưu' : 'Thêm'}
+          </Button>
         </div>
-        <Form.Item name="chuY"   label="Chú ý">  <Input.TextArea rows={2} /></Form.Item>
-        <Form.Item name="ghiChu" label="Ghi chú"><Input.TextArea rows={2} /></Form.Item>
+      }
+      width={760}
+      destroyOnClose
+      styles={{ body: { padding: 0 } }}
+    >
+      {/* Header */}
+      <div style={{ background: '#1e3a5f', padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 10, borderRadius: '8px 8px 0 0' }}>
+        <span style={{ fontSize: 20 }}>📋</span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ color: '#fff', fontWeight: 800, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {editItem ? (editItem.tenSanPham || editItem.maBravo || 'Cập nhật Lệnh Sản Xuất') : 'Thêm Lệnh Sản Xuất'}
+          </div>
+          {editItem && (
+            <div style={{ color: '#93c5fd', fontSize: 11, marginTop: 1, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {editItem.maBravo   && <span>Bravo: <b style={{ color: '#bfdbfe' }}>{editItem.maBravo}</b></span>}
+              {editItem.maSp      && <span>SP: <b style={{ color: '#bfdbfe' }}>{editItem.maSp}</b></span>}
+              {editItem.maDonHang && <span>ĐH: <b style={{ color: '#c4b5fd' }}>{editItem.maDonHang}</b></span>}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <Form form={form} component="div" autoComplete="off" style={{ padding: '12px 16px 8px' }}>
+        {/* Grid chính */}
+        <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 110px 1fr', border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden', marginBottom: 8 }}>
+
+          {/* Row 1: Mã Bravo — Mã SP */}
+          <LLCell>
+            <span>Mã Bravo</span>
+            {bravoStatus === 'loading'   && <Spin size="small" style={{ marginLeft: 4 }} />}
+            {bravoStatus === 'found'     && <span style={{ color: '#52c41a', fontSize: 10 }}>✓</span>}
+            {bravoStatus === 'not_found' && <span style={{ color: '#ff4d4f', fontSize: 10 }}>✗</span>}
+          </LLCell>
+          <LVCell>
+            <Form.Item name="maBravo" noStyle>
+              <AutoComplete
+                options={bravoOptions}
+                onSearch={handleBravoSearch}
+                onSelect={handleBravoSelect}
+                onChange={handleBravoChange}
+                placeholder="VD: 10203251"
+                allowClear
+                size="small"
+                popupMatchSelectWidth={340}
+                style={{ width: '100%', fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}
+              />
+            </Form.Item>
+          </LVCell>
+          <LLCell>Mã SP</LLCell>
+          <LVCell last>
+            <Form.Item name="maSp" noStyle>
+              <Input size="small" placeholder="VD: TP251"
+                style={{ width: '100%', color: '#1D4ED8', fontWeight: 600 }} />
+            </Form.Item>
+          </LVCell>
+
+          {/* Row 2: Tên sản phẩm (full width) */}
+          <LLCell>Tên sản phẩm</LLCell>
+          <LVCell span={3} last>
+            <Form.Item name="tenSanPham" noStyle>
+              <Input size="small" placeholder="Tự điền khi chọn mã Bravo" style={{ width: '100%' }} />
+            </Form.Item>
+          </LVCell>
+
+          {/* Row 3: Số lô — Mã đơn hàng */}
+          <LLCell>Số lô</LLCell>
+          <LVCell>
+            <Form.Item name="soLo" noStyle>
+              <Input size="small" placeholder="VD: 080626" style={{ width: '100%', fontFamily: 'monospace' }} />
+            </Form.Item>
+          </LVCell>
+          <LLCell>Mã đơn hàng</LLCell>
+          <LVCell last>
+            <Form.Item name="maDonHang" noStyle>
+              <Input size="small" placeholder="VD: 251250526" style={{ width: '100%', fontFamily: 'monospace' }} />
+            </Form.Item>
+          </LVCell>
+
+          {/* Row 4: Cỡ lô — Ưu tiên */}
+          <LLCell>Cỡ lô</LLCell>
+          <LVCell>
+            <Form.Item name="soLuong" noStyle>
+              <InputNumber size="small" style={{ width: '100%' }}
+                formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
+                parser={v => v ? Number(v.replace(/\./g, '').replace(',', '.')) : null}
+              />
+            </Form.Item>
+          </LVCell>
+          <LLCell>Ưu tiên</LLCell>
+          <LVCell last>
+            <Form.Item name="tinhTrang" noStyle>
+              <Select size="small" allowClear placeholder="Không gấp" style={{ width: '100%' }}>
+                <Option value="gap">Gấp</Option>
+                <Option value="rat_gap">Rất gấp</Option>
+              </Select>
+            </Form.Item>
+          </LVCell>
+
+          {/* Row 5: Tổ thực hiện — Phòng TH */}
+          <LLCell>Tổ thực hiện</LLCell>
+          <LVCell>
+            <Form.Item name="toThucHien" noStyle>
+              <Select size="small" allowClear placeholder="Chưa phân công" style={{ width: '100%' }}>
+                {TO_LIST.map(t => <Option key={t} value={t}>{t}</Option>)}
+              </Select>
+            </Form.Item>
+          </LVCell>
+          <LLCell>Phòng TH</LLCell>
+          <LVCell last>
+            <Form.Item name="phongThucHien" noStyle>
+              <Input size="small" style={{ width: '100%' }} />
+            </Form.Item>
+          </LVCell>
+
+          {/* Row 6: Ngày TH — Ngày kết thúc — Ngày phát lệnh */}
+          <LLCell>Ngày TH</LLCell>
+          <LVCell>
+            <Form.Item name="ngayThucHien" noStyle>
+              <DatePicker size="small" style={{ width: '100%' }} format="DD/MM/YYYY" />
+            </Form.Item>
+          </LVCell>
+          <LLCell>Ngày kết thúc</LLCell>
+          <LVCell last>
+            <Form.Item name="ngayKetThuc" noStyle>
+              <DatePicker size="small" style={{ width: '100%' }} format="DD/MM/YYYY" />
+            </Form.Item>
+          </LVCell>
+
+          <LLCell>Ngày phát lệnh</LLCell>
+          <LVCell span={3} last>
+            <Form.Item name="ngayPhatLenh" noStyle>
+              <DatePicker size="small" style={{ width: 180 }} format="DD/MM/YYYY" />
+            </Form.Item>
+          </LVCell>
+
+        </div>
+
+        {/* Chú ý + Ghi chú */}
+        <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
+          <LLCell>Chú ý</LLCell>
+          <LVCell last>
+            <Form.Item name="chuY" noStyle>
+              <Input.TextArea rows={2} style={{ width: '100%', resize: 'none' }} />
+            </Form.Item>
+          </LVCell>
+          <LLCell style={{ borderBottom: 'none' }}>Ghi chú</LLCell>
+          <LVCell last style={{ borderBottom: 'none' }}>
+            <Form.Item name="ghiChu" noStyle>
+              <Input.TextArea rows={2} style={{ width: '100%', resize: 'none' }} />
+            </Form.Item>
+          </LVCell>
+        </div>
       </Form>
     </Modal>
   )
