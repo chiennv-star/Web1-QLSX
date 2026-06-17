@@ -549,21 +549,21 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       caSanXuat: s.caSanXuat || null, isTangCa: s.isTangCa || false,
     }
     try {
+      let updatedSessions
       if (s.id) {
         const { data } = await api.put(`/work-schedule-session/${s.id}`, payload)
         setSessions(prev => {
-          const updated = prev.map(r => r.id === s.id ? normalizeSession(data) : r)
-          syncCong(updated)
-          return updated
+          updatedSessions = prev.map(r => r.id === s.id ? normalizeSession(data) : r)
+          return updatedSessions
         })
       } else {
         const { data } = await api.post('/work-schedule-session', payload)
         setSessions(prev => {
-          const updated = prev.map(r => r._tempId === s._tempId ? normalizeSession(data) : r)
-          syncCong(updated)
-          return updated
+          updatedSessions = prev.map(r => r._tempId === s._tempId ? normalizeSession(data) : r)
+          return updatedSessions
         })
       }
+      if (updatedSessions) syncCong(updatedSessions)
       setEditingKeys(prev => { const next = new Set(prev); next.delete(key); return next })
       onRefresh?.()
       message.success('Đã lưu')
