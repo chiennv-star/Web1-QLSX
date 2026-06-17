@@ -1673,17 +1673,64 @@ export default function DashboardPage() {
       {/* ── Toolbar ─────────────────────────────────────────────── */}
       <div className="db-toolbar" ref={toolbarRef}>
 
-        {/* Dark navy header */}
+        {/* Single-row toolbar: title + filters + actions */}
         <div style={{
-          background: '#339999',
-          padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 10,
+          background: '#006666',
+          padding: '7px 12px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
         }}>
+          {/* Title */}
           <span style={{ fontWeight: 800, fontSize: 15, color: '#fff', whiteSpace: 'nowrap', letterSpacing: 0.3 }}>
             📊 Quản lý Sản lượng
           </span>
           <Badge count={pagination.total} showZero overflowCount={9999}
             style={{ background: 'rgba(255,255,255,0.22)', color: '#fff', boxShadow: 'none', fontWeight: 700 }} />
 
+          <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.3)', margin: '0 4px', flexShrink: 0 }} />
+
+          {/* Filters inline */}
+          {activeTab !== 'tiendo' && activeTab !== 'tiendogon' ? (
+            <>
+              <Input placeholder="Mã Bravo" value={filters.maBravo} allowClear
+                onChange={e => setFilters(f => ({ ...f, maBravo: e.target.value }))}
+                onPressEnter={handleSearch} style={{ width: 96 }} size="small" />
+              <Input placeholder="Mã TP" value={filters.maTp} allowClear
+                onChange={e => setFilters(f => ({ ...f, maTp: e.target.value }))}
+                onPressEnter={handleSearch} style={{ width: 84 }} size="small" />
+              <Input placeholder="Tiến trình / Tên SP" value={filters.tienTrinh} allowClear
+                onChange={e => setFilters(f => ({ ...f, tienTrinh: e.target.value }))}
+                onPressEnter={handleSearch} style={{ width: 190 }} size="small" />
+              <Input placeholder="LSX" value={filters.lsx} allowClear
+                onChange={e => setFilters(f => ({ ...f, lsx: e.target.value }))}
+                onPressEnter={handleSearch} style={{ width: 84 }} size="small" />
+              <Select placeholder="Trạng thái" size="small" style={{ width: 108 }}
+                value={filters.trangThai || undefined} allowClear
+                onChange={v => setFilters(f => ({ ...f, trangThai: v || '' }))}>
+                <Option value="done">Done</Option>
+                <Option value="doing">Doing</Option>
+              </Select>
+              <Button type="primary" size="small" icon={<SearchOutlined />} onClick={handleSearch}
+                style={{ background: '#1D4ED8', borderColor: '#1D4ED8' }}>Tìm</Button>
+              <Button size="small" icon={<ReloadOutlined />} onClick={handleReset}
+                style={{ background: 'transparent', borderColor: 'rgba(255,255,255,0.45)', color: '#fff' }} />
+            </>
+          ) : (
+            <>
+              <Input placeholder="Mã SP" value={timelineFilters.maSp} allowClear
+                onChange={e => setTimelineFilters(f => ({ ...f, maSp: e.target.value }))}
+                onPressEnter={handleTimelineSearch} style={{ width: 130 }} size="small" />
+              <RangePicker size="small" style={{ width: 260 }} format="DD/MM/YYYY"
+                placeholder={['Ngày thực hiện từ', 'đến']}
+                value={timelineFilters.dateRange}
+                onChange={v => setTimelineFilters(f => ({ ...f, dateRange: v }))} />
+              <Button type="primary" size="small" icon={<SearchOutlined />}
+                onClick={handleTimelineSearch}
+                style={{ background: '#1D4ED8', borderColor: '#1D4ED8' }}>Tìm</Button>
+              <Button size="small" icon={<ReloadOutlined />} onClick={handleTimelineReset}
+                style={{ background: 'transparent', borderColor: 'rgba(255,255,255,0.45)', color: '#fff' }} />
+            </>
+          )}
+
+          {/* Action buttons */}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
             {canEditProduction() && (
               <Button size="small" icon={<PlusOutlined />}
@@ -1726,55 +1773,6 @@ export default function DashboardPage() {
               </Tooltip>
             )}
           </div>
-        </div>
-
-        {/* Filter bar — nội dung thay đổi theo tab đang chọn */}
-        <div style={{
-          background: '#f8fafc', borderBottom: '1px solid #e2e8f0',
-          padding: '7px 12px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
-          minHeight: 42,
-        }}>
-          {activeTab !== 'tiendo' && activeTab !== 'tiendogon' ? (
-            /* Filter cho tab Danh sách / Đã hoàn thành */
-            <>
-              <Input placeholder="Mã Bravo" value={filters.maBravo} allowClear
-                onChange={e => setFilters(f => ({ ...f, maBravo: e.target.value }))}
-                onPressEnter={handleSearch} style={{ width: 100 }} size="small" />
-              <Input placeholder="Mã TP" value={filters.maTp} allowClear
-                onChange={e => setFilters(f => ({ ...f, maTp: e.target.value }))}
-                onPressEnter={handleSearch} style={{ width: 88 }} size="small" />
-              <Input placeholder="Tiến trình / Tên SP" value={filters.tienTrinh} allowClear
-                onChange={e => setFilters(f => ({ ...f, tienTrinh: e.target.value }))}
-                onPressEnter={handleSearch} style={{ width: 200 }} size="small" />
-              <Input placeholder="LSX" value={filters.lsx} allowClear
-                onChange={e => setFilters(f => ({ ...f, lsx: e.target.value }))}
-                onPressEnter={handleSearch} style={{ width: 88 }} size="small" />
-              <Select placeholder="Trạng thái" size="small" style={{ width: 108 }}
-                value={filters.trangThai || undefined} allowClear
-                onChange={v => setFilters(f => ({ ...f, trangThai: v || '' }))}>
-                <Option value="done">Done</Option>
-                <Option value="doing">Doing</Option>
-              </Select>
-              <Button type="primary" size="small" icon={<SearchOutlined />} onClick={handleSearch}
-                style={{ background: '#1D4ED8', borderColor: '#1D4ED8' }}>Tìm</Button>
-              <Button size="small" icon={<ReloadOutlined />} onClick={handleReset} />
-            </>
-          ) : (activeTab === 'tiendo' || activeTab === 'tiendogon') ? (
-            /* Filter cho tab Tiến độ */
-            <>
-              <Input placeholder="Mã SP" value={timelineFilters.maSp} allowClear
-                onChange={e => setTimelineFilters(f => ({ ...f, maSp: e.target.value }))}
-                onPressEnter={handleTimelineSearch} style={{ width: 130 }} size="small" />
-              <RangePicker size="small" style={{ width: 260 }} format="DD/MM/YYYY"
-                placeholder={['Ngày thực hiện từ', 'đến']}
-                value={timelineFilters.dateRange}
-                onChange={v => setTimelineFilters(f => ({ ...f, dateRange: v }))} />
-              <Button type="primary" size="small" icon={<SearchOutlined />}
-                onClick={handleTimelineSearch}
-                style={{ background: '#1D4ED8', borderColor: '#1D4ED8' }}>Tìm</Button>
-              <Button size="small" icon={<ReloadOutlined />} onClick={handleTimelineReset} />
-            </>
-          ) : null}
         </div>
 
         {/* ── Thống kê tháng (collapsible) ── */}
