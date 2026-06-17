@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import {
-  Table, Input, Tag, Tooltip, message,
+  Input, Tag, Tooltip, message,
   Form, InputNumber, Badge, Button, Spin,
 } from 'antd'
+import SkeletonTable from '../components/SkeletonTable'
 import {
   ArrowLeftOutlined, EditOutlined,
   CheckCircleFilled, CloseCircleFilled,
@@ -22,7 +23,7 @@ export default function LenhSanXuatDetailPage() {
   const [product,     setProduct]     = useState(location.state?.product || null)
   const [productLoad, setProductLoad] = useState(!location.state?.product)
   const [orders,      setOrders]      = useState([])
-  const [ordersLoad,  setOrdersLoad]  = useState(false)
+  const [ordersLoad,  setOrdersLoad]  = useState(true)
   const [editingInfo, setEditingInfo] = useState(false)
   const [saving,      setSaving]      = useState(false)
   const [infoForm]                    = Form.useForm()
@@ -318,7 +319,7 @@ export default function LenhSanXuatDetailPage() {
           ({orders.length} đơn hàng — sắp xếp theo ngày đặt hàng)
         </span>
       </div>
-      <Table
+      <SkeletonTable
         className="lenh-detail-table"
         rowKey="id"
         dataSource={orders}
