@@ -235,6 +235,18 @@ public class WorkScheduleController {
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/{id}/phong-thuc-hien")
+    public ResponseEntity<Void> patchPhongThucHien(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body,
+            Authentication auth) {
+        WorkSchedule w = service.getById(id);
+        checkStagePermission(auth, w.getCongDoan(), w.getSource());
+        String phong = body.get("phongThucHien") != null ? body.get("phongThucHien").toString() : null;
+        service.patchPhongThucHien(id, phong);
+        return ResponseEntity.noContent().build();
+    }
+
     // Cập nhật tình trạng và sync ngay sang sản lượng
     @PatchMapping("/{id}/tinh-trang")
     public ResponseEntity<WorkSchedule> patchTinhTrang(
@@ -253,6 +265,16 @@ public class WorkScheduleController {
             @RequestBody Map<String, Object> body) {
         boolean hidden = Boolean.TRUE.equals(body.get("hidden"));
         return ResponseEntity.ok(service.setHidden(id, hidden));
+    }
+
+    @PatchMapping("/bulk-to-nhom")
+    public ResponseEntity<Integer> bulkSetToNhom(@RequestBody Map<String, Object> body, Authentication auth) {
+        @SuppressWarnings("unchecked")
+        List<Long> ids = ((List<?>) body.get("ids")).stream()
+                .map(o -> Long.valueOf(o.toString())).collect(java.util.stream.Collectors.toList());
+        String toNhom = body.get("toNhom") != null ? body.get("toNhom").toString() : null;
+        checkAdminOrStageForIds(ids, auth);
+        return ResponseEntity.ok(service.bulkSetToNhom(ids, toNhom));
     }
 
     @PostMapping("/bulk-hide")

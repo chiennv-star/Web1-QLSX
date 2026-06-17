@@ -1063,8 +1063,31 @@ export default function DashboardPage() {
     { title: 'TP NKho', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 88, align: 'center', render: v => v ?? '—' },
     { title: 'TEM ĐB',  dataIndex: 'temDb',      key: 'temDb',      width: 76, align: 'center', render: v => v ?? '—' },
     {
-      title: 'QA Lấy mẫu', dataIndex: 'qaLayMau', key: 'qaLayMau', width: 90, align: 'center',
-      render: v => v != null ? <span style={{ color: '#0891b2' }}>{Number(v).toLocaleString('vi-VN')}</span> : <span style={{ color: '#d9d9d9' }}>—</span>,
+      title: <span style={{ color: '#0891b2' }}>QA Lấy mẫu</span>,
+      onHeaderCell: () => ({ style: { cursor: 'default' } }),
+      children: [
+        {
+          title: 'PL', key: 'qa_pl', width: 70, align: 'center',
+          render: (_, r) => r.plQaLayMau != null
+            ? <span style={{ color: '#0891b2' }}>{Number(r.plQaLayMau).toLocaleString('vi-VN')}</span>
+            : <span style={{ color: '#d9d9d9' }}>—</span>,
+        },
+        {
+          title: 'ĐG', key: 'qa_dg', width: 70, align: 'center',
+          render: (_, r) => r.dgQaLayMau != null
+            ? <span style={{ color: '#0891b2' }}>{Number(r.dgQaLayMau).toLocaleString('vi-VN')}</span>
+            : <span style={{ color: '#d9d9d9' }}>—</span>,
+        },
+        {
+          title: 'Tổng', key: 'qa_tong', width: 76, align: 'center',
+          render: (_, r) => {
+            const total = (r.plQaLayMau || 0) + (r.dgQaLayMau || 0)
+            return total > 0
+              ? <span style={{ fontWeight: 700, color: '#0891b2' }}>{total.toLocaleString('vi-VN')}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>
+          },
+        },
+      ],
     },
     {
       title: 'SP/Công', key: 'spCong', width: 88, align: 'center',

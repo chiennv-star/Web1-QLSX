@@ -508,7 +508,7 @@ public class WorkScheduleService {
 
         for (ProductionRecord r : records) {
             switch (stage) {
-                case "PC", "PCPL1", "PCPL2" -> {
+                case "PC", "PCPL2" -> {
                     if (w.getSlPc()   != null) r.setSlPc(String.valueOf(w.getSlPc().intValue()));
                     if (w.getCongPc() != null) r.setPcChiPhi(w.getCongPc());
                     r.setPcTrangThai(trangThai);
@@ -518,15 +518,23 @@ public class WorkScheduleService {
                     if (w.getSlBbc1()   != null) r.setBbc1_2(String.valueOf(w.getSlBbc1().intValue()));
                     r.setBbc1TrangThai(trangThai);
                 }
-                case "PL" -> {
+                case "PL", "PCPL1" -> {
                     if (w.getCongPl() != null) r.setPlChiPhi(w.getCongPl());
                     if (w.getSlPl()   != null) r.setPcPl(String.valueOf(w.getSlPl().intValue()));
                     r.setPlTrangThai(trangThai);
+                    r.setPlQaLayMau(w.getQaLayMau());
+                    int plPl = r.getPlQaLayMau() != null ? r.getPlQaLayMau() : 0;
+                    int dgPl = r.getDgQaLayMau() != null ? r.getDgQaLayMau() : 0;
+                    r.setQaLayMau(plPl + dgPl > 0 ? plPl + dgPl : null);
                 }
                 case "DG" -> {
                     if (w.getCongDg() != null) r.setDgChiPhi(w.getCongDg());
                     if (w.getSlDg()   != null) r.setDg2(String.valueOf(w.getSlDg().intValue()));
                     r.setDgTrangThai(trangThai);
+                    r.setDgQaLayMau(w.getQaLayMau());
+                    int plDg = r.getPlQaLayMau() != null ? r.getPlQaLayMau() : 0;
+                    int dgDg = r.getDgQaLayMau() != null ? r.getDgQaLayMau() : 0;
+                    r.setQaLayMau(plDg + dgDg > 0 ? plDg + dgDg : null);
                 }
             }
         }
@@ -546,11 +554,20 @@ public class WorkScheduleService {
             case "slBbc1"   -> w.setSlBbc1(value);
             case "slPl"     -> w.setSlPl(value);
             case "slDg"     -> w.setSlDg(value);
+            case "qaLayMau" -> w.setQaLayMau(value == null ? null : value.intValue());
             default -> throw new IllegalArgumentException("Unknown patchable field: " + field);
         }
         autoApplyDone(w);
         WorkSchedule saved = repository.save(w);
         syncToProduction(saved);
+        eventPublisher.publishKhoachUpdated();
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void patchPhongThucHien(Long id, String phong) {
+        WorkSchedule w = getById(id);
+        w.setPhongThucHien(phong == null || phong.isBlank() ? null : phong.trim());
+        repository.save(w);
         eventPublisher.publishKhoachUpdated();
     }
 
@@ -635,6 +652,17 @@ public class WorkScheduleService {
     public void deletePermanent(Long id) {
         repository.deleteById(id);
         eventPublisher.publishKhoachUpdated();
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public int bulkSetToNhom(List<Long> ids, String toNhom) {
+        if (ids == null || ids.isEmpty()) return 0;
+        List<WorkSchedule> list = repository.findAllById(ids);
+        String value = (toNhom == null || toNhom.isBlank()) ? null : toNhom.trim();
+        list.forEach(w -> w.setToNhom(value));
+        repository.saveAll(list);
+        eventPublisher.publishKhoachUpdated();
+        return list.size();
     }
 
     public int bulkDelete(List<Long> ids, String username) {

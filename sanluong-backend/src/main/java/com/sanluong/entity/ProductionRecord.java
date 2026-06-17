@@ -133,6 +133,12 @@ public class ProductionRecord {
     @Column(name = "qa_lay_mau")
     private Integer qaLayMau;
 
+    @Column(name = "pl_qa_lay_mau")
+    private Integer plQaLayMau;
+
+    @Column(name = "dg_qa_lay_mau")
+    private Integer dgQaLayMau;
+
     @Column(name = "phat_lenh")
     private Boolean phatLenh;
 
@@ -306,6 +312,10 @@ public class ProductionRecord {
     public void setHlSlHuy(BigDecimal v) { this.hlSlHuy = v; }
     public Integer getQaLayMau() { return qaLayMau; }
     public void setQaLayMau(Integer qaLayMau) { this.qaLayMau = qaLayMau; }
+    public Integer getPlQaLayMau() { return plQaLayMau; }
+    public void setPlQaLayMau(Integer plQaLayMau) { this.plQaLayMau = plQaLayMau; }
+    public Integer getDgQaLayMau() { return dgQaLayMau; }
+    public void setDgQaLayMau(Integer dgQaLayMau) { this.dgQaLayMau = dgQaLayMau; }
     public Boolean getPhatLenh() { return phatLenh; }
     public void setPhatLenh(Boolean phatLenh) { this.phatLenh = phatLenh; }
     public Boolean getHidden() { return hidden; }

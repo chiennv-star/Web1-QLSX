@@ -42,6 +42,8 @@ public class ProductionRecordDto {
     private BigDecimal hlSlDatSauXuLy;
     private BigDecimal hlSlHuy;
     private Integer qaLayMau;
+    private Integer plQaLayMau;
+    private Integer dgQaLayMau;
     private Boolean phatLenh;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -122,6 +124,10 @@ public class ProductionRecordDto {
     public void setHlSlHuy(BigDecimal v) { this.hlSlHuy = v; }
     public Integer getQaLayMau() { return qaLayMau; }
     public void setQaLayMau(Integer qaLayMau) { this.qaLayMau = qaLayMau; }
+    public Integer getPlQaLayMau() { return plQaLayMau; }
+    public void setPlQaLayMau(Integer v) { this.plQaLayMau = v; }
+    public Integer getDgQaLayMau() { return dgQaLayMau; }
+    public void setDgQaLayMau(Integer v) { this.dgQaLayMau = v; }
     public Boolean getPhatLenh() { return phatLenh; }
     public void setPhatLenh(Boolean phatLenh) { this.phatLenh = phatLenh; }
     public LocalDateTime getCreatedAt() { return createdAt; }

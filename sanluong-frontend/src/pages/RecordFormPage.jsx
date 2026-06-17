@@ -501,7 +501,7 @@ export default function RecordFormPage() {
         .sc-bd .ant-form-item-label > label { font-size: 10px !important; color: #6b7280 !important; }
 
         /* Section header */
-        .sec-h { font-size: 11px; font-weight: 800; color: #1e3a5f; text-transform: uppercase;
+        .sec-h { font-size: 13px; font-weight: 800; color: #1e3a5f; text-transform: uppercase;
           letter-spacing: 0.8px; padding: 8px 14px; background: #f8fafc;
           border-bottom: 1px solid #e8edf2; display: flex; align-items: center; gap: 6px; }
 
@@ -709,13 +709,13 @@ export default function RecordFormPage() {
                       {/* ── Stage table ── */}
                       <div>
                         <div className="sec-h">🏭 Trạng thái & Sản lượng công đoạn</div>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                           <thead>
                             <tr style={{ background: '#f0f4f8', borderBottom: '2px solid #e2e8f0' }}>
-                              <th style={{ padding: '7px 14px', textAlign: 'left', fontWeight: 800, fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, width: '15%' }}>Công đoạn</th>
-                              <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 800, fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, width: '25%' }}>Tình trạng</th>
-                              <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 800, fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, width: '30%' }}>Sản lượng</th>
-                              <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 800, fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, width: '30%' }}>Công</th>
+                              <th style={{ padding: '7px 14px', textAlign: 'left', fontWeight: 800, fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, width: '15%' }}>Công đoạn</th>
+                              <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 800, fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, width: '25%' }}>Tình trạng</th>
+                              <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 800, fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, width: '30%' }}>Sản lượng</th>
+                              <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 800, fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, width: '30%' }}>Công</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -732,9 +732,9 @@ export default function RecordFormPage() {
                                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                         width: 36, height: 22, borderRadius: 4,
                                         background: isDone ? '#16a34a' : s.color,
-                                        color: '#fff', fontWeight: 800, fontSize: 12, letterSpacing: 0.5,
+                                        color: '#fff', fontWeight: 800, fontSize: 14, letterSpacing: 0.5,
                                       }}>{s.label}</span>
-                                      <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 500 }}>{s.sub}</span>
+                                      <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>{s.sub}</span>
                                     </div>
                                   </td>
                                   <td style={{ padding: '4px 10px' }}>
@@ -764,12 +764,12 @@ export default function RecordFormPage() {
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                     width: 48, height: 22, borderRadius: 4,
-                                    background: '#c41d7f', color: '#fff', fontWeight: 800, fontSize: 11, letterSpacing: 0.5,
+                                    background: '#c41d7f', color: '#fff', fontWeight: 800, fontSize: 13, letterSpacing: 0.5,
                                   }}>GNNL</span>
-                                  <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 500 }}>Giao nhận nguyên liệu</span>
+                                  <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>Giao nhận nguyên liệu</span>
                                 </div>
                               </td>
-                              <td colSpan={2} style={{ padding: '4px 10px', color: '#bbb', fontSize: 11 }}>—</td>
+                              <td colSpan={2} style={{ padding: '4px 10px', color: '#bbb', fontSize: 13 }}>—</td>
                               <td style={{ padding: '4px 10px' }}>
                                 <Form.Item name="temDb" style={{ marginBottom: 0 }}>
                                   <InputNumber size="small" style={{ width: '100%' }} step={0.0001} precision={4} placeholder="0.0000" disabled={ro} />
@@ -779,7 +779,7 @@ export default function RecordFormPage() {
                             <tr style={{ borderTop: '1px dashed #e2e8f0', background: '#f8fafc' }}>
                               <td colSpan={2} style={{ padding: '6px 14px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                  <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.4, whiteSpace: 'nowrap' }}>BBC1 Ngày phối</span>
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.4, whiteSpace: 'nowrap' }}>BBC1 Ngày phối</span>
                                   <Form.Item name="bbc1_1" style={{ marginBottom: 0, flex: 1 }}>
                                     <Input size="small" placeholder="DDMMYY" disabled={ro} style={{ fontFamily: 'monospace', fontWeight: 600, maxWidth: 110 }} />
                                   </Form.Item>
@@ -787,7 +787,7 @@ export default function RecordFormPage() {
                               </td>
                               <td colSpan={2} style={{ padding: '6px 10px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                  <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.4, whiteSpace: 'nowrap' }}>SL PC</span>
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.4, whiteSpace: 'nowrap' }}>SL PC</span>
                                   <Form.Item name="slPc" style={{ marginBottom: 0, flex: 1 }}>
                                     <Input size="small" placeholder="0" disabled={ro} style={{ fontWeight: 700, maxWidth: 110 }} />
                                   </Form.Item>
@@ -804,7 +804,7 @@ export default function RecordFormPage() {
                           {/* Số liệu sản xuất */}
                           <Col xs={24} md={12} style={{ borderRight: '1px solid #e8edf2' }}>
                             <div className="sec-h">📊 Số liệu sản xuất</div>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                               <tbody>
                                 {[
                                   { label: 'SP Trung gian', name: 'spTrungGian', type: 'num' },
@@ -813,7 +813,7 @@ export default function RecordFormPage() {
                                   { label: 'SL Trung bình', name: 'slTrungBinh',  type: 'dec2' },
                                 ].map(f => (
                                   <tr key={f.name} style={{ borderBottom: '1px solid #f0f2f5' }}>
-                                    <td style={{ padding: '7px 12px', background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap', width: '40%' }}>
+                                    <td style={{ padding: '7px 12px', background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap', width: '40%' }}>
                                       {f.label}
                                     </td>
                                     <td style={{ padding: '4px 10px' }}>
@@ -828,8 +828,8 @@ export default function RecordFormPage() {
                                   </tr>
                                 ))}
                                 <tr style={{ borderBottom: '1px solid #f0f2f5' }}>
-                                  <td style={{ padding: '7px 12px', background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                                    Chênh lệch BTP <span style={{ fontWeight: 400, color: '#aaa', textTransform: 'none', fontSize: 10 }}>(tự tính)</span>
+                                  <td style={{ padding: '7px 12px', background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                                    Chênh lệch BTP <span style={{ fontWeight: 400, color: '#aaa', textTransform: 'none', fontSize: 12 }}>(tự tính)</span>
                                   </td>
                                   <td style={{ padding: '5px 10px' }}>
                                     <div className="cv" style={{
@@ -842,8 +842,8 @@ export default function RecordFormPage() {
                                   </td>
                                 </tr>
                                 <tr>
-                                  <td style={{ padding: '7px 12px', background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                                    Dở dang ĐG <span style={{ fontWeight: 400, color: '#aaa', textTransform: 'none', fontSize: 10 }}>(tự tính)</span>
+                                  <td style={{ padding: '7px 12px', background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                                    Dở dang ĐG <span style={{ fontWeight: 400, color: '#aaa', textTransform: 'none', fontSize: 12 }}>(tự tính)</span>
                                   </td>
                                   <td style={{ padding: '5px 10px' }}>
                                     <div className="cv" style={{ color: '#d46b08', background: '#fff7e6', border: '1px solid #ffd591' }}>
@@ -858,7 +858,7 @@ export default function RecordFormPage() {
                           {/* Chi phí tổng hợp */}
                           <Col xs={24} md={12}>
                             <div className="sec-h">⚙ Chi phí tổng hợp (Công)</div>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                               <tbody>
                                 {[
                                   { key: 'gnnl', label: 'GNNL', color: '#c41d7f', val: watchGnnl },
@@ -870,25 +870,25 @@ export default function RecordFormPage() {
                                   const pct = parseFloat(sigmaCong) > 0 ? (s.val / parseFloat(sigmaCong) * 100).toFixed(1) : 0
                                   return (
                                     <tr key={s.key} style={{ borderBottom: '1px solid #f0f2f5' }}>
-                                      <td style={{ padding: '7px 12px', background: '#f8fafc', fontWeight: 700, fontSize: 12, color: s.color, width: '28%', whiteSpace: 'nowrap' }}>
+                                      <td style={{ padding: '7px 12px', background: '#f8fafc', fontWeight: 700, fontSize: 14, color: s.color, width: '28%', whiteSpace: 'nowrap' }}>
                                         {s.label}
                                       </td>
                                       <td style={{ padding: '7px 12px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                          <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#007700', fontSize: 12, minWidth: 70 }}>
+                                          <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#007700', fontSize: 14, minWidth: 70 }}>
                                             {Number(s.val).toFixed(4)}
                                           </span>
                                           <div style={{ flex: 1, height: 5, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
                                             <div style={{ width: `${pct}%`, height: '100%', background: s.color, borderRadius: 4, transition: 'width .3s' }} />
                                           </div>
-                                          <span style={{ color: '#9ca3af', fontSize: 11, fontWeight: 600, minWidth: 38, textAlign: 'right' }}>({pct}%)</span>
+                                          <span style={{ color: '#9ca3af', fontSize: 13, fontWeight: 600, minWidth: 38, textAlign: 'right' }}>({pct}%)</span>
                                         </div>
                                       </td>
                                     </tr>
                                   )
                                 })}
                                 <tr style={{ borderBottom: '1px solid #f0f2f5' }}>
-                                  <td style={{ padding: '7px 12px', background: '#e6f4ff', fontWeight: 700, fontSize: 11, color: '#1677ff', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                                  <td style={{ padding: '7px 12px', background: '#e6f4ff', fontWeight: 700, fontSize: 13, color: '#1677ff', textTransform: 'uppercase', letterSpacing: 0.3 }}>
                                     Σ Tổng công
                                   </td>
                                   <td style={{ padding: '5px 10px', background: '#e6f4ff' }}>
@@ -898,7 +898,7 @@ export default function RecordFormPage() {
                                   </td>
                                 </tr>
                                 <tr>
-                                  <td style={{ padding: '7px 12px', background: '#f8fafc', fontWeight: 700, fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                                  <td style={{ padding: '7px 12px', background: '#f8fafc', fontWeight: 700, fontSize: 13, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.3 }}>
                                     SP / Công
                                   </td>
                                   <td style={{ padding: '5px 10px' }}>

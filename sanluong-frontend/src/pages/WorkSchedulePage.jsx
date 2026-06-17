@@ -2351,6 +2351,10 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [bulkHiding, setBulkHiding] = useState(false)
   const [selectedRowKeys, setSelectedRowKeys] = useState([])
+  const [bulkNhomVal, setBulkNhomVal] = useState(undefined)
+  const [bulkNhomSaving, setBulkNhomSaving] = useState(false)
+  const [inlineEdit, setInlineEdit] = useState(null) // { id, field }
+  const [inlineSaving, setInlineSaving] = useState(false)
 
   const handleDeleteAll = async () => {
     const ids = data.map(r => r.id)
@@ -2401,6 +2405,42 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       parentOnSaved?.()
     } catch { message.error('Ẩn thất bại') }
     finally { setBulkHiding(false) }
+  }
+
+  const handleBulkSetNhom = async () => {
+    if (!selectedRowKeys.length) return
+    setBulkNhomSaving(true)
+    try {
+      const { data: count } = await api.patch('/work-schedule/bulk-to-nhom', {
+        ids: selectedRowKeys,
+        toNhom: bulkNhomVal || null,
+      })
+      message.success(`Đã gán Tổ/Nhóm TH cho ${count} bản ghi`)
+      setSelectedRowKeys([])
+      setBulkNhomVal(undefined)
+      fetchData(0)
+    } catch { message.error('Cập nhật Tổ/Nhóm TH thất bại') }
+    finally { setBulkNhomSaving(false) }
+  }
+
+  const saveInlineEdit = async (id, field, val) => {
+    setInlineSaving(true)
+    try {
+      if (field === 'toNhom') {
+        await api.patch('/work-schedule/bulk-to-nhom', { ids: [id], toNhom: val || null })
+      } else if (field === 'phongThucHien') {
+        await api.patch(`/work-schedule/${id}/phong-thuc-hien`, { phongThucHien: val || null })
+      } else if (field === 'qaLayMau') {
+        await api.patch(`/work-schedule/${id}/patch-field`, { field: 'qaLayMau', value: val ?? null })
+      }
+      setData(prev => prev.map(r => r.id === id ? { ...r, [field]: val ?? null } : r))
+      setInlineEdit(null)
+      parentOnSaved?.()
+    } catch {
+      message.error('Cập nhật thất bại')
+    } finally {
+      setInlineSaving(false)
+    }
   }
 
   useEffect(() => {
@@ -2464,16 +2504,79 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       render: v => (v != null && v !== '') ? <span style={NUM_STYLE}>{Number(v).toLocaleString('vi-VN')}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
     },
     {
-      title: 'Tổ/Nhóm TH', dataIndex: 'toNhom', key: 'toNhom', width: 120, align: 'center', ellipsis: true,
+      title: 'Tổ/Nhóm TH', dataIndex: 'toNhom', key: 'toNhom', width: 120, align: 'center',
       filters: ['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG'].map(v => ({ text: v, value: v })),
       filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#fff' : 'rgba(255,255,255,0.7)' }} />,
       onFilter: (value, record) => record.toNhom === value,
-      render: v => v ? <span style={{ ...TEXT_STYLE, whiteSpace: 'pre-wrap' }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+      render: (v, record) => {
+        const canEdit = canEditStage(congDoan) && (!allowedNhom || !record.toNhom?.trim() || record.toNhom.trim() === allowedNhom)
+        const isEditing = inlineEdit?.id === record.id && inlineEdit?.field === 'toNhom'
+        if (isEditing) {
+          return (
+            <Select
+              size="small"
+              autoFocus
+              open
+              defaultValue={v || undefined}
+              style={{ width: 110 }}
+              allowClear
+              loading={inlineSaving}
+              onClick={e => e.stopPropagation()}
+              onChange={val => saveInlineEdit(record.id, 'toNhom', val || null)}
+              onBlur={() => { if (!inlineSaving) setInlineEdit(null) }}
+              options={['PCPL1','PCPL2','PCPL3','BBC1','ĐG','PL'].map(o => ({ value: o, label: o }))}
+            />
+          )
+        }
+        return (
+          <div
+            onClick={canEdit ? e => { e.stopPropagation(); setInlineEdit({ id: record.id, field: 'toNhom' }) } : undefined}
+            style={{ cursor: canEdit ? 'pointer' : 'default' }}
+          >
+            {v
+              ? <Tag color="blue" style={{ marginRight: 0, cursor: canEdit ? 'pointer' : 'default' }}>{v}</Tag>
+              : canEdit
+                ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0, cursor: 'pointer' }}>Chọn nhóm</Tag>
+                : <span style={{ color: '#d9d9d9' }}>—</span>}
+          </div>
+        )
+      }
     },
     {
-      title: 'Phòng TH', dataIndex: 'phongThucHien', key: 'phongThucHien', width: 100, align: 'center',
+      title: 'Phòng TH', dataIndex: 'phongThucHien', key: 'phongThucHien', width: 120, align: 'center',
       ...colSearch('phongThucHien'),
-      render: v => v ? <span style={TEXT_STYLE}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+      render: (v, record) => {
+        const canEdit = canEditStage(congDoan)
+        const isEditing = inlineEdit?.id === record.id && inlineEdit?.field === 'phongThucHien'
+        if (isEditing) {
+          return (
+            <div onClick={e => e.stopPropagation()}>
+              <PhongThucHienSelect
+                size="small"
+                autoFocus
+                open
+                defaultValue={v || undefined}
+                style={{ width: 120 }}
+                allowClear
+                onChange={val => saveInlineEdit(record.id, 'phongThucHien', val || null)}
+                onBlur={() => { if (!inlineSaving) setInlineEdit(null) }}
+              />
+            </div>
+          )
+        }
+        return (
+          <div
+            onClick={canEdit ? e => { e.stopPropagation(); setInlineEdit({ id: record.id, field: 'phongThucHien' }) } : undefined}
+            style={{ cursor: canEdit ? 'pointer' : 'default' }}
+          >
+            {v
+              ? <Tag color="cyan" style={{ marginRight: 0, cursor: canEdit ? 'pointer' : 'default' }}>{v}</Tag>
+              : canEdit
+                ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0, cursor: 'pointer' }}>Chọn phòng</Tag>
+                : <span style={{ color: '#d9d9d9' }}>—</span>}
+          </div>
+        )
+      }
     },
     {
       title: 'Trưởng ca', dataIndex: 'truongCa', key: 'truongCa', width: 110, ellipsis: true,
@@ -2539,8 +2642,45 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       }
     },
     {
-      title: 'QA Lấy mẫu', dataIndex: 'qaLayMau', key: 'qaLayMau', width: 90, align: 'right',
-      render: v => v != null ? <span style={{ fontWeight: 600, color: '#0891b2' }}>{Number(v).toLocaleString('vi-VN')}</span> : <span style={{ color: '#d9d9d9' }}>—</span>,
+      title: 'QA Lấy mẫu', dataIndex: 'qaLayMau', key: 'qaLayMau', width: 96, align: 'center',
+      render: (v, record) => {
+        const canEdit = canEditStage(congDoan)
+        const isEditing = inlineEdit?.id === record.id && inlineEdit?.field === 'qaLayMau'
+        if (isEditing) {
+          return (
+            <InputNumber
+              size="small" autoFocus min={0} step={1}
+              defaultValue={v ?? undefined}
+              style={{ width: 80 }}
+              formatter={val => (val != null && val !== '') ? Number(val).toLocaleString('vi-VN') : ''}
+              parser={val => val ? val.replace(/[^\d]/g, '') : ''}
+              onClick={e => e.stopPropagation()}
+              onPressEnter={e => {
+                const num = e.target.value ? parseInt(e.target.value.replace(/[^\d]/g, ''), 10) : null
+                saveInlineEdit(record.id, 'qaLayMau', isNaN(num) ? null : num)
+              }}
+              onBlur={e => {
+                if (!inlineSaving) {
+                  const num = e.target.value ? parseInt(e.target.value.replace(/[^\d]/g, ''), 10) : null
+                  saveInlineEdit(record.id, 'qaLayMau', isNaN(num) ? null : num)
+                }
+              }}
+            />
+          )
+        }
+        return (
+          <div
+            onClick={canEdit ? e => { e.stopPropagation(); setInlineEdit({ id: record.id, field: 'qaLayMau' }) } : undefined}
+            style={{ cursor: canEdit ? 'pointer' : 'default', textAlign: 'right' }}
+          >
+            {v != null
+              ? <span style={{ fontWeight: 600, color: '#0891b2' }}>{Number(v).toLocaleString('vi-VN')}</span>
+              : canEdit
+                ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0, cursor: 'pointer' }}>Nhập QA</Tag>
+                : <span style={{ color: '#d9d9d9' }}>—</span>}
+          </div>
+        )
+      },
     },
     {
       title: 'Tình trạng', dataIndex: 'tinhTrang', key: 'tinhTrang', width: 112, align: 'center',
@@ -2760,6 +2900,39 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                           Ẩn đã chọn ({selectedRowKeys.length})
                         </Button>
                       </Popconfirm>
+                    )}
+                    {canEditStage(congDoan) && selectedRowKeys.length > 0 && (
+                      <Space.Compact size="small">
+                        <Select
+                          size="small"
+                          placeholder="Gán Tổ/nhóm…"
+                          allowClear
+                          value={bulkNhomVal}
+                          onChange={v => setBulkNhomVal(v ?? null)}
+                          style={{ width: 120 }}
+                          options={[
+                            { label: 'PCPL1', value: 'PCPL1' },
+                            { label: 'PCPL2', value: 'PCPL2' },
+                            { label: 'PCPL3', value: 'PCPL3' },
+                            { label: 'BBC1',  value: 'BBC1'  },
+                            { label: 'ĐG',    value: 'ĐG'    },
+                            { label: 'PL',    value: 'PL'    },
+                            { label: '(Xóa nhóm)', value: '' },
+                          ]}
+                        />
+                        <Popconfirm
+                          title={`Gán Tổ/Nhóm TH = "${bulkNhomVal || '(trống)'}" cho ${selectedRowKeys.length} bản ghi?`}
+                          okText="Gán" cancelText="Hủy"
+                          disabled={bulkNhomVal === undefined}
+                          onConfirm={handleBulkSetNhom}
+                        >
+                          <Button size="small" type="primary" loading={bulkNhomSaving}
+                            disabled={bulkNhomVal === undefined}
+                            style={{ fontWeight: 700 }}>
+                            Gán ({selectedRowKeys.length})
+                          </Button>
+                        </Popconfirm>
+                      </Space.Compact>
                     )}
                     {canEditStage(congDoan) && selectedRowKeys.length > 0 && canDeleteSchedule() && (
                       <Popconfirm
