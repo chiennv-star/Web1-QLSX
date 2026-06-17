@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { Table, Input, Select, Tag, Tooltip, message } from 'antd'
 import SkeletonTable from '../components/SkeletonTable'
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons'
@@ -18,6 +18,16 @@ export default function LenhSanXuatPage() {
   const [searchText, setSearchText] = useState('')
   const [filterLoai, setFilterLoai] = useState(null)
   const [loaiList,   setLoaiList]   = useState([])
+
+  const toolbarRef = useRef(null)
+  const [toolbarH, setToolbarH] = useState(0)
+  useLayoutEffect(() => {
+    if (!toolbarRef.current) return
+    setToolbarH(toolbarRef.current.getBoundingClientRect().height)
+    const obs = new ResizeObserver(([e]) => setToolbarH(e.contentRect.height))
+    obs.observe(toolbarRef.current)
+    return () => obs.disconnect()
+  }, [])
 
   // ── Fetch product master ──────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -133,7 +143,7 @@ export default function LenhSanXuatPage() {
       `}</style>
 
       {/* ── Sticky header + filter bar ── */}
-      <div style={{
+      <div ref={toolbarRef} style={{
         position: 'sticky', top: 0, zIndex: 10,
         background: '#fff', paddingBottom: 10,
         borderBottom: '1px solid #e2e8f0', marginBottom: 12,
@@ -182,6 +192,7 @@ export default function LenhSanXuatPage() {
         loading={loading}
         size="small"
         scroll={{ x: 900 }}
+        sticky={{ offsetHeader: toolbarH }}
         pagination={{
           pageSize: 50,
           showSizeChanger: true,
