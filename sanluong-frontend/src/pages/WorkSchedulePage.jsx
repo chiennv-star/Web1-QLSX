@@ -2275,7 +2275,18 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         .filter(r => r.tinhTrang !== 'done')
         .filter(r => !conflictNhom || !r.toNhom || r.toNhom !== conflictNhom)
         .sort((a, b) => parseSoLo(b.soLo) - parseSoLo(a.soLo))
-      setData(sorted)
+      // Auto-gán toNhom cho tab ĐG/BBC1
+      const AUTO_NHOM = { DG: 'ĐG', BBC1: 'BBC1' }
+      const autoNhomVal = AUTO_NHOM[congDoan]
+      let displayData = sorted
+      if (autoNhomVal) {
+        const withoutNhom = sorted.filter(r => !r.toNhom?.trim())
+        if (withoutNhom.length > 0) {
+          displayData = sorted.map(r => !r.toNhom?.trim() ? { ...r, toNhom: autoNhomVal } : r)
+          api.patch('/work-schedule/bulk-to-nhom', { ids: withoutNhom.map(r => r.id), toNhom: autoNhomVal }).catch(() => {})
+        }
+      }
+      setData(displayData)
       setPagination(p => {
         const next = { ...p, total: res.totalElements }
         paginationRef.current = { current: next.current, pageSize: next.pageSize }
