@@ -1056,6 +1056,27 @@ export default function DonHangPage() {
     } catch { message.error('Xóa thất bại') }
   }
 
+  const [selectedRowKeys, setSelectedRowKeys] = useState([])
+  const [bulkDeleting,    setBulkDeleting]    = useState(false)
+
+  const bulkDeleteRows = async () => {
+    setBulkDeleting(true)
+    try {
+      await Promise.all(selectedRowKeys.map(id => api.delete(`/don-hang/${id}`)))
+      setData(prev => prev.filter(r => !selectedRowKeys.includes(r.id)))
+      message.success(`Đã xóa ${selectedRowKeys.length} đơn hàng`)
+      setSelectedRowKeys([])
+      window.dispatchEvent(new CustomEvent('app:donhang-updated'))
+    } catch { message.error('Xóa thất bại') }
+    finally { setBulkDeleting(false) }
+  }
+
+  const rowSelection = canEdit ? {
+    selectedRowKeys,
+    onChange: keys => setSelectedRowKeys(keys),
+    getCheckboxProps: () => ({ onClick: e => e.stopPropagation() }),
+  } : undefined
+
   const openAdd    = () => { setEditItem(null); setModalOpen(true) }
   const openEdit   = (r) => { setEditItem(r);   setModalOpen(true) }
   const openDetail = (r) => { setDetailRecord(r); setDetailOpen(true) }
@@ -1426,6 +1447,20 @@ export default function DonHangPage() {
               </Button>
             </Tooltip>
           )}
+          {canEdit && selectedRowKeys.length > 0 && (
+            <Popconfirm
+              title={`Xóa ${selectedRowKeys.length} đơn hàng đã chọn?`}
+              description="Hành động này không thể hoàn tác."
+              okText="Xóa" cancelText="Huỷ"
+              okButtonProps={{ danger: true, loading: bulkDeleting }}
+              onConfirm={bulkDeleteRows}
+            >
+              <Button size="small" danger icon={<DeleteOutlined />} loading={bulkDeleting}
+                style={{ fontWeight: 600 }}>
+                Xóa {selectedRowKeys.length} đã chọn
+              </Button>
+            </Popconfirm>
+          )}
           {canEdit && (
             <>
               <Button size="small" icon={<FileExcelOutlined />}
@@ -1449,7 +1484,7 @@ export default function DonHangPage() {
           { key: 'done',    label: '🏆 Đã Hoàn Thành', count: completedData.length },
         ].map(tab => (
           <div key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => { setActiveTab(tab.key); setSelectedRowKeys([]) }}
             style={{
               padding: '8px 18px', cursor: 'pointer', fontSize: 13, fontWeight: 600,
               color: activeTab === tab.key ? '#1D4ED8' : '#94a3b8',
@@ -1483,6 +1518,7 @@ export default function DonHangPage() {
         loading={loading}
         size="small"
         scroll={{ x: 1980 }}
+        rowSelection={rowSelection}
         sticky={{ offsetHeader: headerOffset }}
         rowHoverable={false}
         rowClassName={r => {
@@ -1547,6 +1583,7 @@ export default function DonHangPage() {
         sticky={{ offsetHeader: headerOffset }}
         rowHoverable={false}
         rowClassName={() => 'dh-row-done'}
+        rowSelection={rowSelection}
         onRow={r => ({
           onClick: () => openDetail(r),
           style: { cursor: 'pointer' },
