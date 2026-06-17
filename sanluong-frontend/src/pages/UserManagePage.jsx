@@ -3,7 +3,7 @@ import {
   Table, Button, Space, Modal, Form,
   Input, Select, Switch, Popconfirm, message, Tag, Tooltip
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, SafetyOutlined, KeyOutlined, WifiOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, SafetyOutlined, KeyOutlined, WifiOutlined, UserOutlined } from '@ant-design/icons'
 import api from '../api/axios'
 
 const { Option } = Select
@@ -44,10 +44,40 @@ export default function UserManagePage() {
   const [pwSaving, setPwSaving] = useState(false)
   const [pwForm] = Form.useForm()
 
+  const [renameModal, setRenameModal] = useState(false)
+  const [renameUser, setRenameUser] = useState(null)
+  const [renameSaving, setRenameSaving] = useState(false)
+  const [renameForm] = Form.useForm()
+
   const openChangePw = (user) => {
     setPwUser(user)
     pwForm.resetFields()
     setPwModal(true)
+  }
+
+  const openRename = (user) => {
+    setRenameUser(user)
+    renameForm.setFieldsValue({ username: user.username, fullName: user.fullName || '' })
+    setRenameModal(true)
+  }
+
+  const handleRename = async () => {
+    try {
+      const { username, fullName } = await renameForm.validateFields()
+      setRenameSaving(true)
+      await api.put(`/users/${renameUser.id}`, {
+        ...renameUser,
+        username,
+        fullName,
+      })
+      message.success('Đã cập nhật tên & tài khoản')
+      setRenameModal(false)
+      fetchUsers()
+    } catch (err) {
+      if (err?.response) message.error(err.response.data?.message || 'Cập nhật thất bại')
+    } finally {
+      setRenameSaving(false)
+    }
   }
 
   const handleChangePw = async () => {
@@ -201,8 +231,12 @@ export default function UserManagePage() {
       title: 'Thao Tác', key: 'action', width: 120, align: 'center',
       render: (_, record) => (
         <Space size={4}>
-          <Tooltip title="Sửa">
+          <Tooltip title="Sửa vai trò / trạng thái">
             <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+          </Tooltip>
+          <Tooltip title="Đổi tên & tài khoản">
+            <Button size="small" icon={<UserOutlined />} onClick={() => openRename(record)}
+              style={{ color: '#0369a1', borderColor: '#0369a1' }} />
           </Tooltip>
           <Tooltip title="Đổi mật khẩu">
             <Button size="small" icon={<KeyOutlined />} onClick={() => openChangePw(record)}
@@ -314,6 +348,39 @@ export default function UserManagePage() {
               }),
             ]}>
             <Input.Password placeholder="Nhập lại mật khẩu" autoComplete="new-password" />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* ── Modal: Đổi tên & tài khoản ── */}
+      <Modal
+        title={
+          <span>
+            <UserOutlined style={{ color: '#0369a1', marginRight: 8 }} />
+            Đổi tên & tài khoản —{' '}
+            <span style={{ fontFamily: 'monospace', color: '#1677ff' }}>{renameUser?.username}</span>
+          </span>
+        }
+        open={renameModal}
+        onOk={handleRename}
+        onCancel={() => setRenameModal(false)}
+        okText="Cập nhật"
+        cancelText="Hủy"
+        confirmLoading={renameSaving}
+        width={420}
+      >
+        <Form form={renameForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item label="Họ tên đầy đủ" name="fullName"
+            rules={[{ required: true, message: 'Nhập họ tên' }]}>
+            <Input placeholder="Họ và tên đầy đủ" />
+          </Form.Item>
+          <Form.Item label="Tên đăng nhập" name="username"
+            rules={[
+              { required: true, message: 'Nhập tên đăng nhập' },
+              { min: 3, message: 'Ít nhất 3 ký tự' },
+              { pattern: /^[a-zA-Z0-9_]+$/, message: 'Chỉ dùng chữ, số, dấu gạch dưới' },
+            ]}>
+            <Input placeholder="VD: adminPCPL1" />
           </Form.Item>
         </Form>
       </Modal>
