@@ -260,7 +260,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     api.get('/employees', { params: { page: 0, size: 500 } })
       .then(r => setEmployees(r.data.content || []))
       .catch(() => {})
-  }, [open, schedule])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, schedule?.id])
 
   // Populate inline form when schedule changes (only when not actively editing)
   useEffect(() => {
@@ -271,7 +272,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       })
       setLookupStatus(null)
     }
-  }, [open, schedule, isInfoEditing])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, schedule?.id, isInfoEditing])
 
   const handleInfoMaBravoBlur = async (e) => {
     if (!isInfoEditing) return
