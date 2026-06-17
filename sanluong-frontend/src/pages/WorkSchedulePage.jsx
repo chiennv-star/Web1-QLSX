@@ -3866,7 +3866,7 @@ export default function WorkSchedulePage() {
         .ant-table-tbody > tr.row-sl-exceed > td { background: #fdfaff !important; }
         /* ERP table headers */
         .ws-table .ant-table-thead > tr > th {
-          background: #0099CC !important;
+          background: #006666 !important;
           background-image: none !important;
           color: #ffffff !important;
           text-align: center !important;
@@ -3875,13 +3875,13 @@ export default function WorkSchedulePage() {
           letter-spacing: 0.5px;
           padding: 7px 8px !important;
           white-space: nowrap;
-          border-right: 1px solid #007aa3 !important;
+          border-right: 1px solid #004444 !important;
         }
         .ws-table .ant-table-thead > tr > th::before { display: none !important; }
         .ws-table .ant-table-thead > tr > th .ant-table-column-sorter { color: rgba(255,255,255,0.7) !important; }
         .ws-table .ant-table-thead > tr > th .ant-table-column-sorter-up.active .anticon,
         .ws-table .ant-table-thead > tr > th .ant-table-column-sorter-down.active .anticon { color: #fff !important; }
-        .ws-table .ant-table-thead > tr > th.ant-table-column-sort { background: #007aa3 !important; background-image: none !important; }
+        .ws-table .ant-table-thead > tr > th.ant-table-column-sort { background: #004444 !important; background-image: none !important; }
         .ws-table .ant-table-thead .ant-table-filter-trigger { color: rgba(255,255,255,0.7) !important; }
         .ws-table .ant-table-thead .ant-table-filter-trigger:hover,
         .ws-table .ant-table-thead .ant-table-filter-trigger.active { color: #fff !important; background: rgba(255,255,255,0.18) !important; }
@@ -3901,12 +3901,12 @@ export default function WorkSchedulePage() {
           background-image: none !important;
         }
 
-        /* Navy tab bar */
-        .ws-tabs > .ant-tabs-nav { margin: 0 !important; background: #1e4570; padding: 0 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.25); }
+        /* Tab bar */
+        .ws-tabs > .ant-tabs-nav { margin: 0 !important; background: #006666; padding: 0 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.25); }
         .ws-tabs > .ant-tabs-nav .ant-tabs-tab { color: #ffffff !important; border: none !important; background: transparent !important; padding: 9px 18px !important; font-size: 13px; margin: 0 2px !important; border-radius: 6px 6px 0 0 !important; transition: all 0.2s; }
-        .ws-tabs > .ant-tabs-nav .ant-tabs-tab:hover { color: #FDE68A !important; background: rgba(251,191,36,0.12) !important; }
-        .ws-tabs > .ant-tabs-nav .ant-tabs-tab-active { color: #fff !important; background: rgba(29,78,216,0.28) !important; font-weight: 700; box-shadow: 0 -3px 0 #60A5FA inset; }
-        .ws-tabs > .ant-tabs-nav .ant-tabs-ink-bar { background: #60A5FA !important; height: 3px !important; border-radius: 2px; }
+        .ws-tabs > .ant-tabs-nav .ant-tabs-tab:hover { color: #FDE68A !important; background: rgba(255,255,255,0.15) !important; }
+        .ws-tabs > .ant-tabs-nav .ant-tabs-tab-active { color: #fff !important; background: rgba(0,0,0,0.2) !important; font-weight: 700; box-shadow: 0 -3px 0 #FDE68A inset; }
+        .ws-tabs > .ant-tabs-nav .ant-tabs-ink-bar { background: #FDE68A !important; height: 3px !important; border-radius: 2px; }
         .ws-tabs > .ant-tabs-nav::before { border-bottom: none !important; }
         .ws-tabs > .ant-tabs-nav .ant-tabs-nav-wrap::before,
         .ws-tabs > .ant-tabs-nav .ant-tabs-nav-wrap::after { box-shadow: none !important; }
