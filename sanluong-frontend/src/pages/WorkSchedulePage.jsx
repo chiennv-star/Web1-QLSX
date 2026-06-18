@@ -1364,7 +1364,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       open={open}
       onClose={handleDrawerClose}
       width="100vw"
-      styles={{ body: { padding: 0, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' } }}
+      styles={{ body: { padding: 0, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }, wrapper: { transition: 'none' }, mask: { transition: 'none', animationDuration: '0s' } }}
     >
       {/* ── Styles (tách ra ngoài để không bị flex shrink) ── */}
       <style>{`
