@@ -234,11 +234,11 @@ export default function LenhSanXuatDetailPage() {
       {/* ── Thông tin chung ── */}
       <div style={{
         background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8,
-        padding: '14px 18px', marginBottom: 20,
+        padding: '14px 18px', marginBottom: 20, maxWidth: '50%',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <span style={{ fontWeight: 700, color: '#1e4570', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Thông Tin Chung Cơ Cấu Tướng
+            Thông Tin Chung
           </span>
           {!editingInfo ? (
             <span

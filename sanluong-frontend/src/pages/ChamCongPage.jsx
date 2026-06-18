@@ -805,35 +805,35 @@ export default function ChamCongPage() {
 
       {/* ── CSS ── */}
       <style>{`
-        .chamcong-tabs > .ant-tabs-nav { margin: 0 !important; background: #66CCCC; padding: 0 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
-        .chamcong-tabs > .ant-tabs-nav .ant-tabs-tab { color: #0000CC !important; font-size: 13px; padding: 9px 18px !important; margin: 0 2px !important; border-radius: 6px 6px 0 0; transition: all 0.2s; }
-        .chamcong-tabs > .ant-tabs-nav .ant-tabs-tab:hover { color: #0000CC !important; background: rgba(255,255,255,0.2) !important; }
-        .chamcong-tabs > .ant-tabs-nav .ant-tabs-tab-active { color: #0000CC !important; background: #FFCC33 !important; font-weight: 400; box-shadow: 0 -3px 0 #0000CC inset; }
-        .chamcong-tabs > .ant-tabs-nav .ant-tabs-ink-bar { background: #0000CC !important; height: 3px !important; border-radius: 2px; }
+        .chamcong-tabs > .ant-tabs-nav { margin: 0 !important; background: #006666; padding: 0 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+        .chamcong-tabs > .ant-tabs-nav .ant-tabs-tab { color: #ffffff !important; font-size: 13px; padding: 9px 18px !important; margin: 0 2px !important; border-radius: 6px 6px 0 0; transition: all 0.2s; }
+        .chamcong-tabs > .ant-tabs-nav .ant-tabs-tab:hover { color: #ffffff !important; background: rgba(255,255,255,0.15) !important; }
+        .chamcong-tabs > .ant-tabs-nav .ant-tabs-tab-active { color: #006666 !important; background: #FFCC33 !important; font-weight: 700; box-shadow: 0 -3px 0 #FFCC33 inset; }
+        .chamcong-tabs > .ant-tabs-nav .ant-tabs-ink-bar { background: #FFCC33 !important; height: 3px !important; border-radius: 2px; }
         .chamcong-tabs > .ant-tabs-nav::before { border-bottom: none !important; }
 
         .chamcong-table .ant-table-thead > tr > th {
-          background: #66CCCC !important;
-          color: #0000CC !important; text-align: center !important;
+          background: #006666 !important;
+          color: #ffffff !important; text-align: center !important;
           font-size: 11px !important; text-transform: uppercase; letter-spacing: 0.3px;
-          padding: 7px 6px !important; border-right: 1px solid #88DDDD !important; white-space: nowrap;
+          padding: 7px 6px !important; border-right: 1px solid rgba(255,255,255,0.18) !important; white-space: nowrap;
         }
         .chamcong-table .ant-table-thead > tr > th::before { display: none !important; }
         .chamcong-table .ant-table-thead > tr:first-child > th {
-          background: #66CCCC !important;
+          background: #006666 !important;
           font-size: 12px !important; font-weight: 400 !important;
         }
         .chamcong-table .ant-table-tbody > tr > td { padding: 5px 6px !important; border-bottom: 1px solid #EAECF2 !important; }
         .chamcong-table .ant-table-tbody > tr.row-alt > td { background: #EAECF2; }
         .chamcong-table .ant-table-tbody > tr:hover > td { background: #DDE1E8 !important; }
         .chamcong-table .ant-table-summary > tr > td {
-          background: #66CCCC !important;
-          color: #0000CC !important; font-weight: 400; padding: 6px 6px !important;
+          background: #006666 !important;
+          color: #ffffff !important; font-weight: 700; padding: 6px 6px !important;
         }
         .chamcong-table .ant-table-body::-webkit-scrollbar { height: 3px; }
         .chamcong-table .ant-table-body::-webkit-scrollbar-track { background: #f0f4f8; border-radius: 4px; }
-        .chamcong-table .ant-table-body::-webkit-scrollbar-thumb { background: #66CCCC; border-radius: 4px; }
-        .chamcong-table .ant-table-body::-webkit-scrollbar-thumb:hover { background: #44AAAA; }
+        .chamcong-table .ant-table-body::-webkit-scrollbar-thumb { background: #006666; border-radius: 4px; }
+        .chamcong-table .ant-table-body::-webkit-scrollbar-thumb:hover { background: #004d4d; }
       `}</style>
 
       {/* ── Tabs ── */}
@@ -965,8 +965,8 @@ export default function ChamCongPage() {
                   <div key={d} style={{
                     textAlign: 'center', padding: '5px 2px',
                     fontWeight: 700, fontSize: 12,
-                    color: i === 6 ? '#cf1322' : '#0000CC',
-                    background: '#66CCCC', borderRadius: 4,
+                    color: i === 6 ? '#ffb3b3' : '#ffffff',
+                    background: '#006666', borderRadius: 4,
                   }}>{d}</div>
                 ))}
               </div>
