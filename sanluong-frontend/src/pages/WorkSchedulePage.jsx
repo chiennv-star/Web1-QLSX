@@ -1669,7 +1669,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
 
       {/* ── BOTTOM 2/3: Sessions tabs ── */}
       <div ref={scrollDivRef} style={{ flex: 1, overflowY: 'auto', padding: '8px 16px' }}>
-        {loading ? <Spin style={{ display: 'block', margin: '40px auto' }} /> : (
+        <Spin spinning={loading} style={{ maxHeight: '100%' }}>
           <Tabs
             className="ws-detail-tabs"
             type="editable-card"
@@ -1681,7 +1681,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
             size="small"
             style={{ marginTop: -4 }}
           />
-        )}
+        </Spin>
       </div>
 
       {/* ── Modal quản lý danh sách Vai Trò ── */}
