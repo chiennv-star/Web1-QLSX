@@ -27,6 +27,9 @@ public class Employee {
     @Column(name = "to_nhom", length = 100, nullable = false)
     private String toNhom;
 
+    @Column(name = "nhom", length = 100)
+    private String nhom;
+
     @Column(name = "ngay_sinh")
     private LocalDate ngaySinh;
 
@@ -85,6 +88,8 @@ public class Employee {
     public void setHocVan(String hocVan) { this.hocVan = hocVan; }
     public String getToNhom() { return toNhom; }
     public void setToNhom(String toNhom) { this.toNhom = toNhom; }
+    public String getNhom() { return nhom; }
+    public void setNhom(String nhom) { this.nhom = nhom; }
     public LocalDate getNgaySinh() { return ngaySinh; }
     public void setNgaySinh(LocalDate ngaySinh) { this.ngaySinh = ngaySinh; }
     public LocalDate getThoiGianVaoCongTy() { return thoiGianVaoCongTy; }

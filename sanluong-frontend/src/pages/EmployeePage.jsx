@@ -109,6 +109,7 @@ export default function EmployeePage() {
       viTri: record.viTri,
       hocVan: record.hocVan,
       toNhom: record.toNhom,
+      nhom: record.nhom,
       tinhTrang: record.tinhTrang,
       sdt: record.sdt,
       diaChi: record.diaChi,
@@ -231,6 +232,14 @@ export default function EmployeePage() {
       render: v => v
         ? <Tag color={GROUP_COLORS[v] || 'blue'} style={{ marginRight: 0, fontWeight: 600 }}>{v}</Tag>
         : <span style={{ color: '#d9d9d9' }}>—</span>
+    }] : []),
+    ...((activeGroup === 'ALL' || activeGroup === 'ĐG') ? [{
+      title: 'Nhóm', dataIndex: 'nhom', key: 'nhom', width: 110,
+      render: (v, record) => {
+        if (record.toNhom !== 'ĐG') return <span style={{ color: '#d9d9d9' }}>—</span>
+        if (!v) return <span style={{ color: '#d9d9d9' }}>—</span>
+        return <Tag color={v === 'Tâm Kem' ? 'purple' : 'volcano'} style={{ marginRight: 0, fontWeight: 600 }}>{v}</Tag>
+      }
     }] : []),
     {
       title: 'Vị Trí', dataIndex: 'viTri', key: 'viTri', width: 130,
@@ -606,6 +615,17 @@ export default function EmployeePage() {
               </Form.Item>
             </Col>
           </Row>
+
+          <Form.Item noStyle shouldUpdate={(prev, cur) => prev.toNhom !== cur.toNhom}>
+            {({ getFieldValue }) => getFieldValue('toNhom') === 'ĐG' && (
+              <Form.Item name="nhom" label="Nhóm (ĐG)">
+                <Select placeholder="Chọn nhóm" allowClear>
+                  <Option value="Tâm Kem">Tâm Kem</Option>
+                  <Option value="Loan Đào">Loan Đào</Option>
+                </Select>
+              </Form.Item>
+            )}
+          </Form.Item>
 
           <Form.Item name="hoVaTen" label="Họ và tên nhân sự"
             rules={[{ required: true, message: 'Bắt buộc nhập họ và tên' }]}>
