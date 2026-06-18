@@ -72,12 +72,14 @@ function KpiCard({ icon, label, value, sub, accent }) {
 }
 
 export default function ChamCongPage() {
-  const { canEditAttendance } = useAuth()
+  const { canEditAttendance, getAllowedEmployeeGroups } = useAuth()
   const canEdit = canEditAttendance()
+  const allowedGroups = getAllowedEmployeeGroups()
+  const lockedDept = allowedGroups?.length === 1 ? allowedGroups[0] : null
 
   const [period, setPeriod]       = useState('week')
   const [dateRange, setDateRange] = useState(getWeekRange())
-  const [deptFilter, setDeptFilter] = useState(null)
+  const [deptFilter, setDeptFilter] = useState(lockedDept)
   const [activeTab, setActiveTab] = useState('nhanvien')
 
   const [empRows, setEmpRows]   = useState([])
@@ -157,8 +159,8 @@ export default function ChamCongPage() {
 
   const handleReset = () => {
     const r = getWeekRange()
-    setPeriod('week'); setDateRange(r); setDeptFilter(null)
-    fetchData(r, null)
+    setPeriod('week'); setDateRange(r); setDeptFilter(lockedDept)
+    fetchData(r, lockedDept)
   }
 
   // Danh sách ngày trong khoảng
@@ -781,11 +783,14 @@ export default function ChamCongPage() {
             format="DD/MM/YYYY" allowClear={false}
           />
 
-          <Select
-            size="small" placeholder="Bộ phận" allowClear style={{ width: 120 }}
-            value={deptFilter} onChange={setDeptFilter}
-            options={DEPTS.map(d => ({ value: d, label: d }))}
-          />
+          {lockedDept
+            ? <Tag color={DEPT_COLOR[lockedDept] || 'default'} style={{ fontWeight: 700, padding: '3px 10px' }}>{lockedDept}</Tag>
+            : <Select
+                size="small" placeholder="Bộ phận" allowClear style={{ width: 120 }}
+                value={deptFilter} onChange={setDeptFilter}
+                options={DEPTS.map(d => ({ value: d, label: d }))}
+              />
+          }
 
           <Button size="small" type="primary" icon={<SearchOutlined />}
             style={{ background: '#1D4ED8', borderColor: '#1D4ED8' }}

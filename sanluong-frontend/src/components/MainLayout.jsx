@@ -190,10 +190,10 @@ export default function MainLayout() {
           icon: <WarningOutlined />,
           label: 'Hàng Xử Lý',
         }] : []),
-        ...(isAdmin() || isTKSX() || isQuanDoc() ? [
+        ...(isAdmin() || isTKSX() || isQuanDoc() || isStageAdmin() ? [
           { key: '/work-efficiency', icon: <TrophyOutlined />, label: 'Nhân Viên' },
         ] : []),
-        ...(isAdmin() ? [
+        ...(isAdmin() || isStageAdmin() ? [
           { key: '/cham-cong', icon: <FileDoneOutlined />, label: 'Chấm công' },
         ] : []),
         { key: '/danh-muc',        icon: <AppstoreOutlined />, label: 'Quản Lý Danh Mục' },

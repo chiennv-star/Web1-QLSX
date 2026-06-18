@@ -69,7 +69,7 @@ export default function App() {
         } />
         <Route path="daily-sl" element={<DailySanLuongPage />} />
         <Route path="cham-cong" element={
-          <PrivateRoute allowedRoles={['ADMIN', 'KE_TOAN']}>
+          <PrivateRoute allowedRoles={['ADMIN', 'KE_TOAN', 'HCNS', 'ADMIN_PCPL1', 'ADMIN_PCPL2', 'ADMIN_PCPL3', 'ADMIN_BBC1', 'ADMIN_DG', 'ADMIN_PC', 'ADMIN_PL']}>
             <ChamCongPage />
           </PrivateRoute>
         } />
