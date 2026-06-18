@@ -446,12 +446,16 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
       if (editItem) {
         await api.put(`/work-schedule/${editItem.id}`, payload)
         message.success('Cập nhật thành công')
+        // Sync LenhSanXuat khi sửa: nếu đã có soLo thì đảm bảo LenhSanXuat tồn tại
+        if (payload.soLo) {
+          api.post(`/lenh-san-xuat/from-work-schedule/${editItem.id}`, { soLo: payload.soLo }).catch(() => {})
+        }
       } else {
         const { data: newWs } = await api.post('/work-schedule', payload)
         message.success('Thêm mới thành công')
         // Auto-create LenhSanXuat nếu là PLAN record
         if (payload.source === 'PLAN' && newWs?.id) {
-          api.post(`/lenh-san-xuat/from-work-schedule/${newWs.id}`).catch(() => {})
+          api.post(`/lenh-san-xuat/from-work-schedule/${newWs.id}`, payload.soLo ? { soLo: payload.soLo } : {}).catch(() => {})
         }
       }
       setIsDirty(false)
