@@ -587,10 +587,24 @@ public class LenhSanXuatService {
 
         // BƯỚC 2: Kiểm tra duplicate LenhSanXuat
         if (ws.getMaBravo() != null && ws.getNgayThucHien() != null) {
+            // 2a: tìm bản ghi khớp chính xác (cả soLo)
             Optional<LenhSanXuat> existing = repo.findExistingKey(
                     ws.getMaBravo(), ws.getMaDonHang(),
                     ws.getNgayThucHien(), ws.getToNhom(), effectiveSoLo);
             if (existing.isPresent()) return toDto(existing.get());
+
+            // 2b: nếu đang gán soLo mới, tìm bản ghi cũ có soLo=NULL để cập nhật thay vì tạo thêm
+            if (effectiveSoLo != null) {
+                Optional<LenhSanXuat> nullSoLoExisting = repo.findExistingKey(
+                        ws.getMaBravo(), ws.getMaDonHang(),
+                        ws.getNgayThucHien(), ws.getToNhom(), null);
+                if (nullSoLoExisting.isPresent()) {
+                    LenhSanXuat ex = nullSoLoExisting.get();
+                    ex.setSoLo(effectiveSoLo);
+                    ex.setUpdatedBy(username);
+                    return toDto(repo.save(ex));
+                }
+            }
         }
 
         // BƯỚC 3: Tạo LenhSanXuat — daBanHanh=false (màu cam) cho đến khi user phát hành thủ công
@@ -609,12 +623,6 @@ public class LenhSanXuatService {
         Integer maxThu = repo.findMaxThuTu();
         e.setThuTu(maxThu == null ? 1 : maxThu + 1);
         e.setDaBanHanh(false);
-        LenhSanXuat saved = repo.save(e);
-
-        // BƯỚC 4: Sync sang Sản lượng + Lịch làm việc
-        if (saved.getMaBravo() != null && saved.getSoLo() != null) {
-            autoCreateSanLuong(saved, username);
-        }
-        return toDto(saved);
+        return toDto(repo.save(e));
     }
 }

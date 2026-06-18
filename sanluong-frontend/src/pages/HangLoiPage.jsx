@@ -366,39 +366,45 @@ function HangTraLaiTab({ stickyTop = 0 }) {
   // ── Table columns ─────────────────────────────────────────────────────────
   const columns = [
     {
-      title: 'Mã SP', dataIndex: 'mtpCoMem', width: 90, fixed: 'left',
-      render: v => v ? <Tag color="blue" style={{ marginRight: 0, fontWeight: 700, fontSize: 13 }}>{v}</Tag> : dash,
+      title: 'Mã SP', dataIndex: 'mtpCoMem', width: 82, fixed: 'left',
+      render: v => v ? <Tag color="blue" style={{ marginRight: 0, fontWeight: 700, fontSize: 12 }}>{v}</Tag> : dash,
     },
     {
-      title: 'Mã Bravo', dataIndex: 'mtpSongAn', width: 115, fixed: 'left',
-      render: v => v ? <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600 }}>{v}</span> : dash,
+      title: 'Mã Bravo', dataIndex: 'mtpSongAn', width: 105, fixed: 'left',
+      render: v => v ? <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 600 }}>{v}</span> : dash,
     },
     {
-      title: 'Tiến Trình', dataIndex: 'tenHangHoa', width: 260, fixed: 'left',
-      render: v => v ? <span style={{ fontWeight: 500, fontSize: 13 }}>{v}</span> : dash,
+      title: 'Tiến Trình', dataIndex: 'tenHangHoa', width: 190, fixed: 'left',
+      ellipsis: { showTitle: false },
+      render: v => v
+        ? <Tooltip title={v} placement="topLeft"><span style={{ fontWeight: 500, fontSize: 12 }}>{v}</span></Tooltip>
+        : dash,
     },
     {
-      title: 'Số Lô', dataIndex: 'soLo', width: 115, fixed: 'left',
-      render: v => v ? <span style={{ fontFamily: 'monospace', color: '#2232b0', fontSize: 13 }}>{v}</span> : dash,
+      title: 'Số Lô', dataIndex: 'soLo', width: 105, fixed: 'left',
+      render: v => v ? <span style={{ fontFamily: 'monospace', color: '#2232b0', fontSize: 12 }}>{v}</span> : dash,
     },
     {
-      title: 'Số Lượng', dataIndex: 'soLuong', width: 100, align: 'right',
-      render: v => v != null ? <span style={{ fontWeight: 700, color: '#1f1fe7', fontSize: 13 }}>{fmtN(v)}</span> : dash,
+      title: 'Số Lượng', dataIndex: 'soLuong', width: 88, align: 'right',
+      render: v => v != null ? <span style={{ fontWeight: 700, color: '#1f1fe7', fontSize: 12 }}>{fmtN(v)}</span> : dash,
     },
     {
-      title: 'SL Trả Về', dataIndex: 'soLuongTraVe', width: 100, align: 'right',
-      render: v => v != null ? <span style={{ fontWeight: 700, color: '#dc2626', fontSize: 13 }}>{fmtN(v)}</span> : dash,
+      title: 'SL Trả Về', dataIndex: 'soLuongTraVe', width: 88, align: 'right',
+      render: v => v != null ? <span style={{ fontWeight: 700, color: '#dc2626', fontSize: 12 }}>{fmtN(v)}</span> : dash,
     },
     {
-      title: 'Lý Do Trả Về', dataIndex: 'liDoTraVe', width: 210,
-      render: v => v ? <span style={{ fontSize: 13 }}>{v}</span> : dash,
+      title: 'Lý Do Trả Về', dataIndex: 'liDoTraVe', width: 170,
+      ellipsis: { showTitle: false },
+      render: v => v
+        ? <Tooltip title={v} placement="topLeft"><span style={{ fontSize: 12 }}>{v}</span></Tooltip>
+        : dash,
     },
     {
-      title: 'Người Xử Lý', dataIndex: 'namXuLy', width: 145,
-      render: v => v ? <span style={{ fontSize: 13 }}>{v}</span> : dash,
+      title: 'Người Xử Lý', dataIndex: 'namXuLy', width: 125,
+      render: v => v ? <span style={{ fontSize: 12 }}>{v}</span> : dash,
     },
     {
-      title: 'Hướng Xử Lý', dataIndex: 'huongXuLy', width: 155,
+      title: 'Hướng Xử Lý', dataIndex: 'huongXuLy', width: 148,
       render: (val, record) => canEdit ? (
         <div onClick={e => e.stopPropagation()}>
           <AutoComplete
@@ -419,23 +425,23 @@ function HangTraLaiTab({ stickyTop = 0 }) {
       ) : (val ? <Tag color="blue" style={{ marginRight: 0 }}>{val}</Tag> : dash),
     },
     {
-      title: 'Phân Loại Lỗi', dataIndex: 'phanLoaiLoi', width: 190,
+      title: 'Phân Loại Lỗi', dataIndex: 'phanLoaiLoi', width: 160,
       render: v => v
         ? v.split(',').map(s => s.trim()).filter(Boolean).map(s =>
-            <Tag key={s} color={phanLoaiColor(s)} style={{ marginBottom: 2, marginRight: 2, fontSize: 12 }}>{s}</Tag>
+            <Tag key={s} color={phanLoaiColor(s)} style={{ marginBottom: 2, marginRight: 2, fontSize: 11 }}>{s}</Tag>
           )
         : dash,
     },
     {
-      title: 'Ngày BĐ', dataIndex: 'ngayBatDau', width: 105,
-      render: v => v ? <span style={{ color: '#1677ff', fontSize: 13 }}>{dayjs(v).format('DD/MM/YYYY')}</span> : dash,
+      title: 'Ngày BĐ', dataIndex: 'ngayBatDau', width: 92,
+      render: v => v ? <span style={{ color: '#1677ff', fontSize: 12 }}>{dayjs(v).format('DD/MM/YYYY')}</span> : dash,
     },
     {
-      title: 'Ngày KT', dataIndex: 'ngayKetThuc', width: 105,
-      render: v => v ? <span style={{ color: '#f97316', fontSize: 13 }}>{dayjs(v).format('DD/MM/YYYY')}</span> : dash,
+      title: 'Ngày KT', dataIndex: 'ngayKetThuc', width: 92,
+      render: v => v ? <span style={{ color: '#f97316', fontSize: 12 }}>{dayjs(v).format('DD/MM/YYYY')}</span> : dash,
     },
     {
-      title: 'Trạng Thái', dataIndex: 'trangThaiXuLy', width: 165,
+      title: 'Trạng Thái', dataIndex: 'trangThaiXuLy', width: 158,
       render: (val, record) => canEdit ? (
         <div onClick={e => e.stopPropagation()}>
           <Select size="small" value={val || undefined} style={{ width: 148 }}
@@ -450,25 +456,31 @@ function HangTraLaiTab({ stickyTop = 0 }) {
         : dash),
     },
     {
-      title: 'Lý Do Chưa TH', dataIndex: 'lyDoChuaThucHien', width: 200,
+      title: 'Lý Do Chưa TH', dataIndex: 'lyDoChuaThucHien', width: 155,
+      ellipsis: { showTitle: false },
       render: v => v
-        ? <span style={{ fontSize: 12, color: '#d46b08', fontStyle: 'italic' }}>⚠ {v}</span>
+        ? <Tooltip title={v} placement="topLeft">
+            <span style={{ fontSize: 12, color: '#d46b08', fontStyle: 'italic' }}>⚠ {v}</span>
+          </Tooltip>
         : dash,
     },
     {
-      title: 'Ghi Chú', dataIndex: 'ghiChu', width: 200,
-      render: v => v ? <span style={{ fontSize: 13, color: '#64748b' }}>{v}</span> : dash,
+      title: 'Ghi Chú', dataIndex: 'ghiChu', width: 155,
+      ellipsis: { showTitle: false },
+      render: v => v
+        ? <Tooltip title={v} placement="topLeft"><span style={{ fontSize: 12, color: '#64748b' }}>{v}</span></Tooltip>
+        : dash,
     },
     {
-      title: 'SL Đạt sau XL', dataIndex: 'slDatSauXuLy', width: 130, align: 'right',
-      render: v => v != null ? <span style={{ fontWeight: 600, color: '#1D4ED8', fontSize: 13 }}>{fmtN(v)}</span> : dash,
+      title: 'SL Đạt sau XL', dataIndex: 'slDatSauXuLy', width: 112, align: 'right',
+      render: v => v != null ? <span style={{ fontWeight: 600, color: '#1D4ED8', fontSize: 12 }}>{fmtN(v)}</span> : dash,
     },
     {
-      title: 'SL Hủy', dataIndex: 'slHuy', width: 95, align: 'right',
-      render: v => v != null ? <span style={{ fontWeight: 600, color: '#ef4444', fontSize: 13 }}>{fmtN(v)}</span> : dash,
+      title: 'SL Hủy', dataIndex: 'slHuy', width: 85, align: 'right',
+      render: v => v != null ? <span style={{ fontWeight: 600, color: '#ef4444', fontSize: 12 }}>{fmtN(v)}</span> : dash,
     },
     ...(canEdit ? [{
-      title: '', key: 'actions', width: 75, fixed: 'right',
+      title: '', key: 'actions', width: 68, fixed: 'right',
       render: (_, record) => (
         <Space size={4} onClick={e => e.stopPropagation()}>
           <Tooltip title="Sửa">
@@ -590,7 +602,7 @@ function HangTraLaiTab({ stickyTop = 0 }) {
       <Table
         className="hl-table"
         rowKey="id" columns={columns} dataSource={data} loading={loading}
-        scroll={{ x: 2000 }} sticky={{ offsetHeader: stickyTop + filterH }} size="small"
+        scroll={{ x: 1880 }} sticky={{ offsetHeader: stickyTop + filterH }} size="small"
         rowClassName={(_, i) => i % 2 !== 0 ? 'row-stripe' : ''}
         rowSelection={canEdit ? {
           type: 'checkbox',
@@ -897,7 +909,7 @@ export default function HangLoiPage() {
           white-space: nowrap;
         }
         .hl-table .ant-table-thead > tr > th::before { display: none !important; }
-        .hl-table .ant-table-tbody > tr > td { padding: 7px 10px !important; vertical-align: middle; }
+        .hl-table .ant-table-tbody > tr > td { padding: 5px 8px !important; vertical-align: middle; }
         .hl-table .ant-table-tbody > tr:hover > td { background: #EAECF2 !important; }
         .hl-table .row-stripe td { background: #fafbff !important; }
 
