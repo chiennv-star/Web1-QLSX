@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Layout, Menu, Button, Typography, Space, Avatar, Dropdown, Drawer, Grid, Badge, Tooltip } from 'antd'
+import { Layout, Menu, Button, Typography, Space, Avatar, Dropdown, Drawer, Grid, Badge, Tooltip, Modal, Form, Input, message } from 'antd'
 import {
   TableOutlined,
   UserOutlined,
@@ -16,6 +16,9 @@ import {
   AppstoreOutlined,
   ArrowLeftOutlined,
   BellOutlined,
+  LockOutlined,
+  EyeInvisibleOutlined,
+  EyeTwoTone,
 } from '@ant-design/icons'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -252,6 +255,30 @@ export default function MainLayout() {
     if (isMobile) setDrawerOpen(false)
   }
 
+  const [pwModal, setPwModal] = useState(false)
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwForm] = Form.useForm()
+
+  const handleChangePw = async () => {
+    const values = await pwForm.validateFields()
+    if (values.newPassword !== values.confirmPassword)
+      return message.error('Mật khẩu xác nhận không khớp')
+    setPwSaving(true)
+    try {
+      await api.patch('/users/me/change-password', {
+        oldPassword: values.oldPassword,
+        newPassword: values.newPassword,
+      })
+      message.success('Đổi mật khẩu thành công')
+      setPwModal(false)
+      pwForm.resetFields()
+    } catch (err) {
+      message.error(err?.response?.data?.error || 'Đổi mật khẩu thất bại')
+    } finally {
+      setPwSaving(false)
+    }
+  }
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
 
@@ -364,14 +391,17 @@ export default function MainLayout() {
           {/* User info */}
           <Dropdown menu={userMenu} placement="bottomRight">
             <Space style={{ cursor: 'pointer', gap: 8 }} align="center">
-              <Avatar
-                icon={<UserOutlined />}
-                size={34}
-                style={{
-                  background: 'linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)',
-                  boxShadow: '0 2px 8px rgba(29,78,216,0.35)',
-                }}
-              />
+              <Tooltip title="Double-click để đổi mật khẩu">
+                <Avatar
+                  icon={<UserOutlined />}
+                  size={34}
+                  style={{
+                    background: 'linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)',
+                    boxShadow: '0 2px 8px rgba(29,78,216,0.35)',
+                  }}
+                  onDoubleClick={e => { e.stopPropagation(); pwForm.resetFields(); setPwModal(true) }}
+                />
+              </Tooltip>
               {!isMobile && (
                 <div style={{ lineHeight: 1.25 }}>
                   <Typography.Text strong style={{ display: 'block', color: '#1E293B', fontSize: 13 }}>
@@ -414,5 +444,34 @@ export default function MainLayout() {
         </Content>
       </Layout>
     </Layout>
+
+    <Modal
+      open={pwModal}
+      title={<Space><LockOutlined style={{ color: '#1D4ED8' }} /><span>Đổi mật khẩu</span></Space>}
+      onOk={handleChangePw}
+      onCancel={() => { setPwModal(false); pwForm.resetFields() }}
+      okText="Xác nhận" cancelText="Huỷ"
+      confirmLoading={pwSaving}
+      width={420}
+      destroyOnClose
+    >
+      <Form form={pwForm} layout="vertical" style={{ marginTop: 16 }}>
+        <Form.Item label="Mật khẩu hiện tại" name="oldPassword"
+          rules={[{ required: true, message: 'Vui lòng nhập mật khẩu hiện tại' }]}>
+          <Input.Password placeholder="Nhập mật khẩu hiện tại" autoFocus
+            iconRender={v => v ? <EyeTwoTone /> : <EyeInvisibleOutlined />} />
+        </Form.Item>
+        <Form.Item label="Mật khẩu mới" name="newPassword"
+          rules={[{ required: true, message: 'Vui lòng nhập mật khẩu mới' }, { min: 6, message: 'Ít nhất 6 ký tự' }]}>
+          <Input.Password placeholder="Nhập mật khẩu mới"
+            iconRender={v => v ? <EyeTwoTone /> : <EyeInvisibleOutlined />} />
+        </Form.Item>
+        <Form.Item label="Xác nhận mật khẩu mới" name="confirmPassword"
+          rules={[{ required: true, message: 'Vui lòng xác nhận mật khẩu mới' }]}>
+          <Input.Password placeholder="Nhập lại mật khẩu mới"
+            iconRender={v => v ? <EyeTwoTone /> : <EyeInvisibleOutlined />} />
+        </Form.Item>
+      </Form>
+    </Modal>
   )
 }

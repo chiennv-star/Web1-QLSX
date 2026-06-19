@@ -1936,30 +1936,6 @@ export default function WorkEfficiencyPage() {
   }
 
   // Đổi mật khẩu (tất cả vai trò)
-  const [globalPwModal, setGlobalPwModal] = useState(false)
-  const [globalPwForm] = Form.useForm()
-  const [globalPwSaving, setGlobalPwSaving] = useState(false)
-
-  const handleGlobalChangePw = async () => {
-    const values = await globalPwForm.validateFields()
-    if (values.newPassword !== values.confirmPassword)
-      return message.error('Mật khẩu xác nhận không khớp')
-    setGlobalPwSaving(true)
-    try {
-      await api.patch('/users/me/change-password', {
-        oldPassword: values.oldPassword,
-        newPassword: values.newPassword,
-      })
-      message.success('Đổi mật khẩu thành công')
-      setGlobalPwModal(false)
-      globalPwForm.resetFields()
-    } catch (err) {
-      message.error(err?.response?.data?.error || 'Đổi mật khẩu thất bại')
-    } finally {
-      setGlobalPwSaving(false)
-    }
-  }
-
   // Profile tab (for NHAN_VIEN)
   const [profileTab, setProfileTab] = useState('efficiency')
 
@@ -2403,14 +2379,6 @@ export default function WorkEfficiencyPage() {
           style={{ width: 200, borderRadius: 7 }}
         />
 
-        {/* Đổi mật khẩu — tất cả vai trò */}
-        <Tooltip title="Đổi mật khẩu">
-          <Button size="small" icon={<LockOutlined />}
-            onClick={() => { globalPwForm.resetFields(); setGlobalPwModal(true) }}
-            style={{ marginLeft: 'auto', flexShrink: 0 }}
-          />
-        </Tooltip>
-
         {/* Reload */}
         <Button size="small" icon={<ReloadOutlined spin={loading} />}
           onClick={() => fetchData(fromDate, toDate, activeGroup)}
@@ -2626,41 +2594,6 @@ export default function WorkEfficiencyPage() {
               allowClear
               filterOption={(input, opt) => opt.value.toLowerCase().includes(input.toLowerCase())}
             />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      {/* ── Eff table context menu ── */}
-      {/* ── Modal đổi mật khẩu (tất cả vai trò) ── */}
-      <Modal
-        open={globalPwModal}
-        title={<Space><LockOutlined style={{ color: '#00CC99' }} /><span>Đổi mật khẩu</span></Space>}
-        onOk={handleGlobalChangePw}
-        onCancel={() => { setGlobalPwModal(false); globalPwForm.resetFields() }}
-        okText="Xác nhận"
-        cancelText="Huỷ"
-        confirmLoading={globalPwSaving}
-        width={420}
-        destroyOnClose
-      >
-        <Form form={globalPwForm} layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item label="Mật khẩu hiện tại" name="oldPassword"
-            rules={[{ required: true, message: 'Vui lòng nhập mật khẩu hiện tại' }]}>
-            <Input.Password placeholder="Nhập mật khẩu hiện tại" autoFocus
-              iconRender={v => v ? <EyeTwoTone /> : <EyeInvisibleOutlined />} />
-          </Form.Item>
-          <Form.Item label="Mật khẩu mới" name="newPassword"
-            rules={[
-              { required: true, message: 'Vui lòng nhập mật khẩu mới' },
-              { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự' },
-            ]}>
-            <Input.Password placeholder="Nhập mật khẩu mới"
-              iconRender={v => v ? <EyeTwoTone /> : <EyeInvisibleOutlined />} />
-          </Form.Item>
-          <Form.Item label="Xác nhận mật khẩu mới" name="confirmPassword"
-            rules={[{ required: true, message: 'Vui lòng xác nhận mật khẩu mới' }]}>
-            <Input.Password placeholder="Nhập lại mật khẩu mới"
-              iconRender={v => v ? <EyeTwoTone /> : <EyeInvisibleOutlined />} />
           </Form.Item>
         </Form>
       </Modal>
