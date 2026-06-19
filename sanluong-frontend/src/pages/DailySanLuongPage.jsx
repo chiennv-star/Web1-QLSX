@@ -644,23 +644,19 @@ function DailyDetailTab() {
 
   useEffect(() => { localStorage.setItem('daily_congDoan', congDoan) }, [congDoan])
 
-  // Lấy slTrungBinh từ ProductMaster cho các maSp xuất hiện trong data
+  // Lấy slTrungBinh từ ProductMaster — 1 request batch thay vì N request riêng
   const fetchNsTb = useCallback(async (rows) => {
     const uniqueMaSp = [...new Set(rows.filter(r => r.maSp).map(r => r.maSp))]
     if (!uniqueMaSp.length) return
-    const results = await Promise.allSettled(
-      uniqueMaSp.map(maSp =>
-        api.get(`/product-master/lookup/${encodeURIComponent(maSp)}`)
-           .then(({ data }) => ({ maSp, slTrungBinh: data.slTrungBinh }))
-      )
-    )
-    const map = {}
-    results.forEach(r => {
-      if (r.status === 'fulfilled' && r.value.slTrungBinh != null) {
-        map[r.value.maSp] = Number(r.value.slTrungBinh)
-      }
-    })
-    setNsTbMap(map)
+    try {
+      const { data: batchMap } = await api.get('/product-master/lookup-batch', { params: { codes: uniqueMaSp } })
+      const map = {}
+      uniqueMaSp.forEach(maSp => {
+        const ns = batchMap[maSp]?.slTrungBinh
+        if (ns != null) map[maSp] = Number(ns)
+      })
+      setNsTbMap(map)
+    } catch {}
   }, [])
 
   const fetchData = useCallback(async (range = dateRange, cd = congDoan, { silent = false } = {}) => {
@@ -1651,8 +1647,8 @@ function BaoCaoTab() {
     dayjs().startOf('month'), dayjs().endOf('month')
   ])
 
-  const fetchData = useCallback(async (range = dateRange) => {
-    setLoading(true)
+  const fetchData = useCallback(async (range = dateRange, { silent = false } = {}) => {
+    if (!silent) setLoading(true)
     try {
       const params = {}
       if (range?.[0]) params.fromDate = range[0].format('YYYY-MM-DD')
@@ -1660,13 +1656,26 @@ function BaoCaoTab() {
       const { data: res } = await api.get('/work-schedule-session/daily-report', { params })
       setRaw(Array.isArray(res) ? res : [])
     } catch {
-      message.error('Không thể tải dữ liệu báo cáo')
+      if (!silent) message.error('Không thể tải dữ liệu báo cáo')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [dateRange])
 
   useEffect(() => { fetchData() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-refresh mỗi 60 giây
+  useEffect(() => {
+    const t = setInterval(() => fetchData(undefined, { silent: true }), 60_000)
+    return () => clearInterval(t)
+  }, [fetchData])
+
+  // Lắng nghe event silent-refresh từ các module khác
+  useEffect(() => {
+    const handler = () => fetchData(undefined, { silent: true })
+    window.addEventListener('app:silent-refresh', handler)
+    return () => window.removeEventListener('app:silent-refresh', handler)
+  }, [fetchData])
 
   return (
     <div>
