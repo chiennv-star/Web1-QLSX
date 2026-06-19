@@ -279,6 +279,7 @@ export default function MainLayout() {
   }
 
   return (
+    <>
     <Layout style={{ minHeight: '100vh' }}>
 
       {/* ── Mobile: menu as Drawer overlay ── */}
@@ -472,5 +473,6 @@ export default function MainLayout() {
         </Form.Item>
       </Form>
     </Modal>
+    </>
   )
 }
