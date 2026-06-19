@@ -109,6 +109,9 @@ export default function MainLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [unreadByType, setUnreadByType] = useState({})
+  const [pwModal, setPwModal] = useState(false)
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwForm] = Form.useForm()
   const { user, logout, isAdmin, isAdminKH, isTKSX, isQuanDoc, isStageAdmin, canEditHangLoi, isNhanVien, isHCNS, isKeToan, isManHinh } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -254,10 +257,6 @@ export default function MainLayout() {
     navigate(key)
     if (isMobile) setDrawerOpen(false)
   }
-
-  const [pwModal, setPwModal] = useState(false)
-  const [pwSaving, setPwSaving] = useState(false)
-  const [pwForm] = Form.useForm()
 
   const handleChangePw = async () => {
     const values = await pwForm.validateFields()

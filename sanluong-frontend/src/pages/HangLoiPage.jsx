@@ -916,11 +916,11 @@ export default function HangLoiPage() {
         /* ── Tabs ── */
         .hl-tabs > .ant-tabs-nav {
           background: #1e4570 !important;
-          padding: 0 12px; margin: 0 !important;
+          padding: 0 10px; margin: 0 !important; min-height: 38px;
         }
         .hl-tabs > .ant-tabs-nav .ant-tabs-tab {
-          color: #CBD5E1 !important; font-size: 14px;
-          padding: 9px 18px !important; margin: 0 2px !important;
+          color: #CBD5E1 !important; font-size: 13px;
+          padding: 6px 14px !important; margin: 0 2px !important;
           border-radius: 4px 4px 0 0;
         }
         .hl-tabs > .ant-tabs-nav .ant-tabs-tab:hover  { color: #fff !important; background: rgba(59,130,246,0.15) !important; }
@@ -945,22 +945,13 @@ export default function HangLoiPage() {
         className="hl-tabs"
         defaultActiveKey="hang-tra-lai"
         renderTabBar={(props, DefaultTabBar) => (
-          <div ref={headerRef} style={{ position: 'sticky', top: 0, zIndex: 20, background: '#fff' }}>
-            <div style={{
-              padding: '10px 0 6px', borderBottom: '2px solid #DDE1E8',
-              display: 'flex', alignItems: 'center', gap: 8,
-            }}>
-              <span style={{ fontWeight: 800, fontSize: 17, color: '#1E3A5F' }}>
-                <WarningOutlined style={{ marginRight: 6, color: '#f97316' }} />
-                Hàng Lỗi
-              </span>
-            </div>
+          <div ref={headerRef} style={{ position: 'sticky', top: 0, zIndex: 20 }}>
             <DefaultTabBar {...props} style={{ marginBottom: 0 }} />
           </div>
         )}
         items={[{
           key: 'hang-tra-lai',
-          label: 'Hàng Trả lại ĐG - PL',
+          label: <span><WarningOutlined style={{ marginRight: 5, color: '#f97316' }} />Hàng Lỗi</span>,
           children: <HangTraLaiTab stickyTop={tabBarHeight} />,
         }]}
       />
