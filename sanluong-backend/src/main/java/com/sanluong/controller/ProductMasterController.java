@@ -49,6 +49,14 @@ public class ProductMasterController {
         return body;
     }
 
+    @GetMapping("/lookup-batch")
+    public ResponseEntity<Map<String, Map<String, Object>>> lookupBatch(
+            @RequestParam List<String> codes) {
+        Map<String, Map<String, Object>> result = new java.util.LinkedHashMap<>();
+        service.findByMaTpIn(codes).forEach(p -> result.put(p.getMaTp(), buildLookupBody(p)));
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/lookup/{maTp}")
     public ResponseEntity<?> lookup(@PathVariable String maTp) {
         return service.findByMaTp(maTp)

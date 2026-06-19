@@ -2316,21 +2316,21 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         paginationRef.current = { current: next.current, pageSize: next.pageSize }
         return next
       })
-      // Fetch NS trung bình cho từng mã SP ngay sau khi có dữ liệu
+      // Fetch NS trung bình: 1 request batch thay vì N request riêng lẻ
       const uniqueMaSp = [...new Set(res.content.map(r => r.maSp).filter(Boolean))]
       if (uniqueMaSp.length > 0) {
         const nsField = NS_LOOKUP_FIELD[congDoan] || 'slTrungBinh'
-        Promise.all(
-          uniqueMaSp.map(maSp =>
-            api.get(`/product-master/lookup/${encodeURIComponent(maSp)}`)
-              .then(r => ({ maSp, ns: r.data[nsField] != null ? Number(r.data[nsField]) : null }))
-              .catch(() => ({ maSp, ns: null }))
-          )
-        ).then(results => {
-          const map = {}
-          results.forEach(({ maSp, ns }) => { if (ns != null && ns > 0) map[maSp] = ns })
-          setNsMap(map)
-        })
+        api.get('/product-master/lookup-batch', { params: { codes: uniqueMaSp } })
+          .then(({ data: batchMap }) => {
+            const map = {}
+            uniqueMaSp.forEach(maSp => {
+              const entry = batchMap[maSp]
+              const ns = entry?.[nsField] != null ? Number(entry[nsField]) : null
+              if (ns != null && ns > 0) map[maSp] = ns
+            })
+            setNsMap(map)
+          })
+          .catch(() => {})
       } else {
         setNsMap({})
       }

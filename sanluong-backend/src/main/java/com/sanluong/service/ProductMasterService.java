@@ -64,6 +64,11 @@ public class ProductMasterService {
         return repository.findByMaTpIgnoreCase(maTp);
     }
 
+    public java.util.List<ProductMaster> findByMaTpIn(java.util.Collection<String> codes) {
+        var upperCodes = codes.stream().map(String::toUpperCase).collect(java.util.stream.Collectors.toList());
+        return repository.findByMaTpIn(upperCodes);
+    }
+
     public Optional<ProductMaster> findByMaBravo(String maBravo) {
         return repository.findByMaBravoIgnoreCase(maBravo).stream().findFirst();
     }

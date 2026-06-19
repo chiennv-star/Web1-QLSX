@@ -16,6 +16,9 @@ public interface ProductMasterRepository extends JpaRepository<ProductMaster, Lo
 
     Optional<ProductMaster> findByMaTpIgnoreCase(String maTp);
 
+    @Query("SELECT p FROM ProductMaster p WHERE UPPER(p.maTp) IN :codes")
+    List<ProductMaster> findByMaTpIn(@Param("codes") java.util.Collection<String> codes);
+
     List<ProductMaster> findByMaBravoIgnoreCase(String maBravo);
 
     boolean existsByMaTpIgnoreCase(String maTp);
