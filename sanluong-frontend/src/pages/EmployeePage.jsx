@@ -233,14 +233,14 @@ export default function EmployeePage() {
         ? <Tag color={GROUP_COLORS[v] || 'blue'} style={{ marginRight: 0, fontWeight: 600 }}>{v}</Tag>
         : <span style={{ color: '#d9d9d9' }}>—</span>
     }] : []),
-    ...((activeGroup === 'ALL' || activeGroup === 'ĐG') ? [{
+    ...[{
       title: 'Nhóm', dataIndex: 'nhom', key: 'nhom', width: 110,
       render: (v, record) => {
         if (record.toNhom !== 'ĐG') return <span style={{ color: '#d9d9d9' }}>—</span>
         if (!v) return <span style={{ color: '#d9d9d9' }}>—</span>
         return <Tag color={v === 'Tâm Kem' ? 'purple' : 'volcano'} style={{ marginRight: 0, fontWeight: 600 }}>{v}</Tag>
       }
-    }] : []),
+    }],
     {
       title: 'Vị Trí', dataIndex: 'viTri', key: 'viTri', width: 130,
       render: v => v
@@ -406,6 +406,7 @@ export default function EmployeePage() {
         scroll={{ x: 1300 }}
         sticky={{ offsetHeader: toolbarH }}
         rowClassName={(_, i) => i % 2 !== 0 ? 'row-stripe' : ''}
+        onRow={record => ({ onDoubleClick: () => openEdit(record), style: { cursor: 'pointer' } })}
         pagination={{
           ...pagination,
           showSizeChanger: true,

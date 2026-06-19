@@ -20,6 +20,9 @@ public class ProductMaster {
     @Column(name = "tien_trinh", length = 255)
     private String tienTrinh;
 
+    @Column(name = "sp_cong", precision = 12, scale = 2)
+    private java.math.BigDecimal spCong;
+
     @Column(name = "sl_trung_binh", precision = 12, scale = 2)
     private java.math.BigDecimal slTrungBinh;
 
@@ -82,6 +85,8 @@ public class ProductMaster {
     public void setMaBravo(String maBravo) { this.maBravo = maBravo; }
     public String getTienTrinh() { return tienTrinh; }
     public void setTienTrinh(String tienTrinh) { this.tienTrinh = tienTrinh; }
+    public java.math.BigDecimal getSpCong() { return spCong; }
+    public void setSpCong(java.math.BigDecimal spCong) { this.spCong = spCong; }
     public java.math.BigDecimal getSlTrungBinh() { return slTrungBinh; }
     public void setSlTrungBinh(java.math.BigDecimal slTrungBinh) { this.slTrungBinh = slTrungBinh; }
     public java.math.BigDecimal getNangSuatPc() { return nangSuatPc; }

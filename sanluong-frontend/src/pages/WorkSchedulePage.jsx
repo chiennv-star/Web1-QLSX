@@ -216,7 +216,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   })
   const [vaiTroModalOpen, setVaiTroModalOpen] = useState(false)
   const [newVaiTroInput, setNewVaiTroInput] = useState('')
-  const [multiAddModal, setMultiAddModal] = useState({ open: false, ngayKey: null, nhom: '', selectedEmps: [], caSX: '', thoiGian: '' })
+  const [multiAddModal, setMultiAddModal] = useState({ open: false, ngayKey: null, nhom: '', subNhom: '', selectedEmps: [], caSX: '', thoiGian: '' })
   const saveVaiTroOptions = (opts) => { setVaiTroOptions(opts); localStorage.setItem(VAI_TRO_KEY, JSON.stringify(opts)) }
   const addVaiTroOption = () => {
     const v = newVaiTroInput.trim()
@@ -433,7 +433,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       newRows.forEach(r => n.add(r._tempId))
       return n
     })
-    setMultiAddModal({ open: false, ngayKey: null, nhom: '', selectedEmps: [], caSX: '', thoiGian: '' })
+    setMultiAddModal({ open: false, ngayKey: null, nhom: '', subNhom: '', selectedEmps: [], caSX: '', thoiGian: '' })
   }
 
   const calcCong = (thoiGian, ca) => {
@@ -1749,7 +1749,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
         title={<Space><UsergroupAddOutlined />Thêm nhiều người thực hiện</Space>}
         open={multiAddModal.open}
         onOk={confirmMultiAdd}
-        onCancel={() => setMultiAddModal({ open: false, ngayKey: null, nhom: '', selectedEmps: [], caSX: '', thoiGian: '' })}
+        onCancel={() => setMultiAddModal({ open: false, ngayKey: null, nhom: '', subNhom: '', selectedEmps: [], caSX: '', thoiGian: '' })}
         okText={`Thêm ${multiAddModal.selectedEmps.length || ''} người`.trim()}
         okButtonProps={{ disabled: !multiAddModal.selectedEmps.length }}
         width={480}
@@ -1761,7 +1761,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
             <select
               style={{ width: '100%', padding: '5px 8px', borderRadius: 6, border: '1px solid #d9d9d9', fontSize: 14 }}
               value={multiAddModal.nhom}
-              onChange={e => setMultiAddModal(prev => ({ ...prev, nhom: e.target.value, selectedEmps: [] }))}
+              onChange={e => setMultiAddModal(prev => ({ ...prev, nhom: e.target.value, subNhom: '', selectedEmps: [] }))}
             >
               <option value="">-- Chọn nhóm --</option>
               {['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG'].map(v => (
@@ -1770,9 +1770,28 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
             </select>
           </div>
 
+          {/* Sub-nhóm cho ĐG */}
+          {multiAddModal.nhom === 'ĐG' && (
+            <div>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>Nhóm <span style={{ color: '#999', fontWeight: 400 }}>(tùy chọn)</span></div>
+              <select
+                style={{ width: '100%', padding: '5px 8px', borderRadius: 6, border: '1px solid #d9d9d9', fontSize: 14 }}
+                value={multiAddModal.subNhom}
+                onChange={e => setMultiAddModal(prev => ({ ...prev, subNhom: e.target.value, selectedEmps: [] }))}
+              >
+                <option value="">-- Tất cả --</option>
+                <option value="Tâm Kem">Tâm Kem</option>
+                <option value="Loan Đào">Loan Đào</option>
+              </select>
+            </div>
+          )}
+
           {/* Danh sách nhân viên trong nhóm */}
           {multiAddModal.nhom && (() => {
-            const empList = employees.filter(e => e.toNhom === multiAddModal.nhom)
+            const empList = employees.filter(e =>
+              e.toNhom === multiAddModal.nhom &&
+              (!multiAddModal.subNhom || e.nhom === multiAddModal.subNhom)
+            )
             if (!empList.length) return <div style={{ color: '#999', fontSize: 13 }}>Không có nhân viên trong nhóm này.</div>
             const allSelected = empList.every(e => multiAddModal.selectedEmps.some(s => s.id === e.id))
             return (

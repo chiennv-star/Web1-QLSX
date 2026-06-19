@@ -1233,6 +1233,7 @@ function ProductMasterTab() {
     setEditItem(r)
     form.setFieldsValue({
       ...r,
+      spCong:       r.spCong       != null ? Number(r.spCong)       : null,
       slTrungBinh:  r.slTrungBinh  != null ? Number(r.slTrungBinh)  : 1000,
       nangSuatPc:   r.nangSuatPc   != null ? Number(r.nangSuatPc)   : null,
       nangSuatPl:   r.nangSuatPl   != null ? Number(r.nangSuatPl)   : null,
@@ -1289,6 +1290,7 @@ function ProductMasterTab() {
       }
     },
     { title: 'KL/ĐV (g)', dataIndex: 'khoiLuong', key: 'khoiLuong', width: 100, align: 'right', render: numCell },
+    { title: 'SP/Công', dataIndex: 'spCong', key: 'spCong', width: 100, align: 'right', render: numCell },
     { title: 'NS Trung Bình', dataIndex: 'slTrungBinh', key: 'slTrungBinh', width: 120, align: 'right', render: numCell },
     { title: 'NS PC', dataIndex: 'nangSuatPc', key: 'nangSuatPc', width: 100, align: 'right', render: numCell },
     { title: 'NS PL', dataIndex: 'nangSuatPl', key: 'nangSuatPl', width: 100, align: 'right', render: numCell },
@@ -1414,6 +1416,15 @@ function ProductMasterTab() {
                 <Input style={{ fontFamily: 'monospace' }} />
               </Form.Item>
             </Col>
+            <Col span={8}>
+              <Form.Item label="SP/Công" name="spCong">
+                <InputNumber style={{ width: '100%' }} min={0}
+                  formatter={v => v ? Math.round(Number(v)).toLocaleString('vi-VN') : ''}
+                  parser={v => v ? v.replace(/[^\d]/g, '') : ''} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={12}>
             <Col span={8}>
               <Form.Item label="NS Trung Bình (sp/công)" name="slTrungBinh">
                 <InputNumber style={{ width: '100%' }} min={0}
@@ -2270,6 +2281,12 @@ function EmployeeTab() {
       render: v => <span style={{ fontWeight: 600 }}>{v || '—'}</span> },
     ...(activeGroup === 'ALL' ? [{ title: 'Tổ / Nhóm', dataIndex: 'toNhom', key: 'toNhom', width: 100, align: 'center',
       render: v => v ? <Tag color={GROUP_COLORS[v] || 'default'} style={{ marginRight: 0 }}>{v}</Tag> : '—' }] : []),
+    { title: 'Nhóm', dataIndex: 'nhom', key: 'nhom', width: 110, align: 'center',
+      render: (v, record) => {
+        if (record.toNhom !== 'ĐG') return <span style={{ color: '#d9d9d9' }}>—</span>
+        if (!v) return <span style={{ color: '#d9d9d9' }}>—</span>
+        return <Tag color={v === 'Tâm Kem' ? 'purple' : 'volcano'} style={{ marginRight: 0, fontWeight: 600 }}>{v}</Tag>
+      } },
     { title: 'Vị Trí', dataIndex: 'viTri', key: 'viTri', width: 120,
       render: v => v || '—' },
     { title: 'Học Vấn', dataIndex: 'hocVan', key: 'hocVan', width: 100,
@@ -2372,6 +2389,7 @@ function EmployeeTab() {
       <Table className="dm-table" columns={columns} dataSource={data} rowKey="id"
         loading={loading} size="small" scroll={{ x: 1400 }}
         sticky={{ offsetHeader: 44 }}
+        onRow={record => ({ onDoubleClick: () => openEdit(record), style: { cursor: 'pointer' } })}
         pagination={{
           ...pagination, size: 'small', showSizeChanger: true,
           pageSizeOptions: ['20', '50', '100'],
@@ -2409,6 +2427,18 @@ function EmployeeTab() {
                 </Select>
               </Form.Item>
             </Col>
+            <Form.Item noStyle shouldUpdate={(prev, cur) => prev.toNhom !== cur.toNhom}>
+              {({ getFieldValue }) => getFieldValue('toNhom') === 'ĐG' && (
+                <Col span={8}>
+                  <Form.Item label="Nhóm" name="nhom">
+                    <Select allowClear placeholder="Chọn nhóm...">
+                      <Option value="Tâm Kem"><Tag color="purple">Tâm Kem</Tag></Option>
+                      <Option value="Loan Đào"><Tag color="volcano">Loan Đào</Tag></Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+              )}
+            </Form.Item>
             <Col span={8}>
               <Form.Item label="Vị Trí" name="viTri"><Input /></Form.Item>
             </Col>

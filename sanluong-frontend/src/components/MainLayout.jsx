@@ -157,7 +157,7 @@ export default function MainLayout() {
         {
           key: '/work-schedule',
           icon: <ScheduleOutlined />,
-          label: 'Lịch làm việc',
+          label: 'Sản lượng tổ',
         },
         { key: '/work-efficiency', icon: <TrophyOutlined />, label: 'Nhân Viên' },
       ]
@@ -181,7 +181,7 @@ export default function MainLayout() {
         {
           key: '/work-schedule',
           icon: mkBadgeIcon(<ScheduleOutlined />, lichSxNew),
-          label: mkBadgeLabel('Lịch làm việc', lichSxNew),
+          label: mkBadgeLabel('Sản lượng tổ', lichSxNew),
         },
         { key: '/khoach',          icon: <CalendarOutlined />, label: 'Kế hoạch' },
         { key: '/lenh-san-xuat',   icon: <FileDoneOutlined />, label: 'Lệnh Sản Xuất' },

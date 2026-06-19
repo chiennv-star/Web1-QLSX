@@ -8,6 +8,7 @@ public class ProductMasterDto {
     @NotBlank private String maTp;
     private String maBravo;
     private String tienTrinh;
+    private BigDecimal spCong;
     private BigDecimal slTrungBinh;
     private BigDecimal nangSuatPc;
     private BigDecimal nangSuatPl;
@@ -28,6 +29,8 @@ public class ProductMasterDto {
     public void setMaBravo(String maBravo) { this.maBravo = maBravo; }
     public String getTienTrinh() { return tienTrinh; }
     public void setTienTrinh(String tienTrinh) { this.tienTrinh = tienTrinh; }
+    public BigDecimal getSpCong() { return spCong; }
+    public void setSpCong(BigDecimal spCong) { this.spCong = spCong; }
     public BigDecimal getSlTrungBinh() { return slTrungBinh; }
     public void setSlTrungBinh(BigDecimal slTrungBinh) { this.slTrungBinh = slTrungBinh; }
     public BigDecimal getNangSuatPc() { return nangSuatPc; }

@@ -27,6 +27,7 @@ public class ProductMasterService {
         FIELD_LABELS = new LinkedHashMap<>();
         FIELD_LABELS.put("maBravo",      "Mã Bravo");
         FIELD_LABELS.put("tienTrinh",    "Tên/Tiến trình");
+        FIELD_LABELS.put("spCong",       "SP/Công");
         FIELD_LABELS.put("slTrungBinh",  "NS Trung Bình");
         FIELD_LABELS.put("nangSuatPc",   "NS PC");
         FIELD_LABELS.put("nangSuatPl",   "NS PL");
@@ -100,6 +101,7 @@ public class ProductMasterService {
         List<String> entries = new ArrayList<>();
         addChange(entries, "maBravo",      old.getMaBravo(),      dto.getMaBravo());
         addChange(entries, "tienTrinh",    old.getTienTrinh(),    dto.getTienTrinh());
+        addChangeBD(entries, "spCong",       old.getSpCong(),       dto.getSpCong());
         addChangeBD(entries, "slTrungBinh",  old.getSlTrungBinh(),  dto.getSlTrungBinh());
         addChangeBD(entries, "nangSuatPc",   old.getNangSuatPc(),   dto.getNangSuatPc());
         addChangeBD(entries, "nangSuatPl",   old.getNangSuatPl(),   dto.getNangSuatPl());
@@ -141,6 +143,7 @@ public class ProductMasterService {
         p.setMaTp(dto.getMaTp());
         p.setMaBravo(dto.getMaBravo());
         p.setTienTrinh(dto.getTienTrinh());
+        p.setSpCong(dto.getSpCong());
         p.setSlTrungBinh(dto.getSlTrungBinh());
         p.setNangSuatPc(dto.getNangSuatPc());
         p.setNangSuatPl(dto.getNangSuatPl());
