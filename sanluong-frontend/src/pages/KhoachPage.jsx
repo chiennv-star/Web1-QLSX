@@ -1600,7 +1600,8 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
       tinhTrang: dh.tinhTrangDatHang || null,
     }
     try {
-      await api.post('/work-schedule', payload)
+      const { data: newWs } = await api.post('/work-schedule', payload)
+      if (newWs?.id) api.post(`/lenh-san-xuat/from-work-schedule/${newWs.id}`, {}).catch(() => {})
       message.success(`Đã xếp "${(dh.tenSanPham || dh.maDonHang || '').substring(0, 30)}" → ${toNhom} · ${dayjs(date).format('DD/MM/YYYY')}`)
       const sy = window.scrollY
       await fetchData(undefined, { silent: true })
@@ -1694,7 +1695,8 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
         soLo: dh.soLo || null, coLo: dh.soLuongDatHang != null ? Number(dh.soLuongDatHang) : null, tinhTrang: dh.tinhTrangDatHang || null,
       }
       try {
-        await api.post('/work-schedule', payload)
+        const { data: newWs } = await api.post('/work-schedule', payload)
+        if (newWs?.id) api.post(`/lenh-san-xuat/from-work-schedule/${newWs.id}`, {}).catch(() => {})
         message.success(`Đã xếp "${(dh.tenSanPham || dh.maDonHang || '').substring(0, 30)}" → ${toNhom} · ${dayjs(date).format('DD/MM/YYYY')}`)
         const sy = window.scrollY
         await fetchData(undefined, { silent: true })
@@ -1738,7 +1740,8 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
       tinhTrang:    dh.tinhTrangDatHang || null,
     }
     try {
-      await api.post('/work-schedule', payload)
+      const { data: newWs } = await api.post('/work-schedule', payload)
+      if (newWs?.id) api.post(`/lenh-san-xuat/from-work-schedule/${newWs.id}`, {}).catch(() => {})
       message.success(`Đã xếp "${(dh.tenSanPham || dh.maDonHang || '').substring(0, 30)}" → ${toNhom} · ${dayjs(toDate).format('DD/MM/YYYY')}`)
       { const sy = window.scrollY; await fetchData(undefined, { silent: true }); requestAnimationFrame(() => window.scrollTo({ top: sy, behavior: 'instant' })) }
       syncToDonHang(payload).then(() => fetchDonHang())
@@ -1781,7 +1784,8 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
         tinhTrang:     dh.tinhTrangDatHang || null,
       }
       try {
-        await api.post('/work-schedule', payload)
+        const { data: newWs } = await api.post('/work-schedule', payload)
+        if (newWs?.id) api.post(`/lenh-san-xuat/from-work-schedule/${newWs.id}`, {}).catch(() => {})
         message.success(
           `Đã thêm "${(dh.tenSanPham || dh.maDonHang || '').substring(0, 30)}" → ${toNhom} · ${dayjs(toDate).format('DD/MM/YYYY')}`
         )
@@ -1856,7 +1860,8 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
         tinhTrang:     src.tinhTrang     || null,
         ...(congField ? { [congField]: src[congField] ?? null } : {}),
       }
-      await api.post('/work-schedule', payload)
+      const { data: newWs } = await api.post('/work-schedule', payload)
+      if (newWs?.id) api.post(`/lenh-san-xuat/from-work-schedule/${newWs.id}`, {}).catch(() => {})
       message.success(`Đã dán vào ${dayjs(toDate).format('DD/MM/YYYY')}${toNhom !== src.toNhom ? ` · ${toNhom}` : ''}`)
       { const sy = window.scrollY; await fetchData(undefined, { silent: true }); requestAnimationFrame(() => window.scrollTo({ top: sy, behavior: 'instant' })) }
       syncToDonHang(payload).then(() => fetchDonHang())
