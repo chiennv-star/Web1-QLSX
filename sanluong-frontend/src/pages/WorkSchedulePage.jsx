@@ -2753,6 +2753,29 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         )
       }
     },
+    {
+      title: 'Tình trạng', dataIndex: 'tinhTrang', key: 'tinhTrang', width: 112, align: 'center',
+      ...colStatus('tinhTrang'),
+      render: (v, record) => {
+        const canEdit = canEditStage(congDoan) &&
+          (!allowedNhom || !record.toNhom?.trim() || record.toNhom.trim() === allowedNhom)
+        if (!canEdit) return tinhTrangTag(v)
+        return (
+          <Select
+            size="small"
+            value={v || ''}
+            loading={!!updatingTT[record.id]}
+            onChange={val => patchTinhTrang(record, val || null)}
+            style={{ width: 96 }}
+            onClick={e => e.stopPropagation()}
+          >
+            <Option value="">—</Option>
+            <Option value="doing"><span style={{ color: '#fa8c16', fontWeight: 600 }}>● Doing</span></Option>
+            <Option value="done"><span style={{ color: '#52c41a', fontWeight: 600 }}>✓ Done</span></Option>
+          </Select>
+        )
+      }
+    },
     ...config.extraTableCols,
     {
       title: 'Năng suất', key: 'ns', width: 165, align: 'right',
@@ -2823,29 +2846,6 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
           </div>
         )
       },
-    },
-    {
-      title: 'Tình trạng', dataIndex: 'tinhTrang', key: 'tinhTrang', width: 112, align: 'center',
-      ...colStatus('tinhTrang'),
-      render: (v, record) => {
-        const canEdit = canEditStage(congDoan) &&
-          (!allowedNhom || !record.toNhom?.trim() || record.toNhom.trim() === allowedNhom)
-        if (!canEdit) return tinhTrangTag(v)
-        return (
-          <Select
-            size="small"
-            value={v || ''}
-            loading={!!updatingTT[record.id]}
-            onChange={val => patchTinhTrang(record, val || null)}
-            style={{ width: 96 }}
-            onClick={e => e.stopPropagation()}
-          >
-            <Option value="">—</Option>
-            <Option value="doing"><span style={{ color: '#fa8c16', fontWeight: 600 }}>● Doing</span></Option>
-            <Option value="done"><span style={{ color: '#52c41a', fontWeight: 600 }}>✓ Done</span></Option>
-          </Select>
-        )
-      }
     },
     {
       title: 'Trưởng ca', dataIndex: 'truongCa', key: 'truongCa', width: 110, ellipsis: true,
