@@ -3428,7 +3428,15 @@ export default function KhoachPage() {
   const [lenhSxKey, setLenhSxKey] = useState(0)
   const [filterSlot, setFilterSlot] = useState(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [lenhChuaPhatHanh, setLenhChuaPhatHanh] = useState(0)
   const containerRef = useRef(null)
+
+  useEffect(() => {
+    if (!canViewExtra) return
+    api.get('/lenh-san-xuat/count-chua-phat-hanh')
+      .then(({ data }) => setLenhChuaPhatHanh(data?.total || 0))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement)
@@ -3482,7 +3490,15 @@ export default function KhoachPage() {
     ...(canViewExtra ? [
       {
         key: 'lenh-sx',
-        label: <span><UnorderedListOutlined style={{ marginRight: 5 }} />Lệnh Sản Xuất</span>,
+        label: (
+          <span>
+            <UnorderedListOutlined style={{ marginRight: 5 }} />
+            Lệnh Sản Xuất
+            {lenhChuaPhatHanh > 0 && (
+              <Badge count={lenhChuaPhatHanh} size="small" style={{ background: '#e85d04', marginLeft: 6 }} />
+            )}
+          </span>
+        ),
         children: <LenhSanXuatTab key={lenhSxKey} />,
       },
       {
@@ -3491,7 +3507,7 @@ export default function KhoachPage() {
         children: <DonHangPage />,
       },
     ] : []),
-  ], [canViewExtra, filterSlot]) // eslint-disable-line react-hooks/exhaustive-deps
+  ], [canViewExtra, filterSlot, lenhChuaPhatHanh]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div ref={containerRef} style={{ background: '#fff', height: isFullscreen ? '100vh' : undefined, overflow: isFullscreen ? 'auto' : undefined }}>

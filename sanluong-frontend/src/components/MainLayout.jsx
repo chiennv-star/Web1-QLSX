@@ -201,11 +201,7 @@ export default function MainLayout() {
         },
         { key: '/khoach',          icon: <CalendarOutlined />,  label: 'Kế hoạch' },
         { key: '/ke-hoach-to',     icon: <TeamOutlined />,     label: 'Kế Hoạch Tổ' },
-        {
-          key: '/lenh-san-xuat',
-          icon: mkBadgeIcon(<FileDoneOutlined />, lenhChuaPhatHanh),
-          label: 'Lệnh Sản Xuất',
-        },
+        { key: '/lenh-san-xuat', icon: <FileDoneOutlined />, label: 'Lệnh Sản Xuất' },
         ...(canEditHangLoi() ? [{
           key: '/hang-loi',
           icon: <WarningOutlined />,
