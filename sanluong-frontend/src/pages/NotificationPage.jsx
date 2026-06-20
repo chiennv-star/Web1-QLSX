@@ -5,7 +5,7 @@ import {
   WarningOutlined, CheckCircleFilled,
   ClockCircleOutlined, InboxOutlined, EyeOutlined, ShoppingOutlined,
   CalendarOutlined, BarChartOutlined, ArrowRightOutlined,
-  DeleteOutlined, CheckSquareOutlined, BorderOutlined,
+  DeleteOutlined, CheckSquareOutlined, BorderOutlined, FileDoneOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -79,6 +79,18 @@ const TYPE_CONFIG = {
     tabColor: '#0369a1',
     tabBg: '#f0f9ff',
   },
+  LENH_CHUA_PHAT_HANH: {
+    Icon: FileDoneOutlined,
+    iconColor: '#cc7700',
+    iconBg: 'linear-gradient(135deg,#fff3cd,#ffe082)',
+    accent: '#FF9900',
+    tagColor: '#7a4400',
+    tagBg: '#fff8e1',
+    tagBorder: '#ffcc44',
+    label: 'Lệnh SX',
+    tabColor: '#cc7700',
+    tabBg: '#fff8e1',
+  },
 }
 
 const TYPE_KEYS = Object.keys(TYPE_CONFIG)
@@ -110,12 +122,13 @@ function groupByDate(items) {
 /* ── Navigation helper ──────────────────────────────────────────────── */
 function getNavPath(type, refId) {
   switch (type) {
-    case 'SAN_LUONG_NEW': return refId ? `/record/edit/${refId}` : '/'
-    case 'DOI_LO':        return '/khoach'
-    case 'DON_HANG_NEW':  return '/don-hang'
-    case 'HANG_LOI_NEW':  return '/hang-loi'
-    case 'KE_HOACH':      return '/work-schedule'
-    default:              return null
+    case 'SAN_LUONG_NEW':         return refId ? `/record/edit/${refId}` : '/'
+    case 'DOI_LO':                return '/khoach'
+    case 'DON_HANG_NEW':          return '/don-hang'
+    case 'HANG_LOI_NEW':          return '/hang-loi'
+    case 'KE_HOACH':              return '/work-schedule'
+    case 'LENH_CHUA_PHAT_HANH':  return '/lenh-san-xuat'
+    default:                      return null
   }
 }
 

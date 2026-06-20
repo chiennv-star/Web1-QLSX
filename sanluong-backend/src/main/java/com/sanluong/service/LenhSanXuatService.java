@@ -254,6 +254,15 @@ public class LenhSanXuatService {
         return repo.countMissingLichSX();
     }
 
+    /** Đếm và tạo reminder cho lệnh chưa phát hành */
+    public int triggerChuaPhatHanhReminder(String username) {
+        int count = (int) repo.findAll().stream()
+                .filter(e -> e.getDeletedAt() == null && !Boolean.TRUE.equals(e.getDaBanHanh()) && e.getSoLo() != null)
+                .count();
+        notificationService.ensureLenhChuaPhatHanhReminder(count, username);
+        return count;
+    }
+
     /** Ban hành hàng loạt theo danh sách ID */
     @Transactional
     public int banHanhBulk(List<Long> ids, String username) {

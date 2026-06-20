@@ -645,6 +645,8 @@ export default function LenhSanXuatTab() {
     try {
       const { data: res } = await api.get('/lenh-san-xuat')
       setLenhData(Array.isArray(res) ? res : [])
+      // Kích hoạt reminder nếu có lệnh chưa phát hành (fire-and-forget, tối đa 1 lần/ngày)
+      api.post('/lenh-san-xuat/check-reminder').catch(() => {})
     } catch {
       message.error('Không thể tải danh sách lệnh sản xuất')
     } finally {
@@ -991,8 +993,9 @@ export default function LenhSanXuatTab() {
         .lsx-tab-table .ant-table-tbody > tr > td { font-size: 12px; padding: 5px 8px; }
         .lsx-tab-table .ant-table-tbody > tr:hover > td { background: #eff6ff !important; }
         .lsx-tab-table tr.ant-table-row-selected > td { background: #dbeafe !important; }
-        .lsx-tab-table tr.lsx-row-pending > td { background: #fff8f0 !important; }
-        .lsx-tab-table tr.lsx-row-pending:hover > td { background: #ffeedd !important; }
+        .lsx-tab-table tr.lsx-row-pending > td { background: rgba(255,153,0,0.10) !important; }
+        .lsx-tab-table tr.lsx-row-pending > td:first-child { border-left: 3px solid #FF9900 !important; }
+        .lsx-tab-table tr.lsx-row-pending:hover > td { background: rgba(255,153,0,0.18) !important; }
       `}</style>
 
       {/* ── Sticky control bar ── */}

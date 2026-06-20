@@ -152,6 +152,12 @@ public class LenhSanXuatController {
         return ResponseEntity.ok(Map.of("created", created));
     }
 
+    @PostMapping("/check-reminder")
+    public ResponseEntity<Map<String, Integer>> checkReminder(Authentication auth) {
+        int count = service.triggerChuaPhatHanhReminder(auth.getName());
+        return ResponseEntity.ok(Map.of("chuaPhatHanh", count));
+    }
+
     @PostMapping("/ban-hanh/bulk")
     public ResponseEntity<Map<String, Integer>> banHanhBulk(@RequestBody List<Long> ids, Authentication auth) {
         int updated = service.banHanhBulk(ids, auth.getName());

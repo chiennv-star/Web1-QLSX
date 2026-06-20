@@ -230,6 +230,25 @@ public class NotificationService {
         repo.save(n);
     }
 
+    /**
+     * Tạo/cập nhật nhắc nhở "lệnh chưa phát hành" — tối đa 1 lần mỗi ngày.
+     * Xóa bản ghi cũ cùng ngày trước khi tạo mới để tránh trùng.
+     */
+    @Transactional
+    public void ensureLenhChuaPhatHanhReminder(int count, String triggeredBy) {
+        if (count <= 0) return;
+        LocalDateTime startOfDay = LocalDateTime.now().toLocalDate().atStartOfDay();
+        // Nếu đã có reminder hôm nay thì bỏ qua (tránh spam khi user F5 nhiều lần)
+        if (repo.existsByTypeAndCreatedAtAfter("LENH_CHUA_PHAT_HANH", startOfDay)) return;
+        Notification n = new Notification();
+        n.setType("LENH_CHUA_PHAT_HANH");
+        n.setTitle("Nhắc nhở: Lệnh chưa phát hành");
+        n.setMessage(String.format("Hiện có %d lệnh sản xuất chưa được phát hành — hãy kiểm tra và phát hành.", count));
+        n.setCreatedBy(triggeredBy != null ? triggeredBy : "system");
+        n.setCreatedAt(LocalDateTime.now());
+        repo.save(n);
+    }
+
     // Các loại thông báo bị ẩn với từng role
     private static final Map<String, Set<String>> EXCLUDED_TYPES_BY_ROLE = Map.of(
         "ADMIN_KH", Set.of("LENH_SX_NEW", "DON_HANG_NEW", "KE_HOACH")

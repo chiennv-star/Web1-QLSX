@@ -17,6 +17,12 @@ export function AuthProvider({ children }) {
     setUser(userData)
   }
 
+  const updateUser = (updates) => {
+    const updated = { ...user, ...updates }
+    localStorage.setItem('user', JSON.stringify(updated))
+    setUser(updated)
+  }
+
   const logout = () => {
     localStorage.removeItem('user')
     localStorage.removeItem('token')
@@ -74,7 +80,7 @@ export function AuthProvider({ children }) {
     if (congDoan === 'CC')    return ['ADMIN_PC', 'ADMIN_PCPL2'].includes(user?.role)
     if (congDoan === 'PCPL1') return ['ADMIN_PC', 'ADMIN_PCPL1'].includes(user?.role)
     if (congDoan === 'PCPL2') return ['ADMIN_PC', 'ADMIN_PCPL2'].includes(user?.role)
-    if (congDoan === 'PL')    return ['ADMIN_PL', 'ADMIN_PCPL3'].includes(user?.role)
+    if (congDoan === 'PL')    return ['ADMIN_PL', 'ADMIN_PCPL3', 'ADMIN_PCPL1'].includes(user?.role)
     return user?.role === `ADMIN_${congDoan}`
   }
 
@@ -143,7 +149,7 @@ export function AuthProvider({ children }) {
     if (role === 'ADMIN_BBC1')  return ['BBC1']
     if (role === 'ADMIN_PL')    return ['PL']
     if (role === 'ADMIN_DG')    return ['DG']
-    if (role === 'ADMIN_PCPL1') return ['PCPL1']
+    if (role === 'ADMIN_PCPL1') return ['PCPL1', 'PL']
     if (role === 'ADMIN_PCPL2') return ['PCPL2', 'CC']
     if (role === 'ADMIN_PCPL3') return ['PL']
     // Nhân viên theo nhóm cụ thể
@@ -166,7 +172,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAdmin, isAdminKH, isTKSX, isQuanDoc, isNhanVien, isHCNS, isKeToan, isManHinh, getMaNhanVien, getToNhom, canEditProduction, canEditProductMaster, canEditPlan, canEditLenh, canEditStage, isStageAdmin, canEditHangLoi, canEditAttendance, allowedEfficiencyTabs, getAllowedNhom, getAllowedStages, getAllowedEmployeeGroups, canDeleteSchedule }}>
+    <AuthContext.Provider value={{ user, login, logout, updateUser, isAdmin, isAdminKH, isTKSX, isQuanDoc, isNhanVien, isHCNS, isKeToan, isManHinh, getMaNhanVien, getToNhom, canEditProduction, canEditProductMaster, canEditPlan, canEditLenh, canEditStage, isStageAdmin, canEditHangLoi, canEditAttendance, allowedEfficiencyTabs, getAllowedNhom, getAllowedStages, getAllowedEmployeeGroups, canDeleteSchedule }}>
       {children}
     </AuthContext.Provider>
   )

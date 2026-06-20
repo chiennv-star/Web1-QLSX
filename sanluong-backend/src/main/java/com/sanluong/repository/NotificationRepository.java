@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
@@ -25,4 +26,10 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
         )
     """)
     long countUnreadForUser(@Param("username") String username);
+
+    // Check if a notification of given type already exists after a timestamp
+    boolean existsByTypeAndCreatedAtAfter(String type, LocalDateTime after);
+
+    // Delete all notifications of a given type
+    void deleteAllByType(String type);
 }
