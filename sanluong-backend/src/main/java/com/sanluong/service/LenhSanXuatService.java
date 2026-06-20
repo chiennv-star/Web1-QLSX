@@ -271,6 +271,12 @@ public class LenhSanXuatService {
                 .collect(Collectors.toList());
         list.forEach(e -> { e.setDaBanHanh(true); e.setUpdatedBy(username); });
         repo.saveAll(list);
+        // Tạo ProductionRecord + SCHEDULE WorkSchedules cho từng lệnh vừa ban hành
+        for (LenhSanXuat lenh : list) {
+            if (lenh.getMaBravo() != null && lenh.getSoLo() != null) {
+                autoCreateSanLuong(lenh, username);
+            }
+        }
         return list.size();
     }
 
