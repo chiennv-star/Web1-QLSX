@@ -2594,15 +2594,6 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
     try {
       if (field === 'toNhom') {
         await api.patch('/work-schedule/bulk-to-nhom', { ids: [id], toNhom: val || null })
-        if (congDoan === 'PL' && val === 'PCPL1') {
-          await api.patch(`/work-schedule/${id}/hidden`, { hidden: true })
-          setData(prev => prev.filter(r => r.id !== id))
-          setHiddenCount(c => c + 1)
-          setInlineEdit(null)
-          message.success('Đã gán PCPL1 và chuyển sang "Đã ẩn"')
-          parentOnSaved?.()
-          return
-        }
       } else if (field === 'phongThucHien') {
         await api.patch(`/work-schedule/${id}/phong-thuc-hien`, { phongThucHien: val || null })
       } else if (field === 'qaLayMau') {
