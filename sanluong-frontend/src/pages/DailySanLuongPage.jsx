@@ -1789,17 +1789,6 @@ function ThongKeSanXuatTab() {
 
   useEffect(() => { fetchData() }, []) // eslint-disable-line
 
-  useEffect(() => {
-    const t = setInterval(() => fetchData(undefined, { silent: true }), 60_000)
-    return () => clearInterval(t)
-  }, [fetchData])
-
-  useEffect(() => {
-    const h = () => fetchData(undefined, { silent: true })
-    window.addEventListener('app:silent-refresh', h)
-    return () => window.removeEventListener('app:silent-refresh', h)
-  }, [fetchData])
-
   // ── Tính FPY + hiệu quả per tổ ───────────────────────────────────────────
   const toStats = useMemo(() => {
     const map = {}
