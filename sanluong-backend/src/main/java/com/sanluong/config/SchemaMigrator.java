@@ -29,6 +29,8 @@ public class SchemaMigrator implements CommandLineRunner {
                 "Đã thêm cột 'khac' vào work_schedule_session.");
         runMigration("ALTER TABLE users ADD COLUMN must_change_password TINYINT(1) NOT NULL DEFAULT 0",
                 "Đã thêm cột 'must_change_password' vào users.");
+        runMigration("ALTER TABLE work_schedule_session ADD COLUMN loai_session VARCHAR(20) DEFAULT NULL",
+                "Đã thêm cột 'loai_session' vào work_schedule_session.");
     }
 
     private void runMigration(String sql, String successMsg) {

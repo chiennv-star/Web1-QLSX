@@ -402,8 +402,11 @@ export default function KeHoachToPage() {
     try {
       // Fetch sessions theo từng plan (batch)
       const wsIds = [...new Set(plansList.map(p => p.id))]
+      const sessionParams = planSource === 'SCHEDULE'
+        ? (id) => ({ scheduleId: id, loaiSession: 'KH_TO' })
+        : (id) => ({ scheduleId: id })
       const results = await Promise.allSettled(
-        wsIds.map(id => api.get('/work-schedule-session', { params: { scheduleId: id } }))
+        wsIds.map(id => api.get('/work-schedule-session', { params: sessionParams(id) }))
       )
       // Gom tất cả sessions; nếu có range thì lọc, không thì lấy hết
       const allSessions = results.flatMap(r =>
@@ -682,6 +685,7 @@ export default function KeHoachToPage() {
           caSanXuat:      caSession,
           thoiGianBatDau: thoiGian,
           congThucHien:   congThuc,
+          ...(planSource === 'SCHEDULE' ? { loaiSession: 'KH_TO' } : {}),
         })
         setAssigns(prev => prev.map(a =>
           a.id === assignId
@@ -693,7 +697,7 @@ export default function KeHoachToPage() {
           // Session đã tồn tại → fetch session hiện có để lấy ID và lock status
           try {
             const { data: existingSessions } = await api.get('/work-schedule-session', {
-              params: { scheduleId: assign.wsId }
+              params: { scheduleId: assign.wsId, ...(planSource === 'SCHEDULE' ? { loaiSession: 'KH_TO' } : {}) }
             })
             const found = Array.isArray(existingSessions)
               ? existingSessions.find(s => s.maNhanVien === emp.maNhanVien && s.ngay === assign.ngayFull)

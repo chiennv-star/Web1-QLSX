@@ -63,4 +63,7 @@ public class WorkScheduleSessionDto {
     public boolean isIsTangCa() { return isTangCa; }
     public void setIsTangCa(boolean isTangCa) { this.isTangCa = isTangCa; }
 
+    private String loaiSession;
+    public String getLoaiSession() { return loaiSession; }
+    public void setLoaiSession(String loaiSession) { this.loaiSession = loaiSession; }
 }

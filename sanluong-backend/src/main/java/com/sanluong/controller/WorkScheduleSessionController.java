@@ -61,8 +61,9 @@ public class WorkScheduleSessionController {
 
     @GetMapping
     public ResponseEntity<List<WorkScheduleSession>> getByScheduleId(
-            @RequestParam Long scheduleId) {
-        return ResponseEntity.ok(service.getByScheduleId(scheduleId));
+            @RequestParam Long scheduleId,
+            @RequestParam(required = false) String loaiSession) {
+        return ResponseEntity.ok(service.getByScheduleId(scheduleId, loaiSession));
     }
 
     @PostMapping

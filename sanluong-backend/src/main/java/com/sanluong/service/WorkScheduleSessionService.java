@@ -51,7 +51,10 @@ public class WorkScheduleSessionService {
         this.employeeRepository = employeeRepository;
     }
 
-    public List<WorkScheduleSession> getByScheduleId(Long scheduleId) {
+    public List<WorkScheduleSession> getByScheduleId(Long scheduleId, String loaiSession) {
+        if ("KH_TO".equals(loaiSession)) {
+            return repository.findKhToByWorkScheduleId(scheduleId);
+        }
         return repository.findByWorkScheduleIdOrderByNgayAscIdAsc(scheduleId);
     }
 
@@ -65,9 +68,12 @@ public class WorkScheduleSessionService {
         WorkScheduleSession s = new WorkScheduleSession();
         mapFromDto(s, dto);
         WorkScheduleSession saved = repository.save(s);
-        recalculateGroupNs(saved.getWorkScheduleId(), saved.getNgay());
-        syncAggregates(saved.getWorkScheduleId());
-        recalculateEfficiency(saved.getMaNhanVien());
+        // KH_TO sessions không ảnh hưởng đến aggregates và hiệu quả Sản Lượng Tổ
+        if (!"KH_TO".equals(saved.getLoaiSession())) {
+            recalculateGroupNs(saved.getWorkScheduleId(), saved.getNgay());
+            syncAggregates(saved.getWorkScheduleId());
+            recalculateEfficiency(saved.getMaNhanVien());
+        }
         return saved;
     }
 
@@ -77,13 +83,14 @@ public class WorkScheduleSessionService {
         String oldMaNv = s.getMaNhanVien();
         mapFromDto(s, dto);
         WorkScheduleSession saved = repository.save(s);
-        recalculateGroupNs(saved.getWorkScheduleId(), saved.getNgay());
-        syncAggregates(saved.getWorkScheduleId());
-        // Nếu đổi nhân viên, cập nhật cả người cũ
-        if (oldMaNv != null && !oldMaNv.equals(saved.getMaNhanVien())) {
-            recalculateEfficiency(oldMaNv);
+        if (!"KH_TO".equals(saved.getLoaiSession())) {
+            recalculateGroupNs(saved.getWorkScheduleId(), saved.getNgay());
+            syncAggregates(saved.getWorkScheduleId());
+            if (oldMaNv != null && !oldMaNv.equals(saved.getMaNhanVien())) {
+                recalculateEfficiency(oldMaNv);
+            }
+            recalculateEfficiency(saved.getMaNhanVien());
         }
-        recalculateEfficiency(saved.getMaNhanVien());
         return saved;
     }
 
@@ -92,9 +99,12 @@ public class WorkScheduleSessionService {
         WorkScheduleSession existing = repository.findById(id).orElse(null);
         Long workScheduleId = existing != null ? existing.getWorkScheduleId() : null;
         String maNv = existing != null ? existing.getMaNhanVien() : null;
+        String loai = existing != null ? existing.getLoaiSession() : null;
         repository.deleteById(id);
-        syncAggregates(workScheduleId);
-        recalculateEfficiency(maNv);
+        if (!"KH_TO".equals(loai)) {
+            syncAggregates(workScheduleId);
+            recalculateEfficiency(maNv);
+        }
     }
 
     /**
@@ -677,6 +687,7 @@ public class WorkScheduleSessionService {
         s.setKhac(dto.getKhac());
         s.setCaSanXuat(dto.getCaSanXuat());
         s.setIsTangCa(dto.isIsTangCa());
+        s.setLoaiSession(dto.getLoaiSession());
 
         // nangSuat sẽ được tính lại theo nhóm sau khi save (recalculateGroupNs)
         s.setNangSuat(dto.getNangSuat());

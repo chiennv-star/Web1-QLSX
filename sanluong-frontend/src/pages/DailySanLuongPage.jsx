@@ -1730,6 +1730,319 @@ function BaoCaoTab() {
   )
 }
 
+// ─── Tab 4: Thống kê sản xuất ────────────────────────────────────────────────
+
+const TO_CONFIG_TK = [
+  { key: 'BBC1',  label: 'BBC1',  mau: '#6d28d9' },
+  { key: 'PCPL1', label: 'PCPL1', mau: '#1d4ed8' },
+  { key: 'PCPL2', label: 'PCPL2', mau: '#0369a1' },
+  { key: 'PL',    label: 'PL',    mau: '#0e7490' },
+  { key: 'DG',    label: 'ĐG',    mau: '#b45309' },
+]
+const MT_DAT_TK = 95
+
+function ThongKeSanXuatTab() {
+  const [raw, setRaw]         = useState([])
+  const [loading, setLoading] = useState(false)
+  const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs()])
+
+  const fetchData = useCallback(async (range = dateRange, { silent = false } = {}) => {
+    if (!silent) setLoading(true)
+    try {
+      const params = {}
+      if (range?.[0]) params.fromDate = range[0].format('YYYY-MM-DD')
+      if (range?.[1]) params.toDate   = range[1].format('YYYY-MM-DD')
+      const { data: res } = await api.get('/work-schedule-session/daily-report', { params })
+      setRaw(Array.isArray(res) ? res : [])
+    } catch {
+      if (!silent) message.error('Không thể tải dữ liệu thống kê')
+    } finally {
+      if (!silent) setLoading(false)
+    }
+  }, [dateRange])
+
+  useEffect(() => { fetchData() }, []) // eslint-disable-line
+
+  useEffect(() => {
+    const t = setInterval(() => fetchData(undefined, { silent: true }), 60_000)
+    return () => clearInterval(t)
+  }, [fetchData])
+
+  useEffect(() => {
+    const h = () => fetchData(undefined, { silent: true })
+    window.addEventListener('app:silent-refresh', h)
+    return () => window.removeEventListener('app:silent-refresh', h)
+  }, [fetchData])
+
+  // ── Tính FPY + hiệu quả per tổ ───────────────────────────────────────────
+  const toStats = useMemo(() => {
+    const map = {}
+    TO_CONFIG_TK.forEach(t => { map[t.key] = { ...t, tongLo: 0, dat: 0, khongDat: 0, chuaNhap: 0, tongSl: 0, tongCong: 0 } })
+    raw.forEach(r => {
+      let key = r.congDoan?.toUpperCase()
+      if (key === 'PCPL3' || key === 'CC') key = 'PL'
+      if (!map[key]) return
+      const isDone = r.status === 'SAVED' || r.status === 'PENDING'
+      const hasSoLo = !!(r.soLo || '').trim()
+      const sl   = Number(r.sanLuong   || 0)
+      const cong = Number(r.congThucHien || 0)
+      const ns   = r.nangSuat != null ? Number(r.nangSuat) : (cong > 0 && sl > 0 ? sl / cong : null)
+      const nsTb = r.nangSuatTrungBinh != null ? Number(r.nangSuatTrungBinh) : null
+      if (isDone && hasSoLo) {
+        map[key].tongLo++
+        if (ns != null && nsTb != null) { if (ns >= nsTb) map[key].dat++; else map[key].khongDat++ }
+        else map[key].chuaNhap++
+        map[key].tongSl   += sl
+        map[key].tongCong += cong
+      } else {
+        map[key].chuaNhap++
+      }
+    })
+    return Object.values(map).map(t => {
+      const base    = t.dat + t.khongDat
+      const tyLeDat = base > 0 ? +(t.dat / base * 100).toFixed(1) : null
+      const ns      = t.tongCong > 0 ? +(t.tongSl / t.tongCong).toFixed(1) : null
+      return { ...t, tyLeDat, nangSuat: ns, datMucTieu: tyLeDat != null && tyLeDat >= MT_DAT_TK }
+    }).sort((a, b) => (b.tyLeDat ?? -1) - (a.tyLeDat ?? -1))
+  }, [raw])
+
+  const kpi = useMemo(() => {
+    const dat      = toStats.reduce((s, t) => s + t.dat, 0)
+    const khongDat = toStats.reduce((s, t) => s + t.khongDat, 0)
+    const base     = dat + khongDat
+    const tongSl   = toStats.reduce((s, t) => s + t.tongSl, 0)
+    const tongCong = toStats.reduce((s, t) => s + t.tongCong, 0)
+    return {
+      tongLo:    toStats.reduce((s, t) => s + t.tongLo, 0),
+      dat, khongDat,
+      chuaNhap:  toStats.reduce((s, t) => s + t.chuaNhap, 0),
+      tyLeDat:   base > 0 ? +(dat / base * 100).toFixed(1) : null,
+      ns:        tongCong > 0 ? +(tongSl / tongCong).toFixed(1) : null,
+      tongSl, tongCong,
+    }
+  }, [toStats])
+
+  const maxNs = Math.max(...toStats.map(t => t.nangSuat ?? 0), 0.001)
+  const toWithChq = useMemo(() => toStats.map(t => {
+    const nsCh = t.nangSuat != null ? +(t.nangSuat / maxNs * 100).toFixed(1) : 0
+    const chq  = t.tyLeDat  != null ? +((t.tyLeDat * nsCh) / 100).toFixed(1)  : null
+    return { ...t, nsChuanHoa: nsCh, chq }
+  }), [toStats, maxNs])
+
+  const nhomOf = t => {
+    if (t.tyLeDat == null) return null
+    if (t.tyLeDat >= MT_DAT_TK && t.nsChuanHoa >= 50) return 'Ngôi sao'
+    if (t.tyLeDat >= MT_DAT_TK)                        return 'Chắc chắn'
+    if (t.nsChuanHoa >= 50)                            return 'Nhanh nhưng lỗi'
+    return 'Ưu tiên cải thiện'
+  }
+  const NHOM_COLOR = {
+    'Ngôi sao': '#10b981', 'Chắc chắn': '#0ea5e9',
+    'Nhanh nhưng lỗi': '#f59e0b', 'Ưu tiên cải thiện': '#ef4444',
+  }
+  const NHOM_TU_VAN = {
+    'Ngôi sao':           'Giữ chuẩn — nhân rộng cách làm cho các tổ khác',
+    'Chắc chắn':          'Chất lượng ổn — tập trung tăng năng suất',
+    'Nhanh nhưng lỗi':    'Siết kiểm soát chất lượng trước khi tăng tốc',
+    'Ưu tiên cải thiện':  'Phân tích nguyên nhân, lên kế hoạch cải tiến ngay',
+  }
+
+  const best  = toStats.find(t => t.tyLeDat != null)
+  const worst = [...toStats].reverse().find(t => t.tyLeDat != null)
+  const bestChq = toWithChq.reduce((b, t) => t.chq != null && (b == null || t.chq > b.chq) ? t : b, null)
+  const chqTb   = (() => { const v = toWithChq.filter(t => t.chq != null); return v.length ? +(v.reduce((s,t)=>s+t.chq,0)/v.length).toFixed(1) : null })()
+
+  const TD = ({ children, align = 'right', style = {} }) => (
+    <td style={{ padding: '8px 12px', textAlign: align, fontSize: 12, ...style }}>{children}</td>
+  )
+  const TH = ({ children, align = 'left' }) => (
+    <th style={{ padding: '8px 12px', fontWeight: 700, fontSize: 11, color: '#64748b', textAlign: align, borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>{children}</th>
+  )
+  const KpiCard = ({ label, value, unit, meta, accent }) => (
+    <div style={{ background: '#fff', border: `1.5px solid ${accent}22`, borderLeft: `4px solid ${accent}`, borderRadius: 12, padding: '12px 14px' }}>
+      <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>
+        {value}
+        {unit && <span style={{ fontSize: 13, fontWeight: 400, color: '#94a3b8', marginLeft: 4 }}>{unit}</span>}
+      </div>
+      {meta && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>{meta}</div>}
+    </div>
+  )
+  const Panel = ({ title, hint, children }) => (
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ padding: '10px 16px', fontWeight: 700, fontSize: 12.5, color: '#1e293b', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>{title}</span>
+        {hint && <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>{hint}</span>}
+      </div>
+      {children}
+    </div>
+  )
+
+  return (
+    <div>
+      {/* Filter bar */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#eff6ff', borderBottom: '2px solid #bfdbfe', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ fontWeight: 800, fontSize: 14, color: '#1d4ed8', whiteSpace: 'nowrap' }}>
+          <BarChartOutlined style={{ marginRight: 6 }} />Thống kê sản xuất
+        </span>
+        <RangePicker size="small" value={dateRange} onChange={setDateRange} format="DD/MM/YYYY" allowClear={false} />
+        <Button size="small" type="primary" icon={<SearchOutlined />} loading={loading}
+          style={{ background: '#1d4ed8', borderColor: '#1d4ed8' }} onClick={() => fetchData()}>Truy xuất</Button>
+        <Button size="small" icon={<ReloadOutlined />} onClick={() => { const d=[dayjs().startOf('month'),dayjs()]; setDateRange(d); fetchData(d) }} />
+        <span style={{ fontSize: 11, color: '#64748b', marginLeft: 'auto' }}>
+          Mục tiêu FPY: <b style={{ color: '#1d4ed8' }}>{MT_DAT_TK}%</b>
+        </span>
+      </div>
+
+      {loading
+        ? <div style={{ textAlign: 'center', padding: 60, color: '#94a3b8' }}>Đang tải...</div>
+        : (
+        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          {/* ── PHẦN 1: First Pass Yield ── */}
+          <div style={{ fontWeight: 800, fontSize: 13, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ background: '#d1fae5', color: '#065f46', borderRadius: 6, padding: '2px 8px', fontSize: 12 }}>✓</span>
+            Tỷ lệ đạt / không đạt (First Pass Yield)
+            <span style={{ fontSize: 11, fontWeight: 400, color: '#94a3b8' }}>· Kỳ: {dateRange[0]?.format('DD/MM')} – {dateRange[1]?.format('DD/MM/YYYY')}</span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(148px, 1fr))', gap: 10 }}>
+            <KpiCard label="Lô đã đánh giá"   value={kpi.tongLo}  meta={`Tổng phát sinh ${kpi.tongLo} lô`}  accent="#4f46e5" />
+            <KpiCard label="Tỷ lệ đạt chung"  value={kpi.tyLeDat != null ? kpi.tyLeDat + '%' : '—'} meta={`${kpi.dat} lô đạt · Mục tiêu ${MT_DAT_TK}%`} accent="#10b981" />
+            <KpiCard label="Tỷ lệ không đạt"  value={kpi.tyLeDat != null ? (100-kpi.tyLeDat).toFixed(1)+'%' : '—'} meta={`${kpi.khongDat} lô không đạt`} accent="#ef4444" />
+            <KpiCard label="Chưa nhập kết quả" value={kpi.chuaNhap} unit="lô" meta="Cần đôn đốc nhập liệu"   accent="#f59e0b" />
+            <KpiCard label="Tổ dẫn đầu"        value={best?.label ?? '—'} meta={best ? `${best.tyLeDat}% tỷ lệ đạt` : ''} accent="#10b981" />
+            <KpiCard label="Tổ cần cải thiện"  value={worst?.label ?? '—'} meta={worst ? `${worst.tyLeDat}% tỷ lệ đạt` : ''} accent="#ef4444" />
+          </div>
+
+          <Panel title="Chi tiết theo tổ" hint="Sắp xếp theo tỷ lệ đạt ↓">
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead><tr>
+                <TH>#</TH><TH>Tổ</TH>
+                <TH align="right">Tổng lô</TH><TH align="right">Đạt</TH>
+                <TH align="right">Không đạt</TH><TH align="right">Chưa nhập</TH>
+                <TH align="right">Tỷ lệ đạt</TH><TH align="right">So MT</TH>
+                <TH>Đánh giá</TH>
+              </tr></thead>
+              <tbody>
+                {toStats.map((t, i) => {
+                  const delta = t.tyLeDat != null ? +(t.tyLeDat - MT_DAT_TK).toFixed(1) : null
+                  const barColor = t.tyLeDat == null ? '#e2e8f0' : t.tyLeDat >= MT_DAT_TK ? '#10b981' : t.tyLeDat >= 90 ? '#f59e0b' : '#ef4444'
+                  return (
+                    <tr key={t.key} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <TD align="left">
+                        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', fontSize: 11, fontWeight: 800, background: i === 0 ? '#fbbf24' : '#f1f5f9', color: i === 0 ? '#fff' : '#64748b' }}>{i + 1}</span>
+                      </TD>
+                      <TD align="left"><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: t.mau, marginRight: 6 }} /><b>{t.label}</b></TD>
+                      <TD>{t.tongLo}</TD>
+                      <TD style={{ color: '#047857', fontWeight: 700 }}>{t.dat}</TD>
+                      <TD style={{ color: '#b91c1c', fontWeight: 700 }}>{t.khongDat}</TD>
+                      <TD style={{ color: '#94a3b8' }}>{t.chuaNhap}</TD>
+                      <TD>
+                        {t.tyLeDat != null ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ flex: 1, minWidth: 60, height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: t.tyLeDat + '%', background: barColor, borderRadius: 3 }} />
+                            </div>
+                            <b style={{ minWidth: 42, textAlign: 'right' }}>{t.tyLeDat}%</b>
+                          </div>
+                        ) : <span style={{ color: '#d1d5db' }}>—</span>}
+                      </TD>
+                      <TD style={{ fontWeight: 700, color: delta == null ? '#d1d5db' : delta >= 0 ? '#047857' : '#b91c1c' }}>
+                        {delta != null ? (delta >= 0 ? '+' : '') + delta : '—'}
+                      </TD>
+                      <TD align="left">
+                        {t.tyLeDat == null
+                          ? <span style={{ color: '#d1d5db' }}>—</span>
+                          : t.tyLeDat >= MT_DAT_TK
+                            ? <span style={{ background: '#d1fae5', color: '#065f46', padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>Đạt mục tiêu</span>
+                          : t.tyLeDat >= 90
+                            ? <span style={{ background: '#fef3c7', color: '#92400e', padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>Cần theo dõi</span>
+                            : <span style={{ background: '#fee2e2', color: '#991b1b', padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>Cần cải thiện</span>
+                        }
+                      </TD>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            <div style={{ padding: '8px 16px', fontSize: 11, color: '#94a3b8', borderTop: '1px solid #f1f5f9' }}>
+              <b>FPY</b> = Số lô đạt ÷ (Đạt + Không đạt). Lô "Chưa nhập" không tính vào mẫu số. Mục tiêu kỳ này: <b>{MT_DAT_TK}%</b>. Tổ dưới 90% cần phân tích nguyên nhân theo biểu đồ Pareto.
+            </div>
+          </Panel>
+
+          {/* ── PHẦN 2: Hiệu quả sản xuất ── */}
+          <div style={{ fontWeight: 800, fontSize: 13, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+            <span style={{ background: '#ede9fe', color: '#5b21b6', borderRadius: 6, padding: '2px 8px', fontSize: 12 }}>◎</span>
+            Đánh giá hiệu quả sản xuất theo tổ
+            <span style={{ fontSize: 11, fontWeight: 400, color: '#94a3b8' }}>· Kết hợp Chất lượng × Năng suất (OEE rút gọn)</span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(148px, 1fr))', gap: 10 }}>
+            <KpiCard label="Năng suất TB xưởng" value={kpi.ns ?? '—'} meta="SP / giờ công" accent="#4f46e5" />
+            <KpiCard label="Tổng sản lượng" value={kpi.tongSl.toLocaleString('vi-VN')} accent="#0ea5e9" />
+            <KpiCard label="Tổng giờ công" value={kpi.tongCong.toLocaleString('vi-VN',{maximumFractionDigits:1})} unit="h" accent="#6d28d9" />
+            <KpiCard label="Đạt mục tiêu CL" value={toWithChq.filter(t=>t.datMucTieu).length} unit={`/ ${TO_CONFIG_TK.length} tổ`} meta={`CL ≥ ${MT_DAT_TK}%`} accent="#10b981" />
+            <KpiCard label="Tổ hiệu quả nhất" value={bestChq?.label ?? '—'} meta={bestChq ? `CHQ ${bestChq.chq}` : ''} accent="#10b981" />
+            <KpiCard label="CHQ trung bình" value={chqTb ?? '—'} meta="Thang 0–100" accent="#f59e0b" />
+          </div>
+
+          <Panel title="Phiếu điểm hiệu quả & khuyến nghị" hint="Sắp xếp theo CHQ ↓">
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead><tr>
+                <TH>#</TH><TH>Tổ</TH>
+                <TH align="right">Sản lượng</TH><TH align="right">Giờ công</TH>
+                <TH align="right">Năng suất</TH><TH align="right">Tỷ lệ đạt</TH>
+                <TH align="right">CHQ</TH><TH>Nhóm</TH><TH>Khuyến nghị</TH>
+              </tr></thead>
+              <tbody>
+                {[...toWithChq].sort((a,b)=>(b.chq??-1)-(a.chq??-1)).map((t, i) => {
+                  const nhom = nhomOf(t)
+                  const nsBar = maxNs > 0 ? (t.nangSuat ?? 0) / maxNs * 100 : 0
+                  return (
+                    <tr key={t.key} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <TD align="left">
+                        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', fontSize: 11, fontWeight: 800, background: i === 0 ? '#fbbf24' : '#f1f5f9', color: i === 0 ? '#fff' : '#64748b' }}>{i + 1}</span>
+                      </TD>
+                      <TD align="left"><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: t.mau, marginRight: 6 }} /><b>{t.label}</b></TD>
+                      <TD>{t.tongSl.toLocaleString('vi-VN')}</TD>
+                      <TD>{t.tongCong.toLocaleString('vi-VN',{maximumFractionDigits:1})}</TD>
+                      <TD>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ flex: 1, minWidth: 50, height: 5, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: nsBar + '%', background: t.mau, borderRadius: 3 }} />
+                          </div>
+                          <b>{t.nangSuat ?? '—'}</b>
+                        </div>
+                      </TD>
+                      <TD style={{ fontWeight: 700, color: t.tyLeDat==null ? '#94a3b8' : t.datMucTieu ? '#047857' : '#b45309' }}>
+                        {t.tyLeDat != null ? t.tyLeDat + '%' : '—'}
+                      </TD>
+                      <TD><b style={{ fontSize: 15 }}>{t.chq ?? '—'}</b></TD>
+                      <TD align="left">
+                        {nhom
+                          ? <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: NHOM_COLOR[nhom] + '22', color: NHOM_COLOR[nhom] }}>{nhom}</span>
+                          : <span style={{ color: '#d1d5db' }}>—</span>}
+                      </TD>
+                      <TD align="left" style={{ fontSize: 11, color: '#475569', maxWidth: 220 }}>
+                        {nhom ? NHOM_TU_VAN[nhom] : '—'}
+                      </TD>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            <div style={{ padding: '8px 16px', fontSize: 11, color: '#94a3b8', borderTop: '1px solid #f1f5f9' }}>
+              <b>CHQ</b> (Chỉ số Hiệu quả Tổng hợp) = Chất lượng × Hiệu năng ÷ 100. Năng suất chuẩn hóa: tổ cao nhất = 100%.
+              Đường chia ma trận: mục tiêu chất lượng {MT_DAT_TK}%, trung vị năng suất.
+            </div>
+          </Panel>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Page chính: wrapper Tabs ─────────────────────────────────────────────────
 
 export default function DailySanLuongPage() {
@@ -1798,6 +2111,16 @@ export default function DailySanLuongPage() {
         </span>
       ),
       children: <BaoCaoTab />,
+    },
+    {
+      key: 'thongke',
+      label: (
+        <span>
+          <BarChartOutlined style={{ marginRight: 5 }} />
+          Thống kê sản xuất
+        </span>
+      ),
+      children: <ThongKeSanXuatTab />,
     },
   ]
 

@@ -67,6 +67,10 @@ public class WorkScheduleSession {
     @Column(name = "is_tang_ca", nullable = false)
     private boolean isTangCa = false;
 
+    // null = SCHEDULE (Sản Lượng Tổ, backward compatible); 'KH_TO' = Kế Hoạch Tổ riêng
+    @Column(name = "loai_session", length = 20)
+    private String loaiSession;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -126,4 +130,6 @@ public class WorkScheduleSession {
     public void setIsTangCa(boolean isTangCa) { this.isTangCa = isTangCa; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public String getLoaiSession() { return loaiSession; }
+    public void setLoaiSession(String loaiSession) { this.loaiSession = loaiSession; }
 }
