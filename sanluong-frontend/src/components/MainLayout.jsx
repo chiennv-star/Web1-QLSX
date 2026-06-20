@@ -204,7 +204,7 @@ export default function MainLayout() {
         {
           key: '/lenh-san-xuat',
           icon: mkBadgeIcon(<FileDoneOutlined />, lenhChuaPhatHanh),
-          label: mkBadgeLabel('Lệnh Sản Xuất', lenhChuaPhatHanh),
+          label: 'Lệnh Sản Xuất',
         },
         ...(canEditHangLoi() ? [{
           key: '/hang-loi',
