@@ -255,6 +255,21 @@ public class LenhSanXuatService {
     }
 
     /** Đếm và tạo reminder cho lệnh chưa phát hành */
+    public java.util.Map<String, Object> countChuaPhatHanhByTo() {
+        List<LenhSanXuat> pending = repo.findAll().stream()
+                .filter(e -> e.getDeletedAt() == null && !Boolean.TRUE.equals(e.getDaBanHanh()) && e.getSoLo() != null)
+                .collect(Collectors.toList());
+        java.util.Map<String, Integer> byTo = new java.util.LinkedHashMap<>();
+        for (LenhSanXuat e : pending) {
+            String to = e.getToThucHien() != null ? e.getToThucHien() : "Chưa xếp";
+            byTo.merge(to, 1, Integer::sum);
+        }
+        java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("total", pending.size());
+        result.put("byTo", byTo);
+        return result;
+    }
+
     public int triggerChuaPhatHanhReminder(String username) {
         int count = (int) repo.findAll().stream()
                 .filter(e -> e.getDeletedAt() == null && !Boolean.TRUE.equals(e.getDaBanHanh()) && e.getSoLo() != null)

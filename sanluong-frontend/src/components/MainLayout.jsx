@@ -110,6 +110,7 @@ export default function MainLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [unreadByType, setUnreadByType] = useState({})
+  const [lenhChuaPhatHanh, setLenhChuaPhatHanh] = useState(0)
   const [pwModal, setPwModal] = useState(false)
   const [pwSaving, setPwSaving] = useState(false)
   const [pwForm] = Form.useForm()
@@ -132,11 +133,19 @@ export default function MainLayout() {
     } catch { /* non-blocking */ }
   }, [])
 
+  const fetchLenhBadge = useCallback(async () => {
+    try {
+      const { data } = await api.get('/lenh-san-xuat/count-chua-phat-hanh')
+      setLenhChuaPhatHanh(data?.total || 0)
+    } catch { /* non-blocking */ }
+  }, [])
+
   useEffect(() => {
     fetchUnread()
-    pollRef.current = setInterval(fetchUnread, 30000)
+    fetchLenhBadge()
+    pollRef.current = setInterval(() => { fetchUnread(); fetchLenhBadge() }, 30000)
     return () => clearInterval(pollRef.current)
-  }, [fetchUnread])
+  }, [fetchUnread, fetchLenhBadge])
 
   // Reset badge khi vào trang thông báo
   useEffect(() => {
@@ -192,7 +201,11 @@ export default function MainLayout() {
         },
         { key: '/khoach',          icon: <CalendarOutlined />, label: 'Kế hoạch' },
         { key: '/ke-hoach-to',     icon: <TeamOutlined />,    label: 'Kế Hoạch Tổ' },
-        { key: '/lenh-san-xuat',   icon: <FileDoneOutlined />, label: 'Lệnh Sản Xuất' },
+        {
+          key: '/lenh-san-xuat',
+          icon: mkBadgeIcon(<FileDoneOutlined />, lenhChuaPhatHanh),
+          label: mkBadgeLabel('Lệnh Sản Xuất', lenhChuaPhatHanh),
+        },
         ...(canEditHangLoi() ? [{
           key: '/hang-loi',
           icon: <WarningOutlined />,

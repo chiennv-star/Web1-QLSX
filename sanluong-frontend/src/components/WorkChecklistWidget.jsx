@@ -45,6 +45,21 @@ async function fetchKhoachHomNayKH() {
   return list.filter(w => w.tinhTrang !== 'done').length
 }
 
+async function fetchLenhChuaPhatHanh() {
+  const { data } = await api.get('/lenh-san-xuat/count-chua-phat-hanh')
+  return typeof data?.total === 'number' ? data.total : 0
+}
+
+const LENH_CHUA_PHAT_HANH_TASK = {
+  id:    'lenh_chua_phat_hanh',
+  icon:  '📋',
+  label: 'Lệnh chưa phát hành',
+  desc:  'Lệnh sản xuất đã có số lô nhưng chưa được phát hành cho tổ',
+  route: '/lenh-san-xuat',
+  fetch: fetchLenhChuaPhatHanh,
+  color: '#f97316',
+}
+
 // ── Task definitions ──────────────────────────────────────────────────────────
 
 // Fix lỗi 3a: bổ sung ADMIN_PL, ADMIN_PC vào map
@@ -99,6 +114,7 @@ function buildTasks(role) {
         fetch: fetchChoDuyetSL,
         color: '#8b5cf6',
       },
+      LENH_CHUA_PHAT_HANH_TASK,
       HANG_LOI_TASK,
     ]
   }
@@ -115,6 +131,7 @@ function buildTasks(role) {
         fetch: fetchChoDuyetSL,
         color: '#8b5cf6',
       },
+      LENH_CHUA_PHAT_HANH_TASK,
       HANG_LOI_TASK,
     ]
   }
@@ -140,6 +157,7 @@ function buildTasks(role) {
         fetch: fetchKhoachHomNayKH,
         color: '#0ea5e9',
       },
+      LENH_CHUA_PHAT_HANH_TASK,
       HANG_LOI_TASK,
     ]
   }
@@ -173,6 +191,8 @@ function buildTasks(role) {
       color: '#10b981',
     },
   ]
+
+  tasks.push(LENH_CHUA_PHAT_HANH_TASK)
 
   // Fix lỗi 3b: tất cả role trong CAN_EDIT_HANG_LOI đều thấy task hàng lỗi
   if (CAN_EDIT_HANG_LOI.has(role)) {

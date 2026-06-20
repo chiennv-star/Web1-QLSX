@@ -975,9 +975,9 @@ export default function LenhSanXuatTab() {
 
   // ── Sub-tabs ───────────────────────────────────────────────────────────────
   const subTabs = [
-    { key: 'chua_xep',   label: `Chưa xếp (${tabCounts.chua_xep})` },
-    ...TO_LIST.map(t => ({ key: t, label: `${t} (${tabCounts[t]})` })),
-    { key: 'hoan_thien', label: `Lệnh đã hoàn thiện (${tabCounts.hoan_thien})` },
+    { key: 'chua_xep',   label: `Chưa xếp (${tabCounts.chua_xep})`,                  warn: false },
+    ...TO_LIST.map(t => ({ key: t, label: `${t} (${tabCounts[t]})`,                   warn: tabCounts[t] > 0 })),
+    { key: 'hoan_thien', label: `Lệnh đã hoàn thiện (${tabCounts.hoan_thien})`,       warn: false },
   ]
 
   const isLoading = loading || pendingLoad
@@ -1106,26 +1106,38 @@ export default function LenhSanXuatTab() {
 
         {/* Sub-tab bar */}
         <div style={{ display: 'flex', gap: 0, overflowX: 'auto', borderTop: '1px solid #e2e8f0' }}>
-          {subTabs.map(t => (
-            <div
-              key={t.key}
-              onClick={() => { setActiveTab(t.key); setSelectedKeys([]) }}
-              style={{
-                padding: '8px 14px',
-                cursor: 'pointer',
-                fontSize: 12,
-                fontWeight: activeTab === t.key ? 700 : 400,
-                color: activeTab === t.key ? '#fff' : '#64748b',
-                background: activeTab === t.key ? '#1e3a5f' : 'transparent',
-                borderBottom: activeTab === t.key ? '2px solid #1e3a5f' : '2px solid transparent',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.15s',
-                borderRadius: activeTab === t.key ? '4px 4px 0 0' : 0,
-              }}
-            >
-              {t.label}
-            </div>
-          ))}
+          {subTabs.map(t => {
+            const isActive = activeTab === t.key
+            const warnColor   = '#ea580c'
+            const warnBg      = '#fff7ed'
+            const warnBorder  = '#fb923c'
+            return (
+              <div
+                key={t.key}
+                onClick={() => { setActiveTab(t.key); setSelectedKeys([]) }}
+                style={{
+                  padding: '8px 14px',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  fontWeight: isActive ? 700 : (t.warn ? 700 : 400),
+                  color: isActive ? '#fff' : (t.warn ? warnColor : '#64748b'),
+                  background: isActive ? (t.warn ? warnColor : '#1e3a5f') : (t.warn ? warnBg : 'transparent'),
+                  borderBottom: isActive
+                    ? `2px solid ${t.warn ? warnColor : '#1e3a5f'}`
+                    : t.warn ? `2px solid ${warnBorder}` : '2px solid transparent',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s',
+                  borderRadius: isActive ? '4px 4px 0 0' : 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                {t.warn && !isActive && <span style={{ fontSize: 11 }}>⚠</span>}
+                {t.label}
+              </div>
+            )
+          })}
         </div>
       </div>
 

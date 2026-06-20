@@ -134,6 +134,11 @@ public class LenhSanXuatController {
         return ResponseEntity.ok(Map.of("count", service.countMissingLichSX()));
     }
 
+    @GetMapping("/count-chua-phat-hanh")
+    public ResponseEntity<Map<String, Object>> countChuaPhatHanh() {
+        return ResponseEntity.ok(service.countChuaPhatHanhByTo());
+    }
+
     @PostMapping("/sync-san-luong")
     public ResponseEntity<Map<String, Integer>> syncSanLuong(Authentication auth) {
         int created = service.syncAllSanLuong(auth.getName());
