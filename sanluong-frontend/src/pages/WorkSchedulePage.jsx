@@ -2753,39 +2753,6 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         )
       }
     },
-    {
-      title: 'Trưởng ca', dataIndex: 'truongCa', key: 'truongCa', width: 110, ellipsis: true,
-      ...colSearch('truongCa'),
-      render: v => v
-        ? <Tooltip title={v}><span style={{ ...TEXT_STYLE, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{v}</span></Tooltip>
-        : <span style={{ color: '#d9d9d9' }}>—</span>
-    },
-    {
-      title: 'Người HT', dataIndex: 'nguoiHoTro', key: 'nguoiHoTro', width: 120, ellipsis: true,
-      ...colSearch('nguoiHoTro'),
-      render: v => v
-        ? <Tooltip title={v}><span style={{ ...TEXT_STYLE, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{v}</span></Tooltip>
-        : <span style={{ color: '#d9d9d9' }}>—</span>
-    },
-    {
-      title: 'Chú ý', dataIndex: 'chuY', key: 'chuY', width: 120, ellipsis: true,
-      ...colSearch('chuY'),
-      render: v => v
-        ? <Tooltip title={v}><span style={TEXT_STYLE}>{v}</span></Tooltip>
-        : <span style={{ color: '#d9d9d9' }}>—</span>
-    },
-    {
-      title: 'Sai lệch', dataIndex: 'saiLech', key: 'saiLech', width: 90, align: 'center',
-      filters: [
-        { text: 'Có sai lệch', value: 'yes' },
-        { text: 'Không sai lệch', value: 'no' },
-      ],
-      filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#fff' : 'rgba(255,255,255,0.7)' }} />,
-      onFilter: (value, record) => value === 'yes' ? !!record.saiLech : !record.saiLech,
-      render: v => v
-        ? <Tooltip title={v}><Tag color="orange" icon={<WarningOutlined />} style={{ marginRight: 0 }}>Có</Tag></Tooltip>
-        : <Tag color="green" style={{ marginRight: 0 }}>Không</Tag>
-    },
     ...config.extraTableCols,
     {
       title: 'Năng suất', key: 'ns', width: 165, align: 'right',
@@ -2879,6 +2846,39 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
           </Select>
         )
       }
+    },
+    {
+      title: 'Trưởng ca', dataIndex: 'truongCa', key: 'truongCa', width: 110, ellipsis: true,
+      ...colSearch('truongCa'),
+      render: v => v
+        ? <Tooltip title={v}><span style={{ ...TEXT_STYLE, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{v}</span></Tooltip>
+        : <span style={{ color: '#d9d9d9' }}>—</span>
+    },
+    {
+      title: 'Người HT', dataIndex: 'nguoiHoTro', key: 'nguoiHoTro', width: 120, ellipsis: true,
+      ...colSearch('nguoiHoTro'),
+      render: v => v
+        ? <Tooltip title={v}><span style={{ ...TEXT_STYLE, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{v}</span></Tooltip>
+        : <span style={{ color: '#d9d9d9' }}>—</span>
+    },
+    {
+      title: 'Chú ý', dataIndex: 'chuY', key: 'chuY', width: 120, ellipsis: true,
+      ...colSearch('chuY'),
+      render: v => v
+        ? <Tooltip title={v}><span style={TEXT_STYLE}>{v}</span></Tooltip>
+        : <span style={{ color: '#d9d9d9' }}>—</span>
+    },
+    {
+      title: 'Sai lệch', dataIndex: 'saiLech', key: 'saiLech', width: 90, align: 'center',
+      filters: [
+        { text: 'Có sai lệch', value: 'yes' },
+        { text: 'Không sai lệch', value: 'no' },
+      ],
+      filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#fff' : 'rgba(255,255,255,0.7)' }} />,
+      onFilter: (value, record) => value === 'yes' ? !!record.saiLech : !record.saiLech,
+      render: v => v
+        ? <Tooltip title={v}><Tag color="orange" icon={<WarningOutlined />} style={{ marginRight: 0 }}>Có</Tag></Tooltip>
+        : <Tag color="green" style={{ marginRight: 0 }}>Không</Tag>
     },
     {
       key: 'action', width: 100, fixed: 'right', align: 'center',
