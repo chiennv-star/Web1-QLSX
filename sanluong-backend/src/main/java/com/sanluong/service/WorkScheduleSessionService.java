@@ -515,6 +515,15 @@ public class WorkScheduleSessionService {
         Map<Long, WorkSchedule> scheduleMap = workScheduleRepository.findAllById(scheduleIds).stream()
                 .collect(Collectors.toMap(WorkSchedule::getId, s -> s));
 
+        // ── 2b. Batch-load ProductMaster để tính nangSuatTrungBinh ──────────
+        Set<String> maTpSet = scheduleMap.values().stream()
+                .map(WorkSchedule::getMaSp).filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<String, ProductMaster> pmMap = new java.util.HashMap<>();
+        for (String maTp : maTpSet) {
+            productMasterRepository.findByMaTpIgnoreCase(maTp)
+                    .ifPresent(pm -> pmMap.put(maTp.toUpperCase(), pm));
+        }
+
         // ── 3. Fetch PENDING change requests trong khoảng ngày ───────────
         List<SlChangeRequest> pendingList = slChangeRequestRepository
                 .findByStatusOrderByRequestedAtDesc("PENDING");
@@ -628,6 +637,17 @@ public class WorkScheduleSessionService {
                 dto.setStatus("IN_PROGRESS");
                 dto.setSessionId(rep.getId());
                 dto.setSanLuong(null);
+            }
+
+            // ── Tính nangSuat và nangSuatTrungBinh ───────────────────────
+            BigDecimal sl = dto.getSanLuong() != null ? dto.getSanLuong()
+                    : (dto.getRequestedValue() != null ? dto.getRequestedValue() : null);
+            if (sl != null && tongCong.compareTo(BigDecimal.ZERO) > 0) {
+                dto.setNangSuat(sl.divide(tongCong, 4, java.math.RoundingMode.HALF_UP));
+            }
+            if (w.getMaSp() != null) {
+                ProductMaster pm = pmMap.get(w.getMaSp().toUpperCase());
+                if (pm != null) dto.setNangSuatTrungBinh(pm.getSlTrungBinh());
             }
 
             result.add(dto);
