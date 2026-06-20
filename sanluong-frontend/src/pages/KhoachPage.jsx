@@ -3402,7 +3402,7 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
 }
 
 // ── Các tab key hợp lệ ────────────────────────────────────────────────────────
-const VALID_TAB_KEYS = ['tong-hop', 'khoach', 'khoach-v2', 'don-hang']
+const VALID_TAB_KEYS = ['tong-hop', 'khoach', 'khoach-v2', 'lenh-sx', 'don-hang']
 
 // Đọc tab hiện tại từ URL (?tab=...). Fallback về 'tong-hop' nếu không hợp lệ.
 function getTabFromUrl() {

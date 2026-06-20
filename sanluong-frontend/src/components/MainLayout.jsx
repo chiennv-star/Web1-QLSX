@@ -199,13 +199,13 @@ export default function MainLayout() {
           icon: mkBadgeIcon(<ScheduleOutlined />, lichSxNew),
           label: mkBadgeLabel('Sản lượng tổ', lichSxNew),
         },
-        { key: '/khoach',          icon: <CalendarOutlined />, label: 'Kế hoạch' },
-        { key: '/ke-hoach-to',     icon: <TeamOutlined />,    label: 'Kế Hoạch Tổ' },
         {
-          key: '/lenh-san-xuat',
-          icon: mkBadgeIcon(<FileDoneOutlined />, lenhChuaPhatHanh),
-          label: mkBadgeLabel('Lệnh Sản Xuất', lenhChuaPhatHanh),
+          key: '/khoach',
+          icon: mkBadgeIcon(<CalendarOutlined />, lenhChuaPhatHanh),
+          label: mkBadgeLabel('Kế hoạch', lenhChuaPhatHanh),
         },
+        { key: '/ke-hoach-to',     icon: <TeamOutlined />,    label: 'Kế Hoạch Tổ' },
+        { key: '/lenh-san-xuat',   icon: <FileDoneOutlined />, label: 'Lệnh Sản Xuất' },
         ...(canEditHangLoi() ? [{
           key: '/hang-loi',
           icon: <WarningOutlined />,

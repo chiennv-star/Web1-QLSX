@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Select, Spin, message, DatePicker, Tooltip, Button, Tag, Popconfirm } from 'antd'
+import { Select, Spin, message, DatePicker, Tooltip, Button, Tag, Popconfirm, Input } from 'antd'
 import { ReloadOutlined, TeamOutlined, ProjectOutlined, WarningOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
@@ -313,7 +313,8 @@ export default function KeHoachToPage() {
   const [loading, setLoading]     = useState(false)
 
   // ── Secondary filter ───────────────────────────────────────────────────────
-  const [filterDay, setFilterDay] = useState('')
+  const [filterDay, setFilterDay]         = useState('')
+  const [searchProduct, setSearchProduct] = useState('')
 
   // ── Planning state — lưu riêng theo từng tổ, persist sang sessionStorage ──
   const uidRef = useRef((() => {
@@ -556,8 +557,16 @@ export default function KeHoachToPage() {
   // Helper: lấy tab config của selectedTo
   const selectedTab = TO_TABS.find(t => t.key === selectedTo)
 
-  // Lọc plans: theo tổ (selectedTo) và ngày (filterDay)
+  // Lọc plans: theo tổ (selectedTo), ngày (filterDay) và từ khóa tìm kiếm
   const filteredPlans = plans.filter(p => {
+    if (searchProduct) {
+      const q = searchProduct.toLowerCase()
+      const match = (p.tenTrinh || '').toLowerCase().includes(q)
+        || (p.maSp || '').toLowerCase().includes(q)
+        || (p.soLo || '').toLowerCase().includes(q)
+        || (p.maDonHang || '').toLowerCase().includes(q)
+      if (!match) return false
+    }
     if (selectedTo) {
       if (planSource === 'SCHEDULE') {
         // Lịch SX: filter theo congDoan (WorkSchedulePage dùng cùng convention)
@@ -979,10 +988,18 @@ export default function KeHoachToPage() {
                     ? <span>Đang xem: <b style={{ color: '#0f766e' }}>{TO_TABS.find(t => t.key === selectedTo)?.label || selectedTo}</b> · Kéo thả vào ngày bên phải.</span>
                     : 'Chọn tổ ở tab trên rồi kéo thả vào ngày.'}
                 </div>
-                <div style={{ padding: '0 12px 7px', flexShrink: 0 }}>
+                <div style={{ padding: '0 12px 7px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <Select value={filterDay || undefined} placeholder="Tất cả ngày" allowClear onChange={v => setFilterDay(v || '')} style={{ width: '100%' }} size="small" popupMatchSelectWidth={false}>
                     {days.map(d => <Option key={fmtDay(d)} value={fmtDay(d)}>{dowOf(d)} {fmtDay(d)}</Option>)}
                   </Select>
+                  <Input.Search
+                    value={searchProduct}
+                    onChange={e => setSearchProduct(e.target.value)}
+                    onSearch={v => setSearchProduct(v)}
+                    placeholder="Tìm tên SP / mã SP / số lô..."
+                    allowClear
+                    size="small"
+                  />
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 10px', display: 'flex', flexDirection: 'column', gap: 7 }}>
                   {loading ? (

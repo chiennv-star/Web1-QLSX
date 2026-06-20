@@ -55,7 +55,7 @@ const LENH_CHUA_PHAT_HANH_TASK = {
   icon:  '📋',
   label: 'Lệnh chưa phát hành',
   desc:  'Lệnh sản xuất đã có số lô nhưng chưa được phát hành cho tổ',
-  route: '/lenh-san-xuat',
+  route: '/khoach?tab=lenh-sx',
   fetch: fetchLenhChuaPhatHanh,
   color: '#f97316',
 }
