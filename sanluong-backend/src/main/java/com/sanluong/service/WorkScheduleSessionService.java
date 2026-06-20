@@ -643,6 +643,7 @@ public class WorkScheduleSessionService {
         return (s != null && !s.isBlank()) ? LocalDate.parse(s) : null;
     }
 
+
     private void mapFromDto(WorkScheduleSession s, WorkScheduleSessionDto dto) {
         s.setWorkScheduleId(dto.getWorkScheduleId());
         s.setNgay(parseDate(dto.getNgay()));

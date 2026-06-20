@@ -19,6 +19,7 @@ import {
   LockOutlined,
   EyeInvisibleOutlined,
   EyeTwoTone,
+  TeamOutlined,
 } from '@ant-design/icons'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -190,6 +191,7 @@ export default function MainLayout() {
           label: mkBadgeLabel('Sản lượng tổ', lichSxNew),
         },
         { key: '/khoach',          icon: <CalendarOutlined />, label: 'Kế hoạch' },
+        { key: '/ke-hoach-to',     icon: <TeamOutlined />,    label: 'Kế Hoạch Tổ' },
         { key: '/lenh-san-xuat',   icon: <FileDoneOutlined />, label: 'Lệnh Sản Xuất' },
         ...(canEditHangLoi() ? [{
           key: '/hang-loi',
@@ -438,9 +440,23 @@ export default function MainLayout() {
               animation: pageEnter 0.18s ease-out;
             }
           `}</style>
-          <div key={location.pathname} className="page-transition" style={{ padding: isMobile ? 10 : 24 }}>
-            <Outlet />
-          </div>
+          {(() => {
+            const isFullHeight = location.pathname === '/ke-hoach-to'
+            return (
+              <div
+                key={location.pathname}
+                className="page-transition"
+                style={{
+                  padding: isFullHeight ? 0 : (isMobile ? 10 : 24),
+                  height: isFullHeight ? '100%' : 'auto',
+                  overflow: isFullHeight ? 'hidden' : undefined,
+                  boxSizing: 'border-box',
+                }}
+              >
+                <Outlet />
+              </div>
+            )
+          })()}
         </Content>
       </Layout>
     </Layout>

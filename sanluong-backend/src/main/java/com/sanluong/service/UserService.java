@@ -32,6 +32,7 @@ public class UserService {
                 .fullName(dto.getFullName())
                 .role(dto.getRole())
                 .enabled(true)
+                .mustChangePassword(true)
                 .build();
         if (dto.getMaNhanVien() != null && !dto.getMaNhanVien().isBlank()) {
             user.setMaNhanVien(dto.getMaNhanVien().trim());
@@ -47,6 +48,7 @@ public class UserService {
         user.setEnabled(dto.isEnabled());
         if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
             user.setPassword(passwordEncoder.encode(dto.getPassword()));
+            user.setMustChangePassword(true);
         }
         user.setMaNhanVien(dto.getMaNhanVien() != null && !dto.getMaNhanVien().isBlank()
                 ? dto.getMaNhanVien().trim() : null);
@@ -88,6 +90,7 @@ public class UserService {
             throw new RuntimeException("Mật khẩu mới phải có ít nhất 6 ký tự");
         }
         user.setPassword(passwordEncoder.encode(newPassword));
+        user.setMustChangePassword(false);
         userRepository.save(user);
     }
 

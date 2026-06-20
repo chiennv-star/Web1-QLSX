@@ -46,7 +46,7 @@ const TO_TABS = [
   { key: 'PCPL1',    label: 'PCPL1',    schedCongDoan: 'PCPL1' },
   { key: 'PCPL2',    label: 'PCPL2',    schedCongDoan: 'PCPL2' },
   { key: 'PCPL3',    label: 'PL',       schedCongDoan: 'PL'    },
-  { key: 'ĐG',       label: 'ĐG',       schedCongDoan: 'ĐG'    },
+  { key: 'ĐG',       label: 'ĐG',       schedCongDoan: 'DG'    },
 ]
 
 function initials(name = '') {
@@ -746,8 +746,11 @@ export default function KeHoachToPage() {
         delete newSessionIds[ma]
         return { ...a, mas: a.mas.filter(m => m !== ma), sessionIds: newSessionIds }
       }))
-    } catch {
-      message.error('Xóa thất bại — thử lại')
+    } catch (err) {
+      const status = err?.response?.status
+      const msg = err?.response?.data?.message || err?.response?.data || ''
+      message.error(`Xóa thất bại (${status || '?'}): ${msg || 'Thử lại'}`)
+      console.error('[removePerson] delete session', sessionInfo.id, err?.response)
     }
   }
 
@@ -764,8 +767,11 @@ export default function KeHoachToPage() {
         await Promise.all(sessionIdsToDelete.map(id => api.delete(`/work-schedule-session/${id}`)))
       }
       setAssigns(prev => prev.filter(a => a.id !== assignId))
-    } catch {
-      message.error('Xóa card thất bại — thử lại')
+    } catch (err) {
+      const status = err?.response?.status
+      const msg = err?.response?.data?.message || err?.response?.data || ''
+      message.error(`Xóa card thất bại (${status || '?'}): ${msg || 'Thử lại'}`)
+      console.error('[removeAssign] delete sessions', sessionIdsToDelete, err?.response)
     }
   }
   function updateAssign(assignId, key, val) {

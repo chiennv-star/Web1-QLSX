@@ -37,6 +37,7 @@ public class WorkScheduleSessionController {
         for (var a : auth.getAuthorities()) {
             String role = a.getAuthority();
             if ("ROLE_ADMIN".equals(role)) return;
+            if ("PLAN".equals(source) && role.startsWith("ROLE_ADMIN_")) return;
             if ("ROLE_ADMIN_KH".equals(role) && "PLAN".equals(source)) return;
             if ("ROLE_NHAN_VIEN".equals(role) && !"CC".equals(congDoan)) return;
             if ("ROLE_NHAN_VIEN_PCPL1".equals(role) && "PCPL1".equals(congDoan)) return;

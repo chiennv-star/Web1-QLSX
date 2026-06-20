@@ -36,6 +36,9 @@ public class User {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword = false;
+
     public User() {}
 
     @PrePersist
@@ -73,6 +76,9 @@ public class User {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
+    public boolean isMustChangePassword() { return mustChangePassword; }
+    public void setMustChangePassword(boolean mustChangePassword) { this.mustChangePassword = mustChangePassword; }
+
     public static Builder builder() { return new Builder(); }
 
     public static class Builder {
@@ -82,6 +88,7 @@ public class User {
         public Builder fullName(String v) { user.fullName = v; return this; }
         public Builder role(Role v) { user.role = v; return this; }
         public Builder enabled(boolean v) { user.enabled = v; return this; }
+        public Builder mustChangePassword(boolean v) { user.mustChangePassword = v; return this; }
         public User build() { return user; }
     }
 }

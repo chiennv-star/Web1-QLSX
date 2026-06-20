@@ -401,7 +401,12 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const addNewDay = () => {
     const scrollEl = scrollDivRef.current
     const savedTop = scrollEl?.scrollTop ?? 0
-    setPendingDays(prev => [...prev, { tempId: Date.now(), ngay: dayjs().format('YYYY-MM-DD') }])
+    setPendingDays(prev => {
+      const taken = new Set([...ngayKeys, ...prev.map(p => p.ngay)])
+      let d = dayjs()
+      while (taken.has(d.format('YYYY-MM-DD'))) d = d.add(1, 'day')
+      return [...prev, { tempId: Date.now(), ngay: d.format('YYYY-MM-DD') }]
+    })
     requestAnimationFrame(() => { if (scrollEl) scrollEl.scrollTop = savedTop })
   }
 
@@ -828,145 +833,263 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     )
   }
 
-  const renderListTab = () => (
-    <>
-      <div style={{ overflowX: 'auto', marginBottom: 12 }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-          <thead>
-            <tr>
-              <th style={subHeadStyle}>Ngày thực hiện</th>
-              <th style={{ ...subHeadStyle, textAlign: 'right' }}>Số dòng</th>
-              <th style={{ ...subHeadStyle, textAlign: 'right' }}>Tổng công</th>
-              <th style={{ ...subHeadStyle, textAlign: 'right' }}>Sản lượng ngày</th>
-              <th style={{ ...subHeadStyle, textAlign: 'right' }}>Năng suất</th>
-              {canEditDetail && <th style={{ ...subHeadStyle, textAlign: 'center', width: 36 }}></th>}
-            </tr>
-          </thead>
-          <tbody>
-            {ngayKeys.length === 0 && pendingDays.length === 0 && (
-              <tr>
-                <td colSpan={5} style={{ ...cellStyle, textAlign: 'center', color: '#aaa', padding: 20 }}>
-                  Chưa có dữ liệu. Nhấn "Thêm ngày" để bắt đầu.
-                </td>
-              </tr>
-            )}
-            {ngayKeys.map(k => {
-              const rows = sessions.filter(s => (s.ngay || 'unknown') === k)
-              const tong = rows.reduce((a, r) => a + (parseFloat(r.congThucHien) || 0), 0)
-              const slVal = daySlMap[k] ?? ''
-              const slNum = parseFloat(slVal) || 0
-              const nsNgay = tong > 0 && slNum > 0 ? slNum / tong : 0
-              const isOpen = openTabs.includes(k)
-              return (
-                <tr key={k} style={{ cursor: 'pointer', background: isOpen ? '#f6ffed' : '' }}
-                  onClick={() => openDetail(k)}>
-                  <td style={{ ...cellStyle, color: '#1677ff', fontWeight: 600 }}>
-                    {renamingDay === k ? (
-                      <Space size={4} onClick={e => e.stopPropagation()}>
-                        <input type="date" style={{ ...inputStyle, width: 130, fontSize: 12 }}
-                          value={renameDayVal}
-                          onChange={e => setRenameDayVal(e.target.value)}
-                          autoFocus
+  const renderListTab = () => {
+    // pending days chưa có trong sessions
+    const pendingOnlyDays = pendingDays.filter(pd => !ngayKeys.includes(pd.ngay))
+    const allDayItems = [
+      ...ngayKeys.map(k => ({ k, isPending: false, tempId: null })),
+      ...pendingOnlyDays.map(pd => ({ k: pd.ngay, isPending: true, tempId: pd.tempId })),
+    ]
+    return (
+      <>
+        {allDayItems.length === 0 && (
+          <div style={{ textAlign: 'center', color: '#aaa', padding: '30px 0', fontSize: 13 }}>
+            Chưa có dữ liệu. Nhấn "+ Thêm ngày" để bắt đầu.
+          </div>
+        )}
+
+        {allDayItems.map(({ k, isPending, tempId }) => {
+          const rows = sessions.filter(s => (s.ngay || 'unknown') === k)
+          const tong = rows.reduce((a, r) => a + (parseFloat(r.congThucHien) || 0), 0)
+          const slVal = daySlMap[k] ?? ''
+          const slNum = parseFloat(slVal) || 0
+          const nsNgay = tong > 0 && slNum > 0 ? Math.round(slNum / tong) : null
+          return (
+            <div key={isPending ? `pending-${tempId}` : k} style={{
+              background: '#fff', border: '1px solid #e2e8f0',
+              borderRadius: 12, marginBottom: 14, overflow: 'hidden',
+              boxShadow: '0 1px 3px rgba(0,0,0,.05)',
+            }}>
+              {/* ── Day header — 1 dòng ── */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'nowrap',
+                background: '#f0fdf4', borderBottom: '1px solid #dcfce7', padding: '7px 12px',
+                minWidth: 0,
+              }}>
+                {/* Date */}
+                <input
+                  type="date"
+                  style={{ border: '1px solid #86efac', borderRadius: 7, padding: '3px 7px', fontSize: 12.5, fontWeight: 700, color: '#15803d', background: 'transparent', flexShrink: 0 }}
+                  value={k}
+                  onChange={e => {
+                    const newDate = e.target.value
+                    if (!newDate) return
+                    if (isPending) {
+                      setPendingDays(prev => prev.map(p => p.tempId === tempId ? { ...p, ngay: newDate } : p))
+                    } else {
+                      renameDayKey(k, newDate)
+                    }
+                  }}
+                  disabled={!canEditDetail}
+                />
+
+                {/* Stats */}
+                <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  Số dòng: <b style={{ color: '#0f172a' }}>{rows.length}</b>
+                </span>
+                <span style={{ fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                  SL ngày&nbsp;
+                  {pendingDaySet.has(k)
+                    ? <><b style={{ color: '#7c3aed', fontFamily: 'monospace' }}>{Number(slVal || 0).toLocaleString('vi-VN')}</b><Tag color="orange" style={{ fontSize: 10, margin: '0 0 0 4px' }}>Chờ duyệt</Tag></>
+                    : canEditDetail
+                      ? <input
+                          type="number" min="0" step="1"
+                          style={{ width: 75, border: '1px solid #cbd5e1', borderRadius: 6, padding: '2px 5px', fontSize: 12.5, fontWeight: 700, textAlign: 'right', color: '#0f172a' }}
+                          value={slVal}
+                          onChange={e => setDaySlMap(prev => ({ ...prev, [k]: e.target.value }))}
+                          onBlur={() => { if (slVal !== '' && rows.some(r => r.id)) saveDaySl(k) }}
+                          onKeyDown={e => { if (e.key === 'Enter' && rows.some(r => r.id)) saveDaySl(k) }}
                         />
-                        <Button size="small" type="primary" loading={renameSaving}
-                          disabled={!renameDayVal}
-                          onClick={() => renameDayKey(k, renameDayVal)}
-                          style={{ fontSize: 11, padding: '0 6px' }}>✓</Button>
-                        <Button size="small" onClick={() => setRenamingDay(null)}
-                          style={{ fontSize: 11, padding: '0 6px' }}>✕</Button>
-                      </Space>
-                    ) : (
-                      <Space size={4}>
-                        <span>{k !== 'unknown' && dayjs(k).isValid() ? dayjs(k).format('DD/MM/YYYY') : k}</span>
-                        {isOpen && <Tag color="green" style={{ margin: 0, fontSize: 11 }}>Đang mở</Tag>}
-                        {canEditDetail && (
-                          <Button size="small" type="text" icon={<EditOutlined />}
-                            onClick={e => { e.stopPropagation(); setRenamingDay(k); setRenameDayVal(k) }}
-                            style={{ color: '#8c8c8c', padding: '0 2px', height: 18, minWidth: 18, fontSize: 11 }}
-                          />
-                        )}
-                      </Space>
-                    )}
-                  </td>
-                  <td style={{ ...cellStyle, textAlign: 'right' }}>{rows.length}</td>
-                  <td style={{ ...cellStyle, textAlign: 'right' }}>{tong ? tong.toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : '—'}</td>
-                  <td style={{ ...cellStyle, textAlign: 'right' }}>
-                    {slVal !== '' && slVal != null
-                      ? <span style={{ fontWeight: 600, color: '#722ed1' }}>{Number(slVal).toLocaleString('vi-VN')}</span>
-                      : <span style={{ color: '#aaa' }}>—</span>}
-                  </td>
-                  <td style={{ ...cellStyle, textAlign: 'right' }}>
-                    {(() => {
-                      if (!nsNgay) return '—'
-                      let color = '#262626'
-                      let arrow = ''
-                      if (nsTrungBinh && nsNgay > nsTrungBinh) { color = '#389e0d'; arrow = ' ▲' }
-                      if (nsTrungBinh && nsNgay < nsTrungBinh) { color = '#cf1322'; arrow = ' ▼' }
-                      if (!nsTrungBinh) return <span style={{ fontWeight: 600, color }}>{Math.round(nsNgay).toLocaleString('vi-VN')}</span>
-                      const delta = nsNgay - nsTrungBinh
-                      const pct = (delta / nsTrungBinh) * 100
-                      const sign = delta >= 0 ? '+' : ''
-                      return (
-                        <span style={{ fontWeight: 600, color }}>
-                          {Math.round(nsNgay).toLocaleString('vi-VN')}
-                          <span style={{ fontSize: 11, fontWeight: 400, marginLeft: 3 }}>
-                            {sign}{Math.round(delta).toLocaleString('vi-VN')} ({sign}{pct.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%){arrow}
-                          </span>
-                        </span>
-                      )
-                    })()}
-                  </td>
-                  {canEditDetail && (
-                    <td style={{ ...cellStyle, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                      : <b style={{ color: '#7c3aed' }}>{slVal !== '' ? Number(slVal).toLocaleString('vi-VN') : '—'}</b>
+                  }
+                </span>
+                <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  Công: <b style={{ color: '#0f172a' }}>{tong ? tong.toFixed(1) : '0'}</b>
+                </span>
+                <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  NS:&nbsp;
+                  {nsNgay != null ? (() => {
+                    let color = '#0f172a', arrow = ''
+                    if (nsTrungBinh && nsNgay > nsTrungBinh) { color = '#15803d'; arrow = ' ▲' }
+                    if (nsTrungBinh && nsNgay < nsTrungBinh) { color = '#dc2626'; arrow = ' ▼' }
+                    return <b style={{ color }}>{nsNgay.toLocaleString('vi-VN')}{arrow}</b>
+                  })() : <b style={{ color: '#aaa' }}>—</b>}
+                </span>
+
+                {/* Actions */}
+                {canEditDetail && (
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 5, alignItems: 'center', flexShrink: 0 }}>
+                    <Button
+                      size="small" type="primary" icon={<PlusOutlined />}
+                      onClick={() => {
+                        addRowToDay(k)
+                        if (isPending) setPendingDays(prev => prev.filter(p => p.tempId !== tempId))
+                      }}
+                      style={{ background: '#4f46e5', borderColor: '#4f46e5', fontSize: 12 }}>
+                      + Thêm người
+                    </Button>
+                    <Button
+                      size="small" icon={<UsergroupAddOutlined />}
+                      onClick={() => {
+                        if (isPending) setPendingDays(prev => prev.filter(p => p.tempId !== tempId))
+                        setMultiAddModal({ open: true, ngayKey: k, nhom: '', subNhom: '', selectedEmps: [], caSX: '', thoiGian: '' })
+                      }}
+                      style={{ fontSize: 12 }}>
+                      Nhiều người
+                    </Button>
+                    {!isPending && (
                       <Popconfirm
-                        title={`Xóa toàn bộ dữ liệu ngày ${k !== 'unknown' && dayjs(k).isValid() ? dayjs(k).format('DD/MM/YYYY') : k}?`}
+                        title={`Xóa toàn bộ dữ liệu ngày ${dayjs(k).isValid() ? dayjs(k).format('DD/MM/YYYY') : k}?`}
                         description={`Sẽ xóa ${rows.length} bản ghi sản xuất.`}
                         onConfirm={() => deleteDaySessions(k)}
                         okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }}
                       >
-                        <Button size="small" type="text" danger icon={<DeleteOutlined />}
-                          style={{ padding: '0 4px', height: 20 }} />
+                        <Button size="small" danger type="text" icon={<DeleteOutlined />} style={{ color: '#cbd5e1' }} />
                       </Popconfirm>
-                    </td>
-                  )}
-                </tr>
-              )
-            })}
-            {pendingDays.map(pd => {
-              const goToTab = () => {
-                setPendingDays(prev => prev.filter(p => p.tempId !== pd.tempId))
-                openDetail(pd.ngay)
-              }
-              return (
-                <tr key={pd.tempId} className="ws-row-new" style={{ background: '#fffbe6' }}>
-                  <td style={{ ...cellStyle, padding: '2px 6px' }}>
-                    <Space size={4}>
-                      <input type="date" style={{ ...inputStyle, width: 120, fontSize: 12 }} value={pd.ngay}
-                        onChange={e => setPendingDays(prev =>
-                          prev.map(p => p.tempId === pd.tempId ? { ...p, ngay: e.target.value } : p)
-                        )} />
-                      <Button
-                        size="small" type="primary"
-                        style={{ fontSize: 12, padding: '0 8px' }}
-                        onClick={goToTab}>
-                        Mở →
-                      </Button>
-                    </Space>
-                  </td>
-                  <td style={{ ...cellStyle, textAlign: 'right', color: '#aaa' }}>0</td>
-                  <td style={{ ...cellStyle, textAlign: 'right', color: '#aaa' }}>—</td>
-                  <td style={{ ...cellStyle, textAlign: 'right', color: '#aaa' }}>—</td>
-                  <td style={{ ...cellStyle, textAlign: 'right', color: '#aaa' }}>—</td>
-                  {canEditDetail && <td style={cellStyle} />}
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-      {canEditDetail && <Button icon={<PlusOutlined />} onClick={addNewDay} type="dashed" block>Thêm ngày</Button>}
-    </>
-  )
+                    )}
+                    {isPending && (
+                      <Button size="small" type="text" danger
+                        onClick={() => setPendingDays(prev => prev.filter(p => p.tempId !== tempId))}>✕</Button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Day body ── */}
+              <div style={{ padding: '0 0 4px 0' }}>
+                {(slHistory[k]?.length > 0) && (
+                  <div style={{ fontSize: 11, color: '#8c8c8c', padding: '6px 15px 0', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 600 }}>Lịch sử SL:</span>
+                    {slHistory[k].map((h, i) => (
+                      <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        {i > 0 && <span style={{ color: '#bbb' }}>→</span>}
+                        <Tag style={{ margin: 0, fontSize: 11 }} color="purple">{Number(h.value).toLocaleString('vi-VN')}</Tag>
+                        <span style={{ color: '#bbb' }}>{dayjs(h.savedAt).format('HH:mm')}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Person table — luôn ở chế độ edit */}
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                    <thead>
+                      <tr>
+                        {['Người thực hiện', 'Mã NV', 'Nhóm/tổ', 'Ca SX', 'Thời gian (giờ)', 'Công thực hiện',
+                          <span key="vt">Vai trò{canEditDetail && <SettingOutlined onClick={() => setVaiTroModalOpen(true)} style={{ marginLeft: 5, cursor: 'pointer', color: '#1677ff', fontSize: 10 }} />}</span>,
+                          ''].map((h, i) => (
+                          <th key={i} style={{ ...subHeadStyle, background: '#fdf6e3' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.length === 0 && (
+                        <tr><td colSpan={8} style={{ ...cellStyle, textAlign: 'center', color: '#aaa', padding: 14 }}>
+                          Chưa có người — nhấn "+ Thêm người"
+                        </td></tr>
+                      )}
+                      {rows.map(s => {
+                        const rowKey = s.id || s._tempId
+                        const isSavingRow = saving === rowKey
+                        return (
+                          <tr key={rowKey}
+                            className={!s.id ? 'ws-row-new' : ''}
+                            onBlur={e => {
+                              if (!e.currentTarget.contains(e.relatedTarget) && s.nguoiThucHien && s.maNhanVien) {
+                                saveRow(s)
+                              }
+                            }}
+                            onContextMenu={canEditDetail ? e => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, s, ngayKey: k }) } : undefined}>
+                            <td style={{ ...cellStyle, minWidth: 150 }}>
+                              <select style={{ ...inputStyle, cursor: 'pointer' }} value={s.nguoiThucHien}
+                                onChange={e => {
+                                  const name = e.target.value
+                                  const allMatches = employees.filter(emp => emp.hoVaTen === name)
+                                  const groupMatches = s.nhomThucHien ? allMatches.filter(emp => emp.toNhom === s.nhomThucHien) : []
+                                  const best = groupMatches.length === 1 ? groupMatches[0] : allMatches.length === 1 ? allMatches[0] : null
+                                  updateLocals(rowKey, { nguoiThucHien: name, maNhanVien: best ? best.maNhanVien : '' })
+                                }}>
+                                <option value="">-- Chọn nhân viên --</option>
+                                {employees.filter(emp => !s.nhomThucHien || emp.toNhom === s.nhomThucHien)
+                                  .map(emp => <option key={emp.id} value={emp.hoVaTen}>{emp.hoVaTen}</option>)}
+                              </select>
+                            </td>
+                            <td style={{ ...cellStyle, width: 100 }}>
+                              {(() => {
+                                const allByName = s.nguoiThucHien ? employees.filter(emp => emp.hoVaTen === s.nguoiThucHien) : []
+                                const groupByName = s.nhomThucHien ? allByName.filter(emp => emp.toNhom === s.nhomThucHien) : []
+                                const matches = groupByName.length > 0 ? groupByName : allByName
+                                if (matches.length > 1) return (
+                                  <select style={{ ...inputStyle, cursor: 'pointer', color: '#1890ff', fontWeight: 600 }} value={s.maNhanVien}
+                                    onChange={e => updateLocal(rowKey, 'maNhanVien', e.target.value)}>
+                                    <option value="">-- Chọn mã --</option>
+                                    {matches.map(emp => <option key={emp.id} value={emp.maNhanVien}>{emp.maNhanVien} ({emp.toNhom})</option>)}
+                                  </select>
+                                )
+                                const hasError = maNvErrorKeys.has(rowKey)
+                                return (
+                                  <>
+                                    <input style={{ ...inputStyle, color: '#1890ff', fontWeight: 600, ...(hasError ? { border: '2px solid #ef4444', background: '#fef2f2' } : {}) }}
+                                      value={s.maNhanVien} onChange={e => { clearMaNvError(rowKey); updateLocal(rowKey, 'maNhanVien', e.target.value) }} placeholder="Nhập mã NV" />
+                                    {hasError && <div style={{ fontSize: 10, color: '#ef4444', marginTop: 2 }}>⚠ Bắt buộc</div>}
+                                  </>
+                                )
+                              })()}
+                            </td>
+                            <td style={{ ...cellStyle, minWidth: 110 }}>
+                              <select style={{ ...inputStyle, cursor: 'pointer' }} value={s.nhomThucHien}
+                                onChange={e => { clearMaNvError(rowKey); updateLocals(rowKey, { nhomThucHien: e.target.value, nguoiThucHien: '', maNhanVien: '' }) }}>
+                                <option value="">-- Chọn nhóm --</option>
+                                {['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG'].map(v => <option key={v} value={v}>{v}</option>)}
+                              </select>
+                            </td>
+                            <td style={{ ...cellStyle, width: 100 }}>
+                              <select style={{ ...inputStyle, cursor: 'pointer', fontWeight: 600, color: s.caSanXuat === 'HC' ? '#389e0d' : s.caSanXuat ? '#1677ff' : undefined }}
+                                value={s.caSanXuat}
+                                onChange={e => { const ca = e.target.value; updateLocals(rowKey, { caSanXuat: ca, congThucHien: calcCong(s.thoiGianBatDau, ca) }) }}>
+                                <option value="">-- Ca --</option>
+                                <option value="Ca 1">Ca 1</option>
+                                <option value="Ca 2">Ca 2</option>
+                                <option value="HC">Hành Chính</option>
+                              </select>
+                            </td>
+                            <td style={{ ...cellStyle, width: 90 }}>
+                              <input style={{ ...inputStyle, textAlign: 'right' }} type="number" step="0.01" min="0" value={s.thoiGianBatDau}
+                                onChange={e => { const tg = e.target.value; updateLocals(rowKey, { thoiGianBatDau: tg, congThucHien: calcCong(tg, s.caSanXuat) }) }} />
+                            </td>
+                            <td style={{ ...cellStyle, width: 110, textAlign: 'right', fontWeight: 700, color: '#0f766e' }}>
+                              {s.congThucHien !== '' && s.congThucHien != null
+                                ? Number(s.congThucHien).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                                : '—'}
+                            </td>
+                            <td style={{ ...cellStyle, minWidth: 110 }}>
+                              <input list={`vaitro-list-${rowKey}`} style={{ ...inputStyle, border: '1px solid #d9d9d9', borderRadius: 3, padding: '1px 5px', background: '#fff' }}
+                                value={s.vaiTro} placeholder="Chọn hoặc nhập..." onChange={e => updateLocal(rowKey, 'vaiTro', e.target.value)} />
+                              <datalist id={`vaitro-list-${rowKey}`}>{vaiTroOptions.map(v => <option key={v} value={v} />)}</datalist>
+                            </td>
+                            <td style={{ ...cellStyle, width: 36, textAlign: 'center' }}>
+                              <Button size="small" type="text" danger icon={<DeleteOutlined />}
+                                loading={isSavingRow} onClick={() => deleteRow(s)} style={{ padding: '0 4px', color: '#cbd5e1', fontSize: 15 }} />
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+
+        {canEditDetail && (
+          <Button icon={<PlusOutlined />} onClick={addNewDay} type="dashed" block style={{ borderRadius: 12, height: 44, fontSize: 14, fontWeight: 700, color: '#64748b' }}>
+            + Thêm ngày
+          </Button>
+        )}
+      </>
+    )
+  }
 
   const renderDayTab = (ngayKey) => {
     const detailRows = sessions.filter(s => (s.ngay || 'unknown') === ngayKey)

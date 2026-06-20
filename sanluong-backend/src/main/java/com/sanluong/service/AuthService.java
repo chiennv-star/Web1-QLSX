@@ -43,6 +43,6 @@ public class AuthService {
             toNhom = employeeRepository.findByMaNhanVien(maNhanVien)
                     .map(e -> e.getToNhom()).orElse(null);
         }
-        return new LoginResponse(token, username, user.getFullName(), user.getRole().name(), maNhanVien, toNhom, user.getAvatar());
+        return new LoginResponse(token, username, user.getFullName(), user.getRole().name(), maNhanVien, toNhom, user.getAvatar(), user.isMustChangePassword());
     }
 }

@@ -19,11 +19,14 @@ import NotificationPage from './pages/NotificationPage'
 import DonHangPage from './pages/DonHangPage'
 import LenhSanXuatPage from './pages/LenhSanXuatPage'
 import LenhSanXuatDetailPage from './pages/LenhSanXuatDetailPage'
+import KeHoachToPage from './pages/KeHoachToPage'
+import ForceChangePasswordPage from './pages/ForceChangePasswordPage'
 import MainLayout from './components/MainLayout'
 
 function PrivateRoute({ children, adminOnly = false, allowedRoles = null }) {
   const { user, isAdmin } = useAuth()
   if (!user) return <Navigate to="/login" replace />
+  if (user.mustChangePassword) return <Navigate to="/doi-mat-khau" replace />
   if (adminOnly && !isAdmin()) return <Navigate to="/" replace />
   if (allowedRoles && !allowedRoles.includes(user?.role)) return <Navigate to="/" replace />
   return children
@@ -40,6 +43,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/doi-mat-khau" element={<ForceChangePasswordPage />} />
       <Route path="/" element={
         <PrivateRoute>
           <MainLayout />
@@ -81,6 +85,7 @@ export default function App() {
         <Route path="danh-muc" element={<DanhMucPage />} />
         <Route path="notifications" element={<NotificationPage />} />
         <Route path="don-hang" element={<DonHangPage />} />
+        <Route path="ke-hoach-to" element={<KeHoachToPage />} />
         <Route path="lenh-san-xuat" element={<LenhSanXuatPage />} />
         <Route path="lenh-san-xuat/:maBravo" element={<LenhSanXuatDetailPage />} />
       </Route>
