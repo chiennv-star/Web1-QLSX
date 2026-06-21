@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Select, Spin, message, DatePicker, Tooltip, Button, Tag, Popconfirm, Input } from 'antd'
-import { ReloadOutlined, TeamOutlined, ProjectOutlined, WarningOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
+import { ReloadOutlined, TeamOutlined, ProjectOutlined, WarningOutlined, LeftOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
 import api from '../api/axios'
@@ -352,6 +352,7 @@ export default function KeHoachToPage() {
   // ── UI ─────────────────────────────────────────────────────────────────────
   const [selectedDay, setSelectedDay] = useState(() => fmtDay(dayjs()))
   const [viewMode, setViewMode]       = useState('viec')
+  const [detailSearch, setDetailSearch] = useState('')
   // Tổ hiển thị trong panel nhân viên — có thể khác tab chính
   const [empTo, setEmpTo] = useState(selectedTo)
   // Khi đổi tab chính → reset empTo về tab mới
@@ -1131,6 +1132,26 @@ export default function KeHoachToPage() {
 
           {viewMode === 'viec' ? (
             <>
+              {/* Month / Year picker */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 14px 4px', flexShrink: 0 }}>
+                <Button size="small" icon={<LeftOutlined />}
+                  onClick={() => setWeekStart(weekStart.subtract(1, 'month').startOf('month').startOf('isoWeek'))}
+                  style={{ flexShrink: 0 }} />
+                <DatePicker
+                  picker="month"
+                  value={weekStart}
+                  onChange={v => v && setWeekStart(v.startOf('month').startOf('isoWeek'))}
+                  size="small"
+                  format="MM/YYYY"
+                  allowClear={false}
+                  style={{ flex: 1, minWidth: 0 }}
+                />
+                <Button size="small" icon={<RightOutlined />}
+                  onClick={() => setWeekStart(weekStart.add(1, 'month').startOf('month').startOf('isoWeek'))}
+                  style={{ flexShrink: 0 }} />
+              </div>
+
+              {/* Week picker */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 14px 8px', flexShrink: 0 }}>
                 <Button size="small" icon={<LeftOutlined />} onClick={() => setWeekStart(weekStart.subtract(1, 'week').startOf('isoWeek'))} style={{ flexShrink: 0 }} />
                 <DatePicker picker="week" value={weekStart} onChange={v => v && setWeekStart(v.startOf('isoWeek'))} size="small" format={v => `Tuần ${v.isoWeek()} · ${v.format('MM/YYYY')}`} allowClear={false} style={{ flex: 1, minWidth: 0 }} />
@@ -1161,6 +1182,18 @@ export default function KeHoachToPage() {
                 })}
               </div>
 
+              {/* Search */}
+              <div style={{ padding: '0 14px 8px', flexShrink: 0 }}>
+                <Input
+                  size="small"
+                  placeholder="Tìm sản phẩm, mã SP, số lô, đơn hàng..."
+                  prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                  allowClear
+                  value={detailSearch}
+                  onChange={e => setDetailSearch(e.target.value)}
+                />
+              </div>
+
               <div style={{ fontSize: 11, color: '#94a3b8', padding: '0 14px 6px', flexShrink: 0 }}>
                 Kéo sản phẩm vào ô ngày · kéo người vào card công việc
               </div>
@@ -1168,7 +1201,14 @@ export default function KeHoachToPage() {
               <div style={{ flex: 1, overflowY: 'auto', margin: '0 12px 12px', padding: 6, borderRadius: 12, background: '#f1f5f9' }}>
                 {[...days].reverse().map(d => {
                   const dayStr     = fmtDay(d)
-                  const dayAssigns = assigns.filter(a => a.ngay === dayStr)
+                  const q          = detailSearch.toLowerCase()
+                  const dayAssigns = assigns.filter(a => a.ngay === dayStr && (
+                    !q ||
+                    (a.ten || '').toLowerCase().includes(q) ||
+                    (a.maSp || '').toLowerCase().includes(q) ||
+                    (a.soLo || '').toLowerCase().includes(q) ||
+                    (a.maDonHang || '').toLowerCase().includes(q)
+                  ))
                   const isSel      = dayStr === selectedDay
                   return (
                     <div key={dayStr} style={{ border: `1px solid ${isSel ? '#6366f1' : '#e2e8f0'}`, boxShadow: isSel ? '0 0 0 3px #c7d2fe' : 'none', background: '#fff', borderRadius: 12, padding: '10px 12px', margin: '10px 4px' }}>
