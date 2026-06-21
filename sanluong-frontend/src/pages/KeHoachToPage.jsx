@@ -353,6 +353,7 @@ export default function KeHoachToPage() {
   const [selectedDay, setSelectedDay] = useState(() => fmtDay(dayjs()))
   const [viewMode, setViewMode]       = useState('viec')
   const [detailSearch, setDetailSearch] = useState('')
+  const [showAllDays, setShowAllDays]   = useState(false)
   // Tổ hiển thị trong panel nhân viên — có thể khác tab chính
   const [empTo, setEmpTo] = useState(selectedTo)
   // Khi đổi tab chính → reset empTo về tab mới
@@ -1126,42 +1127,64 @@ export default function KeHoachToPage() {
 
         {/* ── ③ Right column: Kế hoạch chi tiết ── */}
         <div style={{ flex: 1, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.04em', color: '#64748b', padding: '10px 14px 6px', textTransform: 'uppercase', flexShrink: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', color: '#64748b', padding: '5px 10px 3px', textTransform: 'uppercase', flexShrink: 0 }}>
             ③ Kế hoạch chi tiết — chọn ngày để xếp
           </div>
 
           {viewMode === 'viec' ? (
             <>
-              {/* Month / Year picker */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 14px 4px', flexShrink: 0 }}>
+              {/* Month + Week picker + Search — 1 hàng gọn */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '0 10px 5px', flexShrink: 0 }}>
+                {/* Month nav */}
                 <Button size="small" icon={<LeftOutlined />}
-                  onClick={() => setWeekStart(weekStart.subtract(1, 'month').startOf('month').startOf('isoWeek'))}
+                  onClick={() => { setShowAllDays(false); setWeekStart(weekStart.subtract(1, 'month').startOf('month').startOf('isoWeek')) }}
                   style={{ flexShrink: 0 }} />
                 <DatePicker
                   picker="month"
                   value={weekStart}
-                  onChange={v => v && setWeekStart(v.startOf('month').startOf('isoWeek'))}
+                  onChange={v => v && (setShowAllDays(false), setWeekStart(v.startOf('month').startOf('isoWeek')))}
                   size="small"
                   format="MM/YYYY"
                   allowClear={false}
-                  style={{ flex: 1, minWidth: 0 }}
+                  style={{ width: 84, flexShrink: 0 }}
                 />
                 <Button size="small" icon={<RightOutlined />}
-                  onClick={() => setWeekStart(weekStart.add(1, 'month').startOf('month').startOf('isoWeek'))}
+                  onClick={() => { setShowAllDays(false); setWeekStart(weekStart.add(1, 'month').startOf('month').startOf('isoWeek')) }}
                   style={{ flexShrink: 0 }} />
-              </div>
 
-              {/* Week picker */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 14px 8px', flexShrink: 0 }}>
-                <Button size="small" icon={<LeftOutlined />} onClick={() => setWeekStart(weekStart.subtract(1, 'week').startOf('isoWeek'))} style={{ flexShrink: 0 }} />
-                <DatePicker picker="week" value={weekStart} onChange={v => v && setWeekStart(v.startOf('isoWeek'))} size="small" format={v => `Tuần ${v.isoWeek()} · ${v.format('MM/YYYY')}`} allowClear={false} style={{ flex: 1, minWidth: 0 }} />
-                <Button size="small" icon={<RightOutlined />} onClick={() => setWeekStart(weekStart.add(1, 'week').startOf('isoWeek'))} style={{ flexShrink: 0 }} />
-                {!weekStart.isSame(dayjs().startOf('isoWeek'), 'day') && (
-                  <Button size="small" onClick={() => setWeekStart(dayjs().startOf('isoWeek'))} style={{ flexShrink: 0, fontSize: 11, padding: '0 8px' }}>Nay</Button>
+                <div style={{ width: 1, height: 16, background: '#e2e8f0', flexShrink: 0 }} />
+
+                {/* Week nav */}
+                <Button size="small" icon={<LeftOutlined />} onClick={() => { setShowAllDays(false); setWeekStart(weekStart.subtract(1, 'week').startOf('isoWeek')) }} style={{ flexShrink: 0 }} />
+                <DatePicker picker="week" value={weekStart} onChange={v => v && (setShowAllDays(false), setWeekStart(v.startOf('isoWeek')))} size="small" format={v => `T${v.isoWeek()} · ${v.format('MM/YY')}`} allowClear={false} style={{ width: 105, flexShrink: 0 }} />
+                <Button size="small" icon={<RightOutlined />} onClick={() => { setShowAllDays(false); setWeekStart(weekStart.add(1, 'week').startOf('isoWeek')) }} style={{ flexShrink: 0 }} />
+                {!showAllDays && !weekStart.isSame(dayjs().startOf('isoWeek'), 'day') && (
+                  <Button size="small" onClick={() => setWeekStart(dayjs().startOf('isoWeek'))} style={{ flexShrink: 0, fontSize: 10, padding: '0 6px' }}>Nay</Button>
                 )}
+
+                <div style={{ width: 1, height: 16, background: '#e2e8f0', flexShrink: 0 }} />
+
+                {/* Tất cả toggle */}
+                <Button
+                  size="small"
+                  type={showAllDays ? 'primary' : 'default'}
+                  onClick={() => setShowAllDays(v => !v)}
+                  style={{ flexShrink: 0, fontSize: 11, padding: '0 8px' }}
+                >Tất cả</Button>
+
+                {/* Search */}
+                <Input
+                  size="small"
+                  placeholder="Tìm SP, mã, số lô..."
+                  prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                  allowClear
+                  value={detailSearch}
+                  onChange={e => setDetailSearch(e.target.value)}
+                  style={{ flex: 1, minWidth: 0 }}
+                />
               </div>
 
-              <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', padding: '0 14px 10px', flexShrink: 0 }}>
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', padding: '0 10px 5px', flexShrink: 0 }}>
                 {days.map(d => {
                   const dayStr  = fmtDay(d)
                   const isSel   = dayStr === selectedDay
@@ -1171,35 +1194,24 @@ export default function KeHoachToPage() {
                       border: `1.5px solid ${isSel ? '#4f46e5' : isToday ? '#a5b4fc' : '#e2e8f0'}`,
                       background: isSel ? '#4f46e5' : isToday ? '#eef2ff' : '#fff',
                       color: isSel ? '#fff' : '#475569',
-                      borderRadius: 10, padding: '5px 13px',
-                      cursor: 'pointer', fontWeight: 800, fontSize: 12.5, lineHeight: 1.3, position: 'relative',
+                      borderRadius: 8, padding: '3px 9px',
+                      cursor: 'pointer', fontWeight: 800, fontSize: 11, lineHeight: 1.3, position: 'relative',
                     }}>
-                      <div style={{ fontSize: 10, color: isSel ? '#c7d2fe' : isToday ? '#6366f1' : '#94a3b8', fontWeight: 800 }}>{DOW[d.day()]}</div>
+                      <div style={{ fontSize: 9, color: isSel ? '#c7d2fe' : isToday ? '#6366f1' : '#94a3b8', fontWeight: 800 }}>{DOW[d.day()]}</div>
                       {dayStr}
-                      {isToday && !isSel && <span style={{ position: 'absolute', bottom: 2, left: '50%', transform: 'translateX(-50%)', width: 4, height: 4, borderRadius: '50%', background: '#6366f1', display: 'block' }} />}
+                      {isToday && !isSel && <span style={{ position: 'absolute', bottom: 2, left: '50%', transform: 'translateX(-50%)', width: 3, height: 3, borderRadius: '50%', background: '#6366f1', display: 'block' }} />}
                     </button>
                   )
                 })}
               </div>
 
-              {/* Search */}
-              <div style={{ padding: '0 14px 8px', flexShrink: 0 }}>
-                <Input
-                  size="small"
-                  placeholder="Tìm sản phẩm, mã SP, số lô, đơn hàng..."
-                  prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                  allowClear
-                  value={detailSearch}
-                  onChange={e => setDetailSearch(e.target.value)}
-                />
-              </div>
-
-              <div style={{ fontSize: 11, color: '#94a3b8', padding: '0 14px 6px', flexShrink: 0 }}>
-                Kéo sản phẩm vào ô ngày · kéo người vào card công việc
-              </div>
-
               <div style={{ flex: 1, overflowY: 'auto', margin: '0 12px 12px', padding: 6, borderRadius: 12, background: '#f1f5f9' }}>
-                {[...days].reverse().map(d => {
+                {(() => {
+                  const renderDays = showAllDays
+                    ? [...new Set(assigns.map(a => a.ngay))].sort((a, b) => b.localeCompare(a)).map(s => dayjs(s))
+                    : [...days].reverse()
+                  return renderDays
+                })().map(d => {
                   const dayStr     = fmtDay(d)
                   const q          = detailSearch.toLowerCase()
                   const dayAssigns = assigns.filter(a => a.ngay === dayStr && (

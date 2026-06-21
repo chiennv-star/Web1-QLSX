@@ -507,94 +507,113 @@ function HangTraLaiTab({ stickyTop = 0 }) {
   }
 
   const TAB_COLORS = {
-    'chua-xu-ly':   '#ef4444',
-    'dang-xu-ly':   '#f97316',
+    'chua-xu-ly':    '#ef4444',
+    'dang-xu-ly':    '#f97316',
     'da-hoan-thanh': '#16a34a',
   }
 
-  const tabBtnStyle = (key) => ({
-    padding: '5px 20px', borderRadius: '6px 6px 0 0', border: '1.5px solid',
-    cursor: 'pointer', fontWeight: 700, fontSize: 13, transition: 'all 0.18s',
-    borderBottom: 'none',
-    ...(subTab === key
-      ? { background: TAB_COLORS[key], borderColor: TAB_COLORS[key], color: '#fff' }
-      : { background: '#f1f5f9', borderColor: '#d1d5db', color: '#64748b' }),
-  })
+  const accentColor = TAB_COLORS[subTab] || '#ef4444'
 
   return (
     <>
-      {/* ── Sub-tabs ── */}
+      {/* ── Sticky header: sub-tabs + filter bar ── */}
       <div ref={filterRef} style={{
         position: 'sticky', top: stickyTop, zIndex: 9,
-        background: '#fff', paddingTop: 8,
-        borderBottom: '1px solid #e0f2e9',
+        background: '#fff',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.07)',
       }}>
-        {/* Tab switcher */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 0 }}>
-          <button style={tabBtnStyle('chua-xu-ly')} onClick={() => switchSubTab('chua-xu-ly')}>
-            <Badge count={tabCounts['chua-xu-ly']} size="small" offset={[6, -2]}
-              style={{ background: '#ef4444', fontSize: 10 }}>
-              ⚠ Chưa xử lý
-            </Badge>
-          </button>
-          <button style={tabBtnStyle('dang-xu-ly')} onClick={() => switchSubTab('dang-xu-ly')}>
-            ⟳ Đang xử lý
-          </button>
-          <button style={tabBtnStyle('da-hoan-thanh')} onClick={() => switchSubTab('da-hoan-thanh')}>
-            ✓ Đã hoàn thành
-          </button>
+
+        {/* Sub-tabs + action buttons — same row */}
+        <div style={{
+          display: 'flex', alignItems: 'stretch',
+          borderBottom: `3px solid ${accentColor}`,
+          background: '#F8FAFC',
+        }}>
+          {/* Tab buttons */}
+          <div style={{ display: 'flex', alignItems: 'stretch' }}>
+            {[
+              { key: 'chua-xu-ly',    icon: '⚠', label: 'Chưa xử lý',   color: '#ef4444' },
+              { key: 'dang-xu-ly',    icon: '⟳', label: 'Đang xử lý',   color: '#f97316' },
+              { key: 'da-hoan-thanh', icon: '✓', label: 'Đã hoàn thành', color: '#16a34a' },
+            ].map(({ key, icon, label, color }) => {
+              const active = subTab === key
+              return (
+                <button key={key} onClick={() => switchSubTab(key)} style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '8px 18px', border: 'none', cursor: 'pointer',
+                  fontSize: 13, fontWeight: active ? 700 : 500,
+                  color: active ? color : '#64748B',
+                  background: active ? '#fff' : 'transparent',
+                  borderRight: '1px solid #E2E8F0',
+                  borderBottom: active ? `3px solid ${color}` : '3px solid transparent',
+                  marginBottom: -3,
+                  transition: 'all 0.15s',
+                  whiteSpace: 'nowrap',
+                  position: 'relative',
+                }}>
+                  <span style={{ fontSize: 14 }}>{icon}</span>
+                  {label}
+                  {tabCounts[key] > 0 && (
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      minWidth: 18, height: 18, borderRadius: 9,
+                      background: active ? color : '#CBD5E1',
+                      color: '#fff', fontSize: 10, fontWeight: 700,
+                      padding: '0 5px', lineHeight: 1,
+                    }}>{tabCounts[key]}</span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Action buttons — push right */}
+          {canEdit && (
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px' }}>
+              {selectedRowKeys.length > 0 && (
+                <Popconfirm
+                  title={`Xóa ${selectedRowKeys.length} bản ghi đã chọn?`}
+                  description="Hành động này không thể hoàn tác."
+                  onConfirm={handleBulkDelete}
+                  okText="Xóa tất cả" cancelText="Hủy"
+                  okButtonProps={{ danger: true }}
+                >
+                  <Button danger size="small" icon={<DeleteOutlined />} loading={bulkDeleting} style={{ fontWeight: 600 }}>
+                    Xóa {selectedRowKeys.length} mục
+                  </Button>
+                </Popconfirm>
+              )}
+              {subTab !== 'da-hoan-thanh' && (
+                <Button type="primary" size="small" icon={<PlusOutlined />} onClick={openAdd}
+                  style={{ background: '#1D4ED8', borderColor: '#1D4ED8', fontWeight: 600 }}>
+                  Thêm mới
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Filter bar */}
         <div style={{
-          background: subTab === 'da-hoan-thanh' ? '#f0fdf4' : subTab === 'dang-xu-ly' ? '#fff7ed' : '#fef2f2',
-          borderTop: `2px solid ${TAB_COLORS[subTab] || '#ef4444'}`,
-          padding: '6px 0 8px' }}>
-          <Row gutter={8} align="middle" wrap={false}>
-            <Col><DatePicker size="small" placeholder="Từ ngày" format="DD/MM/YYYY"
-              value={fromDate} onChange={setFromDate} style={{ width: 130 }} /></Col>
-            <Col><DatePicker size="small" placeholder="Đến ngày" format="DD/MM/YYYY"
-              value={toDate} onChange={setToDate} style={{ width: 130 }} /></Col>
-            <Col><Input size="small" placeholder="Tìm kiếm..." value={keyword}
-              onChange={e => setKeyword(e.target.value)}
-              prefix={<SearchOutlined style={{ color: '#bbb' }} />}
-              style={{ width: 200 }} allowClear /></Col>
-            <Col><Button size="small" type="primary" icon={<SearchOutlined />} onClick={() => load(0)}>Tìm</Button></Col>
-            <Col><Button size="small" icon={<ReloadOutlined />} onClick={() => {
-              setFromDate(null); setToDate(null); setKeyword(''); load(0)
-            }} /></Col>
-            {canEdit && (
-              <Col flex="auto" style={{ textAlign: 'right' }}>
-                <Space size={8}>
-                  {selectedRowKeys.length > 0 && (
-                    <Popconfirm
-                      title={`Xóa ${selectedRowKeys.length} bản ghi đã chọn?`}
-                      description="Hành động này không thể hoàn tác."
-                      onConfirm={handleBulkDelete}
-                      okText="Xóa tất cả"
-                      cancelText="Hủy"
-                      okButtonProps={{ danger: true }}
-                    >
-                      <Button
-                        danger
-                        icon={<DeleteOutlined />}
-                        loading={bulkDeleting}
-                        style={{ fontWeight: 600 }}
-                      >
-                        Xóa {selectedRowKeys.length} mục
-                      </Button>
-                    </Popconfirm>
-                  )}
-                  {subTab !== 'da-hoan-thanh' && (
-                    <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}
-                      style={{ background: '#1D4ED8', borderColor: '#1D4ED8', fontWeight: 600 }}>
-                      Thêm mới
-                    </Button>
-                  )}
-                </Space>
-              </Col>
-            )}
-          </Row>
+          display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+          padding: '7px 14px',
+          background: subTab === 'da-hoan-thanh' ? '#f0fdf4' : subTab === 'dang-xu-ly' ? '#fff7ed' : '#fef9f9',
+          borderBottom: `1px solid ${accentColor}22`,
+        }}>
+          <DatePicker size="small" placeholder="Từ ngày" format="DD/MM/YYYY"
+            value={fromDate} onChange={setFromDate} style={{ width: 128 }} />
+          <DatePicker size="small" placeholder="Đến ngày" format="DD/MM/YYYY"
+            value={toDate} onChange={setToDate} style={{ width: 128 }} />
+          <Input size="small" placeholder="Tìm kiếm mã SP, tên hàng, số lô..." value={keyword}
+            onChange={e => setKeyword(e.target.value)}
+            prefix={<SearchOutlined style={{ color: '#bbb' }} />}
+            style={{ width: 260 }} allowClear />
+          <Button size="small" type="primary" icon={<SearchOutlined />}
+            style={{ background: accentColor, borderColor: accentColor }}
+            onClick={() => load(0)}>Tìm</Button>
+          <Button size="small" icon={<ReloadOutlined />} onClick={() => {
+            setFromDate(null); setToDate(null); setKeyword(''); load(0)
+          }} />
         </div>
       </div>
 
@@ -891,10 +910,15 @@ function HangTraLaiTab({ stickyTop = 0 }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function HangLoiPage() {
   const headerRef = React.useRef(null)
-  const [tabBarHeight, setTabBarHeight] = React.useState(0)
+  const [tabBarHeight, setTabBarHeight] = React.useState(40)
 
   React.useEffect(() => {
-    if (headerRef.current) setTabBarHeight(headerRef.current.offsetHeight)
+    if (!headerRef.current) return
+    const obs = new ResizeObserver(() => {
+      if (headerRef.current) setTabBarHeight(headerRef.current.offsetHeight)
+    })
+    obs.observe(headerRef.current)
+    return () => obs.disconnect()
   }, [])
 
   return (
@@ -916,7 +940,7 @@ export default function HangLoiPage() {
         /* ── Tabs ── */
         .hl-tabs > .ant-tabs-nav {
           background: #1e4570 !important;
-          padding: 0 10px; margin: 0 !important; min-height: 38px;
+          padding: 0 10px; margin: 0 !important; min-height: 40px;
         }
         .hl-tabs > .ant-tabs-nav .ant-tabs-tab {
           color: #CBD5E1 !important; font-size: 13px;
@@ -927,13 +951,12 @@ export default function HangLoiPage() {
         .hl-tabs > .ant-tabs-nav .ant-tabs-tab-active { color: #fff !important; font-weight: 700 !important; background: rgba(29,78,216,0.25) !important; box-shadow: 0 -3px 0 #60A5FA inset; }
         .hl-tabs > .ant-tabs-nav .ant-tabs-ink-bar   { background: #60A5FA !important; }
         .hl-tabs > .ant-tabs-nav::before             { border: none !important; }
+        .hl-tabs .ant-tabs-tabpane                   { padding: 0 !important; }
 
         /* ── Modal ── */
         .hl-modal .ant-modal-content { padding: 0 !important; border-radius: 10px !important; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.18) !important; }
         .hl-modal .ant-modal-body    { padding: 0 !important; }
         .hl-modal .ant-form-item     { margin-bottom: 0 !important; }
-
-        /* ── Ant overrides inside modal ── */
         .hl-modal .ant-input,
         .hl-modal .ant-input-number-input,
         .hl-modal .ant-picker-input > input { font-size: 16px !important; }

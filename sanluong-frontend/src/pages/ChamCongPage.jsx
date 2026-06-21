@@ -87,6 +87,385 @@ function DeptPills({ value, onChange, counts }) {
   )
 }
 
+// ── Bảng Tăng Ca components ──────────────────────────────────────────────────
+
+const MARK_BG  = { N: '#F9CB9C', X: '#93E08B', C: '#FFF176', H: '#80E5E5', D: '#EFA6E8', B: '#93BCC0' }
+const DOW_TC   = ['CN','T2','T3','T4','T5','T6','T7']
+const BRUSH_OPTS = [
+  { m: '0', isNum: true,  label: 'Nhập giờ TC' },
+  { m: 'N', label: 'N · nghỉ nửa ngày' },
+  { m: 'X', label: 'X · nghỉ làm'      },
+  { m: 'C', label: 'Ca chiều'           },
+  { m: 'H', label: 'Hỗ trợ Cò Mềm'    },
+  { m: 'D', label: 'Bắt đầu đi làm'   },
+  { m: 'B', label: 'Đi Ba Vì'          },
+]
+
+function tcAttendOf(v, m) {
+  if (m === 'X') return 0
+  if (m === 'N') return 0.5
+  return v != null ? 1 : 0
+}
+const tcR1 = n => Math.round(n * 10) / 10
+
+const TcCell = React.memo(function TcCell({ di, v, m, isWknd, isEven, brush, onChange }) {
+  const isNum = brush === '0'
+  const bg    = MARK_BG[m] || (isWknd ? (isEven ? '#F7EFDD' : '#FBF4E6') : (isEven ? '#FAFAF7' : '#fff'))
+  const tdStyle = {
+    background: bg, textAlign: 'center', padding: '2px 1px',
+    borderRight: '1px solid #EAE8E0', borderBottom: '1px solid #EAE8E0',
+    cursor: isNum ? 'default' : 'pointer', width: 36, minWidth: 36,
+  }
+  const handleClick = () => {
+    if (isNum) return
+    onChange(di, v, m === brush ? '.' : brush)
+  }
+  const handleBlur = e => {
+    if (!isNum) return
+    const raw = (e.target.value || '').trim().replace(',', '.')
+    const n   = raw === '' ? null : parseFloat(raw)
+    onChange(di, isNaN(n) ? null : n, m)
+  }
+  return (
+    <td onClick={handleClick} style={tdStyle}>
+      {isNum
+        ? <input type="text" inputMode="decimal" defaultValue={v != null ? String(v) : ''}
+            onBlur={handleBlur} onKeyDown={e => e.key === 'Enter' && e.target.blur()}
+            style={{ width: 34, border: 'none', background: 'transparent', textAlign: 'center',
+                     fontSize: 12, outline: 'none', padding: '1px 0',
+                     color: v == null || v === 0 ? '#C4C8CF' : '#192232', cursor: 'text' }} />
+        : <span style={{ fontSize: 12, color: m !== '.' ? '#192232' : v != null ? '#192232' : '#C4C8CF' }}>
+            {m !== '.' ? m : v != null ? v : ''}
+          </span>
+      }
+    </td>
+  )
+}, (p, n) => p.v === n.v && p.m === n.m && p.brush === n.brush && p.isWknd === n.isWknd && p.isEven === n.isEven)
+
+const TcRow = React.memo(function TcRow({ emp, stt, dateList, brush, onUpdate, isEven, hidden }) {
+  const [cells, setCells] = React.useState(() =>
+    Object.fromEntries(dateList.map((_, di) => [di, { v: null, m: '.' }]))
+  )
+  const cellsRef = React.useRef(cells)
+  cellsRef.current = cells
+
+  const rowOT   = React.useMemo(() => dateList.reduce((s, _, di) => { const c = cells[di]; return c?.v != null ? s + c.v : s }, 0), [cells, dateList])
+  const rowDays = React.useMemo(() => dateList.reduce((s, _, di) => { const c = cells[di]; return s + tcAttendOf(c?.v ?? null, c?.m ?? '.') }, 0), [cells, dateList])
+  React.useEffect(() => { onUpdate(emp.maNhanVien, rowOT, rowDays, cellsRef.current) }, [emp.maNhanVien, rowOT, rowDays, onUpdate])
+
+  const handleChange = React.useCallback((di, v, m) => setCells(prev => ({ ...prev, [di]: { v, m } })), [])
+
+  const altBg  = isEven ? '#FAFAF7' : '#fff'
+  const tdBase = { padding: '4px 6px', borderRight: '1px solid #EAE8E0', borderBottom: '1px solid #EAE8E0', fontSize: 12 }
+  const stickyTd = { ...tdBase, position: 'sticky', zIndex: 2, background: altBg }
+  const overOT = rowOT > 40
+
+  return (
+    <tr style={hidden ? { display: 'none' } : undefined}>
+      <td style={{ ...stickyTd, left: 0, textAlign: 'center', color: '#8A93A2', minWidth: 36 }}>{stt}</td>
+      <td style={{ ...stickyTd, left: 36, fontFamily: 'monospace', fontSize: 11, color: '#4A5567', minWidth: 65 }}>{emp.maNhanVien}</td>
+      <td style={{ ...stickyTd, left: 101, fontWeight: 600, minWidth: 160, color: '#192232' }}>{emp.hoVaTen}</td>
+      <td style={{ ...tdBase, fontSize: 11, color: '#4A5567', background: altBg, minWidth: 75 }}>{emp.toNhom || '—'}</td>
+      {dateList.map((date, di) => {
+        const d = dayjs(date)
+        const c = cells[di] || { v: null, m: '.' }
+        return <TcCell key={di} di={di} v={c.v} m={c.m} isWknd={[0,6].includes(d.day())} isEven={isEven} brush={brush} onChange={handleChange} />
+      })}
+      <td style={{ ...tdBase, textAlign: 'center', fontWeight: 700, background: overOT ? '#FBEAE7' : '#EAF2EC', color: overOT ? '#B3322A' : '#2E6B53' }}>{rowOT ? tcR1(rowOT) : '0'}</td>
+      <td style={{ ...tdBase, textAlign: 'center', fontWeight: 700, background: '#EAF2EC', color: '#2E6B53' }}>{rowDays ? tcR1(rowDays) : '0'}</td>
+      <td style={{ ...tdBase, textAlign: 'center', fontWeight: 700, background: '#EAF2EC', color: '#2E6B53' }}>{rowOT ? tcR1(rowOT / 8) : '0'}</td>
+    </tr>
+  )
+})
+
+function TangCaTab({ empRows, offsetHeader }) {
+  const [tcPeriod, setTcPeriod]       = React.useState('week')
+  const [tcDateRange, setTcDateRange] = React.useState(getWeekRange())
+  const tcDateList = React.useMemo(() => buildDateList(tcDateRange[0], tcDateRange[1]), [tcDateRange])
+
+  const [brush, setBrush]       = React.useState('0')
+  const [search, setSearch]     = React.useState('')
+  const [posFilter, setPosFilter] = React.useState('all')
+  const [stats, setStats]       = React.useState({ ot: 0, days: 0, over40: 0 })
+  const [footerDay, setFooterDay] = React.useState([])
+
+  // Đo chiều cao phần trên bảng để tính height động
+  const topSectionRef = React.useRef(null)
+  const [topSectionH, setTopSectionH] = React.useState(170)
+  React.useEffect(() => {
+    if (!topSectionRef.current) return
+    const obs = new ResizeObserver(([e]) => setTopSectionH(e.contentRect.height))
+    obs.observe(topSectionRef.current)
+    return () => obs.disconnect()
+  }, [])
+
+  const rowTotals     = React.useRef({})
+  const rowCells      = React.useRef({})
+  const tcDateListRef = React.useRef(tcDateList)
+  tcDateListRef.current = tcDateList
+
+  React.useEffect(() => {
+    rowTotals.current = {}
+    rowCells.current  = {}
+    setStats({ ot: 0, days: 0, over40: 0 })
+    setFooterDay([])
+  }, [empRows, tcDateList])
+
+  const onRowUpdate = React.useCallback((maNV, ot, days, cells) => {
+    rowTotals.current[maNV] = { ot, days }
+    rowCells.current[maNV]  = cells
+    const vals      = Object.values(rowTotals.current)
+    const totalOT   = vals.reduce((s, r) => s + r.ot, 0)
+    const totalDays = vals.reduce((s, r) => s + r.days, 0)
+    const nDays     = tcDateListRef.current.length
+    const allCells  = Object.values(rowCells.current)
+    const dayTotals = Array.from({ length: nDays }, (_, di) =>
+      allCells.reduce((s, c) => s + (c[di]?.v ?? 0), 0)
+    )
+    setStats({ ot: totalOT, days: totalDays, over40: vals.filter(r => r.ot > 40).length })
+    setFooterDay(dayTotals)
+  }, [])
+
+  const handleTcPeriod = (key) => {
+    setTcPeriod(key)
+    if (key === 'week')  setTcDateRange(getWeekRange())
+    if (key === 'month') setTcDateRange(getMonthRange())
+  }
+
+  // Danh sách vị trí duy nhất từ dữ liệu thực
+  const positions = React.useMemo(() =>
+    [...new Set(empRows.map(e => e.toNhom).filter(Boolean))].sort(),
+  [empRows])
+
+  const posCounts = React.useMemo(() => {
+    const c = { all: empRows.length }
+    positions.forEach(p => { c[p] = empRows.filter(e => e.toNhom === p).length })
+    return c
+  }, [empRows, positions])
+
+  const handleCSV = () => {
+    const header = ['STT', 'Mã NV', 'Họ và tên', 'Vị trí',
+      ...tcDateList.map(d => `${dayjs(d).date()}(${DOW_TC[dayjs(d).day()]})`),
+      'Cộng giờ TC', 'Ngày đi làm', 'Ngày công TC',
+    ]
+    const rows = empRows.map((emp, idx) => {
+      const cells = rowCells.current[emp.maNhanVien]
+        || Object.fromEntries(tcDateList.map((_, di) => [di, { v: null, m: '.' }]))
+      const ot   = tcDateList.reduce((s, _, di) => s + (cells[di]?.v ?? 0), 0)
+      const days = tcDateList.reduce((s, _, di) => s + tcAttendOf(cells[di]?.v ?? null, cells[di]?.m ?? '.'), 0)
+      return [
+        idx + 1, emp.maNhanVien || '', emp.hoVaTen || '', emp.toNhom || '',
+        ...tcDateList.map((_, di) => {
+          const c = cells[di] || { v: null, m: '.' }
+          if (c.m === 'X') return 'X'
+          if (c.m !== '.') return c.m + (c.v != null ? ' ' + c.v : '')
+          return c.v != null ? c.v : ''
+        }),
+        tcR1(ot), tcR1(days), tcR1(ot / 8),
+      ]
+    })
+    const csv = '﻿' + [header, ...rows].map(r =>
+      r.map(c => { c = String(c); return /[",;\n]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c }).join(',')
+    ).join('\n')
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+    a.download = `TangCa_${tcDateRange[0].format('DD-MM-YYYY')}_${tcDateRange[1].format('DD-MM-YYYY')}.csv`
+    a.click()
+  }
+
+  const searchLc = search.toLowerCase().trim()
+
+  const thBase = {
+    position: 'sticky', top: 0, zIndex: 5, background: '#243042', color: '#fff',
+    fontWeight: 600, fontSize: 11, padding: '6px 4px', textAlign: 'center',
+    borderRight: '1px solid #3a475d', borderBottom: '1px solid #3a475d', whiteSpace: 'nowrap',
+  }
+  const tfBase = {
+    position: 'sticky', bottom: 0, background: '#E7F0EA', fontWeight: 700,
+    fontSize: 12, padding: '6px 4px', textAlign: 'center', borderTop: '2px solid #2E6B53', color: '#2E6B53',
+  }
+
+  return (
+    <div>
+      {/* Phần đo chiều cao để tính height bảng */}
+      <div ref={topSectionRef}>
+
+        {/* Sticky header — 2 rows compact */}
+        <div style={{ position: 'sticky', top: offsetHeader, zIndex: 8, background: '#fff', borderBottom: '1px solid #F1F5F9' }}>
+
+          {/* Row 1: title + date + search + CSV */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 14px 4px', flexWrap: 'wrap' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 700, color: '#1E293B', fontSize: 13, whiteSpace: 'nowrap' }}>
+              <ClockCircleOutlined style={{ color: '#1D4ED8', fontSize: 12 }} />
+              Tăng Ca
+            </span>
+
+            <div style={{ display: 'flex', gap: 1, background: '#F1F5F9', borderRadius: 7, padding: 2 }}>
+              {PERIOD_OPTS.map(p => (
+                <button key={p.key} onClick={() => handleTcPeriod(p.key)} style={{
+                  border: 'none', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 12,
+                  background: tcPeriod === p.key ? '#fff' : 'transparent',
+                  color: tcPeriod === p.key ? '#1D4ED8' : '#64748B',
+                  fontWeight: tcPeriod === p.key ? 700 : 400,
+                  boxShadow: tcPeriod === p.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  transition: 'all 0.15s',
+                }}>{p.label}</button>
+              ))}
+            </div>
+
+            <RangePicker
+              size="small" value={tcDateRange}
+              onChange={v => { if (v) { setTcDateRange(v); setTcPeriod('custom') } }}
+              format="DD/MM/YYYY" allowClear={false}
+            />
+
+            <span style={{ fontSize: 11, color: '#64748B' }}>
+              <b style={{ color: '#1D4ED8' }}>{tcDateRange[0].format('DD/MM')}</b>
+              {' → '}
+              <b style={{ color: '#1D4ED8' }}>{tcDateRange[1].format('DD/MM')}</b>
+              {' · '}
+              <b style={{ color: '#475569' }}>{empRows.length}</b> NV
+            </span>
+
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 5, alignItems: 'center' }}>
+              <Input
+                size="small"
+                placeholder="Tìm tên, mã NV..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                prefix={<SearchOutlined style={{ color: '#94A3B8', fontSize: 11 }} />}
+                allowClear
+                style={{ width: 165 }}
+              />
+              <Button size="small" onClick={handleCSV}>Xuất CSV</Button>
+            </div>
+          </div>
+
+          {/* Row 2: brush bar + vị trí pills cùng hàng */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 14px 5px', flexWrap: 'wrap', borderTop: '1px solid #F1F5F9' }}>
+            <span style={{ fontSize: 10, color: '#8A93A2', fontWeight: 700, letterSpacing: '.05em', whiteSpace: 'nowrap' }}>CÔNG CỤ:</span>
+            {BRUSH_OPTS.map(b => (
+              <button key={b.m} onClick={() => setBrush(b.m)} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                border: `1.5px solid ${brush === b.m ? '#243042' : '#E2E8F0'}`,
+                borderRadius: 999, padding: '2px 8px 2px 6px', cursor: 'pointer', fontSize: 11,
+                background: brush === b.m ? '#f0f4f8' : '#fff',
+                fontWeight: brush === b.m ? 700 : 400,
+                boxShadow: brush === b.m ? '0 0 0 2px #dde5ef' : 'none',
+                whiteSpace: 'nowrap',
+              }}>
+                {b.isNum
+                  ? <b style={{ fontWeight: 800, fontSize: 11 }}>123</b>
+                  : MARK_BG[b.m] && <span style={{ width: 12, height: 12, borderRadius: 3, background: MARK_BG[b.m], border: '1px solid rgba(0,0,0,.15)', flexShrink: 0 }} />
+                }
+                {b.label}
+              </button>
+            ))}
+
+            {positions.length > 0 && (
+              <>
+                <div style={{ width: 1, height: 16, background: '#e2e8f0', margin: '0 2px', flexShrink: 0 }} />
+                <span style={{ fontSize: 10, color: '#8A93A2', fontWeight: 700, letterSpacing: '.05em', whiteSpace: 'nowrap' }}>VỊ TRÍ:</span>
+                {[{ key: 'all', label: 'Tất cả' }, ...positions.map(p => ({ key: p, label: p }))].map(({ key, label }) => {
+                  const count = posCounts[key] || 0
+                  const isActive = posFilter === key
+                  return (
+                    <button key={key} onClick={() => setPosFilter(key)} style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      border: `1.5px solid ${isActive ? '#243042' : '#E2E0D8'}`,
+                      borderRadius: 20, padding: '2px 9px', cursor: 'pointer', fontSize: 11,
+                      background: isActive ? '#243042' : '#fff',
+                      color: isActive ? '#fff' : '#475569',
+                      fontWeight: isActive ? 700 : 400,
+                      whiteSpace: 'nowrap',
+                      transition: 'all 0.12s',
+                    }}>
+                      {label} <span style={{ opacity: isActive ? 0.75 : 0.5 }}>{count}</span>
+                    </button>
+                  )
+                })}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Chips — compact */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '5px 14px 6px', background: '#fff', borderBottom: '1px solid #F1F5F9' }}>
+          {[
+            { v: empRows.length,    label: 'nhân viên' },
+            { v: tcDateList.length, label: 'ngày trong kỳ' },
+            { v: tcR1(stats.days),  label: 'tổng ngày công chính', leaf: true },
+            { v: tcR1(stats.ot),    label: 'tổng giờ tăng ca' },
+            ...(stats.over40 > 0 ? [{ v: stats.over40, label: 'người vượt trần 40h', warn: true }] : []),
+          ].map((c, i) => (
+            <span key={i} style={{ background: c.warn ? '#FBEAE7' : '#F2F1EC', border: '1px solid #E2E0D8', borderRadius: 8, padding: '3px 10px', fontSize: 11 }}>
+              <b style={{ fontSize: 13, fontWeight: 800, marginRight: 3, color: c.warn ? '#B3322A' : c.leaf ? '#2E6B53' : 'inherit' }}>{c.v}</b>
+              {c.label}
+            </span>
+          ))}
+        </div>
+
+      </div>{/* /topSectionRef */}
+
+      {/* Table — height tự động theo phần trên */}
+      <div style={{ overflowX: 'auto', overflowY: 'auto', height: `calc(100vh - ${offsetHeader + topSectionH}px)`, minHeight: 200 }}>
+        <table style={{ borderCollapse: 'separate', borderSpacing: 0, width: 'max-content' }}>
+          <thead>
+            <tr>
+              <th style={{ ...thBase, left: 0, position: 'sticky', zIndex: 6, minWidth: 36 }}>STT</th>
+              <th style={{ ...thBase, left: 36, position: 'sticky', zIndex: 6, minWidth: 65 }}>Mã NV</th>
+              <th style={{ ...thBase, left: 101, position: 'sticky', zIndex: 6, minWidth: 160, textAlign: 'left', paddingLeft: 8 }}>Họ và tên</th>
+              <th style={{ ...thBase, minWidth: 75 }}>Vị trí</th>
+              {tcDateList.map(date => {
+                const d = dayjs(date)
+                const isWknd = [0,6].includes(d.day())
+                return (
+                  <th key={date} style={{ ...thBase, background: isWknd ? '#3a3320' : '#243042', color: isWknd ? '#f0d9a0' : '#fff', minWidth: 36, padding: '4px 2px' }}>
+                    <div style={{ fontSize: 12 }}>{d.date()}</div>
+                    <div style={{ fontSize: 9, opacity: 0.8 }}>{DOW_TC[d.day()]}</div>
+                  </th>
+                )
+              })}
+              <th style={{ ...thBase, background: '#314a3f', minWidth: 66, whiteSpace: 'normal', lineHeight: 1.2 }}>Cộng giờ<br/>tăng ca</th>
+              <th style={{ ...thBase, background: '#314a3f', minWidth: 66, whiteSpace: 'normal', lineHeight: 1.2 }}>Ngày đi làm<br/>thực tế</th>
+              <th style={{ ...thBase, background: '#314a3f', minWidth: 66, whiteSpace: 'normal', lineHeight: 1.2 }}>Ngày công<br/>tăng ca</th>
+            </tr>
+          </thead>
+          <tbody>
+            {empRows.map((emp, idx) => {
+              const matchSearch = !searchLc || emp.hoVaTen?.toLowerCase().includes(searchLc) || emp.maNhanVien?.toLowerCase().includes(searchLc)
+              const matchPos    = posFilter === 'all' || emp.toNhom === posFilter
+              const hidden      = !matchSearch || !matchPos
+              return (
+                <TcRow
+                  key={emp.maNhanVien + '_' + (tcDateList[0] || '') + '_' + tcDateList.length}
+                  emp={emp} stt={idx + 1} dateList={tcDateList}
+                  brush={brush} onUpdate={onRowUpdate} isEven={idx % 2 === 1} hidden={hidden}
+                />
+              )
+            })}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={4} style={{ ...tfBase, position: 'sticky', bottom: 0, left: 0, zIndex: 5, textAlign: 'right', paddingRight: 12 }}>TỔNG CỘNG</td>
+              {tcDateList.map((_, di) => (
+                <td key={di} style={{ ...tfBase, color: footerDay[di] ? '#2E6B53' : '#bbb', background: footerDay[di] ? '#E7F0EA' : '#f4f8f5' }}>
+                  {footerDay[di] ? tcR1(footerDay[di]) : ''}
+                </td>
+              ))}
+              <td style={{ ...tfBase, background: '#d8e8dd' }}>{tcR1(stats.ot) || '0'}</td>
+              <td style={{ ...tfBase, background: '#d8e8dd' }}>{tcR1(stats.days) || '0'}</td>
+              <td style={{ ...tfBase, background: '#d8e8dd' }}>{tcR1(stats.ot / 8) || '0'}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function ChamCongPage() {
   const { canEditAttendance, getAllowedEmployeeGroups } = useAuth()
   const canEdit = canEditAttendance()
@@ -602,6 +981,13 @@ export default function ChamCongPage() {
       ),
     },
     {
+      key: 'tangca',
+      label: <span><ClockCircleOutlined style={{ marginRight: 5 }} />Tăng Ca</span>,
+      children: (
+        <TangCaTab empRows={allEmpRows} offsetHeader={offsetHeader} />
+      ),
+    },
+    {
       key: 'congravao',
       label: <span><LoginOutlined style={{ marginRight: 5 }} />Công Ra Vào</span>,
       children: (
@@ -688,9 +1074,10 @@ export default function ChamCongPage() {
           color: #64748B !important; font-size: 13px;
           padding: 12px 4px !important; margin: 0 20px 0 0 !important; font-weight: 500;
         }
-        .chamcong-tabs > .ant-tabs-nav .ant-tabs-tab:hover { color: #1D4ED8 !important; }
-        .chamcong-tabs > .ant-tabs-nav .ant-tabs-tab-active { color: #1D4ED8 !important; font-weight: 700 !important; }
-        .chamcong-tabs > .ant-tabs-nav .ant-tabs-ink-bar { background: #1D4ED8 !important; height: 2px !important; border-radius: 2px; }
+        .chamcong-tabs > .ant-tabs-nav .ant-tabs-tab:hover { color: #D97706 !important; }
+        .chamcong-tabs > .ant-tabs-nav .ant-tabs-tab-active { color: #B45309 !important; font-weight: 700 !important; background: #FEF3C7 !important; border-radius: 8px 8px 0 0; }
+        .chamcong-tabs > .ant-tabs-nav .ant-tabs-tab-active .ant-tabs-tab-btn { color: #B45309 !important; }
+        .chamcong-tabs > .ant-tabs-nav .ant-tabs-ink-bar { background: #F59E0B !important; height: 3px !important; border-radius: 2px; }
         .chamcong-tabs > .ant-tabs-nav::before { border-bottom: none !important; }
         .chamcong-tabs .ant-tabs-tabpane { padding: 0 !important; }
 
