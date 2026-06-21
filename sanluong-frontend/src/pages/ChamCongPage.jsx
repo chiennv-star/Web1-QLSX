@@ -189,6 +189,33 @@ function TangCaTab({ empRows, offsetHeader }) {
   const [stats, setStats]       = React.useState({ ot: 0, days: 0, over40: 0 })
   const [footerDay, setFooterDay] = React.useState([])
 
+  // Floating panel state
+  const [floating, setFloating]   = React.useState(false)
+  const [panelPos, setPanelPos]   = React.useState({ x: 80, y: 70 })
+  const [panelSize, setPanelSize] = React.useState({ w: 960, h: 620 })
+  const panelPosRef  = React.useRef(panelPos)
+  const panelSizeRef = React.useRef(panelSize)
+  panelPosRef.current  = panelPos
+  panelSizeRef.current = panelSize
+  const floatingPanelRef = React.useRef(null)
+
+  const startDrag = React.useCallback((e) => {
+    if (e.button !== 0) return
+    e.preventDefault()
+    const ox = e.clientX - panelPosRef.current.x
+    const oy = e.clientY - panelPosRef.current.y
+    const onMove = ev => setPanelPos({
+      x: Math.max(0, Math.min(window.innerWidth  - 200, ev.clientX - ox)),
+      y: Math.max(0, Math.min(window.innerHeight - 80,  ev.clientY - oy)),
+    })
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup',   onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup',   onUp)
+  }, [])
+
   // Đo chiều cao phần trên bảng để tính height động
   const topSectionRef = React.useRef(null)
   const [topSectionH, setTopSectionH] = React.useState(170)
@@ -285,8 +312,12 @@ function TangCaTab({ empRows, offsetHeader }) {
     fontSize: 12, padding: '6px 4px', textAlign: 'center', borderTop: '2px solid #2E6B53', color: '#2E6B53',
   }
 
-  return (
-    <div>
+  const tableContainerStyle = floating
+    ? { overflowX: 'auto', overflowY: 'auto', flex: 1, minHeight: 0 }
+    : { overflowX: 'auto', overflowY: 'auto', height: `calc(100vh - ${offsetHeader + topSectionH}px)`, minHeight: 200 }
+
+  const innerContent = (
+    <div style={{ display: 'flex', flexDirection: 'column', height: floating ? '100%' : undefined }}>
       {/* Phần đo chiều cao để tính height bảng */}
       <div ref={topSectionRef}>
 
@@ -338,6 +369,20 @@ function TangCaTab({ empRows, offsetHeader }) {
                 style={{ width: 165 }}
               />
               <Button size="small" onClick={handleCSV}>Xuất CSV</Button>
+              <button
+                onClick={() => setFloating(f => !f)}
+                title={floating ? 'Ghép bảng về trang' : 'Tách bảng ra cửa sổ riêng'}
+                style={{
+                  border: '1.5px solid #CBD5E1', borderRadius: 6, padding: '3px 9px',
+                  background: floating ? '#1E293B' : '#fff',
+                  color: floating ? '#fff' : '#475569',
+                  cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {floating ? '⊡ Ghép lại' : '⊞ Tách bảng'}
+              </button>
             </div>
           </div>
 
@@ -408,7 +453,7 @@ function TangCaTab({ empRows, offsetHeader }) {
       </div>{/* /topSectionRef */}
 
       {/* Table — height tự động theo phần trên */}
-      <div style={{ overflowX: 'auto', overflowY: 'auto', height: `calc(100vh - ${offsetHeader + topSectionH}px)`, minHeight: 200 }}>
+      <div style={tableContainerStyle}>
         <table style={{ borderCollapse: 'separate', borderSpacing: 0, width: 'max-content' }}>
           <thead>
             <tr>
@@ -462,6 +507,82 @@ function TangCaTab({ empRows, offsetHeader }) {
       </div>
     </div>
   )
+
+  if (floating) {
+    return (
+      <>
+        {/* Placeholder trong tab khi bảng đã được tách ra */}
+        <div style={{
+          margin: 20, padding: '16px 20px',
+          background: '#F8FAFC', border: '2px dashed #CBD5E1', borderRadius: 10,
+          display: 'flex', alignItems: 'center', gap: 10, color: '#64748B', fontSize: 13,
+        }}>
+          <span style={{ fontSize: 18 }}>⊞</span>
+          <span>Bảng tăng ca đang mở trong cửa sổ riêng.</span>
+          <button
+            onClick={() => setFloating(false)}
+            style={{ marginLeft: 8, border: '1.5px solid #94A3B8', borderRadius: 6, padding: '3px 12px', background: '#fff', cursor: 'pointer', fontWeight: 600, color: '#334155' }}
+          >
+            Ghép lại
+          </button>
+        </div>
+
+        {/* Floating panel */}
+        <div
+          ref={floatingPanelRef}
+          style={{
+            position: 'fixed',
+            left: panelPos.x, top: panelPos.y,
+            width: panelSize.w, height: panelSize.h,
+            resize: 'both', overflow: 'hidden',
+            background: '#fff',
+            borderRadius: 10,
+            boxShadow: '0 24px 80px rgba(0,0,0,0.28), 0 4px 16px rgba(0,0,0,0.12)',
+            zIndex: 1200,
+            display: 'flex', flexDirection: 'column',
+            minWidth: 520, minHeight: 340,
+            border: '1.5px solid #CBD5E1',
+          }}
+        >
+          {/* Drag handle bar */}
+          <div
+            onMouseDown={startDrag}
+            style={{
+              background: 'linear-gradient(135deg, #1E293B 0%, #243042 100%)',
+              color: '#fff', padding: '7px 14px',
+              cursor: 'move', userSelect: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              flexShrink: 0, borderRadius: '8px 8px 0 0',
+              fontSize: 13, fontWeight: 700,
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <span style={{ fontSize: 15 }}>⏰</span> Bảng Tăng Ca
+              <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.7, marginLeft: 4 }}>
+                — kéo để di chuyển · kéo góc dưới để resize
+              </span>
+            </span>
+            <button
+              onClick={() => setFloating(false)}
+              style={{
+                border: 'none', background: 'rgba(255,255,255,0.15)', color: '#fff',
+                borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontWeight: 700, fontSize: 13,
+              }}
+            >
+              ✕ Ghép lại
+            </button>
+          </div>
+
+          {/* Nội dung bảng */}
+          <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            {innerContent}
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  return innerContent
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

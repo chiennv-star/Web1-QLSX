@@ -531,6 +531,19 @@ function HangTraLaiTab({ stickyTop = 0 }) {
         }}>
           {/* Tab buttons */}
           <div style={{ display: 'flex', alignItems: 'stretch' }}>
+            {/* Title label */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '0 16px 0 12px',
+              borderRight: '1px solid #E2E8F0',
+              whiteSpace: 'nowrap',
+            }}>
+              <WarningOutlined style={{ color: '#f97316', fontSize: 14 }} />
+              <span style={{ fontWeight: 800, fontSize: 13, color: '#0EA5E9', letterSpacing: '0.03em' }}>
+                HÀNG XỬ LÝ
+              </span>
+            </div>
+
             {[
               { key: 'chua-xu-ly',    icon: '⚠', label: 'Chưa xử lý',   color: '#ef4444' },
               { key: 'dang-xu-ly',    icon: '⟳', label: 'Đang xử lý',   color: '#f97316' },
@@ -937,21 +950,9 @@ export default function HangLoiPage() {
         .hl-table .ant-table-tbody > tr:hover > td { background: #EAECF2 !important; }
         .hl-table .row-stripe td { background: #fafbff !important; }
 
-        /* ── Tabs ── */
-        .hl-tabs > .ant-tabs-nav {
-          background: #1e4570 !important;
-          padding: 0 10px; margin: 0 !important; min-height: 40px;
-        }
-        .hl-tabs > .ant-tabs-nav .ant-tabs-tab {
-          color: #CBD5E1 !important; font-size: 13px;
-          padding: 6px 14px !important; margin: 0 2px !important;
-          border-radius: 4px 4px 0 0;
-        }
-        .hl-tabs > .ant-tabs-nav .ant-tabs-tab:hover  { color: #fff !important; background: rgba(59,130,246,0.15) !important; }
-        .hl-tabs > .ant-tabs-nav .ant-tabs-tab-active { color: #fff !important; font-weight: 700 !important; background: rgba(29,78,216,0.25) !important; box-shadow: 0 -3px 0 #60A5FA inset; }
-        .hl-tabs > .ant-tabs-nav .ant-tabs-ink-bar   { background: #60A5FA !important; }
-        .hl-tabs > .ant-tabs-nav::before             { border: none !important; }
-        .hl-tabs .ant-tabs-tabpane                   { padding: 0 !important; }
+        /* ── Tabs — ẩn tab bar vì chỉ có 1 tab ── */
+        .hl-tabs > .ant-tabs-nav { display: none !important; }
+        .hl-tabs .ant-tabs-tabpane { padding: 0 !important; }
 
         /* ── Modal ── */
         .hl-modal .ant-modal-content { padding: 0 !important; border-radius: 10px !important; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.18) !important; }
@@ -967,15 +968,11 @@ export default function HangLoiPage() {
       <Tabs
         className="hl-tabs"
         defaultActiveKey="hang-tra-lai"
-        renderTabBar={(props, DefaultTabBar) => (
-          <div ref={headerRef} style={{ position: 'sticky', top: 0, zIndex: 20 }}>
-            <DefaultTabBar {...props} style={{ marginBottom: 0 }} />
-          </div>
-        )}
+        renderTabBar={() => null}
         items={[{
           key: 'hang-tra-lai',
           label: <span><WarningOutlined style={{ marginRight: 5, color: '#f97316' }} />Hàng Lỗi</span>,
-          children: <HangTraLaiTab stickyTop={tabBarHeight} />,
+          children: <HangTraLaiTab stickyTop={0} />,
         }]}
       />
     </>
