@@ -26,6 +26,8 @@ const { RangePicker } = DatePicker
 
 // ─── Shared constants ────────────────────────────────────────────────────────
 
+const TAB_BAR_H = 42 // height của .sl-page-tabs > .ant-tabs-nav (sticky)
+
 const CONG_DOAN_COLOR = { PCPL1: 'blue', PCPL2: 'geekblue', PL: 'green', DG: 'gold', BBC1: 'purple', CC: 'volcano', PC: 'blue' }
 
 const CONG_DOAN_OPTIONS = [
@@ -977,7 +979,7 @@ function DailyDetailTab() {
   return (
     <>
       {/* Bộ lọc + KPI (sticky wrapper) */}
-      <div ref={filterRef} style={{ position: 'sticky', top: 0, zIndex: 20 }}>
+      <div ref={filterRef} style={{ position: 'sticky', top: TAB_BAR_H, zIndex: 9 }}>
 
       {/* Dark header */}
       <div style={{
@@ -1096,7 +1098,7 @@ function DailyDetailTab() {
         loading={loading}
         size="small"
         scroll={{ x: 1600 }}
-        sticky={{ offsetHeader: filterH }}
+        sticky={{ offsetHeader: TAB_BAR_H + filterH }}
         rowClassName={record => {
           if (record.status === 'PENDING') return 'row-pending'
           if (record.status === 'IN_PROGRESS') return 'row-in-progress'
@@ -1518,7 +1520,7 @@ function TongHopTab() {
     <>
       {/* Bộ lọc + KPI (sticky wrapper) */}
       <div ref={filterRef} style={{
-        position: 'sticky', top: 0, zIndex: 20,
+        position: 'sticky', top: TAB_BAR_H, zIndex: 9,
         background: 'linear-gradient(135deg, #FF9933 0%, #FFBB55 100%)',
         borderBottom: '3px solid #e07800',
         boxShadow: '0 3px 12px rgba(200,100,0,0.25)',
@@ -1586,7 +1588,7 @@ function TongHopTab() {
         loading={loading}
         size="small"
         scroll={{ x: 1300 }}
-        sticky={{ offsetHeader: filterH }}
+        sticky={{ offsetHeader: TAB_BAR_H + filterH }}
         onRow={record => ({
           onClick: () => setSelectedDay(record.ngay),
           style: { cursor: 'pointer' },
@@ -1688,7 +1690,7 @@ function BaoCaoTab() {
     <div>
       {/* Filter bar */}
       <div style={{
-        position: 'sticky', top: 0, zIndex: 10,
+        position: 'sticky', top: TAB_BAR_H, zIndex: 9,
         background: '#f0fdf4', borderBottom: '2px solid #86efac',
         padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
       }}>
@@ -1998,7 +2000,7 @@ function ThongKeSanXuatTab() {
   return (
     <div style={{ background: '#f8fafc', minHeight: '100vh' }}>
       {/* Filter bar */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 20, background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '8px 20px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', boxShadow: '0 1px 4px #0001' }}>
+      <div style={{ position: 'sticky', top: TAB_BAR_H, zIndex: 9, background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '8px 20px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', boxShadow: '0 1px 4px #0001' }}>
         <RangePicker size="small" value={dateRange} onChange={setDateRange} format="DD/MM/YYYY" allowClear={false} />
         <Button size="small" type="primary" icon={<SearchOutlined />} loading={loading}
           style={{ background: '#0f766e', borderColor: '#0f766e' }} onClick={() => fetchData()}>Truy xuất</Button>
