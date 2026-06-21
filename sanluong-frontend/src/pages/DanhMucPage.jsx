@@ -2174,7 +2174,14 @@ function EmployeeTab() {
     try {
       const params = { page, size }
       if (s?.trim()) params.search = s.trim()
-      if (grp !== 'ALL') params.toNhom = grp
+      if (grp === 'TAM_NGHI') {
+        params.tinhTrang = 'tam_nghi'
+      } else if (grp !== 'ALL') {
+        params.toNhom = grp
+        params.excludeTinhTrang = 'tam_nghi'
+      } else {
+        params.excludeTinhTrang = 'tam_nghi'
+      }
       const { data: res } = await api.get('/employees', { params })
       setData(res.content)
       setPagination(p => ({ ...p, total: res.totalElements }))
@@ -2186,19 +2193,25 @@ function EmployeeTab() {
     try {
       const targets = allowedGroups || GROUPS
       const requests = allowedGroups
-        ? targets.map(g => api.get('/employees', { params: { page: 0, size: 1, toNhom: g } }))
+        ? [
+            ...targets.map(g => api.get('/employees', { params: { page: 0, size: 1, toNhom: g, excludeTinhTrang: 'tam_nghi' } })),
+            api.get('/employees', { params: { page: 0, size: 1, tinhTrang: 'tam_nghi' } }),
+          ]
         : [
-            api.get('/employees', { params: { page: 0, size: 1 } }),
-            ...GROUPS.map(g => api.get('/employees', { params: { page: 0, size: 1, toNhom: g } }))
+            api.get('/employees', { params: { page: 0, size: 1, excludeTinhTrang: 'tam_nghi' } }),
+            ...GROUPS.map(g => api.get('/employees', { params: { page: 0, size: 1, toNhom: g, excludeTinhTrang: 'tam_nghi' } })),
+            api.get('/employees', { params: { page: 0, size: 1, tinhTrang: 'tam_nghi' } }),
           ]
       const results = await Promise.all(requests)
       if (allowedGroups) {
         const counts = {}
         targets.forEach((g, i) => { counts[g] = results[i].data.totalElements })
+        counts.TAM_NGHI = results[targets.length].data.totalElements
         setGroupCounts(counts)
       } else {
         const counts = { ALL: results[0].data.totalElements }
         GROUPS.forEach((g, i) => { counts[g] = results[i + 1].data.totalElements })
+        counts.TAM_NGHI = results[GROUPS.length + 1].data.totalElements
         setGroupCounts(counts)
       }
     } catch { /* non-blocking */ }
@@ -2272,6 +2285,26 @@ function EmployeeTab() {
     } catch { message.error('Xóa thất bại') }
   }
 
+  const setTinhTrang = async (id, tinhTrang) => {
+    try {
+      await api.patch(`/employees/${id}/tinh-trang`, { tinhTrang })
+      message.success(tinhTrang === 'tam_nghi' ? '✓ Đã chuyển sang Tạm nghỉ' : '✓ Đã chuyển về Đang làm')
+      fetchData(0, pagination.pageSize, search, activeGroup)
+      fetchGroupCounts()
+    } catch {
+      // fallback: dùng PUT toàn bộ record nếu PATCH chưa có
+      try {
+        const emp = data.find(e => e.id === id)
+        if (emp) {
+          await api.put(`/employees/${id}`, { ...emp, tinhTrang: tinhTrang || null })
+          message.success(tinhTrang === 'tam_nghi' ? '✓ Đã chuyển sang Tạm nghỉ' : '✓ Đã chuyển về Đang làm')
+          fetchData(0, pagination.pageSize, search, activeGroup)
+          fetchGroupCounts()
+        }
+      } catch { message.error('Cập nhật thất bại') }
+    }
+  }
+
   const columns = [
     { title: '#', key: 'stt', width: 48, align: 'center',
       render: (_, __, i) => <span style={{ color: '#aaa', fontSize: 11 }}>{(pagination.current - 1) * pagination.pageSize + i + 1}</span> },
@@ -2299,10 +2332,11 @@ function EmployeeTab() {
       render: v => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
     { title: 'Ngày Nghỉ', dataIndex: 'ngayNghiViec', key: 'ngayNghiViec', width: 100,
       render: v => v ? <span style={{ color: '#ef4444' }}>{dayjs(v).format('DD/MM/YYYY')}</span> : '—' },
-    { title: 'Tình Trạng', dataIndex: 'tinhTrang', key: 'tinhTrang', width: 110, align: 'center',
+    { title: 'Tình Trạng', dataIndex: 'tinhTrang', key: 'tinhTrang', width: 120, align: 'center',
       render: v => {
         if (!v) return <Tag color="success">Đang làm</Tag>
         if (v === 'nghi_viec') return <Tag color="error">Nghỉ việc</Tag>
+        if (v === 'tam_nghi')  return <Tag color="warning" style={{ fontWeight: 600 }}>🌿 Tạm nghỉ</Tag>
         return <Tag>{v}</Tag>
       } },
     { title: 'Địa Chỉ', dataIndex: 'diaChi', key: 'diaChi', width: 160, ellipsis: true,
@@ -2310,9 +2344,38 @@ function EmployeeTab() {
     { title: 'Ghi Chú', dataIndex: 'ghiChu', key: 'ghiChu', ellipsis: true,
       render: v => v ? <span style={{ fontSize: 12, color: '#64748b' }}>{v}</span> : '—' },
     ...(canManage ? [{
-      title: '', key: 'action', width: 80, align: 'center', fixed: 'right',
+      title: '', key: 'action', width: 120, align: 'center', fixed: 'right',
       render: (_, r) => (
         <Space size={4}>
+          {r.tinhTrang === 'tam_nghi' ? (
+            <Tooltip title="Đi làm lại">
+              <Popconfirm
+                title={<span><b>{r.hoVaTen}</b> đi làm lại?</span>}
+                okText="Xác nhận" cancelText="Hủy"
+                onConfirm={() => setTinhTrang(r.id, null)}
+              >
+                <Button size="small" type="primary" ghost
+                  style={{ borderColor: '#16a34a', color: '#16a34a', fontWeight: 600, fontSize: 11 }}>
+                  ▶ Đi làm lại
+                </Button>
+              </Popconfirm>
+            </Tooltip>
+          ) : (
+            <Tooltip title="Chuyển sang Tạm nghỉ (thai sản, chế độ...)">
+              <Popconfirm
+                title={<span>Chuyển <b>{r.hoVaTen}</b> sang Tạm nghỉ?</span>}
+                description="Nhân sự vẫn được lưu, có thể chuyển lại khi đi làm."
+                okText="Tạm nghỉ" cancelText="Hủy"
+                okButtonProps={{ style: { background: '#d97706', borderColor: '#d97706' } }}
+                onConfirm={() => setTinhTrang(r.id, 'tam_nghi')}
+              >
+                <Button size="small" type="default"
+                  style={{ borderColor: '#d97706', color: '#d97706', fontWeight: 600, fontSize: 11 }}>
+                  🌿 Tạm nghỉ
+                </Button>
+              </Popconfirm>
+            </Tooltip>
+          )}
           <Tooltip title="Sửa"><Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(r)} /></Tooltip>
           <Popconfirm title="Xóa nhân sự này?" okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }} onConfirm={() => onDelete(r.id)}>
             <Button size="small" type="text" danger icon={<DeleteOutlined />} />
@@ -2347,7 +2410,19 @@ function EmployeeTab() {
           )}
         </span>
       ),
-    }))
+    })),
+    {
+      key: 'TAM_NGHI',
+      label: (
+        <span style={{ color: activeGroup === 'TAM_NGHI' ? '#d97706' : undefined }}>
+          🌿 Tạm Nghỉ
+          {groupCounts.TAM_NGHI > 0 && (
+            <Badge count={groupCounts.TAM_NGHI} overflowCount={99}
+              style={{ marginLeft: 6, background: activeGroup === 'TAM_NGHI' ? '#d97706' : '#a8a8a8', fontSize: 10 }} />
+          )}
+        </span>
+      ),
+    },
   ]
 
   return (
@@ -2472,6 +2547,7 @@ function EmployeeTab() {
             <Col span={12}>
               <Form.Item label="Tình Trạng" name="tinhTrang">
                 <Select allowClear placeholder="Đang làm">
+                  <Option value="tam_nghi">🌿 Tạm nghỉ (thai sản / chế độ)</Option>
                   <Option value="nghi_viec">Nghỉ việc</Option>
                 </Select>
               </Form.Item>

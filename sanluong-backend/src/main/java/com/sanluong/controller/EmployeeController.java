@@ -28,9 +28,21 @@ public class EmployeeController {
     public ResponseEntity<Page<Employee>> search(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String toNhom,
+            @RequestParam(required = false) String tinhTrang,
+            @RequestParam(required = false) String excludeTinhTrang,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
-        return ResponseEntity.ok(service.search(search, toNhom, page, size));
+        return ResponseEntity.ok(service.search(search, toNhom, tinhTrang, excludeTinhTrang, page, size));
+    }
+
+    @PatchMapping("/{id}/tinh-trang")
+    public ResponseEntity<Employee> patchTinhTrang(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body,
+            Authentication auth) {
+        String tinhTrang = body.getOrDefault("tinhTrang", null);
+        if ("null".equals(tinhTrang)) tinhTrang = null;
+        return ResponseEntity.ok(service.patchTinhTrang(id, tinhTrang, auth.getName()));
     }
 
     @GetMapping("/{id}")

@@ -34,12 +34,24 @@ public class EmployeeService {
         this.userRepository = userRepository;
     }
 
-    public Page<Employee> search(String search, String toNhom, int page, int size) {
-        List<Employee> all = repository.searchAll(isEmpty(search) ? null : search, isEmpty(toNhom) ? null : toNhom);
+    public Page<Employee> search(String search, String toNhom, String tinhTrang, String excludeTinhTrang, int page, int size) {
+        List<Employee> all = repository.searchAll(
+            isEmpty(search)             ? null : search,
+            isEmpty(toNhom)             ? null : toNhom,
+            isEmpty(tinhTrang)          ? null : tinhTrang,
+            isEmpty(excludeTinhTrang)   ? null : excludeTinhTrang
+        );
         int start = page * size;
         int end = Math.min(start + size, all.size());
         List<Employee> content = start < all.size() ? all.subList(start, end) : List.of();
         return new PageImpl<>(content, PageRequest.of(page, size), all.size());
+    }
+
+    public Employee patchTinhTrang(Long id, String tinhTrang, String username) {
+        Employee e = getById(id);
+        e.setTinhTrang(tinhTrang);
+        e.setUpdatedBy(username);
+        return repository.save(e);
     }
 
     public Employee getById(Long id) {
