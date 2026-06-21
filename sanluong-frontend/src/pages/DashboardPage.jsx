@@ -920,7 +920,10 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const toolbarRef = useRef(null)
-  const [headerOffset, setHeaderOffset] = useState(0)
+  const tabsWrapRef = useRef(null)
+  const [toolbarH, setToolbarH] = useState(0)
+  const [tabBarH, setTabBarH] = useState(42)
+  const headerOffset = toolbarH + tabBarH
   const [statsOpen, setStatsOpen] = useState(false)
   const [inboxOpen, setInboxOpen] = useState(false)
   const [inboxCount, setInboxCount] = useState(0)
@@ -993,7 +996,11 @@ export default function DashboardPage() {
   const paginationRef = useRef({ current: savedState?.page || 1, pageSize: savedState?.pageSize || 1000 })
 
   useEffect(() => {
-    if (toolbarRef.current) setHeaderOffset(toolbarRef.current.offsetHeight + 4)
+    if (toolbarRef.current) setToolbarH(toolbarRef.current.offsetHeight)
+    if (tabsWrapRef.current) {
+      const nav = tabsWrapRef.current.querySelector('.ant-tabs-nav')
+      if (nav) setTabBarH(nav.offsetHeight)
+    }
   })
 
   useEffect(() => {
@@ -1612,7 +1619,7 @@ export default function DashboardPage() {
         .db-ctx-menu-item:hover { background: #f0f7ff; color: #1D4ED8; }
         .db-ctx-menu-item.danger:hover { background: #fff1f0; color: #dc2626; }
         /* ── Outer tab: Danh sách / Tiến độ ── */
-        .db-outer-tabs > .ant-tabs-nav { background: #e8edf5 !important; border-bottom: 2px solid #c5d0e6 !important; }
+        .db-outer-tabs > .ant-tabs-nav { background: #e8edf5 !important; border-bottom: 2px solid #c5d0e6 !important; position: sticky !important; top: ${toolbarH}px; z-index: 9; }
         .db-outer-tabs > .ant-tabs-nav .ant-tabs-tab { color: #4a5568 !important; font-weight: 600; font-size: 13px; padding: 7px 18px !important; }
         .db-outer-tabs > .ant-tabs-nav .ant-tabs-tab:hover { color: #1d4ed8 !important; }
         .db-outer-tabs > .ant-tabs-nav .ant-tabs-tab-active { background: #1d4ed8 !important; border-radius: 4px 4px 0 0; }
@@ -1818,6 +1825,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Tabs: Danh sách | Tiến độ ─────────────────────────────── */}
+      <div ref={tabsWrapRef}>
       <Tabs
         className="db-outer-tabs"
         activeKey={activeTab}
@@ -1984,6 +1992,7 @@ export default function DashboardPage() {
           },
         ]}
       />
+      </div>
 
       {(isAdmin() || isAdminKH()) && (
         <InboxPanel
