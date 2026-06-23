@@ -956,8 +956,10 @@ export default function DonHangPage() {
   useEffect(() => {
     localStorage.setItem('donhang_hidden_ids', JSON.stringify([...hiddenIds]))
   }, [hiddenIds])
-  const [showHidden, setShowHidden] = useState(false)
-  const [activeTab,  setActiveTab]  = useState('active') // 'active' | 'done'
+  const [showHidden,        setShowHidden]        = useState(false)
+  const [activeTab,         setActiveTab]         = useState('active') // 'active' | 'done' | 'trend'
+  const [productMasterMap,  setProductMasterMap]  = useState({})
+  const [loadingMaster,     setLoadingMaster]     = useState(false)
 
   // Sticky header offset
   const headerWrapRef = useRef(null)
@@ -1057,6 +1059,23 @@ export default function DonHangPage() {
   )
   // Completed table: tinhTrangSx === 'done' (always from full data, no hidden filter)
   const completedData = data.filter(r => r.tinhTrangSx === 'done' && baseFilter(r))
+
+  // ── Load product master cho tab Xu hướng ─────────────────────────────────
+  const loadProductMaster = useCallback(async () => {
+    if (Object.keys(productMasterMap).length > 0) return // đã load rồi
+    setLoadingMaster(true)
+    try {
+      const { data: pm } = await api.get('/product-master', { params: { page: 0, size: 9999 } })
+      const map = {}
+      ;(pm.content || []).forEach(p => { if (p.maBravo) map[p.maBravo] = p })
+      setProductMasterMap(map)
+    } catch { /* non-blocking */ }
+    finally { setLoadingMaster(false) }
+  }, [productMasterMap])
+
+  useEffect(() => {
+    if (activeTab === 'trend') loadProductMaster()
+  }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Sync from Kế Hoạch ────────────────────────────────────────────────────
   const syncKhoach = async () => {
@@ -1531,6 +1550,7 @@ export default function DonHangPage() {
         {[
           { key: 'active',  label: '📋 Đơn Hàng',      count: displayData.length + (showHidden ? 0 : hiddenIds.size) },
           { key: 'done',    label: '🏆 Đã Hoàn Thành', count: completedData.length },
+          { key: 'trend',   label: '📊 Xu Hướng',       count: displayData.length },
         ].map(tab => (
           <div key={tab.key}
             onClick={() => { setActiveTab(tab.key); setSelectedRowKeys([]) }}
@@ -1649,6 +1669,141 @@ export default function DonHangPage() {
         }}
         locale={{ emptyText: <span style={{ color: '#d9d9d9' }}>Chưa có đơn hàng hoàn thành</span> }}
       />
+      ) : activeTab === 'trend' ? (
+      /* ── Tab: Xu Hướng ── */
+      (() => {
+        const trendData = displayData.map(r => ({ ...r, _pm: productMasterMap[r.maBravo] || {} }))
+        const fmtNS = v => v != null ? Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 0 }) : '—'
+        const trendColumns = [
+          {
+            title: '#', key: 'stt', width: 44, fixed: 'left', align: 'center',
+            render: (_, __, i) => <span style={{ fontSize: 11, color: '#94a3b8' }}>{i + 1}</span>,
+          },
+          {
+            title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 115, fixed: 'left', align: 'center',
+            render: v => v
+              ? <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', fontSize: 12 }}>{v}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          {
+            title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 85, align: 'center',
+            render: v => v ? <Tag color="blue" style={{ marginRight: 0, fontWeight: 600 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          {
+            title: 'Tên Sản Phẩm', dataIndex: 'tenSanPham', key: 'tenSanPham', width: 210,
+            ellipsis: true,
+            render: v => <span style={{ fontSize: 13, color: '#1e293b', fontWeight: 500 }}>{v || <span style={{ color: '#d9d9d9' }}>—</span>}</span>,
+          },
+          {
+            title: 'Mã Đơn Hàng', dataIndex: 'maDonHang', key: 'maDonHang', width: 115, align: 'center',
+            render: v => v
+              ? <span style={{ fontFamily: 'monospace', color: 'rgb(0,0,205)', fontWeight: 600, fontSize: 12 }}>{v}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          {
+            title: 'SL Đặt', dataIndex: 'soLuongDatHang', key: 'slDat', width: 95, align: 'right',
+            sorter: (a, b) => (Number(a.soLuongDatHang) || 0) - (Number(b.soLuongDatHang) || 0),
+            render: v => <span style={{ fontWeight: 700, color: '#374151' }}>{fmtNum(v)}</span>,
+          },
+          {
+            title: 'SL Còn Lại', dataIndex: 'soLuongConLai', key: 'slCon', width: 100, align: 'right',
+            sorter: (a, b) => (Number(a.soLuongConLai) || 0) - (Number(b.soLuongConLai) || 0),
+            render: v => {
+              const n = Number(v) || 0
+              return <span style={{ fontWeight: 700, color: n > 0 ? '#cf1322' : '#389e0d' }}>{fmtNum(v)}</span>
+            },
+          },
+          {
+            title: 'Tình Trạng', key: 'ttSx', width: 115, align: 'center',
+            render: (_, r) => {
+              const cfg = TINH_TRANG_SX[r.tinhTrangSx]
+              if (!cfg) return <span style={{ color: '#94a3b8', fontSize: 11 }}>Chưa bắt đầu</span>
+              return <Badge status={r.tinhTrangSx === 'done' ? 'success' : 'processing'} text={<span style={{ fontWeight: 600, color: cfg.color, fontSize: 11 }}>{cfg.label}</span>} />
+            },
+          },
+          {
+            title: 'KL/ĐV (g)', key: 'khoiLuong', width: 95, align: 'right',
+            render: (_, r) => <span style={{ color: '#0369a1', fontWeight: 600 }}>{fmtNum(r._pm.khoiLuong)}</span>,
+          },
+          {
+            title: 'Cỡ Lô TU', key: 'slTrungBinh', width: 95, align: 'right',
+            render: (_, r) => <span style={{ color: '#0369a1', fontWeight: 700 }}>{fmtNum(r._pm.slTrungBinh)}</span>,
+          },
+          {
+            title: 'NS TRUNG BÌNH', key: 'nsTb', width: 115, align: 'right',
+            render: (_, r) => {
+              const vals = [r._pm.nangSuatPc, r._pm.nangSuatPl, r._pm.nangSuatBbc1].map(Number).filter(v => v > 0)
+              if (!vals.length) return <span style={{ color: '#d9d9d9' }}>—</span>
+              const avg = vals.reduce((a, b) => a + b, 0) / vals.length
+              return <span style={{ color: '#7c3aed', fontWeight: 700 }}>{fmtNS(avg)}</span>
+            },
+          },
+          {
+            title: 'NS PC', key: 'nsPc', width: 90, align: 'right',
+            render: (_, r) => r._pm.nangSuatPc
+              ? <span style={{ color: '#1d4ed8', fontWeight: 600 }}>{fmtNS(r._pm.nangSuatPc)}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          {
+            title: 'NS PL', key: 'nsPl', width: 90, align: 'right',
+            render: (_, r) => r._pm.nangSuatPl
+              ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{fmtNS(r._pm.nangSuatPl)}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          {
+            title: 'NS BBC1', key: 'nsBbc1', width: 90, align: 'right',
+            render: (_, r) => r._pm.nangSuatBbc1
+              ? <span style={{ color: '#6d28d9', fontWeight: 600 }}>{fmtNS(r._pm.nangSuatBbc1)}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          {
+            title: 'Máy Móc PC', key: 'mmPc', width: 170,
+            render: (_, r) => r._pm.mayMocPc
+              ? <span style={{ fontSize: 12, color: '#374151' }}>{r._pm.mayMocPc}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          {
+            title: 'Máy Móc PL', key: 'mmPl', width: 170,
+            render: (_, r) => r._pm.mayMocPl
+              ? <span style={{ fontSize: 12, color: '#374151' }}>{r._pm.mayMocPl}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          {
+            title: 'Máy Móc BBC1', key: 'mmBbc1', width: 170,
+            render: (_, r) => r._pm.mayMocBbc1
+              ? <span style={{ fontSize: 12, color: '#374151' }}>{r._pm.mayMocBbc1}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          {
+            title: 'Máy Móc ĐG', key: 'mmDg', width: 170,
+            render: (_, r) => r._pm.mayMocDg
+              ? <span style={{ fontSize: 12, color: '#374151' }}>{r._pm.mayMocDg}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+        ]
+        return (
+          <Table
+            className="dh-table"
+            columns={trendColumns}
+            dataSource={trendData}
+            rowKey="id"
+            loading={loading || loadingMaster}
+            size="small"
+            scroll={{ x: 2200 }}
+            sticky={{ offsetHeader: headerOffset }}
+            rowHoverable={false}
+            rowClassName={rowClassName}
+            onRow={r => ({ onClick: () => openDetail(r), style: { cursor: 'pointer' } })}
+            pagination={{
+              defaultPageSize: 50,
+              pageSizeOptions: ['20', '50', '100'],
+              showSizeChanger: true,
+              showTotal: t => `${t} đơn hàng`,
+            }}
+            locale={{ emptyText: <span style={{ color: '#d9d9d9' }}>Không có dữ liệu</span> }}
+          />
+        )
+      })()
       ) : null}
 
       {/* ── Context Menu ── */}
