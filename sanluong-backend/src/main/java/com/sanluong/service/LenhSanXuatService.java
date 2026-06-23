@@ -655,4 +655,19 @@ public class LenhSanXuatService {
         e.setDaBanHanh(false);
         return toDto(repo.save(e));
     }
+
+    public List<Map<String, Object>> statsByProduct(int year) {
+        List<Object[]> rows = repo.findStatsByProductYear(year);
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
+        for (Object[] r : rows) {
+            Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("maBravo",      r[0]);
+            m.put("soLo",         r[1] != null ? ((Number) r[1]).longValue() : 0L);
+            m.put("tongSoLuong",  r[2] != null ? r[2] : 0);
+            m.put("ngayGanNhat",  r[3] != null ? r[3].toString() : null);
+            m.put("dangSanXuat",  r[4] != null && ((Number) r[4]).intValue() == 1);
+            result.add(m);
+        }
+        return result;
+    }
 }

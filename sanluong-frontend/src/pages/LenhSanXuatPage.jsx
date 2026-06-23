@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
-import { Table, Input, Select, Tag, Tooltip, message } from 'antd'
+import React, { useState, useEffect, useCallback, useRef, useLayoutEffect, useMemo } from 'react'
+import { Table, Input, Select, Tag, Tooltip, message, Badge } from 'antd'
 import SkeletonTable from '../components/SkeletonTable'
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
@@ -14,6 +14,7 @@ export default function LenhSanXuatPage() {
   const navigate = useNavigate()
 
   const [data,       setData]       = useState([])
+  const [statsMap,   setStatsMap]   = useState({})
   const [loading,    setLoading]    = useState(false)
   const [searchText, setSearchText] = useState('')
   const [filterLoai, setFilterLoai] = useState(null)
@@ -29,17 +30,22 @@ export default function LenhSanXuatPage() {
     return () => obs.disconnect()
   }, [])
 
-  // ── Fetch product master ──────────────────────────────────────────────────
+  // ── Fetch product master + stats in parallel ──────────────────────────────
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const { data: res } = await api.get('/product-master', {
-        params: { page: 0, size: 9999 },
-      })
-      const rows = res.content || []
+      const year = new Date().getFullYear()
+      const [productsRes, statsRes] = await Promise.all([
+        api.get('/product-master', { params: { page: 0, size: 9999 } }),
+        api.get('/lenh-san-xuat/stats-by-product', { params: { year } }),
+      ])
+      const rows = productsRes.data.content || []
       setData(rows)
       const loais = [...new Set(rows.map(r => r.loaiSanPham).filter(Boolean))].sort()
       setLoaiList(loais)
+      const map = {}
+      ;(statsRes.data || []).forEach(s => { if (s.maBravo) map[s.maBravo] = s })
+      setStatsMap(map)
     } catch {
       message.error('Không thể tải danh mục sản phẩm')
     } finally {
@@ -125,6 +131,51 @@ export default function LenhSanXuatPage() {
       align: 'right',
       render: (v) => <span style={{ fontWeight: 700, color: '#1e4570' }}>{fmtNum(v)}</span>,
     },
+    {
+      title: 'SỐ LÔ NĂM',
+      width: 100,
+      align: 'center',
+      render: (_, record) => {
+        const s = statsMap[record.maBravo]
+        if (!s || !s.soLo) return <span style={{ color: '#d9d9d9' }}>—</span>
+        return <span style={{ fontWeight: 700, color: '#0369a1' }}>{s.soLo}</span>
+      },
+    },
+    {
+      title: 'SL NĂM',
+      width: 110,
+      align: 'right',
+      render: (_, record) => {
+        const s = statsMap[record.maBravo]
+        if (!s || !s.tongSoLuong) return <span style={{ color: '#d9d9d9' }}>—</span>
+        return <span style={{ fontWeight: 600, color: '#0369a1' }}>{fmtNum(s.tongSoLuong)}</span>
+      },
+    },
+    {
+      title: 'LÔ GẦN NHẤT',
+      width: 120,
+      align: 'center',
+      render: (_, record) => {
+        const s = statsMap[record.maBravo]
+        if (!s || !s.ngayGanNhat) return <span style={{ color: '#d9d9d9' }}>—</span>
+        return <span style={{ fontSize: 12, color: '#475569' }}>{dayjs(s.ngayGanNhat).format('DD/MM/YYYY')}</span>
+      },
+    },
+    {
+      title: 'ĐANG SX',
+      width: 90,
+      align: 'center',
+      render: (_, record) => {
+        const s = statsMap[record.maBravo]
+        if (!s || !s.dangSanXuat) return <span style={{ color: '#d9d9d9', fontSize: 12 }}>—</span>
+        return (
+          <Badge
+            status="processing"
+            text={<span style={{ fontSize: 11, color: '#16a34a', fontWeight: 600 }}>Đang SX</span>}
+          />
+        )
+      },
+    },
   ]
 
   const rows = filteredData()
@@ -191,7 +242,7 @@ export default function LenhSanXuatPage() {
         columns={columns}
         loading={loading}
         size="small"
-        scroll={{ x: 900 }}
+        scroll={{ x: 1320 }}
         sticky={{ offsetHeader: toolbarH }}
         pagination={{
           pageSize: 50,

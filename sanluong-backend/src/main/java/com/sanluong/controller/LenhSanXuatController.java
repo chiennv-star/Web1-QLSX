@@ -26,6 +26,13 @@ public class LenhSanXuatController {
         return ResponseEntity.ok(service.findPlanWithoutLenh());
     }
 
+    @GetMapping("/stats-by-product")
+    public ResponseEntity<List<Map<String, Object>>> statsByProduct(
+            @RequestParam(required = false) Integer year) {
+        int targetYear = year != null ? year : java.time.LocalDate.now().getYear();
+        return ResponseEntity.ok(service.statsByProduct(targetYear));
+    }
+
     @GetMapping("/by-product")
     public ResponseEntity<List<LenhSanXuatDto>> getByProduct(@RequestParam String maBravo) {
         return ResponseEntity.ok(service.findByMaBravo(maBravo));

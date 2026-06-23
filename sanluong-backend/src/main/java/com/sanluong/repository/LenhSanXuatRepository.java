@@ -71,6 +71,25 @@ public interface LenhSanXuatRepository extends JpaRepository<LenhSanXuat, Long> 
     @Query("SELECT l FROM LenhSanXuat l WHERE l.deletedAt IS NOT NULL ORDER BY l.deletedAt DESC")
     List<LenhSanXuat> findAllDeleted();
 
+    @Query(value = """
+        SELECT
+            l.ma_bravo,
+            COUNT(l.id)                                            AS so_lo_count,
+            COALESCE(SUM(l.so_luong), 0)                          AS tong_so_luong,
+            MAX(l.ngay_thuc_hien)                                  AS ngay_gan_nhat,
+            EXISTS (
+                SELECT 1 FROM work_schedule w
+                WHERE w.ma_bravo = l.ma_bravo
+                  AND w.tinh_trang = 'doing'
+                  AND w.deleted_at IS NULL
+            )                                                      AS dang_san_xuat
+        FROM lenh_san_xuat l
+        WHERE l.deleted_at IS NULL
+          AND YEAR(COALESCE(l.ngay_thuc_hien, l.ngay_phat_lenh, l.created_at)) = :year
+        GROUP BY l.ma_bravo
+        """, nativeQuery = true)
+    List<Object[]> findStatsByProductYear(@org.springframework.data.repository.query.Param("year") int year);
+
     // Đếm lệnh đã ban hành nhưng chưa có WorkSchedule nào khớp (thiếu lịch SX)
     @Query(value = """
         SELECT COUNT(DISTINCT l.id)
