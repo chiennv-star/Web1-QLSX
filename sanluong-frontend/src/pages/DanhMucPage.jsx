@@ -2144,8 +2144,8 @@ function ProductMasterBackupTab() {
 // Tab 3: Danh sách nhân sự
 // ─────────────────────────────────────────────────────────────────────────────
 
-const GROUP_COLORS = { PCPL1: 'green', PCPL2: 'cyan', PCPL3: 'orange', BBC1: 'pink', ĐG: 'gold' }
-const GROUPS = ['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG']
+const GROUP_COLORS = { PCPL1: 'green', PCPL2: 'cyan', PCPL3: 'orange', BBC1: 'pink', ĐG: 'gold', KT: 'geekblue' }
+const GROUPS = ['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG', 'KT']
 
 function EmployeeTab() {
   const { isAdmin, isStageAdmin, getAllowedEmployeeGroups } = useAuth()

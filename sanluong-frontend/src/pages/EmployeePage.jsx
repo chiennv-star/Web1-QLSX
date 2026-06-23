@@ -15,8 +15,8 @@ import api from '../api/axios'
 
 const { Option } = Select
 
-const GROUP_COLORS = { PCPL1: 'green', PCPL2: 'cyan', PCPL3: 'orange', BBC1: 'pink', ĐG: 'gold' }
-const GROUPS = ['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG']
+const GROUP_COLORS = { PCPL1: 'green', PCPL2: 'cyan', PCPL3: 'orange', BBC1: 'pink', ĐG: 'gold', KT: 'geekblue' }
+const GROUPS = ['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG', 'KT']
 const TINH_TRANG_OPTIONS = [
   { value: 'Đang làm', color: 'success' },
   { value: 'Nghỉ việc', color: 'error' },
