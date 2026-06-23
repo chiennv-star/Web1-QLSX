@@ -1378,7 +1378,7 @@ function TongHopTab() {
 
   useEffect(() => {
     fetchData()
-    Promise.all(STAGES.map(s => api.get('/employees', { params: { page: 0, size: 1, toNhom: s.empGroup } })))
+    Promise.all(STAGES.map(s => api.get('/employees', { params: { page: 0, size: 1, toNhom: s.empGroup, excludeTinhTrang: 'tam_nghi' } })))
       .then(results => {
         const counts = {}
         STAGES.forEach((s, i) => { counts[s.key] = results[i].data.totalElements })
