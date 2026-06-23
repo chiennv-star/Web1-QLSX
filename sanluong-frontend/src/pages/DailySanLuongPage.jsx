@@ -758,8 +758,12 @@ function DailyDetailTab() {
       let cd = r.congDoan?.toUpperCase()
       if (cd === 'PC') {
         const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
-        cd = (nhom === 'PCPL1' || nhom === 'PCPL2') ? nhom : 'PCPL1'
+        if (nhom === 'PCPL1') cd = 'PCPL1'
+        else if (nhom === 'PCPL2') cd = 'PCPL2'
+        else if (nhom === 'PCPL3') cd = 'PL'
+        else cd = 'PCPL1'
       }
+      if (cd === 'PCPL3') cd = 'PL'
       const sl = Number(r.sanLuong || 0)
       if (totals[cd] !== undefined) totals[cd] += sl
       totals.total += sl
@@ -1413,8 +1417,12 @@ function TongHopTab() {
       if (!cd) return
       if (cd === 'PC') {
         const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
-        cd = (nhom === 'PCPL1' || nhom === 'PCPL2') ? nhom : 'PCPL1'
+        if (nhom === 'PCPL1') cd = 'PCPL1'
+        else if (nhom === 'PCPL2') cd = 'PCPL2'
+        else if (nhom === 'PCPL3') cd = 'PL'
+        else cd = 'PCPL1'
       }
+      if (cd === 'PCPL3') cd = 'PL'
       if (!map[date][cd]) map[date][cd] = { sl: 0, cong: 0, soPhien: 0 }
       map[date][cd].sl      += Number(r.sanLuong      || 0)
       map[date][cd].cong    += Number(r.congThucHien  || 0)
