@@ -760,7 +760,7 @@ function DailyDetailTab() {
         const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
         if (nhom === 'PCPL1') cd = 'PCPL1'
         else if (nhom === 'PCPL2') cd = 'PCPL2'
-        else if (nhom === 'PCPL3') cd = 'PL'
+        else if (nhom === 'PCPL3' || nhom === 'PL') cd = 'PL'
         else cd = 'PCPL1'
       }
       if (cd === 'PCPL3') cd = 'PL'
@@ -1149,7 +1149,15 @@ function DayDetailModal({ open, date, rows, onClose }) {
     const totals = {}
     STAGES.forEach(s => { totals[s.key] = { sl: 0, cong: 0, soPhien: 0 } })
     rows.forEach(r => {
-      const cd = r.congDoan?.toUpperCase()
+      let cd = r.congDoan?.toUpperCase()
+      if (cd === 'PC') {
+        const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
+        if (nhom === 'PCPL1') cd = 'PCPL1'
+        else if (nhom === 'PCPL2') cd = 'PCPL2'
+        else if (nhom === 'PCPL3' || nhom === 'PL') cd = 'PL'
+        else cd = 'PCPL1'
+      }
+      if (cd === 'PCPL3') cd = 'PL'
       if (totals[cd]) {
         totals[cd].sl      += Number(r.sanLuong     || 0)
         totals[cd].cong    += Number(r.congThucHien || 0)
@@ -1419,7 +1427,7 @@ function TongHopTab() {
         const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
         if (nhom === 'PCPL1') cd = 'PCPL1'
         else if (nhom === 'PCPL2') cd = 'PCPL2'
-        else if (nhom === 'PCPL3') cd = 'PL'
+        else if (nhom === 'PCPL3' || nhom === 'PL') cd = 'PL'
         else cd = 'PCPL1'
       }
       if (cd === 'PCPL3') cd = 'PL'
