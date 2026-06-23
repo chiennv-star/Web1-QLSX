@@ -6,6 +6,7 @@ import com.sanluong.dto.DonHangSlHistoryDto;
 import com.sanluong.entity.DonHang;
 import com.sanluong.entity.DonHangFieldHistory;
 import com.sanluong.entity.DonHangSlHistory;
+import com.sanluong.entity.ProductMaster;
 import com.sanluong.repository.DonHangFieldHistoryRepository;
 import com.sanluong.repository.DonHangRepository;
 import com.sanluong.repository.DonHangSlHistoryRepository;
@@ -31,15 +32,18 @@ public class DonHangService {
     private final DonHangSlHistoryRepository historyRepo;
     private final DonHangFieldHistoryRepository fieldHistoryRepo;
     private final NotificationService notificationService;
+    private final ProductMasterService productMasterService;
 
     public DonHangService(DonHangRepository repo,
                           DonHangSlHistoryRepository historyRepo,
                           DonHangFieldHistoryRepository fieldHistoryRepo,
-                          NotificationService notificationService) {
+                          NotificationService notificationService,
+                          ProductMasterService productMasterService) {
         this.repo = repo;
         this.historyRepo = historyRepo;
         this.fieldHistoryRepo = fieldHistoryRepo;
         this.notificationService = notificationService;
+        this.productMasterService = productMasterService;
     }
 
     public List<DonHangDto> findByMaBravo(String maBravo) {
@@ -304,10 +308,21 @@ public class DonHangService {
                 }
 
                 try {
+                    // Auto-lookup maSp + tenSanPham từ ProductMaster nếu Excel không có
+                    String maSp       = getCellStringVal(row, colMap.get("maSp"));
+                    String tenSanPham = getCellStringVal(row, colMap.get("tenSanPham"));
+                    if ((maSp == null || maSp.isBlank()) || (tenSanPham == null || tenSanPham.isBlank())) {
+                        Optional<ProductMaster> pm = productMasterService.findByMaBravo(maBravo);
+                        if (pm.isPresent()) {
+                            if (maSp == null || maSp.isBlank())           maSp       = pm.get().getMaTp();
+                            if (tenSanPham == null || tenSanPham.isBlank()) tenSanPham = pm.get().getTienTrinh();
+                        }
+                    }
+
                     DonHang e = new DonHang();
                     e.setMaBravo(maBravo);
-                    e.setMaSp(getCellStringVal(row, colMap.get("maSp")));
-                    e.setTenSanPham(getCellStringVal(row, colMap.get("tenSanPham")));
+                    e.setMaSp(maSp);
+                    e.setTenSanPham(tenSanPham);
                     e.setMaDonHang(maDonHang);
                     e.setNgayDatHang(parseCellDate(row, colMap.get("ngayDatHang")));
                     e.setSoLuongDatHang(soLuong);

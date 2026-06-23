@@ -100,9 +100,10 @@ function ImportExcelModal({ open, onClose, onDone }) {
         <div style={{ padding: '12px 0' }}>
           <Alert type="info" showIcon style={{ marginBottom: 14 }} message={
             <div style={{ fontSize: 12 }}>
-              File Excel cần có dòng tiêu đề ở hàng 1 với các cột:<br />
-              <b>Mã Bravo</b>, <b>Mã SP / Mã TP</b>, <b>Tên sản phẩm</b>,{' '}
-              <b>Mã đơn hàng</b>, <b>Ngày nhận đơn</b> (dd/MM/yyyy), <b>Số lượng</b>.<br />
+              File Excel cần có dòng tiêu đề ở hàng 1. <b>Chỉ bắt buộc cột Mã Bravo</b>, các cột còn lại là tuỳ chọn:<br />
+              <span style={{ color: '#cf1322' }}>* </span><b>Mã Bravo</b> (bắt buộc) — tự động tra Mã SP và Tên SP từ danh mục<br />
+              <b>Mã đơn hàng</b>, <b>Ngày nhận đơn</b> (dd/MM/yyyy), <b>Số lượng</b>,{' '}
+              <b>Mã SP / Mã TP</b>, <b>Tên sản phẩm</b> (tuỳ chọn)<br />
               Các đơn hàng có <b>Mã Bravo + Mã Đơn Hàng + Số Lượng đã tồn tại</b> sẽ bị bỏ qua.
             </div>
           } />
