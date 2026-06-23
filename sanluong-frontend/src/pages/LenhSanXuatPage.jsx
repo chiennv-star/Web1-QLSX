@@ -35,19 +35,23 @@ export default function LenhSanXuatPage() {
     setLoading(true)
     try {
       const year = new Date().getFullYear()
-      const [productsRes, statsRes] = await Promise.all([
+      const [productsRes, statsResult] = await Promise.allSettled([
         api.get('/product-master', { params: { page: 0, size: 9999 } }),
         api.get('/lenh-san-xuat/stats-by-product', { params: { year } }),
       ])
-      const rows = productsRes.data.content || []
+      if (productsRes.status === 'rejected') {
+        message.error('Không thể tải danh mục sản phẩm')
+        return
+      }
+      const rows = productsRes.value.data.content || []
       setData(rows)
       const loais = [...new Set(rows.map(r => r.loaiSanPham).filter(Boolean))].sort()
       setLoaiList(loais)
-      const map = {}
-      ;(statsRes.data || []).forEach(s => { if (s.maBravo) map[s.maBravo] = s })
-      setStatsMap(map)
-    } catch {
-      message.error('Không thể tải danh mục sản phẩm')
+      if (statsResult.status === 'fulfilled') {
+        const map = {}
+        ;(statsResult.value.data || []).forEach(s => { if (s.maBravo) map[s.maBravo] = s })
+        setStatsMap(map)
+      }
     } finally {
       setLoading(false)
     }
