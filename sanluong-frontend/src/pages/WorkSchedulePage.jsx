@@ -3507,6 +3507,15 @@ function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
     } catch { message.error('Cập nhật thất bại') }
   }
 
+  const getSlCong = (r) => {
+    const cd = (r.congDoan || congDoan || '').toUpperCase()
+    if (cd === 'BBC1')  return { sl: r.slBbc1,  cong: r.congBbc1 }
+    if (cd === 'DG')    return { sl: r.slDg,    cong: r.congDg   }
+    if (cd === 'PL')    return { sl: r.slPl,    cong: r.congPl   }
+    if (cd === 'CC')    return { sl: null,       cong: r.congCc   }
+    return { sl: r.slPc, cong: r.congPc }
+  }
+
   const columns = [
     {
       title: 'Ngày TH', dataIndex: 'ngayThucHien', key: 'ngay', width: 90, align: 'center',
@@ -3544,6 +3553,24 @@ function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
     {
       title: 'Cỡ lô', dataIndex: 'coLo', key: 'coLo', width: 80, align: 'right',
       render: v => fmtNum(v)
+    },
+    {
+      title: 'Số Lượng', key: 'slDone', width: 105, align: 'right',
+      render: (_, r) => {
+        const { sl } = getSlCong(r)
+        return sl != null
+          ? <span style={{ fontWeight: 700, color: '#389e0d' }}>{Number(sl).toLocaleString('vi-VN')}</span>
+          : <span style={{ color: '#d9d9d9' }}>—</span>
+      }
+    },
+    {
+      title: 'Công', key: 'congDone', width: 95, align: 'right',
+      render: (_, r) => {
+        const { cong } = getSlCong(r)
+        return cong != null
+          ? <span style={{ color: '#722ed1' }}>{Number(cong).toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</span>
+          : <span style={{ color: '#d9d9d9' }}>—</span>
+      }
     },
     {
       title: 'Ngày hoàn thiện', dataIndex: 'updatedAt', key: 'updatedAt', width: 120, align: 'center',
