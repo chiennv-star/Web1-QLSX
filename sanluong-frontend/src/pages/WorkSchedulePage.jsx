@@ -3355,7 +3355,16 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
           <SkeletonTable
             className="ws-table"
             columns={columns}
-            dataSource={data.filter(r => r.tinhTrang !== 'done')}
+            dataSource={data
+              .filter(r => r.tinhTrang !== 'done')
+              .sort((a, b) => {
+                const slF = SL_FIELD_MAP[congDoan], cF = CONG_FIELD_MAP[congDoan]
+                const aM = cF && slF && (Number(a[cF])||0) > 0 && (Number(a[slF])||0) === 0
+                const bM = cF && slF && (Number(b[cF])||0) > 0 && (Number(b[slF])||0) === 0
+                if (aM && !bM) return -1
+                if (!aM && bM) return 1
+                return 0
+              })}
             rowKey="id"
             loading={loading}
             scroll={{ x: 1600 + config.extraTableCols.length * 87 }}
@@ -3368,13 +3377,17 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
               preserveSelectedRowKeys: true,
             } : undefined}
             rowClassName={record => {
-              const slField = SL_FIELD_MAP[congDoan]
-              const sl = slField ? Number(record[slField]) || 0 : 0
+              const slField  = SL_FIELD_MAP[congDoan]
+              const congField = CONG_FIELD_MAP[congDoan]
+              const sl   = slField   ? Number(record[slField])   || 0 : 0
+              const cong = congField ? Number(record[congField]) || 0 : 0
               const coLo = Number(record.coLo) || 0
-              const slExceeds = sl > 0 && coLo > 0 && sl > coLo
+              const slExceeds  = sl > 0 && coLo > 0 && sl > coLo
+              const missingSl  = cong > 0 && sl === 0
               if (record.id === highlightId && record.saiLech) return 'row-has-deviation row-jump-highlight'
               if (record.id === highlightId) return 'row-jump-highlight'
               if (record.saiLech) return 'row-has-deviation'
+              if (missingSl) return 'row-missing-sl'
               if (slExceeds) return 'row-sl-exceed'
               return getNsRowClass(record)
             }}
@@ -3393,7 +3406,17 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
             {!loading && data.filter(r => r.tinhTrang !== 'done').length === 0 && (
               <div style={{ textAlign: 'center', color: '#94a3b8', padding: 40, fontSize: 14 }}>Không có dữ liệu</div>
             )}
-            {!loading && data.filter(r => r.tinhTrang !== 'done').map(record => (
+            {!loading && data
+              .filter(r => r.tinhTrang !== 'done')
+              .sort((a, b) => {
+                const slF = SL_FIELD_MAP[congDoan], cF = CONG_FIELD_MAP[congDoan]
+                const aM = cF && slF && (Number(a[cF])||0) > 0 && (Number(a[slF])||0) === 0
+                const bM = cF && slF && (Number(b[cF])||0) > 0 && (Number(b[slF])||0) === 0
+                if (aM && !bM) return -1
+                if (!aM && bM) return 1
+                return 0
+              })
+              .map(record => (
               <MobileScheduleCard
                 key={record.id}
                 record={record}
@@ -4158,6 +4181,8 @@ export default function WorkSchedulePage() {
         .ant-table-tbody > tr.row-ns-high > td { background: #fafff7 !important; }
         .ant-table-tbody > tr.row-ns-low > td { background: #fffaf9 !important; }
         .ant-table-tbody > tr.row-sl-exceed > td { background: #fdfaff !important; }
+        .ant-table-tbody > tr.row-missing-sl > td { background: #fff8e6 !important; border-left: 3px solid #fa8c16 !important; }
+        .ant-table-tbody > tr.row-missing-sl > td:first-child { border-left: 3px solid #fa8c16 !important; }
         /* ERP table headers */
         .ws-table .ant-table-thead > tr > th {
           background: #006666 !important;
