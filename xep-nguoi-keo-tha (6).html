@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Xếp người — ngày làm trung tâm</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI','DejaVu Sans',Arial,sans-serif}
+  body{background:#eef1f6;padding:22px;color:#1e293b}
+  .wrap{max-width:1080px;margin:0 auto}
+  .head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .h-title{display:flex;align-items:center;gap:8px;font-size:18px;font-weight:800}
+  .h-title .ic{color:#6366f1}
+  .toggle{margin-left:auto;display:flex;background:#fff;border:1px solid #cbd5e1;border-radius:9px;overflow:hidden}
+  .toggle button{border:none;background:#fff;padding:8px 16px;font-size:13.5px;font-weight:600;color:#64748b;cursor:pointer}
+  .toggle button.on{background:#4f46e5;color:#fff}
+  .grid{display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start}
+  .panel{background:#fff;border:1px solid #e2e8f0;border-radius:13px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .panel h3{font-size:12px;font-weight:800;letter-spacing:.04em;color:#64748b;padding:13px 15px 9px;text-transform:uppercase}
+  .panel .body{padding:0 12px 12px;display:flex;flex-direction:column;gap:8px}
+  .hint{font-size:11.5px;color:#64748b;padding:0 15px 11px}
+  .pcard{border:1px solid #d1fae5;background:#ecfdf5;border-radius:10px;padding:9px 11px;cursor:grab}
+  .pcard:active{cursor:grabbing}
+  .pcard .nm{font-weight:700;font-size:13px;color:#065f46}
+  .pcard .mt{font-size:11px;color:#34d399;font-family:monospace;margin-top:2px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{display:flex;align-items:center;gap:6px;border:1px solid #e2e8f0;background:#f8fafc;border-radius:999px;padding:5px 11px 5px 6px;font-size:12px;font-weight:600;cursor:grab}
+  .chip:active{cursor:grabbing}
+  .av{width:22px;height:22px;border-radius:50%;background:#c7d2fe;color:#4338ca;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+  .chip.tn .av,.av.tn{background:#fde68a;color:#92400e}
+  /* date strip */
+  .datestrip{display:flex;gap:8px;flex-wrap:wrap;padding:0 14px 12px}
+  .dbtn{border:1px solid #e2e8f0;background:#fff;border-radius:10px;padding:6px 15px;text-align:center;cursor:pointer;font-weight:800;font-size:13px;color:#475569;line-height:1.25}
+  .dbtn .dow{font-size:10px;color:#94a3b8;font-weight:800}
+  .dbtn.sel{background:#4f46e5;border-color:#4f46e5;color:#fff}
+  .dbtn.sel .dow{color:#c7d2fe}
+  /* timeline */
+  .timeline{height:540px;overflow:auto;position:relative;margin:0 12px 12px;padding:6px;border-radius:12px;background:#f1f5f9;cursor:grab}
+  .timeline.panning{cursor:grabbing;user-select:none}
+  .dayblock{border:1px solid #e2e8f0;background:#fff;border-radius:12px;padding:10px 12px;margin:10px 4px}
+  .dayblock.sel{border-color:#6366f1;box-shadow:0 0 0 3px #c7d2fe}
+  .dayhead{display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px;color:#334155;margin-bottom:8px}
+  .dayhead .now{margin-left:auto;font-size:10px;font-weight:800;background:#eef2ff;color:#4338ca;border-radius:999px;padding:2px 10px}
+  .daydrop{border:2px dashed #cbd5e1;border-radius:10px;padding:8px;text-align:center;font-size:11.5px;color:#94a3b8;margin-top:6px}
+  .daydrop.hot{border-color:#6366f1;background:#eef2ff;color:#4f46e5}
+  .acard{border:1px solid #e2e8f0;border-radius:10px;padding:9px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px;background:#fff}
+  .acard .info{flex:1 1 160px;min-width:150px}
+  .acard .nm{font-weight:700;font-size:13px}
+  .acard .mt{font-size:11px;color:#94a3b8;font-family:monospace}
+  .acard select{border:1px solid #e2e8f0;border-radius:7px;padding:5px 7px;font-size:12px;font-weight:700}
+  .ca-1{background:#fffbeb;border-color:#fde68a !important;color:#b45309}
+  .ca-2{background:#eff6ff;border-color:#bfdbfe !important;color:#1d4ed8}
+  .people{display:flex;flex-wrap:wrap;gap:6px;align-items:center;flex:2 1 220px;min-width:200px}
+  .ppill{display:flex;align-items:center;gap:5px;background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;border-radius:999px;padding:3px 5px 3px 4px;font-size:11.5px;font-weight:700}
+  .ppill.conflict{background:#fef2f2;border-color:#fca5a5;color:#b91c1c}
+  .ppill .x{cursor:pointer;opacity:.6;padding:0 2px}
+  .adddrop{border:2px dashed #cbd5e1;border-radius:999px;padding:4px 10px;font-size:11px;color:#94a3b8}
+  .adddrop.hot{border-color:#6366f1;background:#eef2ff;color:#4f46e5}
+  .lobadge{font-family:monospace;font-size:10.5px;font-weight:700;background:#ede9fe;color:#6d28d9;border-radius:5px;padding:1px 6px;margin-left:4px;white-space:nowrap}
+  .filters{display:flex;gap:8px;padding:0 12px 10px}
+  .filters select{flex:1;border:1px solid #cbd5e1;border-radius:8px;padding:6px 8px;font-size:12px;font-weight:600;color:#334155}
+  .mt2{display:flex;gap:6px;margin-top:6px}
+  .nhombadge{font-size:10.5px;font-weight:800;background:#ccfbf1;color:#0f766e;border-radius:5px;padding:1px 7px}
+  .daybadge{font-size:10.5px;font-weight:700;background:#f1f5f9;color:#475569;border-radius:5px;padding:1px 7px}
+  .note{flex:1 1 130px;min-width:110px;border:1px solid #e2e8f0;border-radius:8px;padding:6px 9px;font-size:12px;color:#334155}
+  .note::placeholder{color:#cbd5e1}
+  .trash{cursor:pointer;color:#cbd5e1;flex:none}
+  .warn{margin:0 12px 10px;display:none;align-items:center;gap:8px;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:9px;padding:9px 12px;font-size:13px}
+  .warn.show{display:flex}
+  .byperson{display:none;padding:6px 12px 14px;flex-direction:column;gap:10px}
+  .pgroup{border:1px solid #e2e8f0;border-radius:11px;padding:11px 13px}
+  .pgroup .ph{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13.5px;margin-bottom:7px}
+  .pgroup .cnt{margin-left:auto;font-size:11px;font-weight:700;color:#64748b;background:#f1f5f9;border-radius:999px;padding:2px 9px}
+  .pgroup ul{list-style:none;display:flex;flex-direction:column;gap:5px}
+  .pgroup li{font-size:12.5px;color:#334155;display:flex;gap:8px;align-items:center}
+  .tag{font-size:10.5px;font-weight:700;border-radius:5px;padding:2px 7px}
+  .tag.t1{background:#fffbeb;color:#b45309}.tag.t2{background:#eff6ff;color:#1d4ed8}
+  .empty{color:#94a3b8;font-size:12px}
+  .scrollnote{font-size:11px;color:#94a3b8;padding:0 14px 10px}
+</style></head>
+<body><div class="wrap">
+  <div class="head">
+    <div class="h-title"><span class="ic">☷</span> Kế hoạch chi tiết — Xếp người · Tổ PCPL1</div>
+    <div class="toggle">
+      <button id="tb-viec" class="on" onclick="setView('viec')">Theo việc</button>
+      <button id="tb-nguoi" onclick="setView('nguoi')">Theo người</button>
+    </div>
+  </div>
+  <div class="grid">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="panel">
+        <h3>① Kế hoạch tổng — kéo sản phẩm</h3>
+        <div class="hint">Lọc theo ngày / nhóm thực hiện rồi kéo thả vào ngày bên phải.</div>
+        <div class="filters" id="srcFilters"></div>
+        <div class="body" id="srcProducts"></div>
+      </div>
+      <div class="panel">
+        <h3>② Nhân viên trong tổ — kéo người</h3>
+        <div class="hint">Một sản phẩm có thể thả nhiều người.</div>
+        <div class="body"><div class="chips" id="srcPeople"></div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>③ Kế hoạch chi tiết — chọn ngày để xếp</h3>
+      <div id="vViec">
+        <div class="datestrip" id="datestrip"></div>
+        <div class="scrollnote">Ngày đang chọn nằm giữa · ngày sau ở trên, ngày trước ở dưới · kéo chuột (hoặc lăn) để di chuyển.</div>
+        <div class="warn" id="warn">⚠ <span id="warnTxt"></span></div>
+        <div class="timeline" id="timeline"></div>
+      </div>
+      <div class="byperson" id="byPerson"></div>
+    </div>
+  </div>
+</div>
+<script>
+const PRODUCTS=[
+  {id:"t1",ten:"Tinh dầu Quả mọng 8,5ml",dh:"160626",sl:"500",lo:"L0615-01",ngay:"15/06",nhom:"PCPL1"},
+  {id:"t2",ten:"Son Lụa Diễm 106",dh:"120626",sl:"4.000",lo:"L0612-03",ngay:"16/06",nhom:"PCPL1"},
+  {id:"t3",ten:"Son Dưỡng Nhiên 200",dh:"170626",sl:"2.000",lo:"L0617-01",ngay:"17/06",nhom:"PCPL1"},
+  {id:"t4",ten:"Son kem nhung 34 (5g)",dh:"180626",sl:"2.000",lo:"L0618-02",ngay:"18/06",nhom:"PCPL2"},
+  {id:"t5",ten:"Bột khử mùi Wings up",dh:"180526",sl:"26.500",lo:"L0518-05",ngay:"18/06",nhom:"PCPL1"},
+  {id:"t6",ten:"Tinh dầu NH phòng Mây",dh:"100626",sl:"500",lo:"L0610-01",ngay:"15/06",nhom:"PCPL3"},
+];
+const GROUPS=["PCPL1","PCPL2","PCPL3"];
+const PEOPLE=[
+  {ma:"SA189",ten:"Bùi Thị Hằng",vt:"NV"},
+  {ma:"SA150",ten:"Dương Thị Lan",vt:"TN"},
+  {ma:"SA246",ten:"Kiều T. Huyền Trang",vt:"NV"},
+  {ma:"SA032",ten:"Ngô Thị Diệu Vi",vt:"TN"},
+  {ma:"SA250",ten:"Nguyễn Thị Anh",vt:"NV"},
+  {ma:"SA190",ten:"Nguyễn Thị Hạnh",vt:"NV"},
+];
+const DAYS=["15/06","16/06","17/06","18/06","19/06","20/06"];
+const DOW={"15/06":"T2","16/06":"T3","17/06":"T4","18/06":"T5","19/06":"T6","20/06":"T7"};
+const SHIFTS=["Ca 1","Ca 2"];
+let assigns=[]; let uid=1; let selectedDay="17/06"; let filterDay=""; let filterNhom="";
+const initials=t=>{const p=t.trim().split(/\s+/);return (p[p.length-2]?.[0]||"")+(p[p.length-1]?.[0]||"");};
+const P=m=>PEOPLE.find(p=>p.ma===m);
+const caCls=c=>c==="Ca 1"?"ca-1":"ca-2";
+const tagCls=c=>c==="Ca 1"?"t1":"t2";
+function conflictSet(){const seen={},dup=new Set();assigns.forEach(a=>a.mas.forEach(m=>{const k=m+"|"+a.ngay+"|"+a.ca;if(seen[k])dup.add(k);else seen[k]=true;}));return dup;}
+
+function renderFilters(){
+  const dOpt=`<option value="">Tất cả ngày</option>`+DAYS.map(d=>`<option value="${d}" ${d===filterDay?'selected':''}>${DOW[d]} ${d}</option>`).join("");
+  const nOpt=`<option value="">Tất cả nhóm</option>`+GROUPS.map(g=>`<option value="${g}" ${g===filterNhom?'selected':''}>Nhóm ${g}</option>`).join("");
+  document.getElementById("srcFilters").innerHTML=
+    `<select onchange="setFilter('day',this.value)">${dOpt}</select><select onchange="setFilter('nhom',this.value)">${nOpt}</select>`;
+}
+function setFilter(k,v){if(k==='day')filterDay=v;else filterNhom=v;renderSrcProducts();}
+function renderSrcProducts(){
+  const list=PRODUCTS.filter(p=>(!filterDay||p.ngay===filterDay)&&(!filterNhom||p.nhom===filterNhom));
+  document.getElementById("srcProducts").innerHTML=list.length?list.map(p=>
+    `<div class="pcard" draggable="true" ondragstart="dragProduct(event,'${p.id}')">
+      <div class="nm">${p.ten}</div>
+      <div class="mt">ĐH ${p.dh} · SL ${p.sl} <span class="lobadge">Lô ${p.lo}</span></div>
+      <div class="mt2"><span class="nhombadge">Nhóm ${p.nhom}</span><span class="daybadge">${DOW[p.ngay]} ${p.ngay}</span></div>
+    </div>`).join(""):`<div class="empty" style="padding:12px">Không có sản phẩm khớp bộ lọc.</div>`;
+}
+function renderSrcPeople(){
+  document.getElementById("srcPeople").innerHTML=PEOPLE.map(p=>
+    `<div class="chip ${p.vt==='TN'?'tn':''}" draggable="true" ondragstart="dragPerson(event,'${p.ma}')">
+      <span class="av ${p.vt==='TN'?'tn':''}">${initials(p.ten)}</span>${p.ten}</div>`).join("");
+}
+function renderDatestrip(){
+  document.getElementById("datestrip").innerHTML=DAYS.map(d=>
+    `<button class="dbtn ${d===selectedDay?'sel':''}" onclick="selectDay('${d}')"><div class="dow">${DOW[d]}</div>${d}</button>`).join("");
+}
+function rowHtml(a,dup){
+  const pills=a.mas.map(m=>{const e=P(m);const c=dup.has(m+"|"+a.ngay+"|"+a.ca);
+    return `<span class="ppill ${c?'conflict':''}" title="${m}"><span class="av ${e.vt==='TN'?'tn':''}">${initials(e.ten)}</span>${e.ten}<span class="x" onclick="rmPerson(${a.id},'${m}')">✕</span></span>`;}).join("");
+  return `<div class="acard">
+    <div class="info"><div class="nm">${a.ten}</div><div class="mt">ĐH ${a.dh} · SL ${a.sl} <span class="lobadge">Lô ${a.lo}</span></div></div>
+    <select class="${caCls(a.ca)}" onchange="upd(${a.id},'ca',this.value)">${SHIFTS.map(s=>`<option ${s===a.ca?'selected':''}>${s}</option>`).join("")}</select>
+    <div class="people" ondragover="hot(event,this)" ondragleave="unhot(this)" ondrop="dropPerson(event,${a.id},this)">${pills}<span class="adddrop">⤵ kéo người</span></div>
+    <input class="note" value="${(a.note||'').replace(/"/g,'&quot;')}" placeholder="Ghi chú..." onchange="setNote(${a.id},this.value)">
+    <span class="trash" onclick="removeA(${a.id})">🗑</span>
+  </div>`;
+}
+function renderTimeline(){
+  const dup=conflictSet();
+  const order=[...DAYS].reverse();
+  document.getElementById("timeline").innerHTML=order.map(d=>{
+    const rows=assigns.filter(a=>a.ngay===d).map(a=>rowHtml(a,dup)).join("");
+    return `<div class="dayblock ${d===selectedDay?'sel':''}" data-dayblock="${d}">
+      <div class="dayhead"><span>${DOW[d]} · ${d}</span>${d===selectedDay?'<span class="now">Đang xếp</span>':''}</div>
+      ${rows}
+      <div class="daydrop" data-day="${d}" ondragover="hot(event,this)" ondragleave="unhot(this)" ondrop="dropProduct(event,this)">+ kéo sản phẩm vào ngày này</div>
+    </div>`;
+  }).join("");
+}
+function renderByPerson(){
+  const dup=conflictSet();
+  document.getElementById("byPerson").innerHTML=PEOPLE.map(p=>{
+    const items=assigns.filter(a=>a.mas.includes(p.ma));
+    const lis=items.length?items.map(a=>{const c=dup.has(p.ma+"|"+a.ngay+"|"+a.ca);
+      return `<li><span class="tag ${tagCls(a.ca)}">${a.ngay} ${a.ca}</span> ${a.ten}${a.note?` <span style="color:#94a3b8">· ${a.note}</span>`:''}${c?' <span style="color:#dc2626;font-weight:700">⚠ trùng</span>':''}</li>`;}).join("")
+      :`<li class="empty">Chưa được xếp việc nào</li>`;
+    return `<div class="pgroup"><div class="ph"><span class="av ${p.vt==='TN'?'tn':''}">${initials(p.ten)}</span>
+      ${p.ma} · ${p.ten}<span class="cnt">${items.length} việc</span></div><ul>${lis}</ul></div>`;
+  }).join("");
+}
+function updateWarn(){const c=[...conflictSet()].length;const w=document.getElementById("warn");
+  if(c>0){w.classList.add("show");document.getElementById("warnTxt").textContent="Có người bị xếp trùng ngày + ca ở 2 việc (ô đỏ).";}else w.classList.remove("show");}
+function render(){renderTimeline();renderByPerson();updateWarn();}
+
+function dragProduct(e,id){e.dataTransfer.setData("kind","product");e.dataTransfer.setData("id",id);}
+function dragPerson(e,ma){e.dataTransfer.setData("kind","person");e.dataTransfer.setData("ma",ma);}
+function hot(e,el){e.preventDefault();el.classList.add("hot");}
+function unhot(el){el.classList.remove("hot");}
+function dropProduct(e,el){e.preventDefault();el.classList.remove("hot");
+  if(e.dataTransfer.getData("kind")!=="product")return;
+  const id=e.dataTransfer.getData("id");const p=PRODUCTS.find(x=>x.id===id);
+  const day=el.dataset.day||selectedDay;
+  assigns.push({id:uid++,taskId:id,ten:p.ten,dh:p.dh,sl:p.sl,lo:p.lo,ngay:day,ca:"Ca 1",mas:[],note:""});render();}
+function dropPerson(e,aid,el){e.preventDefault();el.classList.remove("hot");
+  if(e.dataTransfer.getData("kind")!=="person")return;
+  const ma=e.dataTransfer.getData("ma");const a=assigns.find(x=>x.id===aid);
+  if(!a.mas.includes(ma))a.mas.push(ma);render();}
+function rmPerson(aid,ma){const a=assigns.find(x=>x.id===aid);a.mas=a.mas.filter(m=>m!==ma);render();}
+function removeA(aid){assigns=assigns.filter(x=>x.id!==aid);render();}
+function upd(aid,k,v){assigns.find(x=>x.id===aid)[k]=v;render();}
+function setNote(aid,v){assigns.find(x=>x.id===aid).note=v;}
+function selectDay(d){selectedDay=d;renderDatestrip();renderTimeline();centerDay(d);}
+function centerDay(d){const tl=document.getElementById("timeline");const b=tl.querySelector(`[data-dayblock="${d}"]`);
+  if(b)tl.scrollTop=b.offsetTop-(tl.clientHeight-b.offsetHeight)/2;}
+function setView(v){
+  document.getElementById("vViec").style.display=v==='viec'?'block':'none';
+  document.getElementById("byPerson").style.display=v==='nguoi'?'flex':'none';
+  document.getElementById("tb-viec").classList.toggle("on",v==='viec');
+  document.getElementById("tb-nguoi").classList.toggle("on",v==='nguoi');
+}
+function attachPan(){const tl=document.getElementById("timeline");let pan=false,sy=0,st=0;
+  tl.addEventListener("mousedown",e=>{
+    if(e.target.closest('.acard,select,input,.pcard,.chip,.ppill,.daydrop,button'))return;
+    pan=true;sy=e.clientY;st=tl.scrollTop;tl.classList.add("panning");});
+  window.addEventListener("mousemove",e=>{if(pan)tl.scrollTop=st-(e.clientY-sy);});
+  window.addEventListener("mouseup",()=>{pan=false;tl.classList.remove("panning");});
+}
+assigns=[
+  {id:uid++,taskId:"t1",ten:"Tinh dầu Quả mọng 8,5ml",dh:"160626",sl:"500",lo:"L0615-01",ngay:"15/06",ca:"Ca 1",mas:["SA189","SA246"],note:""},
+  {id:uid++,taskId:"t6",ten:"Tinh dầu NH phòng Mây",dh:"100626",sl:"500",lo:"L0610-01",ngay:"15/06",ca:"Ca 2",mas:["SA250"],note:"Pha mẫu trước"},
+  {id:uid++,taskId:"t2",ten:"Son Lụa Diễm 106",dh:"120626",sl:"4.000",lo:"L0612-03",ngay:"16/06",ca:"Ca 1",mas:[],note:"Chờ nguyên liệu"},
+  {id:uid++,taskId:"t3",ten:"Son Dưỡng Nhiên 200",dh:"170626",sl:"2.000",lo:"L0617-01",ngay:"17/06",ca:"Ca 1",mas:["SA150"],note:"Ưu tiên giao sớm"},
+  {id:uid++,taskId:"t5",ten:"Bột khử mùi Wings up",dh:"180526",sl:"26.500",lo:"L0518-05",ngay:"18/06",ca:"Ca 1",mas:["SA150","SA032","SA190"],note:""},
+];
+renderFilters();renderSrcProducts();renderSrcPeople();renderDatestrip();render();attachPan();
+setTimeout(()=>centerDay(selectedDay),60);
+</script>
+</body></html>

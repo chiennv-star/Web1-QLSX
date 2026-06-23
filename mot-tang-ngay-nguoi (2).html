@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>1 tầng — Ngày & người trong ngày</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI','DejaVu Sans',Arial,sans-serif}
+  body{background:#eef1f6;padding:20px;color:#1e293b}
+  .wrap{max-width:1480px;margin:0 auto}
+  .prodbar{background:#0f766e;color:#fff;border-radius:11px;padding:11px 16px;display:flex;flex-wrap:wrap;gap:18px;align-items:center;font-size:13px;margin-bottom:14px}
+  .prodbar b{font-size:15px;margin-right:6px}
+  .prodbar .pi{opacity:.9}
+  .prodbar .pi b{font-weight:700}
+  .day{background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .dayhead{display:flex;flex-wrap:wrap;align-items:center;gap:18px;background:#f0fdf4;border-bottom:1px solid #dcfce7;padding:11px 15px}
+  .dinput{border:1px solid #cbd5e1;border-radius:8px;padding:5px 9px;font-size:13px;font-weight:700;color:#15803d}
+  .dstat{font-size:12.5px;color:#64748b;display:flex;align-items:center;gap:6px}
+  .dstat b{color:#0f172a;font-size:14px}
+  .slin{width:90px;border:1px solid #cbd5e1;border-radius:7px;padding:4px 7px;font-size:13px;font-weight:700;text-align:right}
+  .badd{margin-left:auto;background:#4f46e5;color:#fff;border:none;border-radius:8px;padding:7px 13px;font-size:13px;font-weight:700;cursor:pointer}
+  .bdel{background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:15px}
+  .bdel:hover{color:#ef4444}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{background:#fdf6e3;color:#1d4ed8;font-weight:700;text-align:left;padding:9px 10px;border-bottom:1px solid #f1e9c9;font-size:12px;white-space:nowrap}
+  td{padding:7px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  td select,td input{width:100%;border:1px solid #e2e8f0;border-radius:7px;padding:6px 8px;font-size:12.5px;background:#fff}
+  .manv{font-family:monospace;font-weight:700;color:#2563eb}
+  .cong input{text-align:right}
+  .congcell{text-align:right;font-weight:800;color:#0f766e;padding-right:18px;font-variant-numeric:tabular-nums}
+  .noemp{text-align:center;color:#94a3b8;padding:14px;font-size:12.5px}
+  .addday{width:100%;border:2px dashed #cbd5e1;background:#fff;border-radius:12px;padding:13px;font-size:13.5px;font-weight:700;color:#64748b;cursor:pointer}
+  .addday:hover{border-color:#6366f1;color:#4f46e5}
+  .colp{min-width:170px}.colg{min-width:120px}.colc{min-width:90px}.coltg{min-width:130px}
+  .colcong{min-width:90px}.colvt{min-width:130px}.colnote{min-width:150px}
+</style></head>
+<body><div class="wrap">
+  <div class="prodbar">
+    <b>⚙ Son dưỡng nhiên 202</b>
+    <span class="pi">SP: <b>TP272</b></span>
+    <span class="pi">Lô: <b>151526</b></span>
+    <span class="pi">Cỡ lô: <b>2.000</b></span>
+    <span class="pi">Tổ/Nhóm: <b>BBC1</b></span>
+    <span class="pi">Mã ĐH: <b>272070626</b></span>
+  </div>
+
+  <div id="days"></div>
+  <button class="addday" onclick="addDay()">+ Thêm ngày</button>
+</div>
+<datalist id="roles">
+  <option>Pha chế</option><option>Trưởng ca</option><option>Phụ pha</option>
+  <option>Kiểm tra</option><option>Đóng gói</option><option>Vệ sinh</option>
+</datalist>
+<script>
+const EMP=[
+  {ma:"SA189",ten:"Bùi Thị Hằng",nhom:"BBC1"},
+  {ma:"SA150",ten:"Dương Thị Lan",nhom:"BBC1"},
+  {ma:"SA246",ten:"Kiều T. Huyền Trang",nhom:"BBC1"},
+  {ma:"SA032",ten:"Ngô Thị Diệu Vi",nhom:"BBC1"},
+  {ma:"SA250",ten:"Nguyễn Thị Anh",nhom:"BBC1"},
+  {ma:"SA190",ten:"Nguyễn Thị Hạnh",nhom:"BBC1"},
+];
+const GROUPS=["BBC1","PCPL1","PCPL2","PCPL3"];
+const SHIFTS=["Ca 1","Ca 2","HC"];
+let nextDay=21;
+let days=[
+  {date:"2026-06-19",sanluong:2000,people:[
+    {ma:"SA189",ten:"Bùi Thị Hằng",nhom:"BBC1",ca:"Ca 1",gio:"7",vaitro:"Pha chế",note:""},
+    {ma:"SA150",ten:"Dương Thị Lan",nhom:"BBC1",ca:"HC",gio:"8",vaitro:"Trưởng ca",note:"Giám sát mẻ"},
+  ]},
+  {date:"2026-06-20",sanluong:"",people:[
+    {ma:"SA250",ten:"Nguyễn Thị Anh",nhom:"BBC1",ca:"Ca 2",gio:"3.5",vaitro:"Phụ pha",note:""},
+  ]},
+];
+
+function esc(s){return (s||'').replace(/"/g,'&quot;');}
+function congOf(p){const g=parseFloat(p.gio)||0;if(!p.ca||!g)return 0;const d=(p.ca==='HC')?8:7;return g/d;}
+function personRow(p,di,pi){
+  const cong=congOf(p);
+  return `<tr>
+    <td class="colp"><select onchange="selEmp(${di},${pi},this.value)">
+      <option value="">-- Chọn nhân viên --</option>
+      ${EMP.map(e=>`<option value="${e.ma}" ${e.ma===p.ma?'selected':''}>${e.ten}</option>`).join("")}
+    </select></td>
+    <td class="manv">${p.ma||'—'}</td>
+    <td class="colg"><select onchange="setF(${di},${pi},'nhom',this.value)">
+      ${GROUPS.map(g=>`<option ${g===p.nhom?'selected':''}>${g}</option>`).join("")}
+    </select></td>
+    <td class="colc"><select onchange="setF(${di},${pi},'ca',this.value)">
+      <option value="">--</option>${SHIFTS.map(s=>`<option ${s===p.ca?'selected':''}>${s}</option>`).join("")}
+    </select></td>
+    <td class="coltg"><input type="number" step="0.5" min="0" value="${p.gio||''}" placeholder="Số giờ" onchange="setF(${di},${pi},'gio',this.value)"></td>
+    <td class="colcong congcell">${cong>0?cong.toFixed(2):'—'}</td>
+    <td class="colvt"><input list="roles" value="${esc(p.vaitro)}" placeholder="Chọn/nhập" onchange="setF(${di},${pi},'vaitro',this.value)"></td>
+    <td class="colnote"><input value="${esc(p.note)}" placeholder="Ghi chú" onchange="setF(${di},${pi},'note',this.value)"></td>
+    <td><button class="bdel" onclick="delPerson(${di},${pi})">🗑</button></td>
+  </tr>`;
+}
+function dayHtml(day,di){
+  const tong=day.people.reduce((s,p)=>s+congOf(p),0);
+  const ns=(day.sanluong>0&&tong>0)?(day.sanluong/tong).toFixed(0):"—";
+  const rows=day.people.map((p,pi)=>personRow(p,di,pi)).join("")
+    ||`<tr><td colspan="9" class="noemp">Chưa có người — bấm "+ Thêm người"</td></tr>`;
+  return `<div class="day">
+    <div class="dayhead">
+      <input type="date" class="dinput" value="${day.date}" onchange="setDate(${di},this.value)">
+      <span class="dstat">Số dòng: <b>${day.people.length}</b></span>
+      <span class="dstat">Sản lượng ngày <input type="number" class="slin" value="${day.sanluong||''}" placeholder="0" onchange="setSL(${di},this.value)"></span>
+      <span class="dstat">Tổng công: <b>${tong.toFixed(1)}</b></span>
+      <span class="dstat">Năng suất: <b>${ns}</b></span>
+      <button class="badd" onclick="addPerson(${di})">+ Thêm người</button>
+      <button class="bdel" onclick="delDay(${di})" title="Xóa ngày">🗑</button>
+    </div>
+    <table>
+      <thead><tr>
+        <th>Người thực hiện</th><th>Mã NV</th><th>Nhóm/tổ</th><th>Ca SX</th>
+        <th>Thời gian (giờ)</th><th>Công thực hiện</th><th>Vai trò</th><th>Ghi chú</th><th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+function render(){document.getElementById("days").innerHTML=days.map((d,i)=>dayHtml(d,i)).join("");}
+
+function selEmp(di,pi,ma){const e=EMP.find(x=>x.ma===ma);const p=days[di].people[pi];
+  p.ma=ma;p.ten=e?e.ten:"";if(e)p.nhom=e.nhom;render();}
+function setF(di,pi,k,v){days[di].people[pi][k]=v;render();}
+function setSL(di,v){days[di].sanluong=v?parseFloat(v):"";render();}
+function setDate(di,v){days[di].date=v;}
+function addPerson(di){days[di].people.push({ma:"",ten:"",nhom:"BBC1",ca:"",gio:"",vaitro:"",note:""});render();}
+function delPerson(di,pi){days[di].people.splice(pi,1);render();}
+function addDay(){days.push({date:`2026-06-${nextDay++}`,sanluong:"",people:[]});render();}
+function delDay(di){days.splice(di,1);render();}
+render();
+</script>
+</body></html>

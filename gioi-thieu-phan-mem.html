@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QTSX Song An — Giới Thiệu Phần Mềm</title>
+  <style>
+    /* ── Reset & Base ──────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      background: #f0f4f8;
+      color: #1e293b;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ── Print ─────────────────────────────────────── */
+    @media print {
+      @page { size: A4; margin: 14mm 12mm; }
+      body { background: #fff; font-size: 11.5px; }
+      .no-print { display: none !important; }
+      .page-break { page-break-before: always; break-before: page; }
+
+      /* Tắt hover transition khi in */
+      .card:hover { transform: none; }
+
+      /* ── Dùng CSS columns thay vì grid để tránh lỗi page-break ── */
+      .modules-grid {
+        display: block !important;
+        columns: 2;
+        column-gap: 18px;
+        orphans: 1; widows: 1;
+      }
+      .roles-grid {
+        display: block !important;
+        columns: 2;
+        column-gap: 14px;
+      }
+      .tech-grid {
+        display: block !important;
+        columns: 3;
+        column-gap: 12px;
+      }
+      .stats-row {
+        display: block !important;
+        columns: 5;
+        column-gap: 12px;
+      }
+
+      /* Mỗi card là inline-block để columns hoạt động đúng */
+      .card, .role-card, .tech-card, .stat-card {
+        display: inline-block !important;
+        width: 100%;
+        margin-bottom: 14px;
+        break-inside: avoid;
+        page-break-inside: avoid;
+        box-shadow: none !important;
+        border: 1px solid #e2e8f0 !important;
+      }
+
+      /* Flow steps: đổi sang dạng dọc khi in cho gọn */
+      .flow-steps {
+        display: block !important;
+        columns: 3;
+        column-gap: 10px;
+      }
+      .flow-step {
+        break-inside: avoid;
+        display: inline-block;
+        width: 100%;
+        padding: 6px 8px;
+        margin-bottom: 8px;
+        text-align: left;
+        position: relative;
+      }
+      .flow-step::after { display: none; }
+
+      /* Màu sắc */
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .hero { background: #339999 !important; }
+    }
+
+    /* ── Layout ─────────────────────────────────────── */
+    .container { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+
+    /* ── Hero ────────────────────────────────────────── */
+    .hero {
+      background: linear-gradient(135deg, #277a7a 0%, #339999 50%, #3bbdbd 100%);
+      color: #fff;
+      padding: 60px 0 48px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -60px; right: -80px;
+      width: 320px; height: 320px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.07);
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: -40px; left: -60px;
+      width: 200px; height: 200px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.05);
+    }
+    .hero-inner { position: relative; z-index: 1; }
+    .hero-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .hero-icon {
+      width: 64px; height: 64px;
+      background: rgba(255,255,255,0.18);
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px;
+      backdrop-filter: blur(4px);
+    }
+    .hero h1 {
+      font-size: 36px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      line-height: 1.1;
+    }
+    .hero h1 span { display: block; font-size: 18px; font-weight: 500; opacity: 0.85; letter-spacing: 0.06em; margin-top: 4px; }
+    .hero-desc {
+      font-size: 15px;
+      opacity: 0.92;
+      max-width: 640px;
+      margin-top: 16px;
+      line-height: 1.7;
+    }
+    .hero-meta {
+      display: flex;
+      gap: 24px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+    .hero-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      backdrop-filter: blur(4px);
+    }
+    .hero-meta-item .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 6px #22c55e;
+    }
+
+    /* ── Print Button ────────────────────────────────── */
+    .print-bar {
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 99;
+      box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+    }
+    .btn-print {
+      background: #339999;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 20px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s;
+    }
+    .btn-print:hover { background: #277a7a; }
+
+    /* ── Section ─────────────────────────────────────── */
+    .section { padding: 40px 0 32px; }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .section-header-icon {
+      width: 38px; height: 38px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .section-header h2 {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: 0.02em;
+    }
+    .section-header p {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    /* ── Stats Row ─────────────────────────────────── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-bottom: 36px;
+    }
+    .stat-card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 20px 18px;
+      text-align: center;
+      box-shadow: 0 2px 12px rgba(51,153,153,0.10);
+      border: 1px solid #e0f2f2;
+    }
+    .stat-number {
+      font-size: 32px;
+      font-weight: 900;
+      color: #339999;
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 600;
+      margin-top: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Module Cards ────────────────────────────────── */
+    .modules-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 22px 20px;
+      box-shadow: 0 2px 14px rgba(0,0,0,0.06);
+      border: 1px solid #f1f5f9;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(0,0,0,0.10); }
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .feature-icon {
+      width: 46px; height: 46px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .module-number {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      opacity: 0.65;
+      margin-bottom: 2px;
+    }
+    .card h3 {
+      font-size: 15px;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.3;
+    }
+    .card-desc {
+      font-size: 13px;
+      color: #475569;
+      line-height: 1.6;
+      margin-bottom: 14px;
+    }
+    .feature-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .feature-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 12.5px;
+      color: #334155;
+      line-height: 1.5;
+    }
+    .feature-list li::before {
+      content: '✓';
+      font-size: 11px;
+      font-weight: 800;
+      color: #339999;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+    .tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      letter-spacing: 0.03em;
+    }
+    .tag-green  { background: #d1fae5; color: #065f46; }
+    .tag-blue   { background: #dbeafe; color: #1e40af; }
+    .tag-orange { background: #ffedd5; color: #9a3412; }
+    .tag-red    { background: #fee2e2; color: #991b1b; }
+    .tag-purple { background: #ede9fe; color: #4c1d95; }
+    .tag-teal   { background: #ccfbf1; color: #0f766e; }
+    .tag-yellow { background: #fef9c3; color: #713f12; }
+    .card-footer {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid #f1f5f9;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    /* ── Roles section ────────────────────────────────── */
+    .roles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 14px;
+    }
+    .role-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px 18px;
+      box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+      border: 1px solid #f1f5f9;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .role-badge {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+    .role-card h4 {
+      font-size: 13px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+    .role-card p {
+      font-size: 12px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    /* ── Tech stack ───────────────────────────────────── */
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+    }
+    .tech-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 18px 16px;
+      box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+      border: 1px solid #f1f5f9;
+      text-align: center;
+    }
+    .tech-card .tech-emoji { font-size: 28px; margin-bottom: 8px; display: block; }
+    .tech-card h4 { font-size: 13px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
+    .tech-card p  { font-size: 11.5px; color: #64748b; line-height: 1.5; }
+
+    /* ── Flow section ─────────────────────────────────── */
+    .flow-steps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+      align-items: flex-start;
+      counter-reset: step;
+    }
+    .flow-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      flex: 1;
+      min-width: 120px;
+      padding: 0 8px;
+      position: relative;
+    }
+    .flow-step::after {
+      content: '→';
+      position: absolute;
+      right: -10px;
+      top: 18px;
+      font-size: 18px;
+      color: #94a3b8;
+    }
+    .flow-step:last-child::after { display: none; }
+    .flow-step-num {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #277a7a, #339999);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 8px;
+      flex-shrink: 0;
+    }
+    .flow-step h4 { font-size: 12px; font-weight: 800; color: #0f172a; margin-bottom: 3px; }
+    .flow-step p  { font-size: 11px; color: #64748b; line-height: 1.4; }
+
+    /* ── Footer ──────────────────────────────────────── */
+    .footer {
+      background: #0f172a;
+      color: #94a3b8;
+      padding: 32px 0;
+      margin-top: 48px;
+      text-align: center;
+      font-size: 12.5px;
+    }
+    .footer strong { color: #e2e8f0; }
+    .footer .version { margin-top: 8px; font-size: 11px; opacity: 0.7; }
+
+    /* ── Divider ─────────────────────────────────────── */
+    hr.divider { border: none; border-top: 1px solid #e2e8f0; margin: 8px 0; }
+  </style>
+</head>
+<body>
+
+<!-- Print Bar -->
+<div class="print-bar no-print">
+  <button class="btn-print" onclick="window.print()">🖨️ In / Lưu PDF</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     HERO
+══════════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="container hero-inner">
+    <div class="hero-logo">
+      <div class="hero-icon">🍀</div>
+      <div>
+        <div style="font-size:11px;font-weight:700;opacity:0.75;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:2px;">Công ty Song An</div>
+        <h1>QTSX Song An<span>Quản Trị Sản Xuất</span></h1>
+      </div>
+    </div>
+    <p class="hero-desc">
+      Hệ thống quản lý sản xuất nội bộ của Công ty Song An — theo dõi toàn bộ quy trình từ
+      kế hoạch sản xuất, phân công nhân sự, ghi nhận sản lượng thực tế đến báo cáo tổng hợp
+      theo ngày / tháng, quản lý hàng lỗi, chấm công và hiệu quả nhân viên.
+    </p>
+    <div class="hero-meta">
+      <div class="hero-meta-item"><div class="dot"></div> Hệ thống đang hoạt động</div>
+      <div class="hero-meta-item">📅 Cập nhật: Tháng 6 / 2026</div>
+      <div class="hero-meta-item">🌐 Web App · Responsive</div>
+      <div class="hero-meta-item">🔐 JWT · Phân quyền đa cấp</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     STATS
+══════════════════════════════════════════════════ -->
+<div class="container">
+  <div class="section">
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-number">10+</div>
+        <div class="stat-label">Phân hệ chức năng</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">16</div>
+        <div class="stat-label">Vai trò người dùng</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">6</div>
+        <div class="stat-label">Công đoạn sản xuất</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">24/7</div>
+        <div class="stat-label">Truy cập từ xa</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">RT</div>
+        <div class="stat-label">Thông báo realtime</div>
+      </div>
+    </div>
+
+    <!-- ── Luồng công việc tổng quan ── -->
+    <div class="section-header" style="margin-top:8px;">
+      <div class="section-header-icon" style="background:#f0fdf4;">📊</div>
+      <div>
+        <h2>Luồng công việc tổng quan</h2>
+        <p>Từ kế hoạch đến báo cáo</p>
+      </div>
+    </div>
+    <div style="background:#fff;border-radius:14px;padding:28px 24px;box-shadow:0 2px 14px rgba(0,0,0,0.06);border:1px solid #f1f5f9;margin-bottom:8px;">
+      <div class="flow-steps">
+        <div class="flow-step">
+          <div class="flow-step-num">1</div>
+          <h4>Đơn hàng</h4>
+          <p>Nhập đơn hàng từ khách, tạo lệnh sản xuất</p>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">2</div>
+          <h4>Kế hoạch</h4>
+          <p>Lập kế hoạch theo tuần / tháng cho từng công đoạn</p>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">3</div>
+          <h4>Kế hoạch tổ</h4>
+          <p>Phân công người thực hiện theo ca làm việc</p>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">4</div>
+          <h4>Ghi sản lượng</h4>
+          <p>Nhân viên ghi nhận sản lượng thực tế theo ngày</p>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">5</div>
+          <h4>Kiểm tra chất lượng</h4>
+          <p>Ghi nhận hàng lỗi, xử lý KPH</p>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">6</div>
+          <h4>Báo cáo</h4>
+          <p>Tổng hợp sản lượng, hiệu quả, chấm công</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     MODULES
+══════════════════════════════════════════════════ -->
+<div class="container">
+  <div class="section page-break">
+    <div class="section-header">
+      <div class="section-header-icon" style="background:#eff6ff;">📦</div>
+      <div>
+        <h2>Các phân hệ chức năng</h2>
+        <p>Danh sách đầy đủ các module trong hệ thống QTSX Song An</p>
+      </div>
+    </div>
+
+    <div class="modules-grid">
+
+      <!-- 01 Sản lượng tổng hợp -->
+      <div class="card">
+        <div class="card-header">
+          <div class="feature-icon" style="background:#f0fdf4;">📊</div>
+          <div>
+            <div class="module-number" style="color:#059669;">Module 01</div>
+            <h3>Sản Lượng Tổng Hợp</h3>
+          </div>
+        </div>
+        <p class="card-desc">Trang tổng hợp sản lượng toàn bộ đơn hàng. Hiển thị tiến độ theo từng công đoạn (BBC1, PCPL1, PCPL2, PL, ĐG, CC) với số lượng thực hiện vs kế hoạch.</p>
+        <ul class="feature-list">
+          <li>Xem tổng sản lượng theo công đoạn và đơn hàng</li>
+          <li>Hiển thị % hoàn thành, sản lượng lô, số lượng cộng dồn</li>
+          <li>Lọc theo ngày, công đoạn, trạng thái</li>
+          <li>Ghi nhận và duyệt thay đổi sản lượng (PENDING / APPROVED)</li>
+          <li>Xuất dữ liệu, in báo cáo</li>
+        </ul>
+        <div class="card-footer">
+          <span class="tag tag-green">Xem: Tất cả</span>
+          <span class="tag tag-blue">Sửa: Admin · TKSX · ADMIN_KH</span>
+        </div>
+      </div>
+
+      <!-- 02 Sản lượng theo ngày -->
+      <div class="card">
+        <div class="card-header">
+          <div class="feature-icon" style="background:#eff6ff;">📅</div>
+          <div>
+            <div class="module-number" style="color:#3b82f6;">Module 02</div>
+            <h3>Sản Lượng Theo Ngày</h3>
+          </div>
+        </div>
+        <p class="card-desc">Báo cáo chi tiết sản lượng từng ngày, nhóm theo công đoạn và sản phẩm. Cho phép theo dõi năng suất nhóm và tính toán năng suất trung bình.</p>
+        <ul class="feature-list">
+          <li>Xem sản lượng theo từng ngày / khoảng thời gian</li>
+          <li>Tính năng suất nhóm: SL / Tổng công thực hiện</li>
+          <li>So sánh năng suất thực tế vs trung bình sản phẩm</li>
+          <li>Hiển thị danh sách người thực hiện theo ca</li>
+          <li>Trạng thái: IN_PROGRESS / SAVED / PENDING</li>
+        </ul>
+        <div class="card-footer">
+          <span class="tag tag-green">Xem: Tất cả</span>
+          <span class="tag tag-teal">Ghi: Nhân viên + Admin</span>
+        </div>
+      </div>
+
+      <!-- 03 Sản lượng tổ -->
+      <div class="card">
+        <div class="card-header">
+          <div class="feature-icon" style="background:#fdf4ff;">👥</div>
+          <div>
+            <div class="module-number" style="color:#a855f7;">Module 03</div>
+            <h3>Sản Lượng Tổ (Work Schedule)</h3>
+          </div>
+        </div>
+        <p class="card-desc">Quản lý lịch làm việc chi tiết của từng tổ sản xuất. Cho phép nhân viên ghi sản lượng trực tiếp theo ca, phòng thực hiện, công đoạn.</p>
+        <ul class="feature-list">
+          <li>Xem lịch sản xuất theo tuần / tháng / tất cả</li>
+          <li>Ghi sản lượng thực tế theo từng ca (Ca 1 / Ca 2 / HC)</li>
+          <li>Quản lý tăng ca (tab riêng)</li>
+          <li>Lọc theo tổ, ngày, trạng thái</li>
+          <li>Phòng thực hiện, ghi chú tùy chỉnh</li>
+        </ul>
+        <div class="card-footer">
+          <span class="tag tag-green">Xem: Tất cả</span>
+          <span class="tag tag-purple">Ghi: Nhân viên theo công đoạn</span>
+        </div>
+      </div>
+
+      <!-- 04 Kế hoạch -->
+      <div class="card">
+        <div class="card-header">
+          <div class="feature-icon" style="background:#fff7ed;">📋</div>
+          <div>
+            <div class="module-number" style="color:#f97316;">Module 04</div>
+            <h3>Kế Hoạch Sản Xuất</h3>
+          </div>
+        </div>
+        <p class="card-desc">Lập kế hoạch sản xuất xưởng theo tuần / tháng. Tạo lịch làm việc từ đơn hàng, kéo thả sắp xếp thứ tự ưu tiên, đánh dấu "Gấp".</p>
+        <ul class="feature-list">
+          <li>Tạo, sửa, xóa kế hoạch sản xuất</li>
+          <li>Chọn nguồn: Kế hoạch (PLAN) / Lịch SX (SCHEDULE)</li>
+          <li>Lọc theo tháng, tuần, công đoạn, tổ nhóm</li>
+          <li>Liên kết với đơn hàng, lệnh sản xuất, số lô</li>
+          <li>Tab tích hợp: Kế hoạch + Lệnh Sản Xuất</li>
+        </ul>
+        <div class="card-footer">
+          <span class="tag tag-green">Xem: Tất cả</span>
+          <span class="tag tag-orange">Tạo/Sửa: Admin · TKSX · ADMIN_KH</span>
+        </div>
+      </div>
+
+      <!-- 05 Kế hoạch tổ -->
+      <div class="card">
+        <div class="card-header">
+          <div class="feature-icon" style="background:#f0fdf4;">🗂️</div>
+          <div>
+            <div class="module-number" style="color:#0d9488;">Module 05</div>
+            <h3>Kế Hoạch Tổ</h3>
+          </div>
+        </div>
+        <p class="card-desc">Phân công người thực hiện cho từng sản phẩm theo ngày và ca. Giao diện kéo thả trực quan — kéo sản phẩm từ panel trái, kéo nhân viên vào card.</p>
+        <ul class="feature-list">
+          <li>Kéo thả sản phẩm từ kế hoạch tổng vào từng ngày</li>
+          <li>Kéo nhân viên trong tổ vào card sản phẩm</li>
+          <li>Đổi ca (Ca 1 / Ca 2 / Hành Chính / Tùy chọn) — tự sync DB</li>
+          <li>Xóa người, xóa card có Popconfirm xác nhận</li>
+          <li>Ghi sản lượng (Salg) và lưu ngày thực hiện</li>
+          <li>Phát hiện xung đột lịch (người bị xếp 2 ca cùng lúc)</li>
+          <li>Nhân bản ngày, nhân bản hàng</li>
+          <li>Ghi chú tự động sync khi rời ô</li>
+        </ul>
+        <div class="card-footer">
+          <span class="tag tag-green">Xem: Tất cả</span>
+          <span class="tag tag-teal">Sửa: Admin · TKSX · ADMIN_KH · Admin Tổ</span>
+        </div>
+      </div>
+
+      <!-- 06 Lệnh sản xuất -->
+      <div class="card">
+        <div class="card-header">
+          <div class="feature-icon" style="background:#eff6ff;">📄</div>
+          <div>
+            <div class="module-number" style="color:#2563eb;">Module 06</div>
+            <h3>Lệnh Sản Xuất</h3>
+          </div>
+        </div>
+        <p class="card-desc">Tạo và quản lý lệnh sản xuất (LSX) — từ đơn hàng đến phiếu sản xuất cụ thể. Badge hiển thị số LSX chưa phát hành.</p>
+        <ul class="feature-list">
+          <li>Tạo lệnh sản xuất từ đơn hàng hoặc thủ công</li>
+          <li>Phát hành lệnh (thay đổi trạng thái chính thức)</li>
+          <li>Xem chi tiết theo từng lệnh</li>
+          <li>Badge thông báo LSX chưa phát hành</li>
+          <li>Tích hợp với kế hoạch sản xuất</li>
+        </ul>
+        <div class="card-footer">
+          <span class="tag tag-green">Xem: Tất cả</span>
+          <span class="tag tag-blue">Sửa: Admin · ADMIN_KH</span>
+        </div>
+      </div>
+
+      <!-- 07 Hàng Xử Lý -->
+      <div class="card">
+        <div class="card-header">
+          <div class="feature-icon" style="background:#fff1f2;">⚠️</div>
+          <div>
+            <div class="module-number" style="color:#dc2626;">Module 07</div>
+            <h3>Hàng Xử Lý (KPH)</h3>
+          </div>
+        </div>
+        <p class="card-desc">Ghi nhận và theo dõi hàng lỗi, hàng cần xử lý. Hỗ trợ workflow duyệt, thống kê theo loại lỗi và thời gian.</p>
+        <ul class="feature-list">
+          <li>Tạo phiếu hàng lỗi / cần xử lý</li>
+          <li>Đính kèm hình ảnh, mô tả lỗi chi tiết</li>
+          <li>Thống kê theo loại lỗi, công đoạn, tháng</li>
+          <li>Thông báo realtime khi có KPH mới</li>
+          <li>Filter tìm kiếm nâng cao</li>
+        </ul>
+        <div class="card-footer">
+          <span class="tag tag-green">Xem: Tất cả</span>
+          <span class="tag tag-red">Sửa: Admin · TKSX · Admin tổ</span>
+        </div>
+      </div>
+
+      <!-- 08 Nhân Viên -->
+      <div class="card">
+        <div class="card-header">
+          <div class="feature-icon" style="background:#fdf4ff;">🏆</div>
+          <div>
+            <div class="module-number" style="color:#9333ea;">Module 08</div>
+            <h3>Nhân Viên & Hiệu Quả</h3>
+          </div>
+        </div>
+        <p class="card-desc">Quản lý hồ sơ nhân viên và theo dõi hiệu quả làm việc. Tính toán số giờ trưởng ca, phụ máy, số lần đạt / không đạt năng suất.</p>
+        <ul class="feature-list">
+          <li>Danh sách nhân viên theo tổ / công đoạn</li>
+          <li>Thống kê hiệu quả: số giờ trưởng ca, phụ máy</li>
+          <li>Số lần đạt năng suất / không đạt theo lịch sử</li>
+          <li>Nhân viên tự cập nhật hồ sơ cá nhân</li>
+          <li>Thêm trạng thái "Tạm nghỉ" — ẩn khỏi kế hoạch</li>
+        </ul>
+        <div class="card-footer">
+          <span class="tag tag-green">Xem: Tất cả (admin)</span>
+          <span class="tag tag-purple">Quản lý: Admin · TKSX · ADMIN_KH</span>
+        </div>
+      </div>
+
+      <!-- 09 Chấm công -->
+      <div class="card">
+        <div class="card-header">
+          <div class="feature-icon" style="background:#f0fdf4;">⏱️</div>
+          <div>
+            <div class="module-number" style="color:#16a34a;">Module 09</div>
+            <h3>Chấm Công</h3>
+          </div>
+        </div>
+        <p class="card-desc">Quản lý chấm công theo ngày, tổng hợp giờ làm việc. Hỗ trợ tích hợp với lịch sản xuất để tự động ghi nhận thời gian.</p>
+        <ul class="feature-list">
+          <li>Ghi nhận giờ vào / giờ ra hàng ngày</li>
+          <li>Tổng hợp giờ công theo tháng</li>
+          <li>Xem theo từng nhân viên hoặc cả tổ</li>
+          <li>Phân biệt ca chính thức và tăng ca</li>
+        </ul>
+        <div class="card-footer">
+          <span class="tag tag-green">Xem: Admin · Kế toán</span>
+          <span class="tag tag-teal">Ghi: Nhân viên + Admin</span>
+        </div>
+      </div>
+
+      <!-- 10 Danh Mục -->
+      <div class="card">
+        <div class="card-header">
+          <div class="feature-icon" style="background:#fffbeb;">🗄️</div>
+          <div>
+            <div class="module-number" style="color:#d97706;">Module 10</div>
+            <h3>Quản Lý Danh Mục</h3>
+          </div>
+        </div>
+        <p class="card-desc">Quản lý các danh mục hệ thống: sản phẩm, đơn hàng, người dùng, tài khoản. Dữ liệu nền tảng cho toàn bộ phân hệ khác.</p>
+        <ul class="feature-list">
+          <li>Danh mục sản phẩm (Product Master) — mã TP, tên, NS trung bình</li>
+          <li>Quản lý đơn hàng — liên kết đến lệnh và kế hoạch</li>
+          <li>Quản lý người dùng, phân vai trò</li>
+          <li>Thùng rác — khôi phục bản ghi đã xóa (Admin)</li>
+        </ul>
+        <div class="card-footer">
+          <span class="tag tag-yellow">Admin · TKSX · ADMIN_KH</span>
+        </div>
+      </div>
+
+      <!-- 11 Thông báo -->
+      <div class="card">
+        <div class="card-header">
+          <div class="feature-icon" style="background:#f0fdfa;">🔔</div>
+          <div>
+            <div class="module-number" style="color:#0891b2;">Module 11</div>
+            <h3>Thông Báo Realtime</h3>
+          </div>
+        </div>
+        <p class="card-desc">Hệ thống thông báo đẩy realtime qua WebSocket. Tự động thông báo khi có đơn hàng mới, lịch SX mới, hàng lỗi, yêu cầu duyệt sản lượng.</p>
+        <ul class="feature-list">
+          <li>Thông báo tức thời qua WebSocket (không cần F5)</li>
+          <li>Badge đếm số thông báo chưa đọc trên menu</li>
+          <li>Phân loại: đơn hàng / lịch SX / hàng lỗi / sản lượng</li>
+          <li>Đánh dấu đã đọc theo từng loại hoặc tất cả</li>
+          <li>Kiểm tra định kỳ mỗi 30 giây (fallback)</li>
+        </ul>
+        <div class="card-footer">
+          <span class="tag tag-green">Tất cả vai trò</span>
+          <span class="tag tag-teal">WebSocket realtime</span>
+        </div>
+      </div>
+
+      <!-- 12 Chat -->
+      <div class="card">
+        <div class="card-header">
+          <div class="feature-icon" style="background:#f5f3ff;">💬</div>
+          <div>
+            <div class="module-number" style="color:#7c3aed;">Module 12</div>
+            <h3>Chat Nội Bộ</h3>
+          </div>
+        </div>
+        <p class="card-desc">Widget chat realtime tích hợp ngay trong giao diện — liên lạc nhanh giữa các bộ phận mà không cần rời ứng dụng.</p>
+        <ul class="feature-list">
+          <li>Chat widget nổi, có thể thu/mở</li>
+          <li>Realtime qua WebSocket</li>
+          <li>Lịch sử tin nhắn lưu trữ</li>
+          <li>Hiển thị tên + vai trò người gửi</li>
+        </ul>
+        <div class="card-footer">
+          <span class="tag tag-green">Tất cả vai trò</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     ROLES
+══════════════════════════════════════════════════ -->
+<div style="background:#f8fafc;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;padding:40px 0;">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-header-icon" style="background:#fff7ed;">🔑</div>
+      <div>
+        <h2>Hệ thống phân quyền</h2>
+        <p>16 vai trò người dùng với quyền hạn chi tiết theo từng chức năng</p>
+      </div>
+    </div>
+    <div class="roles-grid">
+
+      <div class="role-card">
+        <div class="role-badge" style="background:#fef3c7;">👑</div>
+        <div>
+          <h4>ADMIN — Quản trị viên</h4>
+          <p>Toàn quyền: xem + sửa + xóa tất cả phân hệ. Quản lý người dùng, thùng rác.</p>
+        </div>
+      </div>
+
+      <div class="role-card">
+        <div class="role-badge" style="background:#dcfce7;">⚙️</div>
+        <div>
+          <h4>TKSX — Tài khoản Sản Xuất</h4>
+          <p>Quyền gần như ADMIN, xem toàn bộ, chỉnh sửa kế hoạch và nhân sự. Không quản lý tài khoản.</p>
+        </div>
+      </div>
+
+      <div class="role-card">
+        <div class="role-badge" style="background:#dbeafe;">📊</div>
+        <div>
+          <h4>ADMIN_KH — Admin Kế hoạch</h4>
+          <p>Quản lý kế hoạch, lệnh SX, đơn hàng, sản lượng. Duyệt thay đổi sản lượng.</p>
+        </div>
+      </div>
+
+      <div class="role-card">
+        <div class="role-badge" style="background:#f3e8ff;">👁️</div>
+        <div>
+          <h4>QUAN_DOC — Quản lý (đọc)</h4>
+          <p>Chỉ xem tất cả báo cáo và dữ liệu, không chỉnh sửa.</p>
+        </div>
+      </div>
+
+      <div class="role-card">
+        <div class="role-badge" style="background:#fce7f3;">🏭</div>
+        <div>
+          <h4>ADMIN_PC / ADMIN_BBC1 / ADMIN_PL / ADMIN_DG</h4>
+          <p>Admin theo công đoạn — chỉnh sửa lịch SX và kế hoạch tổ trong phạm vi công đoạn mình quản lý.</p>
+        </div>
+      </div>
+
+      <div class="role-card">
+        <div class="role-badge" style="background:#ccfbf1;">🔧</div>
+        <div>
+          <h4>ADMIN_PCPL1 / PCPL2 / PCPL3</h4>
+          <p>Admin tổ PCPL — quản lý tổ riêng. PCPL1 có thể xem thêm PL.</p>
+        </div>
+      </div>
+
+      <div class="role-card">
+        <div class="role-badge" style="background:#e0f2fe;">👤</div>
+        <div>
+          <h4>NHAN_VIEN + các biến thể</h4>
+          <p>Ghi sản lượng theo công đoạn được phân. Tự cập nhật hồ sơ cá nhân, đổi mật khẩu.</p>
+        </div>
+      </div>
+
+      <div class="role-card">
+        <div class="role-badge" style="background:#fef9c3;">📁</div>
+        <div>
+          <h4>HCNS — Hành chính nhân sự</h4>
+          <p>Quản lý hồ sơ nhân viên. Chỉ truy cập module Nhân viên.</p>
+        </div>
+      </div>
+
+      <div class="role-card">
+        <div class="role-badge" style="background:#fce7f3;">💰</div>
+        <div>
+          <h4>KE_TOAN — Kế toán</h4>
+          <p>Xem sản lượng, sản lượng theo ngày và chấm công để tính lương.</p>
+        </div>
+      </div>
+
+      <div class="role-card">
+        <div class="role-badge" style="background:#f0f9ff;">🖥️</div>
+        <div>
+          <h4>MAN_HINH — Màn hình</h4>
+          <p>Tài khoản hiển thị bảng báo cáo ở màn hình xưởng. Chỉ xem báo cáo tổng hợp.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     TECH STACK
+══════════════════════════════════════════════════ -->
+<div class="container">
+  <div class="section">
+    <div class="section-header">
+      <div class="section-header-icon" style="background:#f5f3ff;">⚙️</div>
+      <div>
+        <h2>Công nghệ sử dụng</h2>
+        <p>Stack kỹ thuật của hệ thống QTSX Song An</p>
+      </div>
+    </div>
+    <div class="tech-grid">
+      <div class="tech-card">
+        <span class="tech-emoji">⚛️</span>
+        <h4>React 18 + Vite</h4>
+        <p>Frontend SPA hiện đại, fast-refresh, tối ưu bundle size</p>
+      </div>
+      <div class="tech-card">
+        <span class="tech-emoji">🐝</span>
+        <h4>Ant Design v5</h4>
+        <p>UI component library chuyên nghiệp, theme tùy chỉnh</p>
+      </div>
+      <div class="tech-card">
+        <span class="tech-emoji">☕</span>
+        <h4>Spring Boot 3.4</h4>
+        <p>Backend REST API, hiệu suất cao, dễ mở rộng</p>
+      </div>
+      <div class="tech-card">
+        <span class="tech-emoji">🔐</span>
+        <h4>Spring Security + JWT</h4>
+        <p>Xác thực stateless, phân quyền URL + method level</p>
+      </div>
+      <div class="tech-card">
+        <span class="tech-emoji">🗄️</span>
+        <h4>PostgreSQL / MySQL</h4>
+        <p>RDBMS quan hệ, lưu trữ toàn bộ dữ liệu sản xuất</p>
+      </div>
+      <div class="tech-card">
+        <span class="tech-emoji">⚡</span>
+        <h4>WebSocket (STOMP)</h4>
+        <p>Thông báo và chat realtime không cần reload trang</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     FOOTER
+══════════════════════════════════════════════════ -->
+<footer class="footer">
+  <div class="container">
+    <div><strong>🍀 QTSX Song An</strong> — Hệ thống Quản Trị Sản Xuất</div>
+    <div style="margin-top:6px;">Công ty <strong>Song An</strong> · <strong>chiennv@songan.vn</strong></div>
+    <div class="version">Tài liệu cập nhật: Tháng 6 / 2026 · Phiên bản hiện hành</div>
+  </div>
+</footer>
+
+</body>
+</html>

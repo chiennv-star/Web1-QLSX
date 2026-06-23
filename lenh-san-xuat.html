@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lệnh Sản Xuất — Trích xuất từ ảnh</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Lora:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1b1d21;
+    --ink-soft:#3a3f47;
+    --line:#1b1d21;            /* viền tài liệu: đậm như in giấy */
+    --line-soft:#c9ccd2;
+    --accent:#3b5bdb;          /* màu nhấn duy nhất cho app */
+    --accent-weak:#eef1fe;
+    --bg:#eceef1;
+    --panel:#ffffff;
+    --muted:#6b7178;
+    --ok:#2f9e44;
+    --warn:#e8590c;
+    --radius:10px;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+    --sans:'Inter',system-ui,sans-serif;
+    --serif:'Lora',Georgia,serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:var(--sans);
+    background:var(--bg);
+    color:var(--ink);
+    font-size:14px;
+    line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- App chrome ---------- */
+  .app{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
+  .topbar{
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    margin-bottom:18px;
+  }
+  .topbar h1{
+    font-size:16px;font-weight:700;margin:0;letter-spacing:-.01em;
+    display:flex;align-items:center;gap:9px;
+  }
+  .topbar h1 .dot{width:9px;height:9px;border-radius:50%;background:var(--accent)}
+  .topbar .sub{color:var(--muted);font-size:12.5px}
+  .spacer{flex:1}
+
+  .btn{
+    font-family:var(--sans);font-size:13px;font-weight:500;
+    border:1px solid var(--line-soft);background:#fff;color:var(--ink);
+    padding:8px 13px;border-radius:8px;cursor:pointer;
+    display:inline-flex;align-items:center;gap:7px;
+    transition:.12s border-color,.12s background,.12s box-shadow;
+  }
+  .btn:hover{border-color:#9aa0a8}
+  .btn:active{transform:translateY(.5px)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:hover{background:#3450c8;border-color:#3450c8}
+  .btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+  .btn.ghost:hover{background:#e2e5e9;color:var(--ink)}
+  .btn svg{width:15px;height:15px;flex:none}
+
+  /* ---------- Khu nạp ảnh ---------- */
+  .ingest{
+    display:grid;grid-template-columns:1fr 320px;gap:16px;
+    margin-bottom:22px;
+  }
+  @media (max-width:820px){.ingest{grid-template-columns:1fr}}
+  .panel{
+    background:var(--panel);border:1px solid var(--line-soft);
+    border-radius:var(--radius);padding:16px;
+  }
+  .panel .label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+
+  .drop{
+    border:1.5px dashed #b8bdc6;border-radius:var(--radius);
+    background:#fafbfc;min-height:148px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+    text-align:center;padding:18px;cursor:pointer;color:var(--muted);
+    transition:.14s border-color,.14s background;
+  }
+  .drop:hover{border-color:var(--accent);background:var(--accent-weak)}
+  .drop.drag{border-color:var(--accent);background:var(--accent-weak);color:var(--accent)}
+  .drop svg{width:30px;height:30px;opacity:.7}
+  .drop .big{font-size:13.5px;font-weight:500;color:var(--ink)}
+  .drop .small{font-size:12px}
+  .preview{position:relative;border-radius:var(--radius);overflow:hidden;border:1px solid var(--line-soft);background:#000}
+  .preview img{display:block;width:100%;max-height:320px;object-fit:contain;background:#1b1d21}
+  .preview .rm{
+    position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:7px;
+    background:rgba(20,22,26,.78);border:none;color:#fff;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px);
+  }
+  .preview .rm:hover{background:rgba(20,22,26,.95)}
+
+  .status{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin-top:12px;min-height:18px}
+  .status .pill{display:inline-flex;align-items:center;gap:6px;font-weight:500}
+  .status .pill.ok{color:var(--ok)}
+  .status .pill.run{color:var(--accent)}
+  .spin{width:13px;height:13px;border:2px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  .hint{font-size:12px;color:var(--muted);line-height:1.55}
+  .hint code{font-family:var(--mono);background:#eef0f3;padding:1px 5px;border-radius:4px;font-size:11.5px;color:var(--ink-soft)}
+
+  /* ---------- Tờ lệnh sản xuất (mô phỏng giấy in) ---------- */
+  .sheet-wrap{display:flex;justify-content:center}
+  .sheet{
+    background:#fff;width:100%;max-width:920px;
+    border:1px solid var(--line);
+    box-shadow:0 6px 28px rgba(20,30,55,.10);
+    padding:26px 30px 30px;color:var(--ink);
+  }
+  .doc-head{position:relative;padding-bottom:6px}
+  .doc-title{
+    font-family:var(--serif);font-weight:700;font-size:24px;letter-spacing:.04em;
+    text-align:center;margin:2px 0 4px;text-transform:uppercase;
+  }
+  .head-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 40px;margin-top:6px}
+  .fld{display:flex;align-items:baseline;gap:6px;padding:3px 0;font-size:13px}
+  .fld > .k{color:var(--ink-soft);white-space:nowrap;font-weight:500}
+  .fld > .v{
+    flex:1;border:none;border-bottom:1px dotted #b4b8bf;background:transparent;
+    font-family:var(--sans);font-size:13px;color:var(--ink);padding:1px 2px;min-width:0;
+  }
+  .fld > .v:focus{outline:none;border-bottom-color:var(--accent);background:var(--accent-weak)}
+  .fld > .v.hand{font-family:var(--serif);color:#1f3b8c}  /* mô phỏng phần ghi tay */
+
+  table.lsx{width:100%;border-collapse:collapse;margin-top:14px;font-size:12px}
+  table.lsx th,table.lsx td{border:1px solid var(--line);padding:0;vertical-align:middle}
+  table.lsx thead th{
+    background:#f1f2f4;font-weight:600;font-size:11px;text-align:center;
+    padding:6px 5px;line-height:1.25;
+  }
+  table.lsx td .cell{
+    width:100%;border:none;background:transparent;font-family:var(--sans);
+    font-size:12px;color:var(--ink);padding:5px 6px;
+  }
+  table.lsx td .cell:focus{outline:2px solid var(--accent);outline-offset:-2px;background:var(--accent-weak)}
+  td.c-stt{width:34px;text-align:center;color:var(--muted)}
+  td.c-stt .cell{text-align:center}
+  td.c-ma{width:78px}
+  td.c-ma .cell,td.c-dm .cell,td.c-lo .cell{font-family:var(--mono);font-size:11.5px}
+  td.c-lo{width:90px}
+  td.c-dvt{width:48px}
+  td.c-dvt .cell{text-align:center}
+  td.c-tyle{width:58px}
+  td.c-tyle .cell{text-align:right}
+  td.c-dm{width:108px}
+  td.c-dm .cell{text-align:right}
+  td.c-gc{width:66px}
+  td.c-act{width:30px;border:none !important;background:transparent}
+  .row-x{
+    width:22px;height:22px;border:none;background:transparent;color:#c0c4cb;cursor:pointer;
+    border-radius:5px;display:flex;align-items:center;justify-content:center;margin:0 auto;
+  }
+  .row-x:hover{background:#fde8e8;color:#d9480f}
+  tr.section td{background:#e9ebef;font-weight:700;font-size:12px;padding:5px 8px}
+
+  .add-row{
+    display:flex;gap:8px;justify-content:flex-end;margin-top:8px;
+  }
+  .add-row .btn{font-size:12px;padding:6px 11px}
+
+  .doc-foot{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:30px}
+  .doc-foot .date{grid-column:1/-1;text-align:right;font-size:13px;color:var(--ink-soft);font-style:italic;margin-bottom:4px}
+  .sign{text-align:center}
+  .sign .role{font-weight:700;font-size:13px;margin-bottom:42px}
+  .sign .line{border-top:1px dotted #b4b8bf;width:75%;margin:0 auto}
+  .pageno{margin-top:18px;font-size:11.5px;color:var(--muted)}
+
+  /* ---------- Print ---------- */
+  @media print{
+    body{background:#fff}
+    .topbar,.ingest,.add-row,.no-print{display:none !important}
+    .app{padding:0;max-width:none}
+    .sheet{box-shadow:none;border:1px solid #000;max-width:none;width:100%}
+    table.lsx td .cell:focus,.fld>.v:focus{outline:none;background:transparent}
+    td.c-act{display:none}
+    th.h-act{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar no-print">
+    <h1><span class="dot"></span>Lệnh sản xuất</h1>
+    <span class="sub">Nạp ảnh → trích xuất → đối chiếu & chỉnh sửa</span>
+    <span class="spacer"></span>
+    <button class="btn" id="btnJson">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+      Xuất JSON
+    </button>
+    <button class="btn" id="btnPrint">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
+      In / PDF
+    </button>
+    <button class="btn ghost" id="btnClear">Xóa trắng</button>
+  </div>
+
+  <!-- Khu nạp ảnh -->
+  <div class="ingest no-print">
+    <div class="panel">
+      <div class="label">Ảnh lệnh sản xuất</div>
+      <div id="drop" class="drop">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+        <div class="big">Kéo–thả ảnh vào đây</div>
+        <div class="small">hoặc bấm để chọn file (.jpg .png .webp)</div>
+      </div>
+      <input type="file" id="file" accept="image/*" hidden>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="panel">
+      <div class="label">Trích xuất</div>
+      <button class="btn primary" id="btnExtract" style="width:100%;justify-content:center" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3v4M3 5h4M6 17v4M4 19h4M13 3l3.5 8.5L25 15l-8.5 3.5L13 27"/></svg>
+        Trích xuất &amp; điền form
+      </button>
+      <div class="hint" style="margin-top:12px">
+        Nút này gọi <code>populateForm(json)</code> để đổ dữ liệu vào form bên dưới.<br><br>
+        Khi tích hợp thật, gửi ảnh về backend OCR/AI rồi gọi hàm này với JSON nhận về — xem khối <code>// ĐIỂM TÍCH HỢP</code> trong mã nguồn.
+      </div>
+      <button class="btn ghost" id="btnDemo" style="margin-top:10px;width:100%;justify-content:center">Dùng dữ liệu mẫu (từ ảnh đã cho)</button>
+    </div>
+  </div>
+
+  <!-- Tờ lệnh sản xuất -->
+  <div class="sheet-wrap">
+    <div class="sheet" id="sheet">
+      <div class="doc-head">
+        <div class="doc-title">Lệnh Sản Xuất</div>
+        <div class="head-grid">
+          <!-- cột trái -->
+          <div>
+            <div class="fld"><span class="k">Tên sản phẩm:</span><input class="v" data-f="tenSanPham"></div>
+            <div class="fld"><span class="k">Mã TP:</span><input class="v" data-f="maTP"></div>
+            <div class="fld"><span class="k">Số lượng pha chế:</span><input class="v" data-f="soLuongPhaChe"></div>
+            <div class="fld"><span class="k">Số lô sản xuất:</span><input class="v hand" data-f="soLoSanXuat"></div>
+            <div class="fld"><span class="k">Ngày sản xuất:</span><input class="v hand" data-f="ngaySanXuat"></div>
+            <div class="fld"><span class="k">Hạn sử dụng:</span><input class="v hand" data-f="hanSuDung"></div>
+            <div class="fld"><span class="k">Lưu ý:</span><input class="v hand" data-f="luuY"></div>
+          </div>
+          <!-- cột phải -->
+          <div>
+            <div class="fld"><span class="k">Quy cách:</span><input class="v" data-f="quyCach"></div>
+            <div class="fld"><span class="k">Số đăng ký:</span><input class="v" data-f="soDangKy"></div>
+            <div class="fld"><span class="k">Hạn dùng:</span><input class="v" data-f="hanDung"></div>
+          </div>
+        </div>
+      </div>
+
+      <table class="lsx">
+        <thead>
+          <tr>
+            <th style="width:34px">Stt</th>
+            <th style="width:78px">Mã vật tư</th>
+            <th>Nguyên liệu / Phụ liệu</th>
+            <th style="width:90px">Lô NVL + NCC</th>
+            <th style="width:48px">Đvt</th>
+            <th style="width:58px">Tỷ lệ (%)</th>
+            <th style="width:108px">ĐM 1 ĐVSP</th>
+            <th style="width:108px">ĐM theo lô</th>
+            <th style="width:66px">Ghi chú</th>
+            <th class="h-act" style="width:30px;border:none"></th>
+          </tr>
+        </thead>
+        <tbody id="tbNVL"></tbody>
+        <tbody id="tbBB"></tbody>
+      </table>
+
+      <div class="add-row no-print">
+        <button class="btn" data-add="nguyenVatLieu">+ Dòng nguyên vật liệu</button>
+        <button class="btn" data-add="baoBi">+ Dòng bao bì</button>
+      </div>
+
+      <div class="doc-foot">
+        <div class="date">Ngày ..... Tháng ..... Năm .........</div>
+        <div class="sign">
+          <div class="role">Phòng kế hoạch</div>
+          <div class="line"></div>
+        </div>
+        <div class="sign">
+          <div class="role">Phân xưởng</div>
+          <div class="line"></div>
+        </div>
+      </div>
+      <div class="pageno">Trang 1 / 2</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   MÔ HÌNH DỮ LIỆU
+   ============================================================ */
+const EMPTY = {
+  tenSanPham:"", maTP:"", soLuongPhaChe:"", quyCach:"", soDangKy:"", hanDung:"",
+  soLoSanXuat:"", ngaySanXuat:"", hanSuDung:"", luuY:"",
+  nguyenVatLieu:[],   // {maVatTu, ten, loNVL, dvt, tyLe, dm1, dmLo, ghiChu}
+  baoBi:[]
+};
+let data = structuredClone(EMPTY);
+
+/* ---- Dữ liệu mẫu trích từ chính ảnh bạn gửi ---- */
+const DEMO = {
+  tenSanPham:"Dầu gội cho tóc hư tổn 5L",
+  maTP:"10301529",
+  soLuongPhaChe:"465",
+  quyCach:"Can 5kg",
+  soDangKy:"27855/26/CBMP-HN",
+  hanDung:"24 tháng",
+  soLoSanXuat:"", ngaySanXuat:"", hanSuDung:"", luuY:"",
+  nguyenVatLieu:[
+    {maVatTu:"309084", ten:"Nước tinh khiết",                                        dvt:"Gram", dm1:"3.090,0000000", dmLo:"1.436.850,000"},
+    {maVatTu:"309578", ten:"Supersurf SLSC 30",                                       dvt:"Gram", dm1:"500,0000000",   dmLo:"232.500,000"},
+    {maVatTu:"309577", ten:"Supersurf CPH35",                                         dvt:"Gram", dm1:"500,0000000",   dmLo:"232.500,000"},
+    {maVatTu:"309347", ten:"Sodium alpha olefine sulphonate powder (Ginasul 68G)",    dvt:"Gram", dm1:"450,0000000",   dmLo:"209.250,000"},
+    {maVatTu:"309328", ten:"Mascerol Glycerin 99,7% USP",                             dvt:"Gram", dm1:"100,0000000",   dmLo:"46.500,000"},
+    {maVatTu:"309750", ten:"Cetiol® HE",                                              dvt:"Gram", dm1:"90,0000000",    dmLo:"41.850,000"},
+    {maVatTu:"309582", ten:"Sinopol 6000DS",                                          dvt:"Gram", dm1:"75,0000000",    dmLo:"34.875,000"},
+    {maVatTu:"309579", ten:"Diasleek C-822",                                          dvt:"Gram", dm1:"50,0000000",    dmLo:"23.250,000"},
+    {maVatTu:"301012", ten:"Dầu bơ",                                                  dvt:"Gram", dm1:"5,0000000",     dmLo:"2.325,000"},
+    {maVatTu:"309601", ten:"Reflez PCA GO",                                           dvt:"Gram", dm1:"35,0000000",    dmLo:"16.275,000"},
+    {maVatTu:"309233", ten:"Promois WK-F",                                            dvt:"Gram", dm1:"1,5000000",     dmLo:"697,500"},
+    {maVatTu:"309592", ten:"Cationic Guar NU-C14",                                    dvt:"Gram", dm1:"20,0000000",    dmLo:"9.300,000"},
+    {maVatTu:"309138", ten:"Citric acid monohydrate",                                 dvt:"Gram", dm1:"23,5000000",    dmLo:"10.927,500"},
+    {maVatTu:"309242", ten:"Ethylenediamine Tetraacetic Acid disodium (EDTA)",        dvt:"Gram", dm1:"2,5000000",     dmLo:"1.162,500"},
+    {maVatTu:"308307", ten:"Troycare PE91",                                           dvt:"Gram", dm1:"40,0000000",    dmLo:"18.600,000"},
+    {maVatTu:"306576", ten:"Hương Della 60742",                                       dvt:"Gram", dm1:"15,0000000",    dmLo:"6.975,000"},
+    {maVatTu:"306274", ten:"Little But Big",                                          dvt:"Gram", dm1:"2,5000000",     dmLo:"1.162,500"}
+  ],
+  baoBi:[
+    {maVatTu:"501502",  ten:"Can nhựa trắng 5L",                  dvt:"Cái", dm1:"1,0000000", dmLo:"465,000"},
+    {maVatTu:"5021140", ten:"Nhãn dầu gội cho tóc hư tổn 5L",      dvt:"Cái", dm1:"1,0200000", dmLo:"474,300"}
+  ]
+};
+
+/* ============================================================
+   RENDER FORM
+   ============================================================ */
+const COLS = [
+  {cls:"c-ma",   key:"maVatTu"},
+  {cls:"",       key:"ten"},
+  {cls:"c-lo",   key:"loNVL"},
+  {cls:"c-dvt",  key:"dvt"},
+  {cls:"c-tyle", key:"tyLe"},
+  {cls:"c-dm",   key:"dm1"},
+  {cls:"c-dm",   key:"dmLo"},
+  {cls:"c-gc",   key:"ghiChu"},
+];
+
+function cell(val, cls){
+  return `<td class="${cls}"><input class="cell" value="${(val??"").toString().replace(/"/g,'&quot;')}"></td>`;
+}
+
+function renderRows(tbodyId, arrName, sectionLabel, startStt){
+  const tb = document.getElementById(tbodyId);
+  const list = data[arrName];
+  let html = `<tr class="section"><td colspan="10">${sectionLabel}</td></tr>`;
+  list.forEach((item,i)=>{
+    html += `<tr data-arr="${arrName}" data-i="${i}">`;
+    html += `<td class="c-stt"><div class="cell" style="cursor:default">${startStt+i}</div></td>`;
+    COLS.forEach(c=>{ html += cell(item[c.key], "c-"+(c.key==="maVatTu"?"ma":c.key==="loNVL"?"lo":c.key==="dvt"?"dvt":c.key==="tyLe"?"tyle":c.key==="dm1"||c.key==="dmLo"?"dm":c.key==="ghiChu"?"gc":"")+(c.key==="ten"?" c-ten":"")); });
+    html += `<td class="c-act no-print"><button class="row-x" title="Xóa dòng">✕</button></td>`;
+    html += `</tr>`;
+  });
+  tb.innerHTML = html;
+}
+
+function render(){
+  // header fields
+  document.querySelectorAll('[data-f]').forEach(inp=>{ inp.value = data[inp.dataset.f] ?? ""; });
+  renderRows("tbNVL","nguyenVatLieu","Nguyên vật liệu",1);
+  renderRows("tbBB","baoBi","Bao bì",1);
+}
+
+/* ============================================================
+   ĐIỂM TÍCH HỢP — hàm để backend đổ dữ liệu vào
+   Gọi: populateForm(jsonNhanTuBackend)
+   ============================================================ */
+function populateForm(json){
+  data = Object.assign(structuredClone(EMPTY), json || {});
+  data.nguyenVatLieu = (json && json.nguyenVatLieu) ? json.nguyenVatLieu.map(normRow) : [];
+  data.baoBi         = (json && json.baoBi)         ? json.baoBi.map(normRow)         : [];
+  render();
+}
+function normRow(r){
+  return {maVatTu:r.maVatTu||"", ten:r.ten||"", loNVL:r.loNVL||"", dvt:r.dvt||"",
+          tyLe:r.tyLe||"", dm1:r.dm1||"", dmLo:r.dmLo||"", ghiChu:r.ghiChu||""};
+}
+
+/* ============================================================
+   GHI NGƯỢC (đọc form -> data) khi người dùng sửa
+   ============================================================ */
+document.addEventListener('input', e=>{
+  const el = e.target;
+  if(el.matches('[data-f]')){ data[el.dataset.f] = el.value; return; }
+  if(el.matches('.cell')){
+    const tr = el.closest('tr[data-arr]'); if(!tr) return;
+    const arr = tr.dataset.arr, i = +tr.dataset.i;
+    const idx = [...tr.querySelectorAll('.cell')].indexOf(el); // 0..7 theo COLS
+    const key = COLS[idx]?.key; if(key) data[arr][i][key] = el.value;
+  }
+});
+
+/* xóa dòng */
+document.addEventListener('click', e=>{
+  if(e.target.classList.contains('row-x')){
+    const tr = e.target.closest('tr[data-arr]');
+    data[tr.dataset.arr].splice(+tr.dataset.i,1);
+    render();
+  }
+});
+
+/* thêm dòng */
+document.querySelectorAll('[data-add]').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    data[b.dataset.add].push(normRow({}));
+    render();
+  });
+});
+
+/* ============================================================
+   NẠP ẢNH
+   ============================================================ */
+const drop=document.getElementById('drop'), fileInp=document.getElementById('file'),
+      statusEl=document.getElementById('status'), btnExtract=document.getElementById('btnExtract');
+let currentImage=null;
+
+drop.addEventListener('click',()=>fileInp.click());
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));
+drop.addEventListener('drop',e=>{ if(e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0]); });
+fileInp.addEventListener('change',e=>{ if(e.target.files[0]) loadImage(e.target.files[0]); });
+
+function loadImage(file){
+  if(!file.type.startsWith('image/')){ statusEl.innerHTML='<span class="pill" style="color:var(--warn)">⚠ Vui lòng chọn file ảnh</span>'; return; }
+  const r=new FileReader();
+  r.onload=()=>{
+    currentImage=r.result;
+    drop.innerHTML=`<div class="preview"><img src="${r.result}" alt="Ảnh lệnh sản xuất"><button class="rm" title="Bỏ ảnh">✕</button></div>`;
+    drop.style.cssText='border-style:solid;padding:0;background:#000;cursor:default';
+    drop.querySelector('.rm').addEventListener('click',ev=>{ev.stopPropagation();resetDrop();});
+    btnExtract.disabled=false;
+    statusEl.innerHTML=`<span class="pill ok">✓ Đã nạp ảnh — sẵn sàng trích xuất</span>`;
+  };
+  r.readAsDataURL(file);
+}
+function resetDrop(){
+  currentImage=null; btnExtract.disabled=true; statusEl.innerHTML='';
+  drop.style.cssText='';
+  drop.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><div class="big">Kéo–thả ảnh vào đây</div><div class="small">hoặc bấm để chọn file (.jpg .png .webp)</div>`;
+}
+
+/* ============================================================
+   TRÍCH XUẤT
+   Demo: mô phỏng độ trễ rồi đổ dữ liệu mẫu.
+   Thật: thay phần trong setTimeout bằng fetch tới backend của bạn.
+   ============================================================ */
+btnExtract.addEventListener('click', async ()=>{
+  statusEl.innerHTML='<span class="pill run"><span class="spin"></span>Đang trích xuất…</span>';
+  btnExtract.disabled=true;
+
+  // ----- ĐIỂM TÍCH HỢP BACKEND (thay khối demo bên dưới) -----
+  // const fd = new FormData();
+  // fd.append('file', fileInp.files[0]);
+  // const res = await fetch('http://localhost:8080/api/lsx/extract', { method:'POST', body:fd });
+  // const json = await res.json();
+  // populateForm(json);
+  // -----------------------------------------------------------
+
+  // Demo:
+  setTimeout(()=>{
+    populateForm(DEMO);
+    statusEl.innerHTML='<span class="pill ok">✓ Đã điền form — vui lòng đối chiếu với ảnh</span>';
+    btnExtract.disabled=false;
+  }, 900);
+});
+
+document.getElementById('btnDemo').addEventListener('click', ()=>{
+  populateForm(DEMO);
+  statusEl.innerHTML='<span class="pill ok">✓ Đã nạp dữ liệu mẫu</span>';
+});
+
+/* ============================================================
+   XUẤT JSON / IN / XÓA
+   ============================================================ */
+document.getElementById('btnJson').addEventListener('click', ()=>{
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=(data.maTP||'lenh-san-xuat')+'.json';
+  a.click(); URL.revokeObjectURL(a.href);
+});
+document.getElementById('btnPrint').addEventListener('click',()=>window.print());
+document.getElementById('btnClear').addEventListener('click',()=>{
+  if(confirm('Xóa toàn bộ dữ liệu trong form?')){ data=structuredClone(EMPTY); render(); }
+});
+
+render(); // khởi tạo
+</script>
+</body>
+</html>

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tóm tắt luồng dữ liệu — QTSX Song An</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #f1f5f9; color: #1e293b; font-size: 14px; }
+  h1 { font-size: 22px; font-weight: 800; }
+  h2 { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+  h3 { font-size: 13px; font-weight: 700; margin-bottom: 8px; color: #475569; }
+
+  .page { max-width: 1100px; margin: 0 auto; padding: 32px 20px; }
+
+  .header { background: linear-gradient(135deg, #1e3a5f 0%, #0f766e 100%); color: white; border-radius: 16px; padding: 28px 32px; margin-bottom: 28px; }
+  .header p { opacity: 0.8; margin-top: 6px; font-size: 13px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+
+  .card { background: white; border-radius: 14px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+
+  /* Flow */
+  .flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; margin-bottom: 24px; }
+  .flow-step { background: white; border-radius: 12px; padding: 14px 18px; box-shadow: 0 1px 4px rgba(0,0,0,.08); flex: 1; min-width: 140px; text-align: center; position: relative; }
+  .flow-step .icon { font-size: 24px; margin-bottom: 6px; }
+  .flow-step .label { font-weight: 700; font-size: 13px; color: #1e293b; }
+  .flow-step .sub { font-size: 11px; color: #64748b; margin-top: 3px; }
+  .flow-arrow { font-size: 22px; color: #94a3b8; padding: 0 6px; flex-shrink: 0; }
+  .step-1 { border-top: 3px solid #6366f1; }
+  .step-2 { border-top: 3px solid #8b5cf6; }
+  .step-3 { border-top: 3px solid #f59e0b; }
+  .step-4 { border-top: 3px solid #10b981; }
+  .step-5 { border-top: 3px solid #3b82f6; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f8fafc; font-weight: 700; padding: 10px 12px; text-align: left; border-bottom: 2px solid #e2e8f0; color: #475569; }
+  td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; }
+  .badge-yes { background: #d1fae5; color: #065f46; }
+  .badge-no  { background: #fee2e2; color: #991b1b; }
+  .badge-plan { background: #ede9fe; color: #5b21b6; }
+  .badge-sched { background: #dbeafe; color: #1d4ed8; }
+  .badge-server { background: #fef3c7; color: #92400e; }
+  .badge-local { background: #f1f5f9; color: #475569; }
+
+  /* Source boxes */
+  .source-box { border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
+  .source-plan { background: #f5f3ff; border: 1px solid #c4b5fd; }
+  .source-sched { background: #eff6ff; border: 1px solid #93c5fd; }
+  .source-label { font-weight: 800; font-size: 12px; margin-bottom: 6px; }
+  .source-plan .source-label { color: #6d28d9; }
+  .source-sched .source-label { color: #1d4ed8; }
+  .source-box ul { padding-left: 16px; }
+  .source-box li { font-size: 12px; color: #475569; margin-bottom: 3px; }
+
+  /* Impact matrix */
+  .matrix { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .matrix th { background: #1e293b; color: white; padding: 10px 14px; text-align: center; }
+  .matrix th:first-child { text-align: left; }
+  .matrix td { padding: 10px 14px; border: 1px solid #e2e8f0; text-align: center; }
+  .matrix td:first-child { text-align: left; font-weight: 600; background: #f8fafc; }
+  .matrix tr:nth-child(even) td { background: #fafafa; }
+  .matrix tr:nth-child(even) td:first-child { background: #f1f5f9; }
+
+  .icon-yes { color: #10b981; font-size: 16px; }
+  .icon-no  { color: #ef4444; font-size: 16px; }
+
+  /* Note box */
+  .note { background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 14px 16px; font-size: 12.5px; color: #92400e; }
+  .note strong { display: block; margin-bottom: 4px; }
+
+  .section-title { font-size: 16px; font-weight: 800; color: #1e293b; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; gap: 8px; }
+
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 5px; font-size: 11px; font-weight: 700; }
+
+  code { background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-family: monospace; font-size: 12px; color: #7c3aed; }
+
+  .fix-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+  .fix-item:last-child { border-bottom: none; }
+  .fix-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+  .fix-dot.fixed { background: #10b981; }
+  .fix-dot.info  { background: #6366f1; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>📋 Tóm tắt luồng dữ liệu QTSX Song An</h1>
+    <p>Phân tích mối quan hệ giữa Kế Hoạch Tổ · Sản Lượng Tổ · Lệnh Sản Xuất · WorkSchedule · WorkScheduleSession</p>
+  </div>
+
+  <!-- ─── 1. Luồng sản phẩm tổng thể ─── -->
+  <div class="section-title">① Luồng sản phẩm tổng thể</div>
+  <div class="flow" style="margin-bottom:24px;">
+    <div class="flow-step step-1">
+      <div class="icon">🛒</div>
+      <div class="label">Đơn Hàng</div>
+      <div class="sub">Bảng DonHang</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step step-2">
+      <div class="icon">📅</div>
+      <div class="label">Kế Hoạch</div>
+      <div class="sub">WorkSchedule<br><code>source=PLAN</code></div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step step-3">
+      <div class="icon">📝</div>
+      <div class="label">Lệnh Sản Xuất</div>
+      <div class="sub">LenhSanXuat<br><code>daBanHanh=false</code></div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step step-4">
+      <div class="icon">🚀</div>
+      <div class="label">Phát Hành</div>
+      <div class="sub">ProductionRecord<br>+ WorkSchedule SCHEDULE</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step step-5">
+      <div class="icon">📊</div>
+      <div class="label">Sản Lượng Tổ</div>
+      <div class="sub">Tất cả tab công đoạn</div>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-bottom:28px;">
+    <div class="card">
+      <h3>CHI TIẾT BƯỚC XẾP KẾ HOẠCH</h3>
+      <table>
+        <tr><td>Kéo đơn hàng vào KhoachPage</td><td>→ tạo <code>WorkSchedule(PLAN)</code><br>+ tự động tạo <code>LenhSanXuat(draft)</code></td></tr>
+        <tr><td>Kéo vào KeHoachToPage</td><td>→ tạo <code>WorkSchedule(PLAN)</code><br>+ <code>from-work-schedule</code> API</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>CHI TIẾT BƯỚC PHÁT HÀNH</h3>
+      <table>
+        <tr><td>Phát hành đơn lẻ</td><td><code>PUT /lenh-san-xuat/{id}</code><br>→ <code>autoCreateSanLuong()</code> ✅</td></tr>
+        <tr><td>Phát hành bulk</td><td><code>POST /ban-hanh/bulk</code><br>→ <code>autoCreateSanLuong()</code> ✅ <span class="tag" style="background:#d1fae5;color:#065f46">Đã fix</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ─── 2. Hai loại WorkSchedule ─── -->
+  <div class="section-title">② Hai loại WorkSchedule — hoàn toàn độc lập</div>
+  <div class="grid2" style="margin-bottom:28px;">
+    <div class="source-box source-plan">
+      <div class="source-label">🟣 source = PLAN (Kế hoạch)</div>
+      <ul>
+        <li>Tạo bởi: KhoachPage, KeHoachToPage (chế độ Kế hoạch)</li>
+        <li>Hiển thị ở: Kế Hoạch Tổ → chế độ <strong>"Kế hoạch"</strong></li>
+        <li>Session gắn với PLAN WorkSchedule ID</li>
+        <li>Dùng để lập kế hoạch sơ bộ, chưa là sản lượng thực</li>
+        <li>⚠️ <strong>Không liên quan</strong> đến Sản Lượng Tổ</li>
+      </ul>
+    </div>
+    <div class="source-box source-sched">
+      <div class="source-label">🔵 source = SCHEDULE (Lịch SX)</div>
+      <ul>
+        <li>Tạo bởi: <code>autoSyncFromProduction()</code> khi phát hành lệnh</li>
+        <li>Công đoạn: PCPL1, PCPL2, BBC1, PL, DG, CC</li>
+        <li>Hiển thị ở: <strong>Sản Lượng Tổ</strong> + Kế Hoạch Tổ chế độ <strong>"Lịch SX"</strong></li>
+        <li>Session gắn với SCHEDULE WorkSchedule ID</li>
+        <li>Là dữ liệu sản xuất thực tế</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ─── 3. Ma trận ảnh hưởng ─── -->
+  <div class="section-title">③ Ma trận ảnh hưởng giữa các màn hình</div>
+  <div class="card" style="margin-bottom:28px; overflow-x:auto;">
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th>Thao tác tại</th>
+          <th>KH Tổ<br>"Kế hoạch"</th>
+          <th>KH Tổ<br>"Lịch SX"</th>
+          <th>Sản Lượng Tổ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>KH Tổ "Kế hoạch" — kéo sản phẩm vào ngày</td>
+          <td><span class="icon-yes">✅</span><br><small>Local state</small></td>
+          <td><span class="icon-no">❌</span></td>
+          <td><span class="icon-no">❌</span></td>
+        </tr>
+        <tr>
+          <td>KH Tổ "Kế hoạch" — kéo người vào assign</td>
+          <td><span class="icon-yes">✅</span><br><small>Lưu server (PLAN session)</small></td>
+          <td><span class="icon-no">❌</span></td>
+          <td><span class="icon-no">❌</span></td>
+        </tr>
+        <tr>
+          <td>KH Tổ "Lịch SX" — kéo sản phẩm vào ngày</td>
+          <td><span class="icon-no">❌</span></td>
+          <td><span class="icon-yes">✅</span><br><small>Local state</small></td>
+          <td><span class="icon-no">❌</span></td>
+        </tr>
+        <tr>
+          <td>KH Tổ "Lịch SX" — kéo người vào assign</td>
+          <td><span class="icon-no">❌</span></td>
+          <td><span class="icon-yes">✅</span><br><small>Lưu server (SCHEDULE session)</small></td>
+          <td><span class="icon-yes">✅</span><br><small>Reload là thấy</small></td>
+        </tr>
+        <tr>
+          <td>Sản Lượng Tổ — xếp/xóa người</td>
+          <td><span class="icon-no">❌</span></td>
+          <td><span class="icon-yes">✅</span><br><small>Reload là thấy</small></td>
+          <td><span class="icon-yes">✅</span><br><small>Lưu server (SCHEDULE session)</small></td>
+        </tr>
+        <tr>
+          <td>Phát hành Lệnh SX → autoSyncFromProduction</td>
+          <td><span class="icon-no">❌</span></td>
+          <td><span class="icon-yes">✅</span><br><small>Tạo SCHEDULE WS mới</small></td>
+          <td><span class="icon-yes">✅</span><br><small>Xuất hiện trong tất cả tab CD</small></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ─── 4. Nguồn dữ liệu màn hình ─── -->
+  <div class="section-title">④ Nguồn dữ liệu từng màn hình</div>
+  <div class="grid3" style="margin-bottom:28px;">
+    <div class="card">
+      <h2>Kế Hoạch Tổ<br><small style="font-weight:400;color:#64748b">"Kế hoạch" (PLAN)</small></h2>
+      <div class="fix-item">
+        <div class="fix-dot info"></div>
+        <div>Panel trái: <code>GET /work-schedule?source=PLAN</code> — danh sách sản phẩm chưa xếp</div>
+      </div>
+      <div class="fix-item">
+        <div class="fix-dot info"></div>
+        <div>Panel phải: <code>WorkScheduleSession</code> của PLAN IDs → rebuild assign cards từ server</div>
+      </div>
+      <div class="fix-item">
+        <div class="fix-dot info"></div>
+        <div>Persist: <code>sessionStorage['kehoachto_assigns']</code> → còn sau khi F5</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Kế Hoạch Tổ<br><small style="font-weight:400;color:#64748b">"Lịch SX" (SCHEDULE)</small></h2>
+      <div class="fix-item">
+        <div class="fix-dot info"></div>
+        <div>Panel trái: <code>GET /work-schedule?source=SCHEDULE</code> — cùng nguồn với Sản Lượng Tổ</div>
+      </div>
+      <div class="fix-item">
+        <div class="fix-dot info"></div>
+        <div>Xếp người: <code>POST /work-schedule-session</code> với SCHEDULE WS ID</div>
+      </div>
+      <div class="fix-item">
+        <div class="fix-dot info"></div>
+        <div>Sản Lượng Tổ reload → thấy ngay</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Sản Lượng Tổ<br><small style="font-weight:400;color:#64748b">(WorkSchedulePage)</small></h2>
+      <div class="fix-item">
+        <div class="fix-dot info"></div>
+        <div><code>GET /work-schedule?source=SCHEDULE&congDoan=...</code> cho từng tab</div>
+      </div>
+      <div class="fix-item">
+        <div class="fix-dot info"></div>
+        <div>Lọc: ẩn record <code>tinhTrang='done'</code></div>
+      </div>
+      <div class="fix-item">
+        <div class="fix-dot info"></div>
+        <div>Sessions: <code>GET /work-schedule-session?scheduleId=...</code> cho mỗi WS</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── 5. Các lỗi đã sửa ─── -->
+  <div class="section-title">⑤ Các lỗi đã phát hiện và sửa</div>
+  <div class="card" style="margin-bottom:28px;">
+    <div class="fix-item">
+      <div class="fix-dot fixed"></div>
+      <div>
+        <strong>KhoachPage — 5 hàm fast-path thiếu tạo LenhSanXuat</strong><br>
+        <span style="font-size:12px;color:#64748b">
+          Sau khi tạo <code>WorkSchedule(PLAN)</code> nhưng không gọi <code>/lenh-san-xuat/from-work-schedule/{id}</code>.
+          Fix: capture response ID và fire-and-forget.
+          Commit: <code>f366d81</code>
+        </span>
+      </div>
+    </div>
+    <div class="fix-item">
+      <div class="fix-dot fixed"></div>
+      <div>
+        <strong>LenhSanXuatService — banHanhBulk thiếu autoCreateSanLuong</strong><br>
+        <span style="font-size:12px;color:#64748b">
+          Phát hành bulk chỉ set <code>daBanHanh=true</code>, không tạo <code>ProductionRecord</code> và không tạo <code>WorkSchedule(SCHEDULE)</code> cho các công đoạn.
+          Fix: thêm vòng lặp gọi <code>autoCreateSanLuong()</code> sau <code>saveAll()</code>.
+          Commit: <code>7e20c62</code>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── 6. Ghi chú quan trọng ─── -->
+  <div class="section-title">⑥ Ghi chú quan trọng</div>
+  <div class="grid2">
+    <div class="note">
+      <strong>⚠️ Không đồng bộ real-time</strong>
+      Hai màn hình không cập nhật nhau tự động. Phải reload để thấy thay đổi từ bên kia.
+    </div>
+    <div class="note">
+      <strong>⚠️ autoSyncFromProduction KHÔNG tạo PC stage</strong>
+      Chỉ tạo SCHEDULE WorkSchedule cho: PCPL1, PCPL2, BBC1, PL, DG, CC — không có PC.
+    </div>
+    <div class="note" style="margin-top:12px;">
+      <strong>ℹ️ Kéo sản phẩm vào ngày ≠ lưu server</strong>
+      Chỉ kéo người vào assign card mới thực sự gọi API. Kéo sản phẩm chỉ là local state.
+    </div>
+    <div class="note" style="margin-top:12px;">
+      <strong>ℹ️ KH Tổ "Kế hoạch" và "Lịch SX" hoàn toàn độc lập</strong>
+      PLAN sessions và SCHEDULE sessions dùng các WorkSchedule ID khác nhau, không liên quan nhau.
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:32px;font-size:11px;color:#94a3b8;">
+    Tóm tắt được tạo ngày 20/06/2026 · QTSX Song An
+  </div>
+</div>
+</body>
+</html>
