@@ -3658,6 +3658,7 @@ function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange }) {
   const [pagination, setPagination] = useState({ current: 1, pageSize: 1000, total: 0 })
   const [selectedIds, setSelectedIds] = useState([])
   const [bulkLoading, setBulkLoading] = useState(false)
+  const [updatingTT, setUpdatingTT] = useState({})
 
   const fetchHidden = useCallback(async (page = 0, size = 1000) => {
     setLoading(true)
@@ -3701,6 +3702,15 @@ function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange }) {
     finally { setBulkLoading(false) }
   }
 
+  const handleUpdateTinhTrang = async (id, newTT) => {
+    setUpdatingTT(p => ({ ...p, [id]: true }))
+    try {
+      await api.patch(`/work-schedule/${id}/tinh-trang`, { tinhTrang: newTT || null })
+      setData(prev => prev.map(r => r.id === id ? { ...r, tinhTrang: newTT || null } : r))
+    } catch { message.error('Cập nhật tình trạng thất bại') }
+    finally { setUpdatingTT(p => ({ ...p, [id]: false })) }
+  }
+
   const columns = [
     {
       title: 'Ngày TH', dataIndex: 'ngayThucHien', key: 'ngay', width: 90, align: 'center',
@@ -3741,8 +3751,21 @@ function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange }) {
       render: v => v || <span style={{ color: '#d9d9d9' }}>—</span>
     },
     {
-      title: 'Tình trạng', dataIndex: 'tinhTrang', key: 'tinhTrang', width: 90, align: 'center',
-      render: tinhTrangTag
+      title: 'Tình trạng', dataIndex: 'tinhTrang', key: 'tinhTrang', width: 110, align: 'center',
+      render: (v, record) => (
+        <Select
+          size="small"
+          value={v || ''}
+          loading={!!updatingTT[record.id]}
+          onChange={val => handleUpdateTinhTrang(record.id, val || null)}
+          style={{ width: 100 }}
+          onClick={e => e.stopPropagation()}
+        >
+          <Option value="">—</Option>
+          <Option value="doing"><span style={{ color: '#fa8c16', fontWeight: 600 }}>● Doing</span></Option>
+          <Option value="done"><span style={{ color: '#52c41a', fontWeight: 600 }}>✓ Done</span></Option>
+        </Select>
+      )
     },
     {
       title: 'Thao tác', key: 'action', width: 90, fixed: 'right', align: 'center',
