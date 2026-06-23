@@ -1727,32 +1727,25 @@ export default function DonHangPage() {
             render: (_, r) => <span style={{ color: '#0369a1', fontWeight: 600 }}>{fmtNum(r._pm.khoiLuong)}</span>,
           },
           {
-            title: 'Cỡ Lô TU', key: 'slTrungBinh', width: 95, align: 'right',
-            render: (_, r) => <span style={{ color: '#0369a1', fontWeight: 700 }}>{fmtNum(r._pm.slTrungBinh)}</span>,
+            title: 'NS TB (ĐG)', key: 'nsTb', width: 100, align: 'right',
+            render: (_, r) => r._pm.slTrungBinh
+              ? <span style={{ color: '#7c3aed', fontWeight: 700 }}>{fmtNS(r._pm.slTrungBinh)}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
           },
           {
-            title: 'NS TRUNG BÌNH', key: 'nsTb', width: 115, align: 'right',
-            render: (_, r) => {
-              const vals = [r._pm.nangSuatPc, r._pm.nangSuatPl, r._pm.nangSuatBbc1].map(Number).filter(v => v > 0)
-              if (!vals.length) return <span style={{ color: '#d9d9d9' }}>—</span>
-              const avg = vals.reduce((a, b) => a + b, 0) / vals.length
-              return <span style={{ color: '#7c3aed', fontWeight: 700 }}>{fmtNS(avg)}</span>
-            },
-          },
-          {
-            title: 'NS PC', key: 'nsPc', width: 90, align: 'right',
+            title: 'NS PC (Pha Chế)', key: 'nsPc', width: 120, align: 'right',
             render: (_, r) => r._pm.nangSuatPc
               ? <span style={{ color: '#1d4ed8', fontWeight: 600 }}>{fmtNS(r._pm.nangSuatPc)}</span>
               : <span style={{ color: '#d9d9d9' }}>—</span>,
           },
           {
-            title: 'NS PL', key: 'nsPl', width: 90, align: 'right',
+            title: 'NS PL (Phân Liều)', key: 'nsPl', width: 130, align: 'right',
             render: (_, r) => r._pm.nangSuatPl
               ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{fmtNS(r._pm.nangSuatPl)}</span>
               : <span style={{ color: '#d9d9d9' }}>—</span>,
           },
           {
-            title: 'NS BBC1', key: 'nsBbc1', width: 90, align: 'right',
+            title: 'NS BBC1 (VS BBC1)', key: 'nsBbc1', width: 130, align: 'right',
             render: (_, r) => r._pm.nangSuatBbc1
               ? <span style={{ color: '#6d28d9', fontWeight: 600 }}>{fmtNS(r._pm.nangSuatBbc1)}</span>
               : <span style={{ color: '#d9d9d9' }}>—</span>,
@@ -1812,43 +1805,50 @@ export default function DonHangPage() {
         const fmtH  = v  => (v != null && v > 0) ? Number(v).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'
         const fmtN  = v  => v != null ? Number(v).toLocaleString('vi-VN') : '—'
 
-        /* Tính thời gian SX mỗi đơn */
+        /* Tính thời gian SX mỗi đơn — 4 công đoạn */
         const BN_CFG = {
-          BBC1: { label: 'Chiết rót', bg: '#fee2e2', color: '#991b1b' },
-          PL:   { label: 'Pha loãng', bg: '#fef3c7', color: '#92400e' },
-          PC:   { label: 'Pha chế',   bg: '#dbeafe', color: '#1e40af' },
+          PC:   { label: 'Pha Chế',   bg: '#dbeafe', color: '#1e40af' },
+          PL:   { label: 'Phân Liều', bg: '#fef3c7', color: '#92400e' },
+          BBC1: { label: 'VS BBC1',   bg: '#fee2e2', color: '#991b1b' },
+          DG:   { label: 'Đóng Gói', bg: '#f5f3ff', color: '#6d28d9' },
         }
         const orderAnalysis = trendData.map(r => {
-          const sl = Number(r.soLuongConLai) || 0
-          const nsPc  = Number(r._pm.nangSuatPc)   || 0
-          const nsPl  = Number(r._pm.nangSuatPl)   || 0
+          const sl   = Number(r.soLuongConLai)   || 0
+          const nsPc  = Number(r._pm.nangSuatPc)  || 0
+          const nsPl  = Number(r._pm.nangSuatPl)  || 0
           const nsBbc = Number(r._pm.nangSuatBbc1) || 0
+          const nsDg  = Number(r._pm.slTrungBinh)  || 0  // slTrungBinh = NS TB = NS Đóng Gói
           const tPc  = nsPc  > 0 ? sl / nsPc  : null
           const tPl  = nsPl  > 0 ? sl / nsPl  : null
           const tBbc = nsBbc > 0 ? sl / nsBbc : null
+          const tDg  = nsDg  > 0 ? sl / nsDg  : null
           const times = [
             tPc  != null ? { key: 'PC',   t: tPc  } : null,
             tPl  != null ? { key: 'PL',   t: tPl  } : null,
             tBbc != null ? { key: 'BBC1', t: tBbc } : null,
+            tDg  != null ? { key: 'DG',   t: tDg  } : null,
           ].filter(Boolean)
           const bottleneck = times.length > 0 ? times.reduce((a, b) => b.t > a.t ? b : a) : null
           const total = times.reduce((s, x) => s + x.t, 0)
-          return { ...r, tPc, tPl, tBbc, total, bottleneck }
+          return { ...r, tPc, tPl, tBbc, tDg, total, bottleneck }
         }).sort((a, b) => b.total - a.total)
 
         const ordersWithData    = orderAnalysis.filter(r => r.bottleneck)
         const ordersWithoutData = trendData.filter(r => !orderAnalysis.find(x => x.id === r.id)?.bottleneck)
 
-        /* Tải máy */
+        /* Tải máy — 4 công đoạn */
+        const STAGE_MACHINE_MAP = [
+          { stageKey: 'PC',   machineField: 'mayMocPc',   nsField: 'nangSuatPc'  },
+          { stageKey: 'PL',   machineField: 'mayMocPl',   nsField: 'nangSuatPl'  },
+          { stageKey: 'BBC1', machineField: 'mayMocBbc1', nsField: 'nangSuatBbc1' },
+          { stageKey: 'DG',   machineField: 'mayMocDg',   nsField: 'slTrungBinh' },
+        ]
         const machineLoad = {}
         trendData.forEach(r => {
           const sl = Number(r.soLuongConLai) || 0
-          ;[
-            { machine: r._pm.mayMocBbc1, ns: Number(r._pm.nangSuatBbc1) || 0, stageKey: 'BBC1' },
-            { machine: r._pm.mayMocPc,   ns: Number(r._pm.nangSuatPc)   || 0, stageKey: 'PC'   },
-            { machine: r._pm.mayMocPl,   ns: Number(r._pm.nangSuatPl)   || 0, stageKey: 'PL'   },
-            { machine: r._pm.mayMocDg,   ns: 0,                               stageKey: 'DG'   },
-          ].forEach(({ machine, ns, stageKey }) => {
+          STAGE_MACHINE_MAP.forEach(({ stageKey, machineField, nsField }) => {
+            const machine = r._pm[machineField]
+            const ns = Number(r._pm[nsField]) || 0
             if (!machine || ns === 0) return
             const key = `${stageKey}__${machine}`
             if (!machineLoad[key]) machineLoad[key] = { machine, stageKey, hours: 0, orders: 0 }
@@ -1861,16 +1861,15 @@ export default function DonHangPage() {
         const bbc1M = machineList.filter(m => m.stageKey === 'BBC1')
         const pcM   = machineList.filter(m => m.stageKey === 'PC')
         const plM   = machineList.filter(m => m.stageKey === 'PL')
+        const dgM   = machineList.filter(m => m.stageKey === 'DG')
 
         /* Xung đột máy */
         const machineToBravo = {}
         trendData.forEach(r => {
           const sl = Number(r.soLuongConLai) || 0
-          ;[
-            { machine: r._pm.mayMocBbc1, ns: Number(r._pm.nangSuatBbc1) || 0, stageKey: 'BBC1' },
-            { machine: r._pm.mayMocPc,   ns: Number(r._pm.nangSuatPc)   || 0, stageKey: 'PC'   },
-            { machine: r._pm.mayMocPl,   ns: Number(r._pm.nangSuatPl)   || 0, stageKey: 'PL'   },
-          ].forEach(({ machine, ns, stageKey }) => {
+          STAGE_MACHINE_MAP.forEach(({ stageKey, machineField, nsField }) => {
+            const machine = r._pm[machineField]
+            const ns = Number(r._pm[nsField]) || 0
             if (!machine || ns === 0) return
             const key = `${stageKey}__${machine}`
             if (!machineToBravo[key]) machineToBravo[key] = []
@@ -1886,7 +1885,7 @@ export default function DonHangPage() {
           })
           .sort((a, b) => b.totalH - a.totalH)
 
-        /* Cơ hội song song: đơn nút thắt BBC1 dùng máy chiết khác nhau */
+        /* Cơ hội song song: đơn nút thắt VS BBC1 dùng máy khác nhau */
         const bbc1Groups = {}
         ordersWithData.forEach(r => {
           if (r.bottleneck?.key !== 'BBC1' || !r._pm.mayMocBbc1) return
@@ -1940,7 +1939,7 @@ export default function DonHangPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: '#f3f4f6' }}>
-                    {['Mã Bravo','Sản phẩm','SL Còn Lại','t. Pha chế (h)','t. Pha loãng (h)','t. Chiết rót (h)','Tổng (h)','Nút thắt'].map(h => (
+                    {['Mã Bravo','Sản phẩm','SL Còn Lại','t. Pha Chế (h)','t. Phân Liều (h)','t. VS BBC1 (h)','t. Đóng Gói (h)','Tổng (h)','Nút thắt'].map(h => (
                       <th key={h} style={{ padding: '9px 8px', textAlign: h.startsWith('t.') || h === 'Tổng (h)' || h === 'SL Còn Lại' ? 'right' : 'left', fontWeight: 600, color: '#374151', borderBottom: '2px solid #e5e7eb', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
@@ -1953,9 +1952,10 @@ export default function DonHangPage() {
                         <td style={{ padding: '8px 8px', fontFamily: 'monospace', color: '#1677ff', fontWeight: 700, fontSize: 12 }}>{r.maBravo}</td>
                         <td style={{ padding: '8px 8px', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.tenSanPham}>{r.tenSanPham || '—'}</td>
                         <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 600 }}>{fmtN(r.soLuongConLai)}</td>
-                        <td style={{ padding: '8px 8px', textAlign: 'right', color: r.bottleneck?.key === 'PC' ? '#1e40af' : '#374151', fontWeight: r.bottleneck?.key === 'PC' ? 700 : 400 }}>{fmtH(r.tPc)}</td>
-                        <td style={{ padding: '8px 8px', textAlign: 'right', color: r.bottleneck?.key === 'PL' ? '#92400e' : '#374151', fontWeight: r.bottleneck?.key === 'PL' ? 700 : 400 }}>{fmtH(r.tPl)}</td>
+                        <td style={{ padding: '8px 8px', textAlign: 'right', color: r.bottleneck?.key === 'PC'   ? '#1e40af' : '#374151', fontWeight: r.bottleneck?.key === 'PC'   ? 700 : 400 }}>{fmtH(r.tPc)}</td>
+                        <td style={{ padding: '8px 8px', textAlign: 'right', color: r.bottleneck?.key === 'PL'   ? '#92400e' : '#374151', fontWeight: r.bottleneck?.key === 'PL'   ? 700 : 400 }}>{fmtH(r.tPl)}</td>
                         <td style={{ padding: '8px 8px', textAlign: 'right', color: r.bottleneck?.key === 'BBC1' ? '#991b1b' : '#374151', fontWeight: r.bottleneck?.key === 'BBC1' ? 700 : 400 }}>{fmtH(r.tBbc)}</td>
+                        <td style={{ padding: '8px 8px', textAlign: 'right', color: r.bottleneck?.key === 'DG'   ? '#6d28d9' : '#374151', fontWeight: r.bottleneck?.key === 'DG'   ? 700 : 400 }}>{fmtH(r.tDg)}</td>
                         <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700 }}>{fmtH(r.total)}</td>
                         <td style={{ padding: '8px 8px' }}>
                           {bn && <span style={{ background: bn.bg, color: bn.color, fontWeight: 600, padding: '2px 8px', borderRadius: 4, fontSize: 12, whiteSpace: 'nowrap' }}>
@@ -1980,28 +1980,34 @@ export default function DonHangPage() {
               <SecTitle n="2" title="Tải máy — đâu là máy nghẽn nhất" sub="Tổng giờ mỗi máy phải gánh nếu chạy toàn bộ đơn trong danh sách" />
               {bbc1M.length > 0 && (
                 <>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8, marginTop: 4 }}>Máy chiết rót (BBC1) — nơi tập trung nút thắt</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#991b1b', marginBottom: 8, marginTop: 4 }}>Máy Vệ Sinh BBC1 (VS BBC1)</div>
                   {bbc1M.map(m => <BarRow key={m.machine} label={m.machine} hours={m.hours} maxH={maxHours} color="#dc2626" orders={m.orders} />)}
+                </>
+              )}
+              {dgM.length > 0 && (
+                <>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#6d28d9', marginBottom: 8, marginTop: 16 }}>Máy Đóng Gói (ĐG)</div>
+                  {dgM.map(m => <BarRow key={m.machine} label={m.machine} hours={m.hours} maxH={maxHours} color="#7c3aed" orders={m.orders} />)}
                 </>
               )}
               {pcM.length > 0 && (
                 <>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8, marginTop: 16 }}>Máy pha chế (PC)</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8, marginTop: 16 }}>Máy Pha Chế (PC)</div>
                   {pcM.map(m => <BarRow key={m.machine} label={m.machine} hours={m.hours} maxH={maxHours} color="#0f766e" orders={m.orders} />)}
                 </>
               )}
               {plM.length > 0 && (
                 <>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8, marginTop: 16 }}>Máy pha loãng (PL)</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8, marginTop: 16 }}>Máy Phân Liều (PL)</div>
                   {plM.map(m => <BarRow key={m.machine} label={m.machine} hours={m.hours} maxH={maxHours} color="#f59e0b" orders={m.orders} />)}
                 </>
               )}
               {machineList.length === 0 && <div style={{ color: '#94a3b8', fontSize: 13, padding: '12px 0' }}>Chưa có dữ liệu máy móc.</div>}
-              {(bbc1M.length > 0 || pcM.length > 0) && (
+              {machineList.length > 0 && (
                 <Callout color="green">
                   {bbc1M.length > 0
-                    ? <><b>Đọc biểu đồ:</b> Máy chiết rót <b>{bbc1M[0].machine} ({fmtH(bbc1M[0].hours)}h)</b>{bbc1M[1] ? ` và ${bbc1M[1].machine} (${fmtH(bbc1M[1].hours)}h)` : ''} đang gánh khối lượng lớn nhất. Mọi sự chú ý nên dồn vào lịch chạy các máy chiết này.</>
-                    : <><b>Đọc biểu đồ:</b> Không có đơn hàng dùng máy chiết BBC1 trong danh sách hiện tại.</>
+                    ? <><b>Đọc biểu đồ:</b> Máy VS BBC1 <b>{bbc1M[0].machine} ({fmtH(bbc1M[0].hours)}h)</b>{bbc1M[1] ? ` và ${bbc1M[1].machine} (${fmtH(bbc1M[1].hours)}h)` : ''} đang gánh khối lượng lớn. Dồn chú ý vào lịch chạy các máy này trước.</>
+                    : <><b>Đọc biểu đồ:</b> Không có đơn hàng dùng máy VS BBC1 trong danh sách hiện tại.</>
                   }
                 </Callout>
               )}
@@ -2031,10 +2037,10 @@ export default function DonHangPage() {
                     ? <div style={{ fontSize: 13, color: '#6b7280' }}>
                         {ordersWithoutData.length > 0
                           ? 'Nhiều đơn thiếu dữ liệu NS — bổ sung để phân tích song song chính xác hơn.'
-                          : 'Các đơn hiện tại dùng chung máy chiết hoặc không có máy chiết → không phát hiện cơ hội song song rõ ràng.'
+                          : 'Các đơn hiện tại dùng chung máy VS BBC1 hoặc không có máy VS BBC1 → không phát hiện cơ hội song song rõ ràng.'
                         }
                         {ordersWithData.filter(r => !r.bottleneck || r.bottleneck.key !== 'BBC1').length > 0 && (
-                          <span> Đơn nút thắt <b>pha loãng/pha chế</b> không chiếm máy chiết → có thể chạy song song với đơn chiết rót đang chạy.</span>
+                          <span> Đơn nút thắt <b>Phân Liều / Pha Chế / Đóng Gói</b> không chiếm máy VS BBC1 → có thể chạy song song với đơn VS BBC1 đang chạy.</span>
                         )}
                       </div>
                     : <ul style={{ paddingLeft: 18, fontSize: 13, color: '#4b5563' }}>
@@ -2065,9 +2071,12 @@ export default function DonHangPage() {
                 ))}
               </div>
               {ordersWithData.map((r, i) => {
-                const bn    = r.bottleneck ? BN_CFG[r.bottleneck.key] : null
-                const pri   = r.bottleneck?.key === 'BBC1' && r.total > 10 ? 0 : r.bottleneck?.key === 'PL' ? 1 : 2
-                const circ  = RANK_COLOR[pri]
+                const bn   = r.bottleneck ? BN_CFG[r.bottleneck.key] : null
+                // Ưu tiên 1: nút thắt BBC1 hoặc DG và tổng > 10h; Ưu tiên 2: PL; Ưu tiên 3: còn lại
+                const pri  = (r.bottleneck?.key === 'BBC1' || r.bottleneck?.key === 'DG') && r.total > 10 ? 0
+                           : r.bottleneck?.key === 'PL' ? 1
+                           : 2
+                const circ = RANK_COLOR[pri]
                 return (
                   <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: 8 }}>
                     <div style={{ width: 30, height: 30, borderRadius: '50%', background: circ, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 14, flexShrink: 0 }}>{i + 1}</div>
@@ -2075,7 +2084,8 @@ export default function DonHangPage() {
                       <div style={{ fontWeight: 600, fontSize: 14, color: '#111827' }}>{r.tenSanPham || r.maBravo}</div>
                       <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
                         {r.maBravo} · SL còn {fmtN(r.soLuongConLai)}
-                        {r._pm.mayMocBbc1 && <> · Máy chiết: <b>{r._pm.mayMocBbc1}</b></>}
+                        {r._pm.mayMocBbc1 && <> · Máy VS BBC1: <b>{r._pm.mayMocBbc1}</b></>}
+                        {r._pm.mayMocDg   && <> · Máy ĐG: <b>{r._pm.mayMocDg}</b></>}
                         {r.bottleneck && <> · nút thắt: <span style={{ color: bn?.color, fontWeight: 600 }}>{bn?.label} {fmtH(r.bottleneck.t)}h</span></>}
                       </div>
                     </div>
@@ -2084,7 +2094,7 @@ export default function DonHangPage() {
                 )
               })}
               {ordersWithData.length === 0 && (
-                <Callout color="amber">Chưa có đủ dữ liệu năng suất để xếp thứ tự. Vui lòng bổ sung NS PC / PL / BBC1 trong Danh mục TP.</Callout>
+                <Callout color="amber">Chưa có đủ dữ liệu năng suất để xếp thứ tự. Vui lòng bổ sung NS trong Danh mục TP.</Callout>
               )}
             </div>
 
