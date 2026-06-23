@@ -960,6 +960,7 @@ export default function DonHangPage() {
   const [activeTab,         setActiveTab]         = useState('active') // 'active' | 'done' | 'trend' | 'analysis'
   const [productMasterMap,  setProductMasterMap]  = useState({})
   const [loadingMaster,     setLoadingMaster]     = useState(false)
+  const [analysisFullscreen, setAnalysisFullscreen] = useState(false)
 
   // Sticky header offset
   const headerWrapRef = useRef(null)
@@ -1836,6 +1837,21 @@ export default function DonHangPage() {
         const ordersWithData    = orderAnalysis.filter(r => r.bottleneck)
         const ordersWithoutData = trendData.filter(r => !orderAnalysis.find(x => x.id === r.id)?.bottleneck)
 
+        /* Bảng tổng hợp giờ từng công đoạn */
+        const stageSummary = [
+          { key: 'PC',   label: 'Pha Chế',   tField: 'tPc',  color: '#1e40af', bg: '#dbeafe' },
+          { key: 'PL',   label: 'Phân Liều', tField: 'tPl',  color: '#92400e', bg: '#fef3c7' },
+          { key: 'BBC1', label: 'VS BBC1',   tField: 'tBbc', color: '#991b1b', bg: '#fee2e2' },
+          { key: 'DG',   label: 'Đóng Gói', tField: 'tDg',  color: '#6d28d9', bg: '#f5f3ff' },
+        ].map(s => {
+          const vals = ordersWithData.filter(r => r[s.tField] != null)
+          const totalH = vals.reduce((sum, r) => sum + r[s.tField], 0)
+          const bnCount = ordersWithData.filter(r => r.bottleneck?.key === s.key).length
+          return { ...s, totalH, orderCount: vals.length, bnCount }
+        })
+        const maxStageH = Math.max(...stageSummary.map(s => s.totalH)) || 1
+        const bottleneckStage = stageSummary.reduce((a, b) => b.totalH > a.totalH ? b : a)
+
         /* Tải máy — 4 công đoạn */
         const STAGE_MACHINE_MAP = [
           { stageKey: 'PC',   machineField: 'mayMocPc',   nsField: 'nangSuatPc'  },
@@ -1924,8 +1940,26 @@ export default function DonHangPage() {
           )
         }
 
-        return (
-          <div style={{ padding: '20px 16px', maxWidth: 1100 }}>
+        const innerContent = (
+          <div style={{ padding: analysisFullscreen ? '24px 32px' : '20px 16px', maxWidth: analysisFullscreen ? '100%' : 1100, minHeight: analysisFullscreen ? '100vh' : undefined, background: '#fff' }}>
+
+            {/* Thanh tiêu đề + nút fullscreen */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#0f766e' }}>🔬 Phân Tích Năng Suất &amp; Tải Máy</div>
+              <button
+                onClick={() => setAnalysisFullscreen(f => !f)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  background: analysisFullscreen ? '#fef2f2' : '#f0fdf4',
+                  color: analysisFullscreen ? '#dc2626' : '#0f766e',
+                  border: `1px solid ${analysisFullscreen ? '#fca5a5' : '#86efac'}`,
+                  borderRadius: 6, padding: '5px 14px', cursor: 'pointer',
+                  fontWeight: 600, fontSize: 13,
+                }}
+              >
+                {analysisFullscreen ? '✕ Đóng' : '⛶ Mở toàn màn hình'}
+              </button>
+            </div>
 
             {/* Intro callout */}
             <Callout color="green">
@@ -1935,6 +1969,52 @@ export default function DonHangPage() {
             {/* ── Section 1: Thời gian SX ── */}
             <div style={{ marginBottom: 36 }}>
               <SecTitle n="1" title="Thời gian sản xuất theo công đoạn (giờ)" sub="t = SL Còn Lại ÷ NS. Cột Nút thắt là công đoạn lâu nhất của từng đơn." />
+
+              {/* ── Bảng tổng hợp giờ từng công đoạn ── */}
+              {ordersWithData.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>Tổng giờ toàn bộ đơn hàng theo từng công đoạn</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, background: '#f8fafc', borderRadius: 8, overflow: 'hidden' }}>
+                    <thead>
+                      <tr style={{ background: '#e2e8f0' }}>
+                        {['Công đoạn','Tổng giờ (h)','Số đơn có NS','Đơn là nút thắt','Tải (% so cao nhất)'].map(h => (
+                          <th key={h} style={{ padding: '8px 12px', textAlign: h === 'Công đoạn' ? 'left' : 'right', fontWeight: 600, color: '#374151', borderBottom: '2px solid #cbd5e1', whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stageSummary.map((s, i) => {
+                        const pct = maxStageH > 0 ? Math.round((s.totalH / maxStageH) * 100) : 0
+                        const isBN = s.key === bottleneckStage.key
+                        return (
+                          <tr key={s.key} style={{ background: isBN ? s.bg : (i % 2 === 0 ? '#fff' : '#f8fafc'), borderLeft: isBN ? `3px solid ${s.color}` : '3px solid transparent' }}>
+                            <td style={{ padding: '9px 12px', fontWeight: 700, color: s.color, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              {s.label}
+                              {isBN && <span style={{ fontSize: 10, background: s.color, color: '#fff', borderRadius: 4, padding: '1px 6px' }}>NÚT THẮT</span>}
+                            </td>
+                            <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 700, color: s.color }}>{fmtH(s.totalH)}</td>
+                            <td style={{ padding: '9px 12px', textAlign: 'right', color: '#374151' }}>{s.orderCount}</td>
+                            <td style={{ padding: '9px 12px', textAlign: 'right', color: '#374151' }}>{s.bnCount}</td>
+                            <td style={{ padding: '9px 12px', textAlign: 'right' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                                <div style={{ width: 80, background: '#e2e8f0', borderRadius: 3, height: 8, overflow: 'hidden' }}>
+                                  <div style={{ width: `${pct}%`, height: '100%', background: s.color, borderRadius: 3 }} />
+                                </div>
+                                <span style={{ minWidth: 32, color: '#374151', fontWeight: 600 }}>{pct}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                      <tr style={{ background: '#f1f5f9', borderTop: '2px solid #cbd5e1' }}>
+                        <td style={{ padding: '9px 12px', fontWeight: 700, color: '#111827' }}>Tổng cộng</td>
+                        <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 700, color: '#111827' }}>{fmtH(stageSummary.reduce((s, x) => s + x.totalH, 0))}</td>
+                        <td colSpan={3} style={{ padding: '9px 12px', textAlign: 'right', color: '#6b7280', fontSize: 12 }}>{ordersWithData.length} đơn có dữ liệu NS</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
               {loadingMaster ? <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Đang tải dữ liệu năng suất...</div> : (
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
@@ -2100,6 +2180,17 @@ export default function DonHangPage() {
 
           </div>
         )
+
+        return analysisFullscreen ? (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+            zIndex: 9998, background: '#fff', overflowY: 'auto',
+          }}
+            onClick={e => e.stopPropagation()}
+          >
+            {innerContent}
+          </div>
+        ) : innerContent
       })()
       ) : null}
 
