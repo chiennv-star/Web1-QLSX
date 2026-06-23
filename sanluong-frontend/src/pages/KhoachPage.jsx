@@ -1514,6 +1514,7 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
   })
   const [donHangList, setDonHangList] = useState([])
   const [donHangLoading, setDonHangLoading] = useState(false)
+  const [dhSearch, setDhSearch] = useState('')
 
   useEffect(() => {
     saveDateRange(dateRange)
@@ -3118,12 +3119,18 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
 
       {/* ── Bảng ĐƠN HÀNG độc lập — chỉ admin/adminKH, ẩn ở V2 ── */}
       {canEdit && showDonHang && !miniPickerMode && (() => {
-        const sortDonHang = (a, b) => {
-          const ab = (a.maBravo || '').localeCompare(b.maBravo || '')
-          return ab !== 0 ? ab : (a.maDonHang || '').localeCompare(b.maDonHang || '')
-        }
-        const activeDhList = donHangList.filter(dh => dh.tinhTrangSx !== 'done').sort(sortDonHang)
-        const doneDhList   = donHangList.filter(dh => dh.tinhTrangSx === 'done').sort(sortDonHang)
+        const sortDonHang = (a, b) =>
+          (a.tenSanPham || '').localeCompare(b.tenSanPham || '', 'vi', { sensitivity: 'base' }) ||
+          (a.maBravo || '').localeCompare(b.maBravo || '') ||
+          (a.maDonHang || '').localeCompare(b.maDonHang || '')
+        const dhQ = dhSearch.trim().toLowerCase()
+        const dhFilter = dh => !dhQ ||
+          (dh.tenSanPham  || '').toLowerCase().includes(dhQ) ||
+          (dh.maBravo     || '').toLowerCase().includes(dhQ) ||
+          (dh.maSp        || '').toLowerCase().includes(dhQ) ||
+          (dh.maDonHang   || '').toLowerCase().includes(dhQ)
+        const activeDhList = donHangList.filter(dh => dh.tinhTrangSx !== 'done' && dhFilter(dh)).sort(sortDonHang)
+        const doneDhList   = donHangList.filter(dh => dh.tinhTrangSx === 'done'  && dhFilter(dh)).sort(sortDonHang)
         const matched = [...activeDhList, ...doneDhList]
 
         // For each matched order, calculate SL đã xếp KH — chỉ tính PCPL1+PCPL2 (tổ pha chế chính)
@@ -3180,6 +3187,19 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
               <span style={{ fontWeight: 400, fontSize: 11, opacity: 0.65, marginLeft: 12, fontStyle: 'italic' }}>
                 ⠿ Kéo hàng vào ô ngày để tạo kế hoạch
               </span>
+              <Input
+                size="small"
+                allowClear
+                placeholder="Tìm tên SP / Mã Bravo / Mã ĐH..."
+                prefix={<SearchOutlined style={{ color: 'rgba(255,255,255,0.6)' }} />}
+                value={dhSearch}
+                onChange={e => setDhSearch(e.target.value)}
+                style={{
+                  marginLeft: 16, width: 240,
+                  background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.3)',
+                  color: '#fff', fontSize: 12,
+                }}
+              />
               <Button
                 size="small" type="text" icon={<ReloadOutlined />}
                 style={{ marginLeft: 'auto', color: '#fff', opacity: 0.8 }}
