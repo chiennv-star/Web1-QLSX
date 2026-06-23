@@ -898,6 +898,7 @@ export default function DonHangPage() {
   const [data,        setData]       = useState([])
   const [loading,     setLoading]    = useState(false)
   const [syncing,     setSyncing]    = useState(false)
+  const [syncingBravo, setSyncingBravo] = useState(false)
   const [saving,      setSaving]     = useState({})
 
   // Filters
@@ -1107,6 +1108,16 @@ export default function DonHangPage() {
   const notifyDonHangUpdated = () => window.dispatchEvent(new CustomEvent('app:donhang-updated'))
   const onSaved       = (payload) => { setModalOpen(false);  load(); notifyDonHangUpdated(); if (payload) { syncToKhoach(payload) } }
   const onDetailSaved = (payload) => { setDetailOpen(false); load(); notifyDonHangUpdated(); if (payload) { syncToKhoach(payload) } }
+
+  const syncBravo = async () => {
+    setSyncingBravo(true)
+    try {
+      const { data: res } = await api.post('/don-hang/sync-bravo')
+      message.success(res.message || 'Đã điền Mã SP + Tên SP thành công')
+      load()
+    } catch { message.error('Sync thất bại') }
+    finally { setSyncingBravo(false) }
+  }
 
   // ── KPIs — tất cả tính từ data đã qua baseFilter để đồng bộ với các tab ──
   const filteredAll = data.filter(r => baseFilter(r))
@@ -1464,6 +1475,13 @@ export default function DonHangPage() {
           )}
           {canEdit && (
             <>
+              <Tooltip title="Tự động điền Mã SP và Tên Sản Phẩm cho các đơn hàng đang trống (tra từ danh mục Mã Bravo)">
+                <Button size="small" icon={<SyncOutlined />}
+                  loading={syncingBravo} onClick={syncBravo}
+                  style={{ borderColor: '#0369a1', color: '#0369a1', fontWeight: 600 }}>
+                  Sync Mã SP
+                </Button>
+              </Tooltip>
               <Button size="small" icon={<FileExcelOutlined />}
                 onClick={() => setImportOpen(true)}
                 style={{ borderColor: '#217346', color: '#217346', fontWeight: 600 }}>

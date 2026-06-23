@@ -266,6 +266,26 @@ public class DonHangService {
         }).collect(Collectors.toList());
     }
 
+    // ── Sync Mã SP + Tên SP từ ProductMaster cho đơn hàng đang trống ─────────
+    public Map<String, Object> syncBravoLookup() {
+        List<DonHang> list = repo.findAllActive();
+        int updated = 0, skipped = 0;
+        for (DonHang e : list) {
+            if (e.getMaBravo() == null || e.getMaBravo().isBlank()) continue;
+            boolean needMaSp  = e.getMaSp()       == null || e.getMaSp().isBlank();
+            boolean needTenSp = e.getTenSanPham()  == null || e.getTenSanPham().isBlank();
+            if (!needMaSp && !needTenSp) { skipped++; continue; }
+            Optional<ProductMaster> pm = productMasterService.findByMaBravo(e.getMaBravo());
+            if (pm.isEmpty()) { skipped++; continue; }
+            if (needMaSp)  e.setMaSp(pm.get().getMaTp());
+            if (needTenSp) e.setTenSanPham(pm.get().getTienTrinh());
+            repo.save(e);
+            updated++;
+        }
+        return Map.of("updated", updated, "skipped", skipped,
+                "message", "Đã cập nhật " + updated + " đơn hàng, bỏ qua " + skipped);
+    }
+
     // ── Import từ Excel ───────────────────────────────────────────────────────
     public Map<String, Object> importFromExcel(MultipartFile file, String username) throws Exception {
         int imported = 0, skipped = 0;

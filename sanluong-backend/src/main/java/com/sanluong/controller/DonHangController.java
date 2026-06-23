@@ -69,6 +69,13 @@ public class DonHangController {
         return ResponseEntity.noContent().build();
     }
 
+    /** Tự động điền Mã SP + Tên SP từ ProductMaster cho các đơn hàng đang trống */
+    @PostMapping("/sync-bravo")
+    public ResponseEntity<Map<String, Object>> syncBravo() {
+        Map<String, Object> result = service.syncBravoLookup();
+        return ResponseEntity.ok(result);
+    }
+
     /** Sync soLuongDaXepKh từ kế hoạch (work_schedule source=PLAN) */
     @PostMapping("/sync-khoach")
     public ResponseEntity<Map<String, Object>> syncFromKhoach() {
