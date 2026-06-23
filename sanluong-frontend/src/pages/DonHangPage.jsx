@@ -1674,100 +1674,6 @@ export default function DonHangPage() {
       (() => {
         const trendData = displayData.map(r => ({ ...r, _pm: productMasterMap[r.maBravo] || {} }))
         const fmtNS = v => v != null ? Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 0 }) : '—'
-        const fmtDec = (v, d = 1) => v != null && isFinite(v) ? Number(v).toLocaleString('vi-VN', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—'
-
-        /* ── Tính toán phân tích tổng hợp ── */
-        const analysis = trendData.reduce((acc, r) => {
-          const sl   = Number(r.soLuongConLai) || 0
-          const klg  = Number(r._pm.khoiLuong)  || 0   // g/đơn vị
-          const coLo = Number(r._pm.slTrungBinh) || 0
-          const nsPc  = Number(r._pm.nangSuatPc)  || 0
-          const nsPl  = Number(r._pm.nangSuatPl)  || 0
-          const nsBbc = Number(r._pm.nangSuatBbc1) || 0
-          acc.totalSl    += sl
-          acc.totalKlKg  += sl * klg / 1000
-          acc.totalLo    += coLo > 0 ? Math.ceil(sl / coLo) : 0
-          acc.chuaBatDau += (!r.tinhTrangSx || r.tinhTrangSx === 'not_started') ? 1 : 0
-          acc.dangSx     += r.tinhTrangSx === 'in_progress' ? 1 : 0
-          if (nsPc  > 0) acc.ngayPc  += sl / nsPc
-          if (nsPl  > 0) acc.ngayPl  += sl / nsPl
-          if (nsBbc > 0) acc.ngayBbc += sl / nsBbc
-          return acc
-        }, { totalSl: 0, totalKlKg: 0, totalLo: 0, chuaBatDau: 0, dangSx: 0, ngayPc: 0, ngayPl: 0, ngayBbc: 0 })
-
-        const maxNgay = Math.max(analysis.ngayPc, analysis.ngayPl, analysis.ngayBbc) || 1
-        const stageLoad = [
-          { key: 'PC',   label: 'Công Đoạn PC',   ngay: analysis.ngayPc,  color: '#1d4ed8', bg: '#eff6ff' },
-          { key: 'PL',   label: 'Công Đoạn PL',   ngay: analysis.ngayPl,  color: '#0e7490', bg: '#ecfeff' },
-          { key: 'BBC1', label: 'Công Đoạn BBC1', ngay: analysis.ngayBbc, color: '#7c3aed', bg: '#f5f3ff' },
-        ]
-        const bottleneckKey = stageLoad.reduce((a, b) => b.ngay > a.ngay ? b : a, stageLoad[0]).key
-
-        const analysisPanel = (
-          <div style={{ marginBottom: 16 }}>
-            {/* KPI tổng quan */}
-            <div style={{ display: 'flex', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-              {[
-                { label: 'Tổng SL còn lại', value: analysis.totalSl.toLocaleString('vi-VN'), unit: 'sp', color: '#cf1322', bg: '#fff1f0', icon: '📦' },
-                { label: 'KL nguyên liệu', value: fmtDec(analysis.totalKlKg, 0), unit: 'kg', color: '#0369a1', bg: '#f0f9ff', icon: '⚖️' },
-                { label: 'Số lô cần SX', value: analysis.totalLo.toLocaleString('vi-VN'), unit: 'lô', color: '#15803d', bg: '#f0fdf4', icon: '🏭' },
-                { label: 'Chưa bắt đầu', value: analysis.chuaBatDau, unit: 'đơn', color: '#b45309', bg: '#fffbeb', icon: '🚨' },
-                { label: 'Đang sản xuất', value: analysis.dangSx, unit: 'đơn', color: '#7c3aed', bg: '#faf5ff', icon: '⚙️' },
-              ].map(c => (
-                <div key={c.label} style={{
-                  flex: '1 1 140px', minWidth: 130, background: c.bg,
-                  border: `1px solid ${c.color}22`, borderRadius: 10,
-                  padding: '10px 14px', textAlign: 'center',
-                }}>
-                  <div style={{ fontSize: 18 }}>{c.icon}</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: c.color, lineHeight: 1.2 }}>
-                    {c.value} <span style={{ fontSize: 12, fontWeight: 500, color: '#6b7280' }}>{c.unit}</span>
-                  </div>
-                  <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{c.label}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Tải công đoạn */}
-            <div style={{
-              background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10,
-              padding: '12px 16px',
-            }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                📊 Tải Công Đoạn Ước Tính
-                <span style={{ fontWeight: 400, color: '#94a3b8', fontSize: 11 }}>(Σ SL Còn Lại ÷ Năng Suất)</span>
-                <span style={{
-                  marginLeft: 'auto', background: '#fef3c7', color: '#92400e',
-                  border: '1px solid #fcd34d', borderRadius: 12, padding: '1px 10px', fontSize: 11, fontWeight: 700,
-                }}>
-                  Cổ chai: {bottleneckKey}
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: 12 }}>
-                {stageLoad.map(s => {
-                  const pct = maxNgay > 0 ? Math.round((s.ngay / maxNgay) * 100) : 0
-                  const isBottle = s.key === bottleneckKey
-                  return (
-                    <div key={s.key} style={{ flex: 1, background: '#fff', border: `1.5px solid ${isBottle ? s.color : '#e2e8f0'}`, borderRadius: 8, padding: '8px 12px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: s.color }}>{s.label}</span>
-                        {isBottle && <span style={{ fontSize: 10, background: s.color, color: '#fff', borderRadius: 4, padding: '1px 6px' }}>CAO NHẤT</span>}
-                      </div>
-                      <div style={{ fontSize: 20, fontWeight: 800, color: s.color }}>
-                        {s.ngay > 0 ? fmtDec(s.ngay, 1) : '—'}
-                        <span style={{ fontSize: 11, fontWeight: 400, color: '#6b7280', marginLeft: 4 }}>ngày</span>
-                      </div>
-                      <div style={{ marginTop: 6, background: '#f1f5f9', borderRadius: 4, height: 6, overflow: 'hidden' }}>
-                        <div style={{ width: `${pct}%`, height: '100%', background: s.color, borderRadius: 4, transition: 'width .3s' }} />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        )
-
         const trendColumns = [
           {
             title: '#', key: 'stt', width: 44, fixed: 'left', align: 'center',
@@ -1813,63 +1719,6 @@ export default function DonHangPage() {
               const cfg = TINH_TRANG_SX[r.tinhTrangSx]
               if (!cfg) return <span style={{ color: '#94a3b8', fontSize: 11 }}>Chưa bắt đầu</span>
               return <Badge status={r.tinhTrangSx === 'done' ? 'success' : 'processing'} text={<span style={{ fontWeight: 600, color: cfg.color, fontSize: 11 }}>{cfg.label}</span>} />
-            },
-          },
-          {
-            title: 'Số Lô', key: 'soLo', width: 75, align: 'right',
-            sorter: (a, b) => {
-              const sl = r => Number(r.soLuongConLai) || 0
-              const lo = r => (Number(r._pm.slTrungBinh) > 0) ? Math.ceil(sl(r) / Number(r._pm.slTrungBinh)) : 0
-              return lo(a) - lo(b)
-            },
-            render: (_, r) => {
-              const sl = Number(r.soLuongConLai) || 0
-              const coLo = Number(r._pm.slTrungBinh) || 0
-              if (!coLo) return <span style={{ color: '#d9d9d9' }}>—</span>
-              const lo = Math.ceil(sl / coLo)
-              return <span style={{ fontWeight: 700, color: '#15803d', background: '#f0fdf4', borderRadius: 4, padding: '0 6px' }}>{lo}</span>
-            },
-          },
-          {
-            title: 'Ngày SX (ước tính)', key: 'ngaySx', width: 115, align: 'right',
-            sorter: (a, b) => {
-              const best = r => {
-                const sl = Number(r.soLuongConLai) || 0
-                const v = [r._pm.nangSuatPc, r._pm.nangSuatPl, r._pm.nangSuatBbc1].map(Number).filter(x => x > 0)
-                return v.length ? Math.max(...v.map(ns => sl / ns)) : 0
-              }
-              return best(a) - best(b)
-            },
-            render: (_, r) => {
-              const sl = Number(r.soLuongConLai) || 0
-              const vals = [
-                { ns: Number(r._pm.nangSuatPc), key: 'PC' },
-                { ns: Number(r._pm.nangSuatPl), key: 'PL' },
-                { ns: Number(r._pm.nangSuatBbc1), key: 'BBC1' },
-              ].filter(x => x.ns > 0).map(x => ({ ...x, ngay: sl / x.ns }))
-              if (!vals.length) return <span style={{ color: '#d9d9d9' }}>—</span>
-              const bottle = vals.reduce((a, b) => b.ngay > a.ngay ? b : a)
-              const color = bottle.ngay > 5 ? '#cf1322' : bottle.ngay > 2 ? '#d97706' : '#15803d'
-              return (
-                <div style={{ lineHeight: 1.3 }}>
-                  <span style={{ fontWeight: 700, color }}>{fmtDec(bottle.ngay, 1)}</span>
-                  <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 3 }}>ngày</span>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>cổ chai: {bottle.key}</div>
-                </div>
-              )
-            },
-          },
-          {
-            title: 'KL NL (kg)', key: 'klNl', width: 95, align: 'right',
-            sorter: (a, b) => {
-              const kl = r => (Number(r.soLuongConLai) || 0) * (Number(r._pm.khoiLuong) || 0) / 1000
-              return kl(a) - kl(b)
-            },
-            render: (_, r) => {
-              const sl = Number(r.soLuongConLai) || 0
-              const klg = Number(r._pm.khoiLuong) || 0
-              if (!klg) return <span style={{ color: '#d9d9d9' }}>—</span>
-              return <span style={{ color: '#0369a1', fontWeight: 600 }}>{fmtDec(sl * klg / 1000, 1)}</span>
             },
           },
           {
@@ -1933,8 +1782,6 @@ export default function DonHangPage() {
           },
         ]
         return (
-          <>
-          {analysisPanel}
           <Table
             className="dh-table"
             columns={trendColumns}
@@ -1942,7 +1789,7 @@ export default function DonHangPage() {
             rowKey="id"
             loading={loading || loadingMaster}
             size="small"
-            scroll={{ x: 2600 }}
+            scroll={{ x: 2200 }}
             sticky={{ offsetHeader: headerOffset }}
             rowHoverable={false}
             rowClassName={rowClassName}
@@ -1955,7 +1802,6 @@ export default function DonHangPage() {
             }}
             locale={{ emptyText: <span style={{ color: '#d9d9d9' }}>Không có dữ liệu</span> }}
           />
-          </>
         )
       })()
       ) : null}
