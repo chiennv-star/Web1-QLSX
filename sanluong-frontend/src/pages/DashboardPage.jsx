@@ -215,6 +215,11 @@ function StageTimelineTab({ filtersRef, searchTick, headerOffset = 120 }) {
   }))
 
   const columns = [
+    { title: 'STT', key: 'stt', width: 46, align: 'center', fixed: 'left',
+      render: (_, __, idx) => <span style={{ color: '#64748b', fontSize: 11 }}>{idx + 1}</span> },
+    { title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', fixed: 'left', width: 95,
+      render: v => v ? <Tag color="blue" style={{ fontFamily: 'monospace', marginRight: 0, fontSize: 11 }}>{v}</Tag>
+        : <span style={{ color: '#d9d9d9' }}>—</span> },
     { title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', fixed: 'left', width: 90, ...colSearch('maSp') },
     { title: 'Tên Trình', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 130, ellipsis: true, ...colSearch('tenTrinh') },
     { title: 'Số Lô', dataIndex: 'soLo', key: 'soLo', width: 80, ...colSearch('soLo') },
@@ -237,6 +242,11 @@ function StageTimelineTab({ filtersRef, searchTick, headerOffset = 120 }) {
   })
 
   const bang2Columns = [
+    { title: 'STT', key: 'stt', width: 46, align: 'center', fixed: 'left',
+      render: (_, __, idx) => <span style={{ color: '#64748b', fontSize: 11 }}>{idx + 1}</span> },
+    { title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', fixed: 'left', width: 95,
+      render: v => v ? <Tag color="blue" style={{ fontFamily: 'monospace', marginRight: 0, fontSize: 11 }}>{v}</Tag>
+        : <span style={{ color: '#d9d9d9' }}>—</span> },
     { title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', fixed: 'left', width: 90, ...colSearch('maSp') },
     { title: 'Tên Trình', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 150, ellipsis: true, ...colSearch('tenTrinh') },
     { title: 'Số Lô', dataIndex: 'soLo', key: 'soLo', width: 80, ...colSearch('soLo') },
