@@ -30,6 +30,7 @@ public class WorkScheduleDto {
     private BigDecimal congPl;
     private BigDecimal slDg;
     private BigDecimal congDg;
+    private BigDecimal slCc;
     private BigDecimal congCc;
     private Integer qaLayMau;
     private boolean isPlanned = false;
@@ -86,6 +87,8 @@ public class WorkScheduleDto {
     public void setSlDg(BigDecimal slDg) { this.slDg = slDg; }
     public BigDecimal getCongDg() { return congDg; }
     public void setCongDg(BigDecimal congDg) { this.congDg = congDg; }
+    public BigDecimal getSlCc() { return slCc; }
+    public void setSlCc(BigDecimal slCc) { this.slCc = slCc; }
     public BigDecimal getCongCc() { return congCc; }
     public void setCongCc(BigDecimal congCc) { this.congCc = congCc; }
     public Integer getQaLayMau() { return qaLayMau; }

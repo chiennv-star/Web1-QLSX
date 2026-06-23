@@ -556,6 +556,7 @@ public class WorkScheduleService {
             case "slBbc1"   -> w.setSlBbc1(value);
             case "slPl"     -> w.setSlPl(value);
             case "slDg"     -> w.setSlDg(value);
+            case "slCc"     -> w.setSlCc(value);
             case "qaLayMau" -> w.setQaLayMau(value == null ? null : value.intValue());
             default -> throw new IllegalArgumentException("Unknown patchable field: " + field);
         }
@@ -600,6 +601,7 @@ public class WorkScheduleService {
             case "BBC1" -> w.setSlBbc1(newSl);
             case "PL"   -> w.setSlPl(newSl);
             case "DG"   -> w.setSlDg(newSl);
+            case "CC"   -> w.setSlCc(newSl);
         }
         autoApplyDone(w);
         repository.save(w);
@@ -730,6 +732,7 @@ public class WorkScheduleService {
         w.setCongPl(dto.getCongPl());
         w.setSlDg(dto.getSlDg());
         w.setCongDg(dto.getCongDg());
+        w.setSlCc(dto.getSlCc());
         w.setCongCc(dto.getCongCc());
         w.setQaLayMau(dto.getQaLayMau());
     }
@@ -747,6 +750,10 @@ public class WorkScheduleService {
             }
             case "BBC1" -> {
                 if (w.getSlBbc1() != null && w.getSlBbc1().compareTo(coLo) >= 0)
+                    w.setTinhTrang("done");
+            }
+            case "CC" -> {
+                if (w.getSlCc() != null && w.getSlCc().compareTo(coLo) >= 0)
                     w.setTinhTrang("done");
             }
         }

@@ -158,9 +158,12 @@ const STAGE_CONFIG = {
   CC: {
     label: 'Lịch cân chia',
     extraTableCols: [
+      { title: 'SL Cân Chia', dataIndex: 'slCc', key: 'slCc', width: 105, align: 'right',
+        render: v => v != null ? <span style={{ fontWeight: 700, color: '#389e0d' }}>{Number(v).toLocaleString('vi-VN')}</span> : <span style={{ color: '#d9d9d9' }}>—</span> },
       { title: 'Công Cân Chia', dataIndex: 'congCc', key: 'congCc', width: 105, align: 'center', render: fmtNum }
     ],
     extraFormFields: [
+      { name: 'slCc',   label: 'SL Cân Chia'   },
       { name: 'congCc', label: 'Công Cân Chia' }
     ]
   }
@@ -169,7 +172,7 @@ const STAGE_CONFIG = {
 
 // ── WorkDetailDrawer ──────────────────────────────────────────────────────────
 const CONG_FIELD_MAP   = { PC: 'congPc', PCPL1: 'congPc', PCPL2: 'congPc', BBC1: 'congBbc1', PL: 'congPl', DG: 'congDg', CC: 'congCc' }
-const SL_FIELD_MAP     = { PC: 'slPc',   PCPL1: 'slPc',   PCPL2: 'slPc',  BBC1: 'slBbc1',   PL: 'slPl',   DG: 'slDg' }
+const SL_FIELD_MAP     = { PC: 'slPc',   PCPL1: 'slPc',   PCPL2: 'slPc',  BBC1: 'slBbc1',   PL: 'slPl',   DG: 'slDg',   CC: 'slCc' }
 const NS_LOOKUP_FIELD  = { PC: 'nangSuatPc', PCPL1: 'nangSuatPc', PCPL2: 'nangSuatPc', PL: 'nangSuatPl', BBC1: 'nangSuatBbc1', DG: 'slTrungBinh', CC: 'slTrungBinh' }
 const CA_SORT_ORDER    = { 'Ca 1': 0, 'HC': 1, 'Ca 2': 2 }
 
@@ -3512,7 +3515,7 @@ function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
     if (cd === 'BBC1')  return { sl: r.slBbc1,  cong: r.congBbc1 }
     if (cd === 'DG')    return { sl: r.slDg,    cong: r.congDg   }
     if (cd === 'PL')    return { sl: r.slPl,    cong: r.congPl   }
-    if (cd === 'CC')    return { sl: null,       cong: r.congCc   }
+    if (cd === 'CC')    return { sl: r.slCc,      cong: r.congCc   }
     return { sl: r.slPc, cong: r.congPc }
   }
 

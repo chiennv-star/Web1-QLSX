@@ -89,6 +89,9 @@ public class WorkSchedule {
     private BigDecimal congDg;
 
     // CC (Cân Chia)
+    @Column(name = "sl_cc", precision = 12, scale = 4)
+    private BigDecimal slCc;
+
     @Column(name = "cong_cc", precision = 12, scale = 4)
     private BigDecimal congCc;
 
@@ -188,6 +191,8 @@ public class WorkSchedule {
     public void setSlDg(BigDecimal slDg) { this.slDg = slDg; }
     public BigDecimal getCongDg() { return congDg; }
     public void setCongDg(BigDecimal congDg) { this.congDg = congDg; }
+    public BigDecimal getSlCc() { return slCc; }
+    public void setSlCc(BigDecimal slCc) { this.slCc = slCc; }
     public BigDecimal getCongCc() { return congCc; }
     public void setCongCc(BigDecimal congCc) { this.congCc = congCc; }
     public LocalDateTime getCreatedAt() { return createdAt; }
