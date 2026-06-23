@@ -428,7 +428,21 @@ function TienDoTab({ filtersRef, searchTick, headerOffset = 120 }) {
     ],
   }))
 
+  const filteredData = data.filter(r => filterByStatus(r, statusFilter))
+    .slice().sort((a, b) => {
+      const ta = STAGES.reduce((acc, s) => acc + (a[s]?.soDays || 0), 0)
+      const tb = STAGES.reduce((acc, s) => acc + (b[s]?.soDays || 0), 0)
+      return tb - ta
+    })
+
   const columns = [
+    { title: 'STT', key: 'stt', width: 46, align: 'center', fixed: 'left',
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
+      render: (_, __, idx) => <span style={{ color: '#64748b', fontSize: 11 }}>{idx + 1}</span> },
+    { title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', fixed: 'left', width: 95,
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
+      render: v => v ? <Tag color="blue" style={{ fontFamily: 'monospace', marginRight: 0, fontSize: 11 }}>{v}</Tag>
+        : <span style={{ color: '#d9d9d9' }}>—</span> },
     { title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', fixed: 'left', width: 88,
       onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: v => <b style={{ color: '#1d4ed8', fontSize: 12 }}>{v}</b> },
@@ -453,8 +467,6 @@ function TienDoTab({ filtersRef, searchTick, headerOffset = 120 }) {
       },
     },
   ]
-
-  const filteredData = data.filter(r => filterByStatus(r, statusFilter))
   const stageTotals = STAGES.reduce((acc, s) => {
     acc[s] = filteredData.reduce((sum, r) => sum + (r[s]?.soDays || 0), 0)
     return acc

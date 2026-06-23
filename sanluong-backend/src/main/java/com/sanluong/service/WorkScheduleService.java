@@ -788,6 +788,8 @@ public class WorkScheduleService {
             dto.setIds(wsList.stream().map(WorkSchedule::getId).collect(Collectors.toList()));
             wsList.stream().map(WorkSchedule::getCoLo).filter(Objects::nonNull).findFirst()
                     .ifPresent(dto::setCoLo);
+            wsList.stream().map(WorkSchedule::getMaBravo).filter(Objects::nonNull).findFirst()
+                    .ifPresent(dto::setMaBravo);
 
             for (WorkSchedule ws : wsList) {
                 String stage = ws.getCongDoan();
