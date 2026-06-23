@@ -1363,7 +1363,7 @@ function DayDetailModal({ open, date, rows, onClose }) {
 function TongHopTab() {
   const [raw, setRaw]         = useState([])
   const [loading, setLoading] = useState(false)
-  const [dateRange, setDateRange] = useState([dayjs().subtract(13, 'day'), dayjs()])
+  const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs()])
   const [selectedDay, setSelectedDay] = useState(null)
   const [empCounts, setEmpCounts] = useState({})
 
@@ -1409,7 +1409,7 @@ function TongHopTab() {
   }, [fetchData])
 
   const handleReset = () => {
-    const def = [dayjs().subtract(13, 'day'), dayjs()]
+    const def = [dayjs().startOf('month'), dayjs()]
     setDateRange(def)
     fetchData(def)
   }
