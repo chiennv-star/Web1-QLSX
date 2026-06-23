@@ -403,6 +403,7 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
   const [doiSlLoading, setDoiSlLoading] = useState(false)
   const [lichSuSl, setLichSuSl]       = useState([])
   const [lichSuLoading, setLichSuLoading] = useState(false)
+  const [autoFilling, setAutoFilling] = useState(false)
 
   useEffect(() => {
     if (!open || !record) return
@@ -422,7 +423,35 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
       ngayPhatLenh:     record.ngayPhatLenh ? dayjs(record.ngayPhatLenh) : null,
     })
     loadKhoach()
+    // Tự động tra và lưu Mã SP + Tên SP nếu đang trống
+    const needMaSp  = !record.maSp      || record.maSp.trim() === ''
+    const needTenSp = !record.tenSanPham || record.tenSanPham.trim() === ''
+    if ((needMaSp || needTenSp) && record.maBravo) {
+      autoFillFromBravo(record, needMaSp, needTenSp)
+    }
   }, [open, record])
+
+  const autoFillFromBravo = async (rec, needMaSp, needTenSp) => {
+    setAutoFilling(true)
+    try {
+      const { data: pm } = await api.get(`/product-master/lookup-by-bravo/${encodeURIComponent(rec.maBravo)}`)
+      if (!pm || (!pm.maTp && !pm.tienTrinh)) return
+      const patch = {}
+      if (needMaSp  && pm.maTp)       patch.maSp       = pm.maTp
+      if (needTenSp && pm.tienTrinh)  patch.tenSanPham  = pm.tienTrinh
+      if (Object.keys(patch).length === 0) return
+      form.setFieldsValue(patch)
+      // Lưu luôn vào DB
+      await api.put(`/don-hang/${rec.id}`, {
+        ...rec,
+        ngayDatHang:  rec.ngayDatHang  || null,
+        ngayPhatLenh: rec.ngayPhatLenh || null,
+        ...patch,
+      })
+      onSaved({ ...rec, ...patch })
+    } catch {}
+    finally { setAutoFilling(false) }
+  }
 
   const loadKhoach = async () => {
     if (!record?.maDonHang && !record?.maBravo) return
@@ -577,9 +606,10 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
       {/* Header */}
       <div className="dh-modal-drag-handle" style={{ background: '#1e4570', padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ fontSize: 22 }}>📦</span>
-        <div>
-          <div style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ color: '#fff', fontWeight: 800, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
             {record.tenSanPham || 'Chi tiết Đơn Hàng'}
+            {autoFilling && <span style={{ fontSize: 11, fontWeight: 400, color: '#93c5fd', display: 'flex', alignItems: 'center', gap: 4 }}><SyncOutlined spin />Đang tự điền Mã SP...</span>}
           </div>
           <div style={{ color: '#93c5fd', fontSize: 11, marginTop: 1, display: 'flex', gap: 10 }}>
             {record.maBravo   && <span>Bravo: <b>{record.maBravo}</b></span>}
