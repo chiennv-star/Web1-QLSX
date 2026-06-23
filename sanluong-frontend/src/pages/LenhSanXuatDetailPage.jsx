@@ -187,6 +187,7 @@ export default function LenhSanXuatDetailPage() {
     {
       title: 'TÊN SẢN PHẨM',
       dataIndex: 'tenSanPham',
+      width: 220,
       ellipsis: true,
       render: (v) => <Tooltip title={v}><span>{v || '—'}</span></Tooltip>,
     },
@@ -424,7 +425,7 @@ export default function LenhSanXuatDetailPage() {
         columns={cols}
         loading={ordersLoad}
         size="small"
-        scroll={{ x: 1500 }}
+        scroll={{ x: 1700 }}
         rowClassName={(r) => r.soLo == null ? 'row-no-lenh' : ''}
         pagination={tableRows.length > 30
           ? { pageSize: 30, showSizeChanger: true, showTotal: (t) => `${t} dòng` }
