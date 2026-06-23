@@ -1690,7 +1690,7 @@ export default function DonHangPage() {
             render: v => v ? <Tag color="blue" style={{ marginRight: 0, fontWeight: 600 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>,
           },
           {
-            title: 'Tên Sản Phẩm', dataIndex: 'tenSanPham', key: 'tenSanPham', width: 210,
+            title: 'Tên Sản Phẩm', dataIndex: 'tenSanPham', key: 'tenSanPham', width: 210, fixed: 'left',
             ellipsis: true,
             render: v => <span style={{ fontSize: 13, color: '#1e293b', fontWeight: 500 }}>{v || <span style={{ color: '#d9d9d9' }}>—</span>}</span>,
           },
