@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Button, message, Tooltip } from 'antd'
-import { ArrowLeftOutlined, PrinterOutlined, PlusOutlined, SaveOutlined, CheckCircleOutlined, TagsOutlined, FileTextOutlined, TableOutlined } from '@ant-design/icons'
+import { Button, message, Tooltip, Input, Popconfirm, Spin } from 'antd'
+import { ArrowLeftOutlined, PrinterOutlined, PlusOutlined, SaveOutlined, CheckCircleOutlined, TagsOutlined, FileTextOutlined, TableOutlined, PictureOutlined, EditOutlined, DeleteOutlined, SyncOutlined } from '@ant-design/icons'
 import { useNavigate, useLocation, useParams } from 'react-router-dom'
 import dayjs from 'dayjs'
 import api from '../api/axios'
@@ -401,6 +401,19 @@ function NhanCanChiaMe({ nvl, header }) {
   )
 }
 
+function AnhImg({ id, style }) {
+  const [src, setSrc] = useState(null)
+  useEffect(() => {
+    let url = null
+    api.get(`/lsx/anh/${id}/data`, { responseType: 'blob' })
+      .then(({ data }) => { url = URL.createObjectURL(data); setSrc(url) })
+      .catch(() => {})
+    return () => { if (url) URL.revokeObjectURL(url) }
+  }, [id])
+  if (!src) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#aaa' }}><SyncOutlined spin /></div>
+  return <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', ...style }} />
+}
+
 export default function LenhSanXuatOrderPage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -434,8 +447,17 @@ export default function LenhSanXuatOrderPage() {
   const [status,       setStatus]       = useState(null)   // { type: 'ok'|'run'|'err', text }
   const fileInputRef = useRef(null)
 
+  // ── Ảnh state ─────────────────────────────────────────────────────────────────
+  const [anhList,      setAnhList]      = useState([])
+  const [anhLoading,   setAnhLoading]   = useState(false)
+  const [anhSearch,    setAnhSearch]    = useState('')
+  const [uploadingAnh, setUploadingAnh] = useState(false)
+  const [renamingId,   setRenamingId]   = useState(null)
+  const [renameVal,    setRenameVal]    = useState('')
+  const [renameSaving, setRenameSaving] = useState(false)
+
   // ── View mode ─────────────────────────────────────────────────────────────────
-  const [viewMode, setViewMode] = useState('lenh')  // 'lenh' | 'dinhmuc' | 'nhan'
+  const [viewMode, setViewMode] = useState('lenh')  // 'lenh' | 'dinhmuc' | 'nhan' | 'anh'
 
   // ── Save state ────────────────────────────────────────────────────────────────
   const [saving,     setSaving]     = useState(false)
@@ -494,6 +516,54 @@ export default function LenhSanXuatOrderPage() {
 
   useEffect(() => { loadSaved() }, [loadSaved])
 
+  // ── Quản lý ảnh ──────────────────────────────────────────────────────────────
+  const loadImages = useCallback(async () => {
+    if (!donHangId) return
+    setAnhLoading(true)
+    try {
+      const { data } = await api.get('/lsx/anh/by-don-hang', { params: { donHangId } })
+      setAnhList(Array.isArray(data) ? data : [])
+    } catch {}
+    finally { setAnhLoading(false) }
+  }, [donHangId])
+
+  useEffect(() => { loadImages() }, [loadImages])
+
+  const uploadAnh = async (file) => {
+    if (!donHangId) return
+    setUploadingAnh(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const { data } = await api.post('/lsx/anh/upload', fd, {
+        params: { donHangId, maDonHang: header.maDonHang || '' },
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      setAnhList(prev => [data, ...prev])
+      message.success(`Đã lưu ảnh: ${data.tenFile}`)
+    } catch { message.error('Lưu ảnh thất bại') }
+    finally { setUploadingAnh(false) }
+  }
+
+  const handleRenameAnh = async (id) => {
+    if (!renameVal.trim()) return
+    setRenameSaving(true)
+    try {
+      const { data } = await api.patch(`/lsx/anh/${id}/rename`, { tenFile: renameVal.trim() })
+      setAnhList(prev => prev.map(a => a.id === id ? { ...a, tenFile: data.tenFile } : a))
+      setRenamingId(null)
+    } catch { message.error('Đổi tên thất bại') }
+    finally { setRenameSaving(false) }
+  }
+
+  const handleDeleteAnh = async (id) => {
+    try {
+      await api.delete(`/lsx/anh/${id}`)
+      setAnhList(prev => prev.filter(a => a.id !== id))
+      message.success('Đã xoá ảnh')
+    } catch { message.error('Xoá thất bại') }
+  }
+
   // ── Lưu tờ lệnh ──────────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!donHangId) {
@@ -531,6 +601,7 @@ export default function LenhSanXuatOrderPage() {
       setStatus({ type: 'ok', text: 'Đã nạp ảnh — sẵn sàng trích xuất' })
     }
     reader.readAsDataURL(file)
+    uploadAnh(file)
   }
 
   const clearImage = () => {
@@ -819,10 +890,11 @@ export default function LenhSanXuatOrderPage() {
             display: 'flex', border: '1px solid #dde1e8', borderRadius: 8, overflow: 'hidden',
           }}>
             {[
-              { key: 'lenh',    label: 'Tờ lệnh',           icon: <FileTextOutlined /> },
-              { key: 'dinhmuc', label: 'Định mức vật tư',    icon: <TableOutlined /> },
-              { key: 'nhan',    label: 'Nhãn cân chia mẻ',   icon: <TagsOutlined /> },
-            ].map(({ key, label, icon }) => (
+              { key: 'lenh',    label: 'Tờ lệnh',           icon: <FileTextOutlined />, color: '#1e4570' },
+              { key: 'dinhmuc', label: 'Định mức vật tư',    icon: <TableOutlined />,   color: '#0369a1' },
+              { key: 'nhan',    label: 'Nhãn cân chia mẻ',   icon: <TagsOutlined />,    color: '#7c3aed' },
+              { key: 'anh',     label: `Ảnh${anhList.length ? ` (${anhList.length})` : ''}`, icon: <PictureOutlined />, color: '#0f766e' },
+            ].map(({ key, label, icon, color }) => (
               <button
                 key={key}
                 onClick={() => setViewMode(key)}
@@ -830,11 +902,9 @@ export default function LenhSanXuatOrderPage() {
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   padding: '6px 14px', border: 'none', cursor: 'pointer',
                   fontFamily: 'inherit', fontSize: 13, fontWeight: viewMode === key ? 700 : 500,
-                  background: viewMode === key
-                    ? (key === 'nhan' ? '#7c3aed' : key === 'dinhmuc' ? '#0369a1' : '#1e4570')
-                    : '#fff',
+                  background: viewMode === key ? color : '#fff',
                   color: viewMode === key ? '#fff' : '#3a3f47',
-                  borderRight: key !== 'nhan' ? '1px solid #dde1e8' : 'none',
+                  borderRight: key !== 'anh' ? '1px solid #dde1e8' : 'none',
                   transition: '.12s background',
                 }}
               >
@@ -959,6 +1029,116 @@ export default function LenhSanXuatOrderPage() {
         {/* ── Nhãn cân chia mẻ ── */}
         {viewMode === 'nhan' && (
           <NhanCanChiaMe nvl={nvl} header={header} />
+        )}
+
+        {/* ── Tab Ảnh ── */}
+        {viewMode === 'anh' && (
+          <div style={{ padding: '16px 20px' }}>
+            {/* Toolbar */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <Input
+                prefix={<PictureOutlined style={{ color: '#aaa' }} />}
+                placeholder="Tìm theo tên file..."
+                allowClear
+                value={anhSearch}
+                onChange={e => setAnhSearch(e.target.value)}
+                style={{ width: 260 }}
+              />
+              <span style={{ color: '#64748b', fontSize: 13 }}>
+                {anhList.length} ảnh đã lưu
+              </span>
+              {uploadingAnh && <span style={{ color: '#0f766e', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}><SyncOutlined spin /> Đang lưu ảnh...</span>}
+              <div style={{ flex: 1 }} />
+              <label style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '5px 14px', borderRadius: 6, cursor: 'pointer',
+                background: '#0f766e', color: '#fff', fontSize: 13, fontWeight: 500,
+              }}>
+                <PlusOutlined /> Thêm ảnh
+                <input type="file" accept="image/*" style={{ display: 'none' }}
+                  onChange={e => { if (e.target.files?.[0]) { loadImage(e.target.files[0]); e.target.value = '' } }} />
+              </label>
+            </div>
+
+            {/* Gallery grid */}
+            {anhLoading ? (
+              <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
+            ) : anhList.filter(a => !anhSearch || a.tenFile?.toLowerCase().includes(anhSearch.toLowerCase())).length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 60, color: '#94a3b8' }}>
+                <PictureOutlined style={{ fontSize: 40, display: 'block', marginBottom: 10 }} />
+                {anhList.length === 0 ? 'Chưa có ảnh nào. Kéo–thả ảnh vào ô bên trái hoặc nhấn "Thêm ảnh".' : 'Không tìm thấy ảnh phù hợp.'}
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14 }}>
+                {anhList
+                  .filter(a => !anhSearch || a.tenFile?.toLowerCase().includes(anhSearch.toLowerCase()))
+                  .map(anh => (
+                    <div key={anh.id} style={{
+                      border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden',
+                      background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
+                    }}>
+                      {/* Thumbnail — click để xem full size */}
+                      <div style={{ height: 150, background: '#f8fafc', overflow: 'hidden', cursor: 'zoom-in' }}
+                        onClick={() => api.get(`/lsx/anh/${anh.id}/data`, { responseType: 'blob' })
+                          .then(({ data: blob }) => { const u = URL.createObjectURL(blob); window.open(u, '_blank') })
+                          .catch(() => message.error('Không thể mở ảnh'))
+                        }
+                      >
+                        <AnhImg id={anh.id} />
+                      </div>
+
+                      {/* Info + actions */}
+                      <div style={{ padding: '8px 10px' }}>
+                        {renamingId === anh.id ? (
+                          <div style={{ display: 'flex', gap: 5 }}>
+                            <Input
+                              size="small" autoFocus
+                              value={renameVal}
+                              onChange={e => setRenameVal(e.target.value)}
+                              onPressEnter={() => handleRenameAnh(anh.id)}
+                              onKeyDown={e => { if (e.key === 'Escape') setRenamingId(null) }}
+                              style={{ flex: 1 }}
+                            />
+                            <button
+                              disabled={renameSaving}
+                              onClick={() => handleRenameAnh(anh.id)}
+                              style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid #0f766e', background: '#0f766e', color: '#fff', cursor: 'pointer', fontSize: 12 }}
+                            >
+                              {renameSaving ? '...' : 'OK'}
+                            </button>
+                            <button onClick={() => setRenamingId(null)}
+                              style={{ padding: '2px 6px', borderRadius: 4, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontSize: 12 }}>✕</button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                              title={anh.tenFile}>{anh.tenFile}</span>
+                            <Tooltip title="Đổi tên">
+                              <button onClick={() => { setRenamingId(anh.id); setRenameVal(anh.tenFile) }}
+                                style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#0369a1', padding: 3, borderRadius: 4 }}>
+                                <EditOutlined />
+                              </button>
+                            </Tooltip>
+                            <Popconfirm title="Xoá ảnh này?" okText="Xoá" cancelText="Huỷ" okType="danger"
+                              onConfirm={() => handleDeleteAnh(anh.id)}>
+                              <Tooltip title="Xoá">
+                                <button style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#dc2626', padding: 3, borderRadius: 4 }}>
+                                  <DeleteOutlined />
+                                </button>
+                              </Tooltip>
+                            </Popconfirm>
+                          </div>
+                        )}
+                        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>
+                          {anh.uploadedAt ? new Date(anh.uploadedAt).toLocaleString('vi-VN') : ''}
+                          {anh.uploadedBy && ` · ${anh.uploadedBy}`}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
         )}
 
         {/* ── Sheet ── */}
