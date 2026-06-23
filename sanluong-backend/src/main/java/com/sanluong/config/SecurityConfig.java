@@ -106,6 +106,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,  "/api/lsx/to-lenh").hasAnyRole(ALL_ROLES)
                 .requestMatchers(HttpMethod.POST, "/api/lsx/to-lenh").hasAnyRole(ALL_ROLES)
 
+                // ── Ảnh lệnh sản xuất ─────────────────────────────────────────
+                .requestMatchers("/api/lsx/anh/**").hasAnyRole(ALL_ROLES)
+
                 // ── Đơn hàng: tất cả xem, ADMIN/TKSX/ADMIN_KH sửa ───────────────
                 .requestMatchers(HttpMethod.GET, "/api/don-hang/**").hasAnyRole(ALL_ROLES)
                 .requestMatchers("/api/don-hang/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH")

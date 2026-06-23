@@ -537,7 +537,6 @@ export default function LenhSanXuatOrderPage() {
       fd.append('file', file)
       const { data } = await api.post('/lsx/anh/upload', fd, {
         params: { donHangId, maDonHang: header.maDonHang || '' },
-        headers: { 'Content-Type': 'multipart/form-data' },
       })
       setAnhList(prev => [data, ...prev])
       message.success(`Đã lưu ảnh: ${data.tenFile}`)
