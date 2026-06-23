@@ -519,18 +519,18 @@ function TienDoTab({ filtersRef, searchTick, headerOffset = 120 }) {
         pagination={{ pageSize: 1000, pageSizeOptions: ['100', '500', '1000'], showSizeChanger: true, showTotal: t => `Tổng ${t} sản phẩm`, size: 'small' }}
         summary={() => (
           <Table.Summary.Row style={{ fontWeight: 700 }}>
-            <Table.Summary.Cell index={0} colSpan={4} align="center">
+            <Table.Summary.Cell index={0} colSpan={6} align="center">
               <b style={{ color: '#0d7377' }}>TỔNG THỜI GIAN</b>
             </Table.Summary.Cell>
             {STAGES.flatMap((s, i) => [
-              <Table.Summary.Cell key={`${s}_d`} index={4 + i * 2} align="center">
+              <Table.Summary.Cell key={`${s}_d`} index={6 + i * 2} align="center">
                 <Tag color="cyan" style={{ fontWeight: 700 }}>{stageTotals[s] || '—'}</Tag>
               </Table.Summary.Cell>,
-              <Table.Summary.Cell key={`${s}_t`} index={5 + i * 2} align="center">
+              <Table.Summary.Cell key={`${s}_t`} index={7 + i * 2} align="center">
                 <span style={{ color: '#888', fontSize: 11 }}>—</span>
               </Table.Summary.Cell>,
             ])}
-            <Table.Summary.Cell index={4 + STAGES.length * 2} align="center">
+            <Table.Summary.Cell index={6 + STAGES.length * 2} align="center">
               <Tag color="blue" style={{ fontWeight: 700, fontSize: 12 }}>{grandTotal || '—'}</Tag>
             </Table.Summary.Cell>
           </Table.Summary.Row>
