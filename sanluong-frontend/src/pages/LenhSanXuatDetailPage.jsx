@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Input, Tag, Tooltip, message,
   Form, InputNumber, Badge, Button, Spin,
@@ -23,12 +23,13 @@ export default function LenhSanXuatDetailPage() {
   const [product,     setProduct]     = useState(location.state?.product || null)
   const [productLoad, setProductLoad] = useState(!location.state?.product)
   const [orders,      setOrders]      = useState([])
+  const [lenhs,       setLenhs]       = useState([])
   const [ordersLoad,  setOrdersLoad]  = useState(true)
   const [editingInfo, setEditingInfo] = useState(false)
   const [saving,      setSaving]      = useState(false)
   const [infoForm]                    = Form.useForm()
 
-  // ── Fetch product if not passed via state ────────────────────────────────
+  // ── Fetch product ────────────────────────────────────────────────────────
   useEffect(() => {
     if (product) {
       infoForm.setFieldsValue({
@@ -59,21 +60,91 @@ export default function LenhSanXuatDetailPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maBravo])
 
-  // ── Fetch orders ─────────────────────────────────────────────────────────
-  const fetchOrders = useCallback(async () => {
+  // ── Fetch orders + lệnh song song ────────────────────────────────────────
+  const fetchData = useCallback(async () => {
     if (!maBravo) return
     setOrdersLoad(true)
     try {
-      const { data: rows } = await api.get('/don-hang/by-product', { params: { maBravo } })
-      setOrders(Array.isArray(rows) ? rows : [])
+      const [ordersRes, lenhsRes] = await Promise.all([
+        api.get('/don-hang/by-product',      { params: { maBravo } }),
+        api.get('/lenh-san-xuat/by-product', { params: { maBravo } }),
+      ])
+      setOrders(Array.isArray(ordersRes.data) ? ordersRes.data : [])
+      setLenhs(Array.isArray(lenhsRes.data)   ? lenhsRes.data  : [])
     } catch {
-      message.error('Không thể tải danh sách đơn hàng')
+      message.error('Không thể tải dữ liệu')
     } finally {
       setOrdersLoad(false)
     }
   }, [maBravo])
 
-  useEffect(() => { fetchOrders() }, [fetchOrders])
+  useEffect(() => { fetchData() }, [fetchData])
+
+  // ── Merge: 1 dòng / lệnh sản xuất ────────────────────────────────────────
+  const tableRows = useMemo(() => {
+    const orderMap = {}
+    orders.forEach(o => { if (o.maDonHang) orderMap[o.maDonHang] = o })
+
+    const rows = []
+    const ordersWithLenh = new Set()
+
+    lenhs.forEach(l => {
+      const order = orderMap[l.maDonHang] || {}
+      ordersWithLenh.add(l.maDonHang)
+      rows.push({
+        _rowKey:          `lenh_${l.id}`,
+        _donHangId:       order.id,
+        _orderRecord:     order,
+        maBravo:          l.maBravo,
+        maSp:             l.maSp,
+        tenSanPham:       l.tenSanPham,
+        maDonHang:        l.maDonHang,
+        soLo:             l.soLo,
+        soLuongLenh:      l.soLuong,
+        toThucHien:       l.toThucHien,
+        ngayThucHien:     l.ngayThucHien,
+        ngayPhatLenh:     l.ngayPhatLenh,
+        soLuongDatHang:   order.soLuongDatHang,
+        soLuongConLai:    order.soLuongConLai,
+        tinhTrangSx:      order.tinhTrangSx,
+        tinhTrangDatHang: order.tinhTrangDatHang,
+        ngayDatHang:      order.ngayDatHang,
+      })
+    })
+
+    // Đơn hàng chưa có lệnh nào → 1 dòng placeholder
+    orders.forEach(o => {
+      if (!ordersWithLenh.has(o.maDonHang)) {
+        rows.push({
+          _rowKey:          `order_${o.id}`,
+          _donHangId:       o.id,
+          _orderRecord:     o,
+          maBravo:          o.maBravo,
+          maSp:             o.maSp,
+          tenSanPham:       o.tenSanPham,
+          maDonHang:        o.maDonHang,
+          soLo:             null,
+          soLuongLenh:      null,
+          toThucHien:       null,
+          ngayThucHien:     null,
+          ngayPhatLenh:     o.ngayPhatLenh,
+          soLuongDatHang:   o.soLuongDatHang,
+          soLuongConLai:    o.soLuongConLai,
+          tinhTrangSx:      o.tinhTrangSx,
+          tinhTrangDatHang: o.tinhTrangDatHang,
+          ngayDatHang:      o.ngayDatHang,
+        })
+      }
+    })
+
+    rows.sort((a, b) => {
+      if (!a.ngayDatHang) return 1
+      if (!b.ngayDatHang) return -1
+      return new Date(a.ngayDatHang) - new Date(b.ngayDatHang)
+    })
+
+    return rows
+  }, [orders, lenhs])
 
   // ── Save product info ─────────────────────────────────────────────────────
   const handleSaveInfo = async () => {
@@ -91,8 +162,8 @@ export default function LenhSanXuatDetailPage() {
     }
   }
 
-  // ── Order table columns ───────────────────────────────────────────────────
-  const orderCols = [
+  // ── Columns ───────────────────────────────────────────────────────────────
+  const cols = [
     {
       title: 'STT',
       width: 48,
@@ -130,9 +201,18 @@ export default function LenhSanXuatDetailPage() {
     {
       title: 'SỐ LÔ',
       dataIndex: 'soLo',
-      width: 90,
+      width: 100,
       render: (v) => v
-        ? <span style={{ fontFamily: 'monospace', color: '#7c3aed', fontWeight: 600 }}>{v}</span>
+        ? <span style={{ fontFamily: 'monospace', color: '#0f766e', fontWeight: 700 }}>{v}</span>
+        : <span style={{ color: '#cbd5e1', fontSize: 11 }}>Chưa có</span>,
+    },
+    {
+      title: 'SL LỆNH',
+      dataIndex: 'soLuongLenh',
+      width: 100,
+      align: 'right',
+      render: (v) => v != null
+        ? <span style={{ fontWeight: 600, color: '#1e4570' }}>{fmtNum(v)}</span>
         : '—',
     },
     {
@@ -156,6 +236,14 @@ export default function LenhSanXuatDetailPage() {
           </span>
         )
       },
+    },
+    {
+      title: 'TỔ THỰC HIỆN',
+      dataIndex: 'toThucHien',
+      width: 120,
+      render: (v) => v
+        ? <Tag color="cyan" style={{ fontSize: 11 }}>{v}</Tag>
+        : '—',
     },
     {
       title: 'TÌNH TRẠNG SX',
@@ -184,6 +272,12 @@ export default function LenhSanXuatDetailPage() {
       render: (v) => fmtDate(v),
     },
     {
+      title: 'NGÀY THỰC HIỆN',
+      dataIndex: 'ngayThucHien',
+      width: 130,
+      render: (v) => fmtDate(v),
+    },
+    {
       title: 'NGÀY PHÁT LỆNH',
       dataIndex: 'ngayPhatLenh',
       width: 130,
@@ -191,7 +285,6 @@ export default function LenhSanXuatDetailPage() {
     },
   ]
 
-  // ── Shared input style ────────────────────────────────────────────────────
   const viewStyle = { background: 'transparent', border: 'none', padding: 0 }
 
   if (productLoad) {
@@ -201,6 +294,9 @@ export default function LenhSanXuatDetailPage() {
       </div>
     )
   }
+
+  const lenhCount  = lenhs.length
+  const orderCount = orders.length
 
   return (
     <div>
@@ -212,6 +308,8 @@ export default function LenhSanXuatDetailPage() {
         .lenh-detail-table .ant-table-thead > tr > th::before { display: none !important; }
         .lenh-detail-table .ant-table-tbody > tr > td { font-size: 13px; padding: 6px 10px; }
         .lenh-detail-table .ant-table-tbody > tr:hover > td { background: #f1f5f9 !important; }
+        .lenh-detail-table .ant-table-tbody > tr.row-no-lenh > td { background: #fafafa; color: #94a3b8; }
+        .lenh-detail-table .ant-table-tbody > tr.row-no-lenh:hover > td { background: #f1f5f9 !important; }
       `}</style>
 
       {/* ── Back + title bar ── */}
@@ -312,31 +410,35 @@ export default function LenhSanXuatDetailPage() {
         </Form>
       </div>
 
-      {/* ── Danh mục các lệnh ── */}
+      {/* ── Danh mục ── */}
       <div style={{ fontWeight: 700, color: '#1e4570', fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 10 }}>
         Danh Mục Các Lệnh
         <span style={{ fontWeight: 400, color: '#94a3b8', fontSize: 12, marginLeft: 8 }}>
-          ({orders.length} đơn hàng — sắp xếp theo ngày đặt hàng)
+          ({lenhCount} lệnh sản xuất — {orderCount} đơn hàng)
         </span>
       </div>
       <SkeletonTable
         className="lenh-detail-table"
-        rowKey="id"
-        dataSource={orders}
-        columns={orderCols}
+        rowKey="_rowKey"
+        dataSource={tableRows}
+        columns={cols}
         loading={ordersLoad}
         size="small"
-        scroll={{ x: 1300 }}
-        pagination={orders.length > 30
-          ? { pageSize: 30, showSizeChanger: true, showTotal: (t) => `${t} đơn hàng` }
+        scroll={{ x: 1500 }}
+        rowClassName={(r) => r.soLo == null ? 'row-no-lenh' : ''}
+        pagination={tableRows.length > 30
+          ? { pageSize: 30, showSizeChanger: true, showTotal: (t) => `${t} dòng` }
           : false
         }
         onRow={(record) => ({
-          onClick: () => navigate(
-            `/lenh-san-xuat/${encodeURIComponent(maBravo)}/don-hang/${record.id}`,
-            { state: { order: record, product } }
-          ),
-          style: { cursor: 'pointer' },
+          onClick: () => {
+            if (!record._donHangId) return
+            navigate(
+              `/lenh-san-xuat/${encodeURIComponent(maBravo)}/don-hang/${record._donHangId}`,
+              { state: { order: record._orderRecord, product } }
+            )
+          },
+          style: { cursor: record._donHangId ? 'pointer' : 'default' },
         })}
       />
     </div>
