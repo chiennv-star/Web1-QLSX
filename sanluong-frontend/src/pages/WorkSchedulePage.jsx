@@ -4181,8 +4181,7 @@ export default function WorkSchedulePage() {
         .ant-table-tbody > tr.row-ns-high > td { background: #fafff7 !important; }
         .ant-table-tbody > tr.row-ns-low > td { background: #fffaf9 !important; }
         .ant-table-tbody > tr.row-sl-exceed > td { background: #fdfaff !important; }
-        .ant-table-tbody > tr.row-missing-sl > td { background: #fff8e6 !important; border-left: 3px solid #fa8c16 !important; }
-        .ant-table-tbody > tr.row-missing-sl > td:first-child { border-left: 3px solid #fa8c16 !important; }
+        .ant-table-tbody > tr.row-missing-sl > td { background: #fff8e6 !important; }
         /* ERP table headers */
         .ws-table .ant-table-thead > tr > th {
           background: #006666 !important;
