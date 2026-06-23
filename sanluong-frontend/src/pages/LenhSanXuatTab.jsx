@@ -172,7 +172,7 @@ function LenhModal({ open, editItem, onClose, onSaved }) {
         </div>
       }
       width={760}
-      destroyOnClose
+      destroyOnHidden
       styles={{ body: { padding: 0 } }}
     >
       {/* Header */}
@@ -409,7 +409,7 @@ function LenhDetailModal({ open, record, onClose, onSaved }) {
 
   return (
     <Modal open={open} onCancel={onClose} footer={null} title={null}
-      width="100%" destroyOnClose
+      width="100%" destroyOnHidden
       styles={{ body: { padding: 0 }, wrapper: { pointerEvents: 'none' } }}
       style={{ top: 0, padding: 0, margin: 0, maxWidth: 'none', pointerEvents: 'none' }}
       wrapClassName="lsx-detail-modal"

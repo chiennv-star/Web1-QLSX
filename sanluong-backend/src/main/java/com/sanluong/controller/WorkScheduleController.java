@@ -45,9 +45,9 @@ public class WorkScheduleController {
         if (blocked) throw new AccessDeniedException("Bạn không có quyền xóa bản ghi lịch sản xuất");
     }
 
-    // Chỉ ADMIN và ADMIN_KH được ghi Kế hoạch (source = PLAN)
-    private void checkPlanPermission(Authentication auth, String source) {
-        if (!"PLAN".equals(source)) return;
+    // Chỉ ADMIN và ADMIN_KH được ghi Kế hoạch (source = PLAN hoặc isPlanned = true)
+    private void checkPlanPermission(Authentication auth, String source, boolean isPlanned) {
+        if (!"PLAN".equals(source) && !isPlanned) return;
         boolean allowed = auth.getAuthorities().stream().anyMatch(a ->
             "ROLE_ADMIN".equals(a.getAuthority()) || "ROLE_ADMIN_KH".equals(a.getAuthority())
         );
@@ -62,10 +62,14 @@ public class WorkScheduleController {
     // ADMIN_PCPL2: được PCPL2, CC (và PC cũ)
     // ADMIN_PCPL3: được PL
     private void checkStagePermission(Authentication auth, String congDoan, String source) {
+        checkStagePermission(auth, congDoan, source, false);
+    }
+
+    private void checkStagePermission(Authentication auth, String congDoan, String source, boolean isPlanned) {
         for (var a : auth.getAuthorities()) {
             String role = a.getAuthority();
             if ("ROLE_ADMIN".equals(role)) return;
-            if ("ROLE_ADMIN_KH".equals(role) && "PLAN".equals(source)) return;
+            if ("ROLE_ADMIN_KH".equals(role) && ("PLAN".equals(source) || isPlanned)) return;
             if ("ROLE_NHAN_VIEN".equals(role) && !"CC".equals(congDoan)) return;
             if ("ROLE_NHAN_VIEN_PCPL1".equals(role) && "PCPL1".equals(congDoan)) return;
             if ("ROLE_NHAN_VIEN_PCPL2".equals(role) && "PCPL2".equals(congDoan)) return;
@@ -131,9 +135,10 @@ public class WorkScheduleController {
             @RequestParam(required = false) String congDoan,
             @RequestParam(required = false) String source,
             @RequestParam(required = false) String toNhom,
+            @RequestParam(required = false) Boolean isPlanned,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(service.search(fromDate, toDate, maSp, tenTrinh, soLo, maBravo, maDonHang, tinhTrang, congDoan, source, toNhom, page, size));
+        return ResponseEntity.ok(service.search(fromDate, toDate, maSp, tenTrinh, soLo, maBravo, maDonHang, tinhTrang, congDoan, source, toNhom, isPlanned, page, size));
     }
 
     @GetMapping("/suggestions")
@@ -205,8 +210,8 @@ public class WorkScheduleController {
     @PostMapping
     public ResponseEntity<WorkSchedule> create(@Valid @RequestBody WorkScheduleDto dto,
                                                 Authentication auth) {
-        checkPlanPermission(auth, dto.getSource());
-        checkStagePermission(auth, dto.getCongDoan(), dto.getSource());
+        checkPlanPermission(auth, dto.getSource(), dto.isPlanned());
+        checkStagePermission(auth, dto.getCongDoan(), dto.getSource(), dto.isPlanned());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(service.create(dto, auth.getName()));
     }
@@ -215,8 +220,8 @@ public class WorkScheduleController {
     public ResponseEntity<WorkSchedule> update(@PathVariable Long id,
                                                 @Valid @RequestBody WorkScheduleDto dto,
                                                 Authentication auth) {
-        checkPlanPermission(auth, dto.getSource());
-        checkStagePermission(auth, dto.getCongDoan(), dto.getSource());
+        checkPlanPermission(auth, dto.getSource(), dto.isPlanned());
+        checkStagePermission(auth, dto.getCongDoan(), dto.getSource(), dto.isPlanned());
         return ResponseEntity.ok(service.update(id, dto, auth.getName()));
     }
 
@@ -232,6 +237,19 @@ public class WorkScheduleController {
         java.math.BigDecimal value = rawValue == null ? null
                 : new java.math.BigDecimal(rawValue.toString());
         service.patchField(id, field, value);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/ngay-thuc-hien")
+    public ResponseEntity<Void> patchNgayThucHien(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body,
+            Authentication auth) {
+        WorkSchedule w = service.getById(id);
+        checkStagePermission(auth, w.getCongDoan(), w.getSource());
+        String ngayStr = body.get("ngayThucHien") != null ? body.get("ngayThucHien").toString() : null;
+        LocalDate ngay = ngayStr != null ? LocalDate.parse(ngayStr) : null;
+        service.patchNgayThucHien(id, ngay);
         return ResponseEntity.noContent().build();
     }
 
@@ -306,8 +324,8 @@ public class WorkScheduleController {
     public ResponseEntity<Void> delete(@PathVariable Long id, Authentication auth) {
         checkDeletePermission(auth);
         WorkSchedule existing = service.getById(id);
-        checkPlanPermission(auth, existing.getSource());
-        checkStagePermission(auth, existing.getCongDoan(), existing.getSource());
+        checkPlanPermission(auth, existing.getSource(), existing.isPlanned());
+        checkStagePermission(auth, existing.getCongDoan(), existing.getSource(), existing.isPlanned());
         service.delete(id, auth.getName());
         return ResponseEntity.noContent().build();
     }

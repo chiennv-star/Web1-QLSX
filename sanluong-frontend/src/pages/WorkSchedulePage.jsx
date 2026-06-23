@@ -9,7 +9,7 @@ import {
   PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined,
   ReloadOutlined, WarningOutlined, CalendarOutlined,
   SyncOutlined, CheckCircleOutlined, EyeOutlined, LinkOutlined,
-  CheckOutlined, CloseOutlined, BellOutlined, EyeInvisibleOutlined,
+  CheckOutlined, CloseOutlined, EyeInvisibleOutlined,
   EyeTwoTone, SettingOutlined, DownOutlined, FilterOutlined, UsergroupAddOutlined
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
@@ -171,6 +171,7 @@ const STAGE_CONFIG = {
 const CONG_FIELD_MAP   = { PC: 'congPc', PCPL1: 'congPc', PCPL2: 'congPc', BBC1: 'congBbc1', PL: 'congPl', DG: 'congDg', CC: 'congCc' }
 const SL_FIELD_MAP     = { PC: 'slPc',   PCPL1: 'slPc',   PCPL2: 'slPc',  BBC1: 'slBbc1',   PL: 'slPl',   DG: 'slDg' }
 const NS_LOOKUP_FIELD  = { PC: 'nangSuatPc', PCPL1: 'nangSuatPc', PCPL2: 'nangSuatPc', PL: 'nangSuatPl', BBC1: 'nangSuatBbc1', DG: 'slTrungBinh', CC: 'slTrungBinh' }
+const CA_SORT_ORDER    = { 'Ca 1': 0, 'HC': 1, 'Ca 2': 2 }
 
 function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const { isAdmin, isAdminKH, isStageAdmin, canEditStage, canDeleteSchedule } = useAuth()
@@ -186,7 +187,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const [slEditOriginal, setSlEditOriginal] = useState({})
   const [slHistory, setSlHistory] = useState({})
   const [contextMenu, setContextMenu] = useState(null)
-  const [pendingDaySet, setPendingDaySet] = useState(new Set())
+  const [syncKhLoadingDays, setSyncKhLoadingDays] = useState(new Set())
+
   const [renamingDay, setRenamingDay] = useState(null)   // ngayKey đang đổi ngày
   const [renameDayVal, setRenameDayVal] = useState('')   // giá trị ngày mới
   const [renameSaving, setRenameSaving] = useState(false)
@@ -208,6 +210,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const [pendingDays, setPendingDays] = useState([])
   const [employees, setEmployees] = useState([])
   const scrollDivRef = useRef(null)  // ref cho div overflowY:auto bên dưới
+  const caChangedRef = useRef({}) // { rowKey: { ngay, maNhanVien, newCa } }
   const VAI_TRO_KEY = 'vaitro_options'
   const DEFAULT_VAI_TRO = ['Trưởng ca', 'Phụ máy']
   const [vaiTroOptions, setVaiTroOptions] = useState(() => {
@@ -249,7 +252,6 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     setBatchEditDays(new Set())
     setBatchSaving(new Set())
     setSavedSlKeys(new Set())
-    setPendingDaySet(new Set())
     fetchSessions()
     api.get(`/product-master/lookup/${encodeURIComponent(schedule.maSp || '')}`)
       .then(r => {
@@ -360,12 +362,6 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       })
       setDaySlMap(slMap)
       setSavedSlKeys(new Set(Object.keys(slMap)))
-      // Load pending change requests for this schedule
-      try {
-        const { data: changeReqs } = await api.get(`/sl-change-request/for-schedule/${schedule.id}`)
-        const pending = new Set(changeReqs.filter(r => r.status === 'PENDING').map(r => r.ngay))
-        setPendingDaySet(pending)
-      } catch { /* non-blocking */ }
     } catch { message.error('Không thể tải dữ liệu chi tiết') }
     finally { setLoading(false) }
   }
@@ -421,24 +417,62 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     setEditingKeys(prev => new Set([...prev, tempId]))
   }
 
-  const confirmMultiAdd = () => {
+  const confirmMultiAdd = async () => {
     const { ngayKey, nhom, selectedEmps, caSX, thoiGian } = multiAddModal
     if (!selectedEmps.length) { message.warning('Vui lòng chọn ít nhất 1 nhân viên'); return }
+
+    const cong = caSX && thoiGian ? calcCong(thoiGian, caSX) : ''
     const newRows = selectedEmps.map((emp, i) => ({
       _tempId: Date.now() + i, id: null, workScheduleId: schedule.id,
       ngay: ngayKey, maNhanVien: emp.maNhanVien || '', nguoiThucHien: emp.hoVaTen || '',
       nhomThucHien: nhom, thoiGianBatDau: thoiGian,
-      congThucHien: caSX && thoiGian ? calcCong(thoiGian, caSX) : '',
+      congThucHien: cong,
       vaiTro: '', ghiChu: '', caSanXuat: caSX, isTangCa: false,
     }))
+
+    // Thêm vào UI ngay lập tức
     setSessions(prev => [...prev, ...newRows])
-    setBatchEditDays(prev => new Set([...prev, ngayKey]))
-    setEditingKeys(prev => {
-      const n = new Set(prev)
-      newRows.forEach(r => n.add(r._tempId))
-      return n
-    })
     setMultiAddModal({ open: false, ngayKey: null, nhom: '', subNhom: '', selectedEmps: [], caSX: '', thoiGian: '' })
+
+    // Lưu lên backend ngay — không chờ user bấm Lưu
+    const saved = []
+    const failed = []
+    await Promise.allSettled(newRows.map(async (row) => {
+      try {
+        const { data } = await api.post('/work-schedule-session', {
+          workScheduleId: row.workScheduleId,
+          ngay:           row.ngay,
+          maNhanVien:     row.maNhanVien || null,
+          nguoiThucHien:  row.nguoiThucHien || null,
+          nhomThucHien:   row.nhomThucHien || null,
+          caSanXuat:      row.caSanXuat || null,
+          thoiGianBatDau: row.thoiGianBatDau || null,
+          congThucHien:   row.congThucHien !== '' ? row.congThucHien : null,
+          vaiTro:         null,
+          ghiChu:         null,
+          isTangCa:       false,
+        })
+        saved.push({ tempId: row._tempId, data })
+      } catch (err) {
+        failed.push(row.nguoiThucHien || row.maNhanVien)
+      }
+    }))
+
+    // Cập nhật id thật cho các row đã lưu thành công
+    if (saved.length > 0) {
+      setSessions(prev => {
+        const updated = prev.map(s => {
+          const match = saved.find(sv => sv.tempId === s._tempId)
+          return match ? normalizeSession(match.data) : s
+        })
+        syncCong(updated)
+        return updated
+      })
+      onRefresh?.()
+    }
+    if (failed.length > 0) {
+      message.error(`Lưu thất bại: ${failed.join(', ')}`)
+    }
   }
 
   const calcCong = (thoiGian, ca) => {
@@ -490,6 +524,130 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   }
   const clearMaNvError = (key) => {
     setMaNvErrorKeys(prev => { const n = new Set(prev); n.delete(key); return n })
+  }
+
+  // Sau khi đổi Ca trong sản xuất, đồng bộ Ca của worker đó trong KH_TO cho cùng work_schedule+ngày
+  const syncKhToForCaChange = async (maNhanVien, ngay, newCa) => {
+    if (!maNhanVien || !ngay || !newCa || !schedule?.id) return
+    try {
+      const { data: khToList } = await api.get('/work-schedule-session', {
+        params: { scheduleId: schedule.id, loaiSession: 'KH_TO' },
+      })
+      const conflicting = khToList.filter(s =>
+        s.maNhanVien === maNhanVien && s.ngay === ngay && s.caSanXuat !== newCa
+      )
+      if (conflicting.length === 0) return
+      await Promise.all(conflicting.map(s =>
+        api.patch(`/work-schedule-session/${s.id}/ca`, { caSanXuat: newCa })
+      ))
+      message.info(`Đã đồng bộ ca kế hoạch tổ → ${newCa}`)
+    } catch { /* non-critical */ }
+  }
+
+  // Đồng bộ Ca từ kế hoạch tổ → sản lượng tổ cho một ngày cụ thể
+  const syncCaFromKhTo = async (ngayKey) => {
+    if (!schedule?.id || !ngayKey) return
+    setSyncKhLoadingDays(prev => new Set([...prev, ngayKey]))
+    try {
+      const { data: khToList } = await api.get('/work-schedule-session', {
+        params: { scheduleId: schedule.id, loaiSession: 'KH_TO' },
+      })
+
+      // Lọc KH_TO theo ngày này
+      const khForDay = khToList.filter(kh => kh.ngay === ngayKey)
+      if (khForDay.length === 0) { message.info('Không có kế hoạch tổ cho ngày này'); return }
+
+      // Map KH_TO: maNhanVien → targetCa (Ca đầu tiên trong kế hoạch)
+      const khCaMap = {} // maNhanVien → targetCa
+      const khAllMap = {} // maNhanVien → [khToSession, ...]
+      for (const kh of khForDay) {
+        if (!kh.maNhanVien || !kh.caSanXuat) continue
+        if (!khAllMap[kh.maNhanVien]) {
+          khAllMap[kh.maNhanVien] = []
+          khCaMap[kh.maNhanVien] = kh.caSanXuat // Ca đầu tiên = Ca đúng
+        }
+        khAllMap[kh.maNhanVien].push(kh)
+      }
+
+      // Nhóm session sản xuất theo maNhanVien trong ngày này
+      const dayRows = sessions.filter(s => s.id && s.maNhanVien && (s.ngay || '') === ngayKey)
+      const prodMap = {} // maNhanVien → [prodSession, ...]
+      for (const s of dayRows) {
+        if (!prodMap[s.maNhanVien]) prodMap[s.maNhanVien] = []
+        prodMap[s.maNhanVien].push(s)
+      }
+
+      let updatedCount = 0
+      let deletedProdCount = 0
+      let deletedKhCount = 0
+      const idsToRemove = new Set()
+      const patchedIds = {} // id → updatedFields
+
+      // Task 1 + 2: Với mỗi người có trong kế hoạch tổ
+      for (const [maNv, targetCa] of Object.entries(khCaMap)) {
+        const prodRows = prodMap[maNv] || []
+        if (prodRows.length === 0) continue
+
+        // Tìm session đúng Ca và session sai Ca
+        const correctRows = prodRows.filter(s => s.caSanXuat === targetCa)
+        const wrongRows   = prodRows.filter(s => s.caSanXuat !== targetCa)
+
+        if (correctRows.length > 0) {
+          // Đã có session Ca đúng → xóa toàn bộ session Ca sai
+          for (const s of wrongRows) {
+            await api.delete(`/work-schedule-session/${s.id}`)
+            idsToRemove.add(s.id)
+            deletedProdCount++
+          }
+        } else {
+          // Chưa có session Ca đúng → cập nhật session đầu tiên, xóa phần còn lại
+          const [first, ...rest] = prodRows
+          const thoiGian = first.thoiGianBatDau && parseFloat(first.thoiGianBatDau) > 0
+            ? parseFloat(first.thoiGianBatDau)
+            : (targetCa === 'HC' ? 8 : 7)
+          const congThuc = calcCong(String(thoiGian), targetCa)
+          await api.patch(`/work-schedule-session/${first.id}/ca`, {
+            caSanXuat: targetCa,
+            thoiGianBatDau: String(thoiGian),
+            congThucHien: congThuc,
+          })
+          patchedIds[first.id] = { caSanXuat: targetCa, thoiGianBatDau: String(thoiGian), congThucHien: congThuc }
+          updatedCount++
+          for (const s of rest) {
+            await api.delete(`/work-schedule-session/${s.id}`)
+            idsToRemove.add(s.id)
+            deletedProdCount++
+          }
+        }
+      }
+
+      // Cập nhật local state
+      let updatedSessions = sessions
+        .filter(s => !idsToRemove.has(s.id))
+        .map(s => patchedIds[s.id] ? { ...s, ...patchedIds[s.id] } : s)
+      setSessions(updatedSessions)
+      if (updatedCount > 0 || deletedProdCount > 0) syncCong(updatedSessions)
+
+      // Task 3: Xóa KH_TO entries có Ca khác với Ca kế hoạch chính (duplicate trong kế hoạch)
+      for (const [maNv, khEntries] of Object.entries(khAllMap)) {
+        if (khEntries.length <= 1) continue
+        const finalCa = khCaMap[maNv]
+        const toDelete = khEntries.filter(kh => kh.caSanXuat !== finalCa)
+        const results = await Promise.allSettled(toDelete.map(kh => api.delete(`/work-schedule-session/${kh.id}`)))
+        deletedKhCount += results.filter(r => r.status === 'fulfilled').length
+      }
+
+      const msgs = []
+      if (updatedCount > 0) msgs.push(`Cập nhật ${updatedCount} ca sản xuất`)
+      if (deletedProdCount > 0) msgs.push(`Xóa ${deletedProdCount} người khỏi ca cũ`)
+      if (deletedKhCount > 0) msgs.push(`Xóa ${deletedKhCount} ca kế hoạch trùng`)
+      if (msgs.length > 0) message.success(msgs.join(', '))
+      else message.info('Không có ca nào cần đồng bộ')
+    } catch {
+      message.error('Đồng bộ ca thất bại')
+    } finally {
+      setSyncKhLoadingDays(prev => { const n = new Set(prev); n.delete(ngayKey); return n })
+    }
   }
 
   const saveRow = async (s) => {
@@ -552,6 +710,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       vaiTro: s.vaiTro || null,
       ghiChu: s.ghiChu || null,
       caSanXuat: s.caSanXuat || null, isTangCa: s.isTangCa || false,
+      sanLuong: s.sanLuong != null ? s.sanLuong : null,
     }
     try {
       let updatedSessions
@@ -572,6 +731,12 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       setEditingKeys(prev => { const next = new Set(prev); next.delete(key); return next })
       onRefresh?.()
       message.success('Đã lưu')
+      // Đồng bộ KH_TO nếu Ca vừa đổi
+      const caChange = caChangedRef.current[key]
+      if (caChange) {
+        delete caChangedRef.current[key]
+        syncKhToForCaChange(caChange.maNhanVien, caChange.ngay, caChange.newCa)
+      }
     } catch { message.error('Lưu thất bại') }
     finally { setSaving(null) }
   }
@@ -613,6 +778,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
         ghiChu: s.ghiChu || null,
         caSanXuat: s.caSanXuat || null,
         isTangCa: s.isTangCa || false,
+        sanLuong: s.sanLuong != null ? s.sanLuong : null,
       }
       try {
         if (s.id) {
@@ -638,6 +804,14 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       setBatchEditDays(prev => { const n = new Set(prev); n.delete(ngayKey); return n })
       message.success('Đã lưu tất cả')
     }
+    // Đồng bộ KH_TO cho các row có Ca thay đổi
+    const caChanges = Object.values(caChangedRef.current).filter(c => c.ngay === ngayKey)
+    caChanges.forEach(c => {
+      Object.keys(caChangedRef.current).forEach(k => {
+        if (caChangedRef.current[k] === c) delete caChangedRef.current[k]
+      })
+      syncKhToForCaChange(c.maNhanVien, c.ngay, c.newCa)
+    })
   }
 
   const deleteRow = async (s) => {
@@ -709,31 +883,6 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     const first = rows[0]
     if (!first?.id) return
     setSavingDay(ngayKey)
-
-    // Stage admin → luôn phải gửi yêu cầu phê duyệt, chỉ ADMIN/ADMIN_KH lưu trực tiếp
-    const hasExistingSl = first.sanLuong != null && first.sanLuong !== ''
-    const needsApproval = isStageAdmin() || (!canEditDetail && hasExistingSl)
-    if (needsApproval) {
-      try {
-        await api.post('/sl-change-request', {
-          workScheduleId: schedule.id,
-          workScheduleSessionId: first.id,
-          congDoan: schedule.congDoan,
-          maSp: schedule.maSp,
-          tenTrinh: schedule.tenTrinh,
-          soLo: schedule.soLo,
-          ngay: ngayKey,
-          newValue: parseInt(val, 10),
-        })
-        setPendingDaySet(prev => new Set([...prev, ngayKey]))
-        setSavedSlKeys(prev => new Set([...prev, ngayKey]))
-        message.info('Yêu cầu thay đổi đã gửi, chờ quản trị viên duyệt')
-      } catch (e) {
-        message.error(e?.response?.data?.message || 'Gửi yêu cầu thất bại')
-      }
-      finally { setSavingDay(null) }
-      return
-    }
 
     try {
       const { data } = await api.put(`/work-schedule-session/${first.id}`, {
@@ -849,7 +998,9 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
         )}
 
         {allDayItems.map(({ k, isPending, tempId }) => {
-          const rows = sessions.filter(s => (s.ngay || 'unknown') === k)
+          const rows = sessions
+            .filter(s => (s.ngay || 'unknown') === k)
+            .sort((a, b) => (CA_SORT_ORDER[a.caSanXuat] ?? 3) - (CA_SORT_ORDER[b.caSanXuat] ?? 3))
           const tong = rows.reduce((a, r) => a + (parseFloat(r.congThucHien) || 0), 0)
           const slVal = daySlMap[k] ?? ''
           const slNum = parseFloat(slVal) || 0
@@ -889,18 +1040,16 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                 </span>
                 <span style={{ fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                   SL ngày&nbsp;
-                  {pendingDaySet.has(k)
-                    ? <><b style={{ color: '#7c3aed', fontFamily: 'monospace' }}>{Number(slVal || 0).toLocaleString('vi-VN')}</b><Tag color="orange" style={{ fontSize: 10, margin: '0 0 0 4px' }}>Chờ duyệt</Tag></>
-                    : canEditDetail
-                      ? <input
-                          type="number" min="0" step="1"
-                          style={{ width: 75, border: '1px solid #cbd5e1', borderRadius: 6, padding: '2px 5px', fontSize: 12.5, fontWeight: 700, textAlign: 'right', color: '#0f172a' }}
-                          value={slVal}
-                          onChange={e => setDaySlMap(prev => ({ ...prev, [k]: e.target.value }))}
-                          onBlur={() => { if (slVal !== '' && rows.some(r => r.id)) saveDaySl(k) }}
-                          onKeyDown={e => { if (e.key === 'Enter' && rows.some(r => r.id)) saveDaySl(k) }}
-                        />
-                      : <b style={{ color: '#7c3aed' }}>{slVal !== '' ? Number(slVal).toLocaleString('vi-VN') : '—'}</b>
+                  {canEditDetail
+                    ? <input
+                        type="number" min="0" step="1"
+                        style={{ width: 75, border: '1px solid #cbd5e1', borderRadius: 6, padding: '2px 5px', fontSize: 12.5, fontWeight: 700, textAlign: 'right', color: '#0f172a' }}
+                        value={slVal}
+                        onChange={e => setDaySlMap(prev => ({ ...prev, [k]: e.target.value }))}
+                        onBlur={() => { if (slVal !== '' && rows.some(r => r.id)) saveDaySl(k) }}
+                        onKeyDown={e => { if (e.key === 'Enter' && rows.some(r => r.id)) saveDaySl(k) }}
+                      />
+                    : <b style={{ color: '#7c3aed' }}>{slVal !== '' ? Number(slVal).toLocaleString('vi-VN') : '—'}</b>
                   }
                 </span>
                 <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap', flexShrink: 0 }}>
@@ -937,6 +1086,17 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                       style={{ fontSize: 12 }}>
                       Nhiều người
                     </Button>
+                    {!isPending && rows.some(r => r.id) && (
+                      <Tooltip title="Kiểm tra kế hoạch tổ và đồng bộ Ca vào sản xuất. Xóa Ca kế hoạch bị trùng.">
+                        <Button
+                          size="small" icon={<SyncOutlined />}
+                          loading={syncKhLoadingDays.has(k)}
+                          onClick={() => syncCaFromKhTo(k)}
+                          style={{ fontSize: 12, color: '#0284c7', borderColor: '#7dd3fc' }}>
+                          Đồng bộ Ca
+                        </Button>
+                      </Tooltip>
+                    )}
                     {!isPending && (
                       <Popconfirm
                         title={`Xóa toàn bộ dữ liệu ngày ${dayjs(k).isValid() ? dayjs(k).format('DD/MM/YYYY') : k}?`}
@@ -1046,7 +1206,13 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                             <td style={{ ...cellStyle, width: 100 }}>
                               <select style={{ ...inputStyle, cursor: 'pointer', fontWeight: 600, color: s.caSanXuat === 'HC' ? '#389e0d' : s.caSanXuat ? '#1677ff' : undefined }}
                                 value={s.caSanXuat}
-                                onChange={e => { const ca = e.target.value; updateLocals(rowKey, { caSanXuat: ca, congThucHien: calcCong(s.thoiGianBatDau, ca) }) }}>
+                                onChange={e => {
+                                  const ca = e.target.value
+                                  if (ca !== s.caSanXuat && ca && s.maNhanVien && s.ngay) {
+                                    caChangedRef.current[rowKey] = { ngay: s.ngay, maNhanVien: s.maNhanVien, newCa: ca }
+                                  }
+                                  updateLocals(rowKey, { caSanXuat: ca, congThucHien: calcCong(s.thoiGianBatDau, ca) })
+                                }}>
                                 <option value="">-- Ca --</option>
                                 <option value="Ca 1">Ca 1</option>
                                 <option value="Ca 2">Ca 2</option>
@@ -1119,7 +1285,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                 <span style={{ fontWeight: 700, color: '#722ed1', fontFamily: 'monospace', fontSize: 13 }}>
                   {Number(slVal).toLocaleString('vi-VN')}
                 </span>
-                {canEditDetail && !pendingDaySet.has(ngayKey) && (
+                {canEditDetail && (
                   <Button size="small" icon={<EditOutlined />}
                     style={{ color: '#722ed1', borderColor: '#d3adf7', fontWeight: 600, fontSize: 12 }}
                     onClick={() => {
@@ -1129,7 +1295,6 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                     Sửa
                   </Button>
                 )}
-                {pendingDaySet.has(ngayKey) && <Tag color="orange" style={{ fontSize: 11, marginRight: 0 }}>Chờ duyệt</Tag>}
               </Space>
             ) : canEditDetail ? (
               <Space size={4} align="center">
@@ -1354,8 +1519,10 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                         value={s.caSanXuat}
                         onChange={e => {
                           const ca = e.target.value
-                          const newCong = calcCong(s.thoiGianBatDau, ca)
-                          updateLocals(key, { caSanXuat: ca, congThucHien: newCong })
+                          if (ca !== s.caSanXuat && ca && s.maNhanVien && s.ngay) {
+                            caChangedRef.current[key] = { ngay: s.ngay, maNhanVien: s.maNhanVien, newCa: ca }
+                          }
+                          updateLocals(key, { caSanXuat: ca, congThucHien: calcCong(s.thoiGianBatDau, ca) })
                         }}
                       >
                         <option value="">-- Chọn ca --</option>
@@ -1461,16 +1628,19 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       </>
     ),
   })), [openTabs, sessions, daySlMap, savedSlKeys, slEditOriginal, slHistory, pendingDays,
-       pendingDaySet, editingKeys, batchEditDays, batchSaving, saving, savingDay,
+       editingKeys, batchEditDays, batchSaving, saving, savingDay,
        nsTrungBinh, employees, vaiTroOptions, canEditDetail, multiAddModal, maNvErrorKeys,
        tongCong, tongSanLuong, ngayKeys, renamingDay, renameDayVal, renameSaving,
        schedule, contextMenu])
 
   const handleDrawerClose = () => {
-    if (isDirty) {
+    const hasUnsavedRows = sessions.some(s => !s.id && s._tempId)
+    if (isDirty || hasUnsavedRows) {
       Modal.confirm({
         title: 'Có thay đổi chưa lưu',
-        content: 'Bạn chưa nhấn "Cập nhật". Thoát sẽ mất các thay đổi vừa nhập.',
+        content: isDirty
+          ? 'Bạn chưa nhấn "Cập nhật". Thoát sẽ mất các thay đổi vừa nhập.'
+          : 'Có dòng nhân viên chưa được lưu. Thoát sẽ mất dữ liệu.',
         okText: 'Thoát không lưu',
         okType: 'danger',
         cancelText: 'Quay lại',
@@ -2106,7 +2276,7 @@ function WorkScheduleModal({ open, editItem, congDoan, defaultToNhom, extraFormF
       okText="Lưu"
       cancelText="Hủy"
       width={760}
-      destroyOnClose
+      destroyOnHidden
     >
       <Form form={form} layout="vertical" style={{ marginTop: 12 }}>
         <Row gutter={16}>
@@ -2343,12 +2513,23 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 1000, total: 0 })
   const paginationRef = useRef({ current: 1, pageSize: 1000 })
-  const [filters, setFilters] = useState({
-    dateRange: null,
-    maSp: '',
-    tenTrinh: '',
-    soLo: '',
-    tinhTrang: ''
+  const LS_FILTERS   = `ws_filters_${congDoan}`
+  const LS_INNER_TAB = `ws_inner_tab_${congDoan}`
+  const LS_DETAIL_ID = `ws_detail_id_${congDoan}`
+  const [filters, setFilters] = useState(() => {
+    try {
+      const saved = localStorage.getItem(LS_FILTERS)
+      if (saved) {
+        const p = JSON.parse(saved)
+        return {
+          ...p,
+          dateRange: p.dateRange
+            ? [dayjs(p.dateRange[0]), dayjs(p.dateRange[1])]
+            : null,
+        }
+      }
+    } catch {}
+    return { dateRange: null, maSp: '', tenTrinh: '', soLo: '', tinhTrang: '' }
   })
   const [modalOpen, setModalOpen] = useState(false)
   const [editItem, setEditItem] = useState(null)
@@ -2358,12 +2539,25 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const [highlightId, setHighlightId] = useState(null)
   const [nsMap, setNsMap] = useState({})
   const [updatingTT, setUpdatingTT] = useState({})
-  const [innerTab, setInnerTab] = useState('list')
+  const [innerTab, setInnerTab] = useState(() => {
+    try { return localStorage.getItem(LS_INNER_TAB) || 'list' } catch { return 'list' }
+  })
   const [hiddenCount, setHiddenCount] = useState(0)
   const [doneCount, setDoneCount] = useState(0)
   const [filterPanelOpen, setFilterPanelOpen] = useState(false)
-  const jumpApplied = useRef(false)
-  const controlsRef = useRef(null)
+  const jumpApplied    = useRef(false)
+  const detailRestored = useRef(false)
+  const controlsRef    = useRef(null)
+
+  function openDetailDrawer(record) {
+    setDetailSchedule(record)
+    setDetailOpen(true)
+    try { localStorage.setItem(LS_DETAIL_ID, String(record.id)) } catch {}
+  }
+  function closeDetailDrawer() {
+    setDetailOpen(false)
+    try { localStorage.removeItem(LS_DETAIL_ID) } catch {}
+  }
 
   const patchTinhTrang = async (record, newTT) => {
     setUpdatingTT(p => ({ ...p, [record.id]: true }))
@@ -2463,6 +2657,18 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchData(0) }, [congDoan])
+
+  // Khôi phục detail drawer sau khi data load lần đầu
+  useEffect(() => {
+    if (data.length === 0 || detailRestored.current) return
+    detailRestored.current = true
+    try {
+      const savedId = localStorage.getItem(LS_DETAIL_ID)
+      if (!savedId) return
+      const found = data.find(r => String(r.id) === savedId)
+      if (found) { setDetailSchedule(found); setDetailOpen(true) }
+    } catch {}
+  }, [data]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handler = () => fetchData(0, paginationRef.current.pageSize)
@@ -2612,6 +2818,21 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   useEffect(() => {
     if (controlsRef.current) setHeaderOffset(46 + 38 + controlsRef.current.offsetHeight + 2)
   })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_FILTERS, JSON.stringify({
+        ...filters,
+        dateRange: filters.dateRange
+          ? [filters.dateRange[0].format('YYYY-MM-DD'), filters.dateRange[1].format('YYYY-MM-DD')]
+          : null,
+      }))
+    } catch {}
+  }, [filters])
+
+  useEffect(() => {
+    try { localStorage.setItem(LS_INNER_TAB, innerTab) } catch {}
+  }, [innerTab])
 
   const onSaved = () => { fetchData(0); parentOnSaved?.() }
 
@@ -3003,6 +3224,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
             const handleReset = () => {
               const reset = { dateRange: null, maSp: '', tenTrinh: '', soLo: '', tinhTrang: '' }
               setFilters(reset)
+              try { localStorage.removeItem(LS_FILTERS) } catch {}
               fetchData(0, 20, reset)
             }
             return (
@@ -3156,10 +3378,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
             onRow={record => ({
               id: `ws-row-${record.id}`,
               style: { cursor: 'pointer' },
-              onClick: () => {
-                setDetailSchedule(record)
-                setDetailOpen(true)
-              },
+              onClick: () => openDetailDrawer(record),
             })}
             pagination={false}
           />
@@ -3177,7 +3396,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                 record={record}
                 congDoan={congDoan}
                 nsMap={nsMap}
-                onClick={() => { setDetailSchedule(record); setDetailOpen(true) }}
+                onClick={() => openDetailDrawer(record)}
               />
             ))}
             {!loading && data.filter(r => r.tinhTrang !== 'done').length > 0 && (
@@ -3209,7 +3428,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
           toNhom={forcedNhom}
           onUndone={() => fetchData(0)}
           onCountChange={setDoneCount}
-          onRowClick={r => { setDetailSchedule(r); setDetailOpen(true) }}
+          onRowClick={r => openDetailDrawer(r)}
         />
       )}
 
@@ -3226,8 +3445,8 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       <WorkDetailDrawer
         open={detailOpen}
         schedule={detailSchedule}
-        onClose={() => setDetailOpen(false)}
-        onSaved={() => { setDetailOpen(false); onSaved() }}
+        onClose={closeDetailDrawer}
+        onSaved={() => { closeDetailDrawer(); onSaved() }}
         onRefresh={onSaved}
       />
 
@@ -3576,135 +3795,6 @@ function SyncScheduleButton() {
         Đồng bộ lịch SX
       </Button>
     </Tooltip>
-  )
-}
-
-// ── Admin Approval Panel ───────────────────────────────────────────────────────
-function AdminApprovalPanel() {
-  const [open, setOpen] = useState(false)
-  const [requests, setRequests] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [rejectId, setRejectId] = useState(null)
-  const [rejectNote, setRejectNote] = useState('')
-  const [acting, setActing] = useState(null)
-
-  const load = async () => {
-    setLoading(true)
-    try {
-      const { data } = await api.get('/sl-change-request/pending')
-      setRequests(data)
-    } catch { message.error('Không thể tải danh sách') }
-    finally { setLoading(false) }
-  }
-
-  useEffect(() => { load() }, [])
-
-  const approve = async (id) => {
-    setActing(id)
-    try {
-      await api.put(`/sl-change-request/${id}/approve`)
-      message.success('Đã duyệt')
-      setRequests(prev => prev.filter(r => r.id !== id))
-    } catch (e) { message.error(e?.response?.data?.message || 'Duyệt thất bại') }
-    finally { setActing(null) }
-  }
-
-  const reject = async (id) => {
-    setActing(id)
-    try {
-      await api.put(`/sl-change-request/${id}/reject`, { note: rejectNote })
-      message.success('Đã từ chối')
-      setRequests(prev => prev.filter(r => r.id !== id))
-      setRejectId(null)
-      setRejectNote('')
-    } catch (e) { message.error(e?.response?.data?.message || 'Từ chối thất bại') }
-    finally { setActing(null) }
-  }
-
-  const count = requests.length
-  return (
-    <>
-      <Tooltip title="Yêu cầu thay đổi sản lượng">
-        <Badge count={count} size="small">
-          <Button icon={<BellOutlined />} onClick={() => { setOpen(true); load() }}
-            type={count > 0 ? 'primary' : 'default'}
-            style={{ marginRight: 8 }}>
-            Duyệt SL{count > 0 ? ` (${count})` : ''}
-          </Button>
-        </Badge>
-      </Tooltip>
-
-      <Drawer
-        title={<Space><BellOutlined />Yêu cầu thay đổi sản lượng chờ duyệt</Space>}
-        open={open}
-        onClose={() => setOpen(false)}
-        width={700}
-        extra={<Button size="small" icon={<ReloadOutlined />} onClick={load} loading={loading}>Làm mới</Button>}
-      >
-        {loading ? <Spin /> : requests.length === 0 ? (
-          <div style={{ textAlign: 'center', color: '#aaa', padding: 40 }}>Không có yêu cầu nào</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {requests.map(r => (
-              <Card key={r.id} size="small" style={{ borderLeft: '4px solid #fa8c16' }}>
-                <Row gutter={[8, 4]} align="middle">
-                  <Col span={12}>
-                    <Space wrap>
-                      <Tag color="blue">{r.maSp}</Tag>
-                      <Tag color="purple">{r.congDoan}</Tag>
-                      <span style={{ fontSize: 12, color: '#595959' }}>LSX: {r.soLo}</span>
-                    </Space>
-                  </Col>
-                  <Col span={12} style={{ textAlign: 'right', fontSize: 12, color: '#595959' }}>
-                    {r.requestedBy} · {dayjs(r.requestedAt).format('DD/MM/YYYY HH:mm')}
-                  </Col>
-                  <Col span={24} style={{ fontSize: 13 }}>
-                    <span style={{ color: '#595959' }}>{r.tenTrinh}</span>
-                    <span style={{ marginLeft: 8, color: '#8c8c8c', fontSize: 12 }}>
-                      Ngày: {r.ngay ? dayjs(r.ngay).format('DD/MM/YYYY') : '—'}
-                    </span>
-                  </Col>
-                  <Col span={24}>
-                    <Space size={4} align="center">
-                      <span style={{ fontSize: 13, color: '#595959' }}>SL cũ:</span>
-                      <span style={{ fontWeight: 600, fontSize: 14 }}>
-                        {r.oldValue != null ? Number(r.oldValue).toLocaleString('vi-VN') : '—'}
-                      </span>
-                      <span style={{ color: '#8c8c8c' }}>→</span>
-                      <span style={{ fontWeight: 700, fontSize: 14, color: '#1677ff' }}>
-                        {Number(r.newValue).toLocaleString('vi-VN')}
-                      </span>
-                    </Space>
-                  </Col>
-                  {rejectId === r.id ? (
-                    <Col span={24}>
-                      <Space.Compact style={{ width: '100%' }}>
-                        <Input placeholder="Lý do từ chối (tuỳ chọn)" value={rejectNote}
-                          onChange={e => setRejectNote(e.target.value)}
-                          onPressEnter={() => reject(r.id)} />
-                        <Button type="primary" danger loading={acting === r.id}
-                          onClick={() => reject(r.id)}>Xác nhận từ chối</Button>
-                        <Button onClick={() => { setRejectId(null); setRejectNote('') }}>Huỷ</Button>
-                      </Space.Compact>
-                    </Col>
-                  ) : (
-                    <Col span={24} style={{ textAlign: 'right' }}>
-                      <Space>
-                        <Button type="primary" icon={<CheckOutlined />} size="small"
-                          loading={acting === r.id}
-                          onClick={() => approve(r.id)}>Duyệt</Button>
-                        <Button danger icon={<CloseOutlined />} size="small"
-                          onClick={() => { setRejectId(r.id); setRejectNote('') }}>Từ chối</Button>
-                      </Space>
-                    </Col>
-                  )}
-                </Row>
-              </Card>
-            ))}
-          </div>
-        )}
-      </Drawer>
-    </>
   )
 }
 
@@ -4129,7 +4219,6 @@ export default function WorkSchedulePage() {
           tabBarExtraContent={
             <Space style={{ paddingRight: 8 }}>
               {isAdmin() && <SyncScheduleButton />}
-              {isAdmin() && <AdminApprovalPanel />}
               <Typography.Text strong className="ws-tab-title-text" style={{ color: '#DDE1E8', fontSize: 14, letterSpacing: 0.3 }}>
                 Lịch làm việc sản xuất
               </Typography.Text>

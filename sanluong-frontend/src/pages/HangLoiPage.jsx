@@ -679,7 +679,7 @@ function HangTraLaiTab({ stickyTop = 0 }) {
         title={null}
         wrapClassName="hl-modal"
         styles={{ body: { padding: 0 } }}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="horizontal" component="div">
 

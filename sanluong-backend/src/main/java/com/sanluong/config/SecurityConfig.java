@@ -78,6 +78,13 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/work-schedule/**").hasAnyRole(ALL_WRITE_ROLES)
                 .requestMatchers(HttpMethod.GET, "/api/work-schedule/**").hasAnyRole(ALL_ROLES)
 
+                // ── Session kế hoạch tổ: quyền giống work-schedule ────────────
+                .requestMatchers(HttpMethod.DELETE, "/api/work-schedule-session/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH", "ADMIN_PC", "ADMIN_BBC1", "ADMIN_PL", "ADMIN_DG", "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3")
+                .requestMatchers(HttpMethod.PATCH, "/api/work-schedule-session/**").hasAnyRole(ALL_WRITE_ROLES)
+                .requestMatchers(HttpMethod.PUT, "/api/work-schedule-session/**").hasAnyRole(ALL_WRITE_ROLES)
+                .requestMatchers(HttpMethod.POST, "/api/work-schedule-session/**").hasAnyRole(ALL_WRITE_ROLES)
+                .requestMatchers(HttpMethod.GET, "/api/work-schedule-session/**").hasAnyRole(ALL_ROLES)
+
                 // ── Danh mục: ADMIN_KH có toàn quyền ─────────────────────────
                 .requestMatchers(HttpMethod.GET, "/api/product-master/**").hasAnyRole(ALL_ROLES)
                 .requestMatchers("/api/product-master/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH", "ADMIN_PC", "ADMIN_BBC1", "ADMIN_PL", "ADMIN_DG", "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3")
@@ -93,6 +100,11 @@ public class SecurityConfig {
                 // ── Lệnh sản xuất: tất cả xem, ADMIN/ADMIN_KH sửa ─────────
                 .requestMatchers(HttpMethod.GET, "/api/lenh-san-xuat/**").hasAnyRole(ALL_ROLES)
                 .requestMatchers("/api/lenh-san-xuat/**").hasAnyRole("ADMIN", "ADMIN_KH")
+
+                // ── Trích xuất ảnh + lưu tờ lệnh sản xuất ──────────────────
+                .requestMatchers(HttpMethod.POST, "/api/lsx/extract").hasAnyRole(ALL_ROLES)
+                .requestMatchers(HttpMethod.GET,  "/api/lsx/to-lenh").hasAnyRole(ALL_ROLES)
+                .requestMatchers(HttpMethod.POST, "/api/lsx/to-lenh").hasAnyRole(ALL_ROLES)
 
                 // ── Đơn hàng: tất cả xem, ADMIN/TKSX/ADMIN_KH sửa ───────────────
                 .requestMatchers(HttpMethod.GET, "/api/don-hang/**").hasAnyRole(ALL_ROLES)
@@ -126,6 +138,7 @@ public class SecurityConfig {
 
                 // ── Chấm công: tất cả xem, tất cả ADMIN + NHAN_VIEN ghi giờ ────
                 .requestMatchers(HttpMethod.GET, "/api/attendance/**").hasAnyRole(ALL_ROLES)
+                .requestMatchers(HttpMethod.POST, "/api/attendance/time-entries/import").hasAnyRole("ADMIN", "TKSX", "HCNS", "KE_TOAN")
                 .requestMatchers("/api/attendance/time-entries/**").hasAnyRole(ALL_ROLES)
 
                 // ── Người dùng tự quản lý hồ sơ của mình: tất cả vai trò ────

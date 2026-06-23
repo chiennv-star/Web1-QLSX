@@ -95,6 +95,39 @@ public class WorkScheduleSessionService {
     }
 
     @Transactional
+    public void patchSanLuong(Long id, java.math.BigDecimal sanLuong) {
+        WorkScheduleSession s = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy session ID: " + id));
+        s.setSanLuong(sanLuong);
+        repository.save(s);
+        if (!"KH_TO".equals(s.getLoaiSession())) {
+            recalculateGroupNs(s.getWorkScheduleId(), s.getNgay());
+            syncAggregates(s.getWorkScheduleId());
+        }
+    }
+
+    @Transactional
+    public void patchCa(Long id, String caSanXuat, String thoiGianBatDau, BigDecimal congThucHien) {
+        WorkScheduleSession s = getById(id);
+        if (caSanXuat != null) s.setCaSanXuat(caSanXuat);
+        if (thoiGianBatDau != null) s.setThoiGianBatDau(thoiGianBatDau);
+        if (congThucHien != null) s.setCongThucHien(congThucHien);
+        repository.save(s);
+        if (!"KH_TO".equals(s.getLoaiSession())) {
+            recalculateGroupNs(s.getWorkScheduleId(), s.getNgay());
+            syncAggregates(s.getWorkScheduleId());
+            recalculateEfficiency(s.getMaNhanVien());
+        }
+    }
+
+    @Transactional
+    public void patchGhiChu(Long id, String ghiChu) {
+        WorkScheduleSession s = getById(id);
+        s.setGhiChu(ghiChu);
+        repository.save(s);
+    }
+
+    @Transactional
     public void delete(Long id) {
         WorkScheduleSession existing = repository.findById(id).orElse(null);
         Long workScheduleId = existing != null ? existing.getWorkScheduleId() : null;

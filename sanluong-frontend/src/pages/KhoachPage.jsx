@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useLocation } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import {
   DatePicker, Button, Spin, message, Modal, Form, Alert,
@@ -497,7 +498,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
         </div>
       }
       width={740}
-      destroyOnClose
+      destroyOnHidden
       styles={{ body: { padding: 0 } }}
     >
       {/* Header */}
@@ -895,7 +896,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
       <Modal
         open={doiCoLoOpen} onCancel={() => setDoiCoLoOpen(false)}
         onOk={handleDoiCoLo} okText="Xác nhận đổi Cỡ Lô" cancelText="Hủy"
-        confirmLoading={doiCoLoLoading} destroyOnClose transitionName=""
+        confirmLoading={doiCoLoLoading} destroyOnHidden transitionName=""
         title={<Space><ScissorOutlined style={{ color: '#d46b08' }} /><span style={{ fontWeight: 700 }}>Đổi Cỡ Lô Kế Hoạch</span></Space>}
         width={460}
       >
@@ -3422,6 +3423,7 @@ function setTabInUrl(tabKey) {
 export default function KhoachPage() {
   const { isAdmin, isAdminKH, isStageAdmin } = useAuth()
   const canViewExtra = isAdmin() || isAdminKH() || isStageAdmin()
+  const location = useLocation()
 
   // Khởi tạo từ URL → auto-reload sẽ đọc lại đúng tab cũ
   const [activeTab, setActiveTab] = useState(getTabFromUrl)
@@ -3465,6 +3467,12 @@ export default function KhoachPage() {
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
+
+  // Đồng bộ khi React Router navigate() thay URL (sidebar click)
+  useEffect(() => {
+    const tabFromUrl = getTabFromUrl()
+    setActiveTab(prev => prev !== tabFromUrl ? tabFromUrl : prev)
+  }, [location.search])
 
   // Reset filterSlot khi rời khỏi tab khoach
   useEffect(() => {

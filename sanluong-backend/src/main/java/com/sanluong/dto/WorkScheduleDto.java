@@ -32,9 +32,12 @@ public class WorkScheduleDto {
     private BigDecimal congDg;
     private BigDecimal congCc;
     private Integer qaLayMau;
+    private boolean isPlanned = false;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+    public boolean isPlanned() { return isPlanned; }
+    public void setPlanned(boolean isPlanned) { this.isPlanned = isPlanned; }
     public String getSource() { return source; }
     public void setSource(String source) { this.source = source; }
     public String getCongDoan() { return congDoan; }

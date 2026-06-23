@@ -449,7 +449,7 @@ export default function EmployeePage() {
           )
         }
         width={560}
-        destroyOnClose
+        destroyOnHidden
       >
         {/* Bước 1: Hướng dẫn + tải mẫu */}
         {!importResult && (
@@ -596,7 +596,7 @@ export default function EmployeePage() {
         cancelText="Hủy"
         confirmLoading={saving}
         width={620}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Row gutter={16}>

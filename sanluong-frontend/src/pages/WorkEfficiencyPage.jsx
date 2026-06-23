@@ -1009,7 +1009,7 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
         ]}
         width="min(480px, 96vw)"
         centered
-        destroyOnClose
+        destroyOnHidden
         styles={{ body: { padding: '12px 16px' } }}
       >
         {selectedSession && (() => {
@@ -1110,7 +1110,7 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
         cancelText="Huỷ"
         confirmLoading={sessionSaving}
         width={480}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={sessionForm} layout="vertical" style={{ marginTop: 16 }}>
           <div style={{ display: 'flex', gap: 12 }}>
@@ -1283,7 +1283,7 @@ function EmployeeDetailDrawer({ open, employee, employees, fromDate, toDate, per
           </Space>
         }
         width={600}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={profileEditForm} layout="vertical" style={{ marginTop: 16 }}>
           {isAdmin && (
@@ -1676,7 +1676,7 @@ function EmployeeProfileCard({ authUser, toNhom, onSaved }) {
         cancelText="Huỷ"
         confirmLoading={unSaving}
         width={420}
-        destroyOnClose
+        destroyOnHidden
       >
         <div style={{ background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 8, padding: '8px 14px', marginBottom: 16, fontSize: 12, color: '#874d00' }}>
           ⚠️ Sau khi đổi tên đăng nhập, bạn sẽ được đăng xuất và cần đăng nhập lại bằng tên mới.
@@ -1714,7 +1714,7 @@ function EmployeeProfileCard({ authUser, toNhom, onSaved }) {
         cancelText="Huỷ"
         confirmLoading={pwSaving}
         width={420}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={pwForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
@@ -2574,7 +2574,7 @@ export default function WorkEfficiencyPage() {
         cancelText="Huỷ"
         confirmLoading={editSaving}
         width={400}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={editForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item label="Tổ / Nhóm" name="toNhom">

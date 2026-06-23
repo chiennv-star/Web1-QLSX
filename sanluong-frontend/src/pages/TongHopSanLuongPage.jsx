@@ -15,17 +15,18 @@ const fmtSL   = v => (v || 0).toLocaleString('vi-VN')
 const fmtCong = (v, d = 4) => (v || 0).toLocaleString('vi-VN', { minimumFractionDigits: d, maximumFractionDigits: d })
 
 const STAGES = [
-  { key: 'PCPL1', label: 'PCPL 1', slColor: '#389e0d', congColor: '#722ed1', bg: '#eff6ff', border: '#93c5fd', headerBg: '#006666', kpiBg: '#1d4ed8', kpiBorder: '#93c5fd' },
-  { key: 'PCPL2', label: 'PCPL 2', slColor: '#389e0d', congColor: '#722ed1', bg: '#e0f2fe', border: '#7dd3fc', headerBg: '#006666', kpiBg: '#0369a1', kpiBorder: '#7dd3fc' },
-  { key: 'PL',    label: 'PL',     slColor: '#389e0d', congColor: '#722ed1', bg: '#ecfeff', border: '#67e8f9', headerBg: '#006666', kpiBg: '#0e7490', kpiBorder: '#67e8f9' },
-  { key: 'DG',    label: 'ĐG',     slColor: '#389e0d', congColor: '#722ed1', bg: '#fffbeb', border: '#fde68a', headerBg: '#006666', kpiBg: '#b45309', kpiBorder: '#fde68a' },
-  { key: 'BBC1',  label: 'BBC1',   slColor: '#389e0d', congColor: '#722ed1', bg: '#f5f3ff', border: '#c4b5fd', headerBg: '#006666', kpiBg: '#6d28d9', kpiBorder: '#c4b5fd' },
-  { key: 'CC',    label: 'CC',     slColor: '#389e0d', congColor: '#722ed1', bg: '#fdf2f8', border: '#f9a8d4', headerBg: '#006666', kpiBg: '#be185d', kpiBorder: '#f9a8d4' },
+  { key: 'PCPL1', label: 'PCPL 1', toNhom: 'PCPL1', slColor: '#389e0d', congColor: '#722ed1', bg: '#eff6ff', border: '#93c5fd', headerBg: '#006666', kpiBg: '#1d4ed8', kpiBorder: '#93c5fd' },
+  { key: 'PCPL2', label: 'PCPL 2', toNhom: 'PCPL2', slColor: '#389e0d', congColor: '#722ed1', bg: '#e0f2fe', border: '#7dd3fc', headerBg: '#006666', kpiBg: '#0369a1', kpiBorder: '#7dd3fc' },
+  { key: 'PL',    label: 'PL',     toNhom: 'PCPL3', slColor: '#389e0d', congColor: '#722ed1', bg: '#ecfeff', border: '#67e8f9', headerBg: '#006666', kpiBg: '#0e7490', kpiBorder: '#67e8f9' },
+  { key: 'DG',    label: 'ĐG',     toNhom: 'ĐG',    slColor: '#389e0d', congColor: '#722ed1', bg: '#fffbeb', border: '#fde68a', headerBg: '#006666', kpiBg: '#b45309', kpiBorder: '#fde68a' },
+  { key: 'BBC1',  label: 'BBC1',   toNhom: 'BBC1',  slColor: '#389e0d', congColor: '#722ed1', bg: '#f5f3ff', border: '#c4b5fd', headerBg: '#006666', kpiBg: '#6d28d9', kpiBorder: '#c4b5fd' },
+  { key: 'CC',    label: 'CC',     toNhom: 'CC',    slColor: '#389e0d', congColor: '#722ed1', bg: '#fdf2f8', border: '#f9a8d4', headerBg: '#006666', kpiBg: '#be185d', kpiBorder: '#f9a8d4' },
 ]
 
 export default function TongHopSanLuongPage() {
   const [raw, setRaw]         = useState([])
   const [loading, setLoading] = useState(false)
+  const [empCounts, setEmpCounts] = useState({})
   const [dateRange, setDateRange] = useState(() => {
     try {
       const saved = localStorage.getItem('tonghop_dateRange')
@@ -58,10 +59,31 @@ export default function TongHopSanLuongPage() {
     }
   }, [dateRange])
 
-  useEffect(() => { fetchData() }, []) // eslint-disable-line
+  useEffect(() => {
+    fetchData()
+    fetchEmpCounts()
+  }, []) // eslint-disable-line
 
-  const fetchData = useCallback(async (range = dateRange) => {
-    setLoading(true)
+  useEffect(() => {
+    const handler = () => fetchData(undefined, { silent: true })
+    window.addEventListener('app:silent-refresh', handler)
+    return () => window.removeEventListener('app:silent-refresh', handler)
+  }, [fetchData])
+
+  const fetchEmpCounts = async () => {
+    try {
+      const [totalRes, ...groupRes] = await Promise.all([
+        api.get('/employees', { params: { page: 0, size: 1, excludeTinhTrang: 'tam_nghi' } }),
+        ...STAGES.map(s => api.get('/employees', { params: { page: 0, size: 1, toNhom: s.toNhom, excludeTinhTrang: 'tam_nghi' } })),
+      ])
+      const counts = { TOTAL: totalRes.data.totalElements }
+      STAGES.forEach((s, i) => { counts[s.key] = groupRes[i].data.totalElements })
+      setEmpCounts(counts)
+    } catch { /* non-blocking */ }
+  }
+
+  const fetchData = useCallback(async (range = dateRange, { silent = false } = {}) => {
+    if (!silent) setLoading(true)
     try {
       const params = {}
       if (range?.[0]) params.fromDate = range[0].format('YYYY-MM-DD')
@@ -69,9 +91,9 @@ export default function TongHopSanLuongPage() {
       const { data: res } = await api.get('/work-schedule-session/daily-report', { params })
       setRaw(res)
     } catch {
-      message.error('Không thể tải dữ liệu tổng hợp')
+      if (!silent) message.error('Không thể tải dữ liệu tổng hợp')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [dateRange])
 
@@ -137,7 +159,16 @@ export default function TongHopSanLuongPage() {
       defaultSortOrder: 'descend',
     },
     ...STAGES.map(s => ({
-      title: <span style={{ fontWeight: 800, letterSpacing: 1.5, fontSize: 12 }}>{s.label}</span>,
+      title: (
+        <span style={{ fontWeight: 800, letterSpacing: 1.5, fontSize: 12 }}>
+          {s.label}
+          {empCounts[s.key] != null && (
+            <span style={{ fontWeight: 500, fontSize: 11, opacity: 0.85, marginLeft: 4 }}>
+              ({empCounts[s.key]})
+            </span>
+          )}
+        </span>
+      ),
       key: s.key,
       align: 'center',
       onHeaderCell: () => ({ style: { background: s.headerBg, color: '#fff', textAlign: 'center', borderLeft: '2px solid rgba(255,255,255,0.2)' } }),
@@ -244,7 +275,14 @@ export default function TongHopSanLuongPage() {
           <Button size="small" icon={<ReloadOutlined />} onClick={handleReset} />
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>
-              <strong style={{ color: '#1e293b' }}>{pivotData.length}</strong> ngày &nbsp;·&nbsp;
+              <strong style={{ color: '#1e293b' }}>{pivotData.length}</strong> ngày
+              {empCounts.TOTAL != null && (
+                <>&nbsp;·&nbsp;
+                  <TeamOutlined style={{ color: '#0369a1', marginRight: 3 }} />
+                  Nhân sự: <strong style={{ color: '#0369a1' }}>{empCounts.TOTAL}</strong>
+                </>
+              )}
+              &nbsp;·&nbsp;
               SL: <strong style={{ color: '#1D4ED8', fontSize: 14 }}>{fmtSL(grandSL)}</strong>
               &nbsp;&nbsp;
               Công: <strong style={{ color: '#1D4ED8', fontSize: 14 }}>{fmtCong(grandCong, 2)}</strong>

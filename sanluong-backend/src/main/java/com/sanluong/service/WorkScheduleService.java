@@ -94,7 +94,7 @@ public class WorkScheduleService {
     public Page<WorkSchedule> search(LocalDate fromDate, LocalDate toDate,
                                       String maSp, String tenTrinh, String soLo, String maBravo,
                                       String maDonHang, String tinhTrang, String congDoan, String source,
-                                      String toNhom, int page, int size) {
+                                      String toNhom, Boolean isPlanned, int page, int size) {
         List<WorkSchedule> all = repository.searchAll(fromDate, toDate,
                 isEmpty(maSp) ? null : maSp,
                 isEmpty(tenTrinh) ? null : tenTrinh,
@@ -104,7 +104,8 @@ public class WorkScheduleService {
                 isEmpty(tinhTrang) ? null : tinhTrang,
                 isEmpty(congDoan) ? null : congDoan,
                 isEmpty(source) ? null : source,
-                isEmpty(toNhom) ? null : toNhom);
+                isEmpty(toNhom) ? null : toNhom,
+                isPlanned);
         all.sort(Comparator
                 .comparingInt((WorkSchedule w) -> soLoSortKey(w.getSoLo())).reversed()
                 .thenComparing(Comparator.comparing(
@@ -405,7 +406,7 @@ public class WorkScheduleService {
 
     public WorkSchedule create(WorkScheduleDto dto, String username) {
         // Kế hoạch PLAN: nếu trùng key (ngày + tổ + maSp + maDonHang + soLo) → cộng dồn coLo
-        if ("PLAN".equals(dto.getSource())) {
+        if ("PLAN".equals(dto.getSource()) || dto.isPlanned()) {
             List<WorkSchedule> existing = repository.findPlanByKey(
                     dto.getNgayThucHien(),
                     dto.getToNhom(),
@@ -437,7 +438,7 @@ public class WorkScheduleService {
         w.setUpdatedBy(username);
         autoApplyDone(w);
         WorkSchedule saved = repository.save(w);
-        if ("PLAN".equals(saved.getSource())) {
+        if ("PLAN".equals(saved.getSource()) || saved.isPlanned()) {
             notificationService.createKeHoachNotification("NEW", saved.getId(),
                     saved.getMaSp(), resolveTenTrinh(saved.getMaSp(), saved.getTenTrinh()), saved.getSoLo(), saved.getCoLo(),
                     saved.getNgayThucHien(), saved.getToNhom(), saved.getCongDoan(), username);
@@ -459,7 +460,7 @@ public class WorkScheduleService {
         w.setUpdatedBy(username);
         autoApplyDone(w);
         WorkSchedule saved = repository.save(w);
-        if ("PLAN".equals(saved.getSource())) {
+        if ("PLAN".equals(saved.getSource()) || saved.isPlanned()) {
             boolean dateChanged = !Objects.equals(oldNgay, saved.getNgayThucHien());
             boolean nhomChanged = !Objects.equals(oldToNhom, saved.getToNhom());
             String action = (dateChanged || nhomChanged) ? "MOVE" : "UPDATE";
@@ -561,6 +562,14 @@ public class WorkScheduleService {
         autoApplyDone(w);
         WorkSchedule saved = repository.save(w);
         syncToProduction(saved);
+        eventPublisher.publishKhoachUpdated();
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void patchNgayThucHien(Long id, java.time.LocalDate ngay) {
+        WorkSchedule w = getById(id);
+        w.setNgayThucHien(ngay);
+        repository.save(w);
         eventPublisher.publishKhoachUpdated();
     }
 
@@ -697,6 +706,7 @@ public class WorkScheduleService {
 
     private void applyDto(WorkSchedule w, WorkScheduleDto dto) {
         w.setSource(dto.getSource());
+        w.setPlanned(dto.isPlanned());
         w.setCongDoan(dto.getCongDoan());
         w.setNgayThucHien(dto.getNgayThucHien());
         w.setMaBravo(dto.getMaBravo());
@@ -746,7 +756,7 @@ public class WorkScheduleService {
         List<WorkSchedule> allWs = repository.searchAll(
                 fromDate, toDate,
                 isEmpty(maSp) ? null : maSp,
-                null, null, null, null, null, null, "SCHEDULE", null);
+                null, null, null, null, null, null, "SCHEDULE", null, null);
         if (allWs.isEmpty()) return List.of();
 
         List<Long> wsIds = allWs.stream().map(WorkSchedule::getId).collect(Collectors.toList());
@@ -841,7 +851,7 @@ public class WorkScheduleService {
                 null,
                 isEmpty(w.getSoLo())    ? null : w.getSoLo(),
                 isEmpty(w.getMaBravo()) ? null : w.getMaBravo(),
-                null, null, siblingCongDoan, "SCHEDULE", null)
+                null, null, siblingCongDoan, "SCHEDULE", null, null)
             .stream()
             .filter(sib -> w.getMaDonHang() == null || Objects.equals(sib.getMaDonHang(), w.getMaDonHang()))
             .forEach(sib -> {

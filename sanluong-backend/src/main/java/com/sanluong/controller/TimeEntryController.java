@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/attendance/time-entries")
@@ -53,5 +54,32 @@ public class TimeEntryController {
         if (!repo.existsById(id)) return ResponseEntity.notFound().build();
         repo.deleteById(id);
         return ResponseEntity.ok(Map.of("deleted", id));
+    }
+
+    /** Bulk upsert — upsert theo (maNhanVien + ngay). Trả về số bản ghi tạo mới và cập nhật. */
+    @PostMapping("/import")
+    public ResponseEntity<Map<String, Object>> importEntries(@RequestBody List<TimeEntry> entries) {
+        int created = 0, updated = 0;
+        for (TimeEntry e : entries) {
+            if (e.getMaNhanVien() == null || e.getNgay() == null) continue;
+            var existing = repo.findByMaNhanVienAndNgay(e.getMaNhanVien(), e.getNgay());
+            if (existing.isPresent()) {
+                TimeEntry upd = existing.get();
+                upd.setGioVao(e.getGioVao());
+                upd.setGioRa(e.getGioRa());
+                upd.setCaThucHien(e.getCaThucHien());
+                upd.setGhiChu(e.getGhiChu());
+                repo.save(upd);
+                updated++;
+            } else {
+                e.setId(null);
+                repo.save(e);
+                created++;
+            }
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("created", created);
+        result.put("updated", updated);
+        return ResponseEntity.ok(result);
     }
 }

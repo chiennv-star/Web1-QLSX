@@ -33,12 +33,13 @@ public class WorkScheduleSessionController {
     }
 
     // ── Roles được phép ghi theo từng công đoạn (mirror WorkScheduleController) ──
-    private void checkStageWritePermission(Authentication auth, String congDoan, String source) {
+    private void checkStageWritePermission(Authentication auth, String congDoan, String source, boolean isPlanned) {
         for (var a : auth.getAuthorities()) {
             String role = a.getAuthority();
             if ("ROLE_ADMIN".equals(role)) return;
-            if ("PLAN".equals(source) && role.startsWith("ROLE_ADMIN_")) return;
-            if ("ROLE_ADMIN_KH".equals(role) && "PLAN".equals(source)) return;
+            if ("ROLE_ADMIN_KH".equals(role)) return;
+            if ("ROLE_TKSX".equals(role)) return;
+            if (("PLAN".equals(source) || isPlanned) && role.startsWith("ROLE_ADMIN_")) return;
             if ("ROLE_NHAN_VIEN".equals(role) && !"CC".equals(congDoan)) return;
             if ("ROLE_NHAN_VIEN_PCPL1".equals(role) && "PCPL1".equals(congDoan)) return;
             if ("ROLE_NHAN_VIEN_PCPL2".equals(role) && "PCPL2".equals(congDoan)) return;
@@ -70,7 +71,7 @@ public class WorkScheduleSessionController {
     public ResponseEntity<WorkScheduleSession> create(@RequestBody WorkScheduleSessionDto dto,
                                                        Authentication auth) {
         WorkSchedule schedule = resolveSchedule(dto.getWorkScheduleId());
-        checkStageWritePermission(auth, schedule.getCongDoan(), schedule.getSource());
+        checkStageWritePermission(auth, schedule.getCongDoan(), schedule.getSource(), schedule.isPlanned());
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(dto));
     }
 
@@ -80,15 +81,64 @@ public class WorkScheduleSessionController {
                                                        Authentication auth) {
         WorkScheduleSession existing = service.getById(id);
         WorkSchedule schedule = resolveSchedule(existing.getWorkScheduleId());
-        checkStageWritePermission(auth, schedule.getCongDoan(), schedule.getSource());
+        checkStageWritePermission(auth, schedule.getCongDoan(), schedule.getSource(), schedule.isPlanned());
         return ResponseEntity.ok(service.update(id, dto));
+    }
+
+    @PatchMapping("/{id}/san-luong")
+    public ResponseEntity<Void> patchSanLuong(@PathVariable Long id,
+                                               @RequestBody Map<String, Object> body,
+                                               Authentication auth) {
+        WorkScheduleSession existing = service.getById(id);
+        WorkSchedule schedule = resolveSchedule(existing.getWorkScheduleId());
+        checkStageWritePermission(auth, schedule.getCongDoan(), schedule.getSource(), schedule.isPlanned());
+        Object raw = body.get("sanLuong");
+        java.math.BigDecimal value = null;
+        if (raw != null && !raw.toString().trim().isEmpty()) {
+            try { value = new java.math.BigDecimal(raw.toString().trim()); }
+            catch (NumberFormatException e) { return ResponseEntity.badRequest().build(); }
+        }
+        service.patchSanLuong(id, value);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/ca")
+    public ResponseEntity<Void> patchCa(@PathVariable Long id,
+                                         @RequestBody Map<String, Object> body,
+                                         Authentication auth) {
+        WorkScheduleSession existing = service.getById(id);
+        WorkSchedule schedule = resolveSchedule(existing.getWorkScheduleId());
+        checkStageWritePermission(auth, schedule.getCongDoan(), schedule.getSource(), schedule.isPlanned());
+        Object caRaw = body.get("caSanXuat");
+        String caSanXuat = caRaw != null ? caRaw.toString() : null;
+        Object tgRaw = body.get("thoiGianBatDau");
+        Object ctRaw = body.get("congThucHien");
+        java.math.BigDecimal ct = null;
+        if (ctRaw != null && !ctRaw.toString().trim().isEmpty()) {
+            try { ct = new java.math.BigDecimal(ctRaw.toString().trim()); }
+            catch (NumberFormatException e) { return ResponseEntity.badRequest().build(); }
+        }
+        service.patchCa(id, caSanXuat, tgRaw != null ? tgRaw.toString() : null, ct);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/ghi-chu")
+    public ResponseEntity<Void> patchGhiChu(@PathVariable Long id,
+                                              @RequestBody Map<String, Object> body,
+                                              Authentication auth) {
+        WorkScheduleSession existing = service.getById(id);
+        WorkSchedule schedule = resolveSchedule(existing.getWorkScheduleId());
+        checkStageWritePermission(auth, schedule.getCongDoan(), schedule.getSource(), schedule.isPlanned());
+        String ghiChu = body.get("ghiChu") != null ? body.get("ghiChu").toString() : null;
+        service.patchGhiChu(id, ghiChu);
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id, Authentication auth) {
         WorkScheduleSession existing = service.getById(id);
         WorkSchedule schedule = resolveSchedule(existing.getWorkScheduleId());
-        checkStageWritePermission(auth, schedule.getCongDoan(), schedule.getSource());
+        checkStageWritePermission(auth, schedule.getCongDoan(), schedule.getSource(), schedule.isPlanned());
         service.delete(id);
         return ResponseEntity.noContent().build();
     }

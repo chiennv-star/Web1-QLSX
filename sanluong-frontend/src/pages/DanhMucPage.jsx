@@ -135,7 +135,7 @@ function UserTab() {
       <Modal open={modalOpen} onOk={onSave} onCancel={() => setModalOpen(false)}
         okText="Lưu" cancelText="Hủy" width={520}
         title={<Space><SafetyOutlined style={{ color: '#1D4ED8' }} /><span>{editUser ? 'Sửa tài khoản' : 'Thêm tài khoản'}</span></Space>}
-        destroyOnClose>
+        destroyOnHidden>
         <Form form={form} layout="vertical" style={{ marginTop: 12 }}>
           <Form.Item label="Tên đăng nhập" name="username" rules={[{ required: true }]}>
             <Input disabled={!!editUser} style={{ fontFamily: 'monospace' }} />
@@ -288,7 +288,7 @@ function ImportProductMasterModal({ open, onClose, onDone }) {
           {step === 'result'  && <Tag color="green"  style={{ marginLeft: 4 }}>Hoàn thành</Tag>}
         </Space>
       }
-      destroyOnClose afterClose={reset}
+      destroyOnHidden afterClose={reset}
     >
 
       {/* ── Bước 1: Upload ── */}
@@ -555,7 +555,7 @@ function UpdateNsModal({ open, onClose, onDone }) {
           {step === 'result'  && <Tag color="green"  style={{ marginLeft: 4 }}>Hoàn thành</Tag>}
         </Space>
       }
-      destroyOnClose afterClose={reset}
+      destroyOnHidden afterClose={reset}
     >
       {/* ── Bước 1: Upload ── */}
       {step === 'upload' && (
@@ -786,7 +786,7 @@ function UpdateLoaiSpModal({ open, onClose, onDone }) {
           {step === 'result'  && <Tag color="green" style={{ marginLeft: 4 }}>Hoàn thành</Tag>}
         </Space>
       }
-      destroyOnClose afterClose={reset}
+      destroyOnHidden afterClose={reset}
     >
       {step === 'upload' && (
         <>
@@ -1403,7 +1403,7 @@ function ProductMasterTab() {
       <Modal open={modalOpen} onOk={onSave} onCancel={() => setModalOpen(false)}
         okText="Lưu" cancelText="Hủy" width={680}
         title={<Space><AppstoreOutlined style={{ color: '#1D4ED8' }} /><span>{editItem ? 'Sửa Mã TP' : 'Thêm Mã TP'}</span></Space>}
-        destroyOnClose>
+        destroyOnHidden>
         <Form form={form} layout="vertical" style={{ marginTop: 12 }}>
           <Row gutter={12}>
             <Col span={8}>
@@ -1863,7 +1863,7 @@ function ProductMasterSongAnTab() {
       {/* Import Modal */}
       <Modal open={importOpen} onCancel={() => setImportOpen(false)} footer={null} width={540}
         title={<Space><FileExcelOutlined style={{ color: '#217346' }} /><span>Import Mã TP Song An từ Excel</span></Space>}
-        destroyOnClose>
+        destroyOnHidden>
         <SongAnImportContent onDone={() => { fetchData(0); setImportOpen(false) }} onClose={() => setImportOpen(false)} />
       </Modal>
     </>
@@ -2479,7 +2479,7 @@ function EmployeeTab() {
         okText="Lưu" cancelText="Hủy" width={640} confirmLoading={saving}
         title={<Space><TeamOutlined style={{ color: '#1D4ED8' }} /><span>{editing ? 'Sửa nhân sự' : `Thêm nhân sự${activeGroup !== 'ALL' ? ` — ${activeGroup}` : ''}`}</span></Space>}
         okButtonProps={{ disabled: !canManage }}
-        destroyOnClose>
+        destroyOnHidden>
         <Form form={form} layout="vertical" style={{ marginTop: 12 }}>
           <Row gutter={12}>
             <Col span={8}>

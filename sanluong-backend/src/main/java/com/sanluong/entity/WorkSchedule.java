@@ -119,6 +119,9 @@ public class WorkSchedule {
     @Column(name = "ma_bravo", length = 50)
     private String maBravo;
 
+    @Column(name = "is_planned", nullable = false)
+    private boolean isPlanned = false;
+
     /** Transient — true nếu tồn tại ProductionRecord có lsx = soLo */
     @Transient
     private boolean hasLsx = false;
@@ -197,6 +200,8 @@ public class WorkSchedule {
     public void setQaLayMau(Integer qaLayMau) { this.qaLayMau = qaLayMau; }
     public String getMaBravo() { return maBravo; }
     public void setMaBravo(String maBravo) { this.maBravo = maBravo; }
+    public boolean isPlanned() { return isPlanned; }
+    public void setPlanned(boolean isPlanned) { this.isPlanned = isPlanned; }
     public boolean isHasLsx() { return hasLsx; }
     public void setHasLsx(boolean hasLsx) { this.hasLsx = hasLsx; }
     public boolean isHidden() { return hidden; }

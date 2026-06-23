@@ -1,13 +1,16 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import {
   Table, Button, message, DatePicker, Select,
-  Tabs, Tag, Tooltip, Drawer, Modal, Form, TimePicker, Input, Popconfirm
+  Tabs, Tag, Tooltip, Drawer, Modal, Form, TimePicker, Input, Popconfirm,
+  Upload, Alert, Progress
 } from 'antd'
 import {
   SearchOutlined, ReloadOutlined, FileDoneOutlined,
   TeamOutlined, ClockCircleOutlined, ApartmentOutlined, LoginOutlined,
-  EditOutlined, PlusOutlined, DeleteOutlined
+  EditOutlined, PlusOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined,
+  CheckCircleOutlined, WarningOutlined
 } from '@ant-design/icons'
+import * as XLSX from 'xlsx'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
 import api from '../api/axios'
@@ -29,6 +32,84 @@ const calcCong = r => {
   if (soGio <= 0) return 0
   return r.caThucHien === 'HC' ? soGio / 8 : soGio <= 7 ? soGio / 7 : 1 + (soGio - 7) / 8
 }
+
+// ── Import Excel helpers ──────────────────────────────────────────────────────
+
+const CA_VALUES = ['HC', 'TC', 'OT', 'Ca 1', 'Ca 2']
+
+function normalizeTime(raw) {
+  if (!raw) return null
+  const s = String(raw).trim()
+  // Excel có thể serialize time thành số thập phân (fraction of day)
+  if (!isNaN(s) && s !== '') {
+    const frac = parseFloat(s)
+    const totalMin = Math.round(frac * 24 * 60)
+    const h = Math.floor(totalMin / 60) % 24
+    const m = totalMin % 60
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`
+  }
+  // HH:mm hoặc HH:mm:ss
+  const match = s.match(/^(\d{1,2}):(\d{2})/)
+  if (match) return `${String(parseInt(match[1])).padStart(2, '0')}:${match[2]}:00`
+  return null
+}
+
+function normalizeDate(raw) {
+  if (!raw) return null
+  const s = String(raw).trim()
+  // Excel serial date (number)
+  if (!isNaN(s) && s !== '' && !s.includes('/') && !s.includes('-')) {
+    const d = XLSX.SSF.parse_date_code(parseFloat(s))
+    if (d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`
+    return null
+  }
+  // DD/MM/YYYY
+  const m1 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (m1) return `${m1[3]}-${String(m1[2]).padStart(2,'0')}-${String(m1[1]).padStart(2,'0')}`
+  // YYYY-MM-DD
+  const m2 = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (m2) return s
+  return null
+}
+
+function parseImportRows(rawRows) {
+  // Bỏ header row đầu tiên
+  const dataRows = rawRows.slice(1).filter(r => r && r.length >= 2 && String(r[0] || '').trim())
+  return dataRows.map((r, i) => {
+    const maNhanVien = String(r[0] || '').trim()
+    const ngay       = normalizeDate(r[1])
+    const caThucHien = String(r[2] || '').trim() || null
+    const gioVao     = normalizeTime(r[3])
+    const gioRa      = normalizeTime(r[4])
+    const ghiChu     = String(r[5] || '').trim() || null
+
+    const errors = []
+    if (!maNhanVien)                             errors.push('Thiếu Mã NV')
+    if (!ngay)                                   errors.push('Ngày không hợp lệ')
+    if (caThucHien && !CA_VALUES.includes(caThucHien))
+                                                 errors.push(`Ca "${caThucHien}" không hợp lệ`)
+
+    return { _row: i + 2, maNhanVien, ngay, caThucHien, gioVao, gioRa, ghiChu, _errors: errors }
+  })
+}
+
+function downloadImportTemplate() {
+  const wb  = XLSX.utils.book_new()
+  const aoa = [
+    ['Mã NV', 'Ngày (DD/MM/YYYY)', 'Ca', 'Giờ Vào (HH:mm)', 'Giờ Ra (HH:mm)', 'Ghi Chú'],
+    ['NV001', '01/06/2026', 'HC',   '07:30', '17:00', 'Hành Chính'],
+    ['NV002', '01/06/2026', 'Ca 1', '07:00', '14:30', ''],
+    ['NV003', '01/06/2026', 'TC',   '15:00', '22:00', 'Tăng ca'],
+    ['NV004', '02/06/2026', 'OT',   '18:00', '22:00', 'Overtime'],
+  ]
+  const ws = XLSX.utils.aoa_to_sheet(aoa)
+  // Đặt độ rộng cột
+  ws['!cols'] = [{ wch: 12 }, { wch: 18 }, { wch: 8 }, { wch: 16 }, { wch: 16 }, { wch: 20 }]
+  XLSX.utils.book_append_sheet(wb, ws, 'ChamCong')
+  XLSX.writeFile(wb, 'mau-import-cham-cong.xlsx')
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const PERIOD_OPTS = [
   { key: 'week',   label: 'Tuần này' },
@@ -142,9 +223,9 @@ const TcCell = React.memo(function TcCell({ di, v, m, isWknd, isEven, brush, onC
   )
 }, (p, n) => p.v === n.v && p.m === n.m && p.brush === n.brush && p.isWknd === n.isWknd && p.isEven === n.isEven)
 
-const TcRow = React.memo(function TcRow({ emp, stt, dateList, brush, onUpdate, isEven, hidden }) {
+const TcRow = React.memo(function TcRow({ emp, stt, dateList, brush, onUpdate, isEven, hidden, initialCells }) {
   const [cells, setCells] = React.useState(() =>
-    Object.fromEntries(dateList.map((_, di) => [di, { v: null, m: '.' }]))
+    Object.fromEntries(dateList.map((_, di) => [di, (initialCells && initialCells[di]) || { v: null, m: '.' }]))
   )
   const cellsRef = React.useRef(cells)
   cellsRef.current = cells
@@ -179,8 +260,8 @@ const TcRow = React.memo(function TcRow({ emp, stt, dateList, brush, onUpdate, i
 })
 
 function TangCaTab({ empRows, offsetHeader }) {
-  const [tcPeriod, setTcPeriod]       = React.useState('week')
-  const [tcDateRange, setTcDateRange] = React.useState(getWeekRange())
+  const [tcPeriod, setTcPeriod]       = React.useState('month')
+  const [tcDateRange, setTcDateRange] = React.useState(getMonthRange())
   const tcDateList = React.useMemo(() => buildDateList(tcDateRange[0], tcDateRange[1]), [tcDateRange])
 
   const [brush, setBrush]       = React.useState('0')
@@ -188,6 +269,75 @@ function TangCaTab({ empRows, offsetHeader }) {
   const [posFilter, setPosFilter] = React.useState('all')
   const [stats, setStats]       = React.useState({ ot: 0, days: 0, over40: 0 })
   const [footerDay, setFooterDay] = React.useState([])
+
+  const [importedCells, setImportedCells] = React.useState({})
+  const [importKey, setImportKey]         = React.useState(0)
+
+  const downloadTcTemplate = () => {
+    const wb = XLSX.utils.book_new()
+    const dayHeaders = tcDateList.map(d => dayjs(d).format('DD/MM'))
+    const header = ['STT', 'Mã NV', 'Họ và tên', 'Vị trí', ...dayHeaders]
+    const dataRows = empRows.map((emp, idx) => [
+      idx + 1, emp.maNhanVien, emp.hoVaTen, emp.toNhom || '',
+      ...tcDateList.map(() => ''),
+    ])
+    const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows])
+    ws['!cols'] = [{ wch: 5 }, { wch: 12 }, { wch: 22 }, { wch: 10 }, ...tcDateList.map(() => ({ wch: 6 }))]
+    // Đóng băng 4 cột đầu để dễ fill data
+    ws['!freeze'] = { xSplit: 4, ySplit: 1 }
+    XLSX.utils.book_append_sheet(wb, ws, 'TangCa')
+    XLSX.writeFile(wb, `mau-tang-ca-${tcDateRange[0].format('DD-MM')}_${tcDateRange[1].format('DD-MM-YYYY')}.xlsx`)
+  }
+
+  const parseTcCell = (raw) => {
+    if (raw == null || raw === '') return { v: null, m: '.' }
+    const s = String(raw).trim().toUpperCase()
+    if (['N','X','C','H','D','B'].includes(s)) return { v: null, m: s }
+    const n = parseFloat(s.replace(',', '.'))
+    if (!isNaN(n) && n >= 0) return { v: n > 0 ? n : null, m: '.' }
+    return { v: null, m: '.' }
+  }
+
+  const handleTcImportFile = (file) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const wb  = XLSX.read(e.target.result, { type: 'array' })
+        const ws  = wb.Sheets[wb.SheetNames[0]]
+        const raw = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' })
+        if (raw.length < 2) { message.warning('File không có dữ liệu'); return }
+
+        const headerRow = raw[0].map(h => String(h || '').trim())
+        // Map cột Excel → index trong tcDateList theo nhãn DD/MM
+        const colToDateIdx = {}
+        tcDateList.forEach((date, di) => {
+          const label = dayjs(date).format('DD/MM')
+          const ci = headerRow.indexOf(label)
+          if (ci !== -1) colToDateIdx[ci] = di
+        })
+
+        const result = {}
+        for (let ri = 1; ri < raw.length; ri++) {
+          const row = raw[ri]
+          const maNV = String(row[1] || '').trim()
+          if (!maNV) continue
+          const cells = {}
+          Object.entries(colToDateIdx).forEach(([ci, di]) => {
+            cells[di] = parseTcCell(row[ci])
+          })
+          result[maNV] = cells
+        }
+
+        setImportedCells(result)
+        setImportKey(k => k + 1)
+        message.success(`Đã load dữ liệu cho ${Object.keys(result).length} nhân viên — kiểm tra bảng bên dưới`)
+      } catch {
+        message.error('Không thể đọc file Excel')
+      }
+    }
+    reader.readAsArrayBuffer(file)
+    return false
+  }
 
   // Floating panel state
   const [floating, setFloating]   = React.useState(false)
@@ -368,6 +518,10 @@ function TangCaTab({ empRows, offsetHeader }) {
                 allowClear
                 style={{ width: 165 }}
               />
+              <Button size="small" icon={<DownloadOutlined />} onClick={downloadTcTemplate}>File mẫu</Button>
+              <Upload showUploadList={false} beforeUpload={handleTcImportFile} accept=".xlsx,.xls">
+                <Button size="small" icon={<UploadOutlined />} style={{ background: '#059669', borderColor: '#059669', color: '#fff' }}>Import Excel</Button>
+              </Upload>
               <Button size="small" onClick={handleCSV}>Xuất CSV</Button>
               <button
                 onClick={() => setFloating(f => !f)}
@@ -483,9 +637,10 @@ function TangCaTab({ empRows, offsetHeader }) {
               const hidden      = !matchSearch || !matchPos
               return (
                 <TcRow
-                  key={emp.maNhanVien + '_' + (tcDateList[0] || '') + '_' + tcDateList.length}
+                  key={emp.maNhanVien + '_' + (tcDateList[0] || '') + '_' + tcDateList.length + '_' + importKey}
                   emp={emp} stt={idx + 1} dateList={tcDateList}
                   brush={brush} onUpdate={onRowUpdate} isEven={idx % 2 === 1} hidden={hidden}
+                  initialCells={importedCells[emp.maNhanVien]}
                 />
               )
             })}
@@ -593,10 +748,10 @@ export default function ChamCongPage() {
   const allowedGroups = getAllowedEmployeeGroups()
   const lockedDept = allowedGroups?.length === 1 ? allowedGroups[0] : null
 
-  const [period, setPeriod]       = useState('week')
-  const [dateRange, setDateRange] = useState(getWeekRange())
+  const [period, setPeriod]       = useState('month')
+  const [dateRange, setDateRange] = useState(getMonthRange())
   const [deptFilter, setDeptFilter] = useState(lockedDept)
-  const [activeTab, setActiveTab] = useState('nhanvien')
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('chamcong_tab') || 'nhanvien')
 
   const [empRows, setEmpRows]   = useState([])
   const [deptRows, setDeptRows] = useState([])
@@ -667,6 +822,7 @@ export default function ChamCongPage() {
 
   const handleTabChange = (key) => {
     setActiveTab(key)
+    localStorage.setItem('chamcong_tab', key)
     if (key === 'congravao') fetchTimeEntries()
   }
 
@@ -677,8 +833,8 @@ export default function ChamCongPage() {
   }
 
   const handleReset = () => {
-    const r = getWeekRange()
-    setPeriod('week'); setDateRange(r); setDeptFilter(lockedDept)
+    const r = getMonthRange()
+    setPeriod('month'); setDateRange(r); setDeptFilter(lockedDept)
     fetchData(r, lockedDept)
   }
 
@@ -983,6 +1139,12 @@ export default function ChamCongPage() {
   const [editForm]                          = Form.useForm()
   const [editSaving, setEditSaving]         = useState(false)
 
+  // ── Import Excel state ─────────────────────────────────────────────
+  const [importModal, setImportModal]       = useState(false)
+  const [importRows, setImportRows]         = useState([])   // parsed preview rows
+  const [importLoading, setImportLoading]   = useState(false)
+  const [importResult, setImportResult]     = useState(null) // { created, updated }
+
   const fetchDetailEntries = useCallback(async (maNhanVien, month) => {
     if (!maNhanVien) return
     setTimeDetailLoading(true)
@@ -1054,6 +1216,49 @@ export default function ChamCongPage() {
     }
   }
 
+  // ── Import Excel handlers ──────────────────────────────────────────
+  const handleImportFile = (file) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const wb   = XLSX.read(e.target.result, { type: 'array', cellDates: false })
+        const ws   = wb.Sheets[wb.SheetNames[0]]
+        const raw  = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' })
+        const rows = parseImportRows(raw)
+        setImportRows(rows)
+        setImportResult(null)
+      } catch {
+        message.error('Không thể đọc file Excel. Vui lòng dùng file .xlsx đúng định dạng.')
+      }
+    }
+    reader.readAsArrayBuffer(file)
+    return false // ngăn Upload tự upload lên server
+  }
+
+  const handleImportSubmit = async () => {
+    const validRows = importRows.filter(r => r._errors.length === 0)
+    if (!validRows.length) { message.warning('Không có dòng hợp lệ để import'); return }
+    setImportLoading(true)
+    try {
+      const payload = validRows.map(r => ({
+        maNhanVien:  r.maNhanVien,
+        ngay:        r.ngay,
+        caThucHien:  r.caThucHien,
+        gioVao:      r.gioVao,
+        gioRa:       r.gioRa,
+        ghiChu:      r.ghiChu,
+      }))
+      const res = await api.post('/attendance/time-entries/import', payload)
+      setImportResult(res.data)
+      message.success(`Import thành công: ${res.data.created} tạo mới, ${res.data.updated} cập nhật`)
+      fetchTimeEntries()
+    } catch {
+      message.error('Import thất bại — kiểm tra lại mã nhân viên trong file')
+    } finally {
+      setImportLoading(false)
+    }
+  }
+
   const offsetHeader = stickyH + tabBarH
   const PILL_H = 48
 
@@ -1114,6 +1319,22 @@ export default function ChamCongPage() {
       children: (
         <div>
           <div style={{ position: 'sticky', top: offsetHeader, zIndex: 8, background: '#fff' }}>
+            {/* Toolbar row: nút File mẫu + Import Excel */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, padding: '5px 16px', borderBottom: '1px solid #F1F5F9' }}>
+              <Button size="small" icon={<DownloadOutlined />} onClick={downloadImportTemplate}>
+                File mẫu
+              </Button>
+              {canEdit && (
+                <Button
+                  size="small" type="primary" icon={<UploadOutlined />}
+                  onClick={() => { setImportModal(true); setImportRows([]); setImportResult(null) }}
+                  style={{ background: '#059669', borderColor: '#059669' }}
+                >
+                  Import Excel
+                </Button>
+              )}
+            </div>
+            {/* Dept pills */}
             <DeptPills value={activeDeptTime} onChange={setActiveDeptTime} counts={timeDeptCounts} />
           </div>
           <Table
@@ -1251,7 +1472,7 @@ export default function ChamCongPage() {
             </div>
           )
         }
-        destroyOnClose
+        destroyOnHidden
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
           <Button size="small" onClick={() => { const m = timeDetailMonth.subtract(1,'month'); setTimeDetailMonth(m); if (timeDetailEmp) fetchDetailEntries(timeDetailEmp.maNhanVien, m) }}>‹ Tháng trước</Button>
@@ -1360,6 +1581,144 @@ export default function ChamCongPage() {
         })()}
       </Drawer>
 
+      {/* ── Modal Import Excel ── */}
+      <Modal
+        open={importModal}
+        onCancel={() => setImportModal(false)}
+        width={900}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <UploadOutlined style={{ color: '#059669' }} />
+            <span style={{ fontWeight: 700 }}>Import chấm công từ Excel</span>
+          </div>
+        }
+        footer={[
+          <Button key="template" icon={<DownloadOutlined />} onClick={downloadImportTemplate}>
+            Tải file mẫu
+          </Button>,
+          <Button key="cancel" onClick={() => setImportModal(false)}>Đóng</Button>,
+          <Button
+            key="import"
+            type="primary"
+            loading={importLoading}
+            disabled={!importRows.length || importRows.every(r => r._errors.length > 0)}
+            onClick={handleImportSubmit}
+            style={{ background: '#059669', borderColor: '#059669' }}
+            icon={<UploadOutlined />}
+          >
+            Import {importRows.filter(r => r._errors.length === 0).length > 0
+              ? `(${importRows.filter(r => r._errors.length === 0).length} dòng hợp lệ)`
+              : ''}
+          </Button>,
+        ]}
+        destroyOnHidden
+      >
+        {/* Khu vực chọn file */}
+        <Upload.Dragger
+          accept=".xlsx,.xls"
+          beforeUpload={handleImportFile}
+          showUploadList={false}
+          style={{ marginBottom: 16, borderColor: '#059669', borderRadius: 8 }}
+        >
+          <p style={{ fontSize: 28, marginBottom: 4 }}>📂</p>
+          <p style={{ fontWeight: 600, color: '#1E293B', marginBottom: 2 }}>Kéo thả file hoặc click để chọn</p>
+          <p style={{ fontSize: 12, color: '#64748B' }}>Chỉ nhận file <b>.xlsx</b> — tải file mẫu để xem đúng định dạng</p>
+        </Upload.Dragger>
+
+        {/* Hướng dẫn */}
+        {!importRows.length && !importResult && (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message="Định dạng file Excel"
+            description={
+              <div style={{ fontSize: 12 }}>
+                <b>Cột A:</b> Mã NV &nbsp;·&nbsp;
+                <b>Cột B:</b> Ngày (DD/MM/YYYY) &nbsp;·&nbsp;
+                <b>Cột C:</b> Ca (<code>HC</code> / <code>Ca 1</code> / <code>Ca 2</code> / <code>TC</code> / <code>OT</code>) &nbsp;·&nbsp;
+                <b>Cột D:</b> Giờ Vào (HH:mm) &nbsp;·&nbsp;
+                <b>Cột E:</b> Giờ Ra (HH:mm) &nbsp;·&nbsp;
+                <b>Cột F:</b> Ghi chú
+                <br />
+                <span style={{ color: '#059669' }}>✓ Hàng 1 là tiêu đề — bỏ qua khi import.</span>
+                &nbsp;
+                <span style={{ color: '#D97706' }}>⚠ Nếu đã tồn tại (Mã NV + Ngày), sẽ cập nhật chứ không tạo thêm.</span>
+              </div>
+            }
+          />
+        )}
+
+        {/* Kết quả import */}
+        {importResult && (
+          <Alert
+            type="success"
+            showIcon
+            icon={<CheckCircleOutlined />}
+            style={{ marginBottom: 12 }}
+            message={`Import hoàn thành — ${importResult.created} tạo mới · ${importResult.updated} cập nhật`}
+          />
+        )}
+
+        {/* Bảng preview */}
+        {importRows.length > 0 && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span style={{ fontWeight: 600, fontSize: 13 }}>Xem trước: {importRows.length} dòng</span>
+              {importRows.filter(r => r._errors.length > 0).length > 0 && (
+                <Tag color="red" icon={<WarningOutlined />}>
+                  {importRows.filter(r => r._errors.length > 0).length} lỗi
+                </Tag>
+              )}
+              <Tag color="green" icon={<CheckCircleOutlined />}>
+                {importRows.filter(r => r._errors.length === 0).length} hợp lệ
+              </Tag>
+            </div>
+            <div style={{ maxHeight: 320, overflowY: 'auto', border: '1px solid #E2E8F0', borderRadius: 6 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: '#F8FAFC', position: 'sticky', top: 0 }}>
+                    {['#', 'Mã NV', 'Ngày', 'Ca', 'Giờ Vào', 'Giờ Ra', 'Ghi Chú', 'Trạng thái'].map(h => (
+                      <th key={h} style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '1px solid #E2E8F0', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {importRows.map((r, i) => {
+                    const hasErr = r._errors.length > 0
+                    return (
+                      <tr key={i} style={{ background: hasErr ? '#FFF5F5' : i % 2 === 0 ? '#fff' : '#F8FAFC' }}>
+                        <td style={{ padding: '4px 10px', color: '#94A3B8', borderBottom: '1px solid #F1F5F9' }}>{r._row}</td>
+                        <td style={{ padding: '4px 10px', fontFamily: 'monospace', fontWeight: 600, borderBottom: '1px solid #F1F5F9' }}>{r.maNhanVien}</td>
+                        <td style={{ padding: '4px 10px', borderBottom: '1px solid #F1F5F9' }}>
+                          {r.ngay ? dayjs(r.ngay).format('DD/MM/YYYY') : <span style={{ color: '#EF4444' }}>?</span>}
+                        </td>
+                        <td style={{ padding: '4px 10px', borderBottom: '1px solid #F1F5F9' }}>
+                          {r.caThucHien
+                            ? <Tag style={{ fontSize: 11 }}>{r.caThucHien}</Tag>
+                            : <span style={{ color: '#CBD5E1' }}>—</span>}
+                        </td>
+                        <td style={{ padding: '4px 10px', color: '#1D4ED8', borderBottom: '1px solid #F1F5F9' }}>{r.gioVao?.slice(0,5) || '—'}</td>
+                        <td style={{ padding: '4px 10px', color: '#059669', borderBottom: '1px solid #F1F5F9' }}>{r.gioRa?.slice(0,5) || '—'}</td>
+                        <td style={{ padding: '4px 10px', color: '#64748B', borderBottom: '1px solid #F1F5F9', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.ghiChu || ''}</td>
+                        <td style={{ padding: '4px 10px', borderBottom: '1px solid #F1F5F9' }}>
+                          {hasErr
+                            ? <Tooltip title={r._errors.join('; ')}>
+                                <Tag color="red" icon={<WarningOutlined />} style={{ cursor: 'help' }}>Lỗi</Tag>
+                              </Tooltip>
+                            : <Tag color="green" icon={<CheckCircleOutlined />}>OK</Tag>
+                          }
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </Modal>
+
       {/* ── Modal chỉnh sửa / thêm giờ ra vào ── */}
       <Modal
         open={editEntryModal}
@@ -1374,7 +1733,7 @@ export default function ChamCongPage() {
           <Button key="cancel" onClick={() => setEditEntryModal(false)}>Hủy</Button>,
           <Button key="save" type="primary" loading={editSaving} onClick={handleSaveEntry}>Lưu</Button>,
         ]}
-        destroyOnClose width={360}
+        destroyOnHidden width={360}
       >
         <Form form={editForm} layout="vertical" size="small" style={{ marginTop: 8 }}>
           <Form.Item name="caThucHien" label="Ca thực hiện" rules={[{ required: true, message: 'Vui lòng chọn ca' }]}>

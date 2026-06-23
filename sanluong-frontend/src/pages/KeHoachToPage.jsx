@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Select, Spin, message, DatePicker, Tooltip, Button, Tag, Popconfirm, Input } from 'antd'
-import { ReloadOutlined, TeamOutlined, ProjectOutlined, WarningOutlined, LeftOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons'
+import { Select, Spin, message, DatePicker, Tooltip, Button, Tag, Popconfirm, Input, Dropdown } from 'antd'
+import { ReloadOutlined, TeamOutlined, ProjectOutlined, WarningOutlined, LeftOutlined, RightOutlined, SearchOutlined, SaveOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
 import api from '../api/axios'
@@ -49,6 +49,7 @@ const TO_TABS = [
   { key: 'ĐG',       label: 'ĐG',       schedCongDoan: 'DG'    },
 ]
 
+
 function initials(name = '') {
   const parts = name.trim().split(/\s+/)
   return ((parts[parts.length - 2] || '')[0] || '').toUpperCase() +
@@ -58,7 +59,7 @@ function fmtDay(d) { return dayjs(d).format('DD/MM') }
 function dowOf(d)  { return DOW[dayjs(d).day()] }
 
 // ── Assign Card ───────────────────────────────────────────────────────────────
-function AssignCard({ a, employees, dup, onDropPerson, onDragOver, onRemovePerson, onUpdate, onRemove, isFirst, isLast, onMoveUp, onMoveDown, onClone, onDragStartPersonMove }) {
+function AssignCard({ a, employees, dup, onDropPerson, onDragOver, onRemovePerson, onUpdate, onRemove, isFirst, isLast, onMoveUp, onMoveDown, onClone, onDragStartPersonMove, onSyncCa, onSyncNote }) {
   const caStyle = CA_STYLE[a.ca] || CA_STYLE['Ca 1']
   return (
     <div style={{
@@ -82,6 +83,23 @@ function AssignCard({ a, employees, dup, onDropPerson, onDragOver, onRemovePerso
           )}
           {a.coLo && (
             <span style={{ color: '#475569' }}>SL {Number(a.coLo).toLocaleString('vi-VN')}</span>
+          )}
+          {a.salgSessionId && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+              <span style={{ color: '#059669', fontWeight: 700 }}>Salg</span>
+              <input
+                type="number"
+                value={a.salg ?? ''}
+                onChange={e => onUpdate(a.id, 'salg', e.target.value === '' ? null : Number(e.target.value))}
+                onClick={e => e.stopPropagation()}
+                placeholder="0"
+                style={{
+                  width: 72, fontSize: 11, border: '1px solid #6ee7b7',
+                  borderRadius: 4, padding: '1px 5px', color: '#065f46', outline: 'none',
+                  background: '#ecfdf5', fontFamily: 'monospace',
+                }}
+              />
+            </span>
           )}
         </div>
         <div style={{ marginTop: 3, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -109,7 +127,7 @@ function AssignCard({ a, employees, dup, onDropPerson, onDragOver, onRemovePerso
           value={a.ca}
           size="small"
           style={{ width: 108 }}
-          onChange={v => onUpdate(a.id, 'ca', v)}
+          onChange={v => { onUpdate(a.id, 'ca', v); onSyncCa(a.id, v) }}
           popupMatchSelectWidth={false}
         >
           {SHIFTS.map(s => <Option key={s} value={s}>{s}</Option>)}
@@ -154,7 +172,7 @@ function AssignCard({ a, employees, dup, onDropPerson, onDragOver, onRemovePerso
           transition: 'border-color 0.15s',
         }}
       >
-        {a.mas.map(ma => {
+        {(a.mas || []).map(ma => {
           const emp        = employees.find(e => e.maNhanVien === ma)
           const isConflict = dup.has(`${ma}|${a.ngay}|${a.ca}`)
           return (
@@ -180,11 +198,24 @@ function AssignCard({ a, employees, dup, onDropPerson, onDragOver, onRemovePerso
                 {initials(emp?.hoVaTen || ma)}
               </span>
               {emp?.hoVaTen || ma}
-              <span
-                style={{ cursor: 'pointer', opacity: 0.55, marginLeft: 1, fontSize: 10 }}
-                onMouseDown={e => e.stopPropagation()}
-                onClick={e => { e.stopPropagation(); onRemovePerson(a.id, ma) }}
-              >✕</span>
+              <Popconfirm
+                title={`Xóa "${emp?.hoVaTen || ma}" khỏi ca này?`}
+                okText="Xóa"
+                cancelText="Huỷ"
+                okButtonProps={{ danger: true, size: 'small' }}
+                onConfirm={e => { e?.stopPropagation(); onRemovePerson(a.id, ma) }}
+              >
+                <span
+                  style={{
+                    cursor: 'pointer', marginLeft: 1, fontSize: 11,
+                    color: isConflict ? '#b91c1c' : '#6366f1',
+                    opacity: 0.7, lineHeight: 1,
+                    display: 'flex', alignItems: 'center',
+                  }}
+                  onMouseDown={e => e.stopPropagation()}
+                  onClick={e => e.stopPropagation()}
+                >✕</span>
+              </Popconfirm>
             </span>
           )
         })}
@@ -198,6 +229,7 @@ function AssignCard({ a, employees, dup, onDropPerson, onDragOver, onRemovePerso
         value={a.note || ''}
         placeholder="Ghi chú..."
         onChange={e => onUpdate(a.id, 'note', e.target.value)}
+        onBlur={e => onSyncNote(a.id, e.target.value)}
         style={{
           flex: '1 1 110px', minWidth: 100,
           border: '1px solid #e2e8f0', borderRadius: 8,
@@ -329,7 +361,15 @@ export default function KeHoachToPage() {
   const [assignsByTo, setAssignsByTo] = useState(() => {
     try {
       const saved = sessionStorage.getItem(SS_ASSIGNS)
-      return saved ? JSON.parse(saved) : {}
+      if (!saved) return {}
+      const parsed = JSON.parse(saved)
+      // Normalize stale data: ensure every assign has a mas array
+      Object.keys(parsed).forEach(key => {
+        if (Array.isArray(parsed[key])) {
+          parsed[key] = parsed[key].map(a => ({ ...a, mas: Array.isArray(a.mas) ? a.mas : [] }))
+        }
+      })
+      return parsed
     } catch { return {} }
   })
 
@@ -367,7 +407,7 @@ export default function KeHoachToPage() {
   const fetchPlans = useCallback(async () => {
     setLoading(true)
     try {
-      const params = { page: 0, size: 2000, source: planSource }
+      const params = { page: 0, size: 2000, source: 'SCHEDULE', isPlanned: planSource === 'PLAN' }
       if (timeMode === 'week') {
         params.fromDate = weekStart.format('YYYY-MM-DD')
         params.toDate   = weekStart.add(6, 'day').format('YYYY-MM-DD')
@@ -405,9 +445,7 @@ export default function KeHoachToPage() {
     try {
       // Fetch sessions theo từng plan (batch)
       const wsIds = [...new Set(plansList.map(p => p.id))]
-      const sessionParams = planSource === 'SCHEDULE'
-        ? (id) => ({ scheduleId: id, loaiSession: 'KH_TO' })
-        : (id) => ({ scheduleId: id })
+      const sessionParams = (id) => ({ scheduleId: id, loaiSession: 'KH_TO' })
       const results = await Promise.allSettled(
         wsIds.map(id => api.get('/work-schedule-session', { params: sessionParams(id) }))
       )
@@ -438,9 +476,19 @@ export default function KeHoachToPage() {
                 newSessionIds[s.maNhanVien] = { id: s.id, locked: s.sanLuong != null }
               }
             })
-            // Đảm bảo mas chứa đủ người có session
+            // Cập nhật mas: giữ người không có session (chỉ kế hoạch), xóa người chuyển Ca
+            const sessionMas = new Set(matching.map(s => s.maNhanVien).filter(Boolean))
+            const allOnDay   = new Set(
+              allSessions
+                .filter(s => s.workScheduleId === assign.wsId && s.ngay === assign.ngayFull)
+                .map(s => s.maNhanVien).filter(Boolean)
+            )
             const existingMas = new Set(assign.mas)
-            matching.forEach(s => { if (s.maNhanVien) existingMas.add(s.maNhanVien) })
+            // Xóa người có session ngày này nhưng ở Ca khác (đã chuyển Ca)
+            existingMas.forEach(ma => {
+              if (allOnDay.has(ma) && !sessionMas.has(ma)) existingMas.delete(ma)
+            })
+            sessionMas.forEach(ma => existingMas.add(ma))
             return { ...assign, mas: [...existingMas], sessionIds: newSessionIds }
           })
         })
@@ -475,23 +523,25 @@ export default function KeHoachToPage() {
             if (s.maNhanVien) sessionIds[s.maNhanVien] = { id: s.id, locked: s.sanLuong != null }
           })
           const newAssign = {
-            id:         uidRef.current++,
-            wsId:       plan.id,
-            ten:        plan.tenTrinh || plan.maBravo || plan.maSp || '(Không tên)',
-            maSp:       plan.maSp        || '',
-            maBravo:    plan.maBravo     || '',
-            maDonHang:  plan.maDonHang   || '',
-            soLo:       plan.soLo        || '',
-            coLo:       plan.coLo        || null,
-            toNhom:     plan.toNhom      || '',
-            congDoan:   plan.congDoan    || '',
-            isUrgent:   isUrgent(plan),
+            id:             uidRef.current++,
+            wsId:           plan.id,
+            ten:            plan.tenTrinh || plan.maBravo || plan.maSp || '(Không tên)',
+            maSp:           plan.maSp        || '',
+            maBravo:        plan.maBravo     || '',
+            maDonHang:      plan.maDonHang   || '',
+            soLo:           plan.soLo        || '',
+            coLo:           plan.coLo        || null,
+            salg:           group[0]?.sanLuong ?? null,
+            salgSessionId:  group[0]?.id ?? null,
+            toNhom:         plan.toNhom      || '',
+            congDoan:       plan.congDoan    || '',
+            isUrgent:       isUrgent(plan),
             ngay,
-            ngayFull:   first.ngay,
+            ngayFull:       first.ngay,
             ca,
-            caStart:    '',
-            caEnd:      '',
-            mas:        group.map(s => s.maNhanVien).filter(Boolean),
+            caStart:        '',
+            caEnd:          '',
+            mas:            group.map(s => s.maNhanVien).filter(Boolean),
             sessionIds,
             note:       '',
           }
@@ -606,7 +656,7 @@ export default function KeHoachToPage() {
   // ── Conflict detection ─────────────────────────────────────────────────────
   function getConflictSet() {
     const seen = {}, dup = new Set()
-    assigns.forEach(a => a.mas.forEach(m => {
+    assigns.forEach(a => (a.mas || []).forEach(m => {
       const k = `${m}|${a.ngay}|${a.ca}`
       if (seen[k]) dup.add(k); else seen[k] = true
     }))
@@ -614,6 +664,67 @@ export default function KeHoachToPage() {
   }
   const dup          = getConflictSet()
   const conflictCount = dup.size
+
+  // ── Save kế hoạch → cập nhật ngày thực hiện vào work_schedule ─────────────
+  const [savingDay, setSavingDay] = useState(null)
+
+  async function handleSaveDay(dayStr) {
+    if (!selectedTo) { message.warning('Chọn tổ trước khi lưu'); return }
+    const toSave = assigns.filter(a => a.ngay === dayStr && a.wsId && a.ngayFull)
+    if (toSave.length === 0) { message.info('Chưa có lịch nào để lưu'); return }
+
+    // 1. Lưu ngayThucHien cho mỗi wsId duy nhất
+    const wsMap = {}
+    toSave.forEach(a => { wsMap[a.wsId] = a.ngayFull })
+
+    // 2. Upsert session cho những người chưa có sessionId (drop thành công local nhưng API chưa phản hồi)
+    const sessionUpsertCalls = []
+    toSave.forEach(a => {
+      const caSession = CA_TO_SESSION[a.ca]
+      a.mas.forEach(ma => {
+        if (a.sessionIds?.[ma]?.id) return  // đã có session → bỏ qua
+        sessionUpsertCalls.push(
+          api.post('/work-schedule-session', {
+            workScheduleId: a.wsId,
+            ngay:           a.ngayFull,
+            maNhanVien:     ma,
+            nguoiThucHien:  employees.find(e => e.maNhanVien === ma)?.hoVaTen || ma,
+            nhomThucHien:   employees.find(e => e.maNhanVien === ma)?.toNhom || a.toNhom || null,
+            caSanXuat:      caSession,
+          }).catch(err => {
+            if (err.response?.status !== 409) throw err  // 409 = đã tồn tại, OK
+          })
+        )
+      })
+    })
+
+    // 3. Lưu sanLuong nếu có
+    const salgCalls = []
+    toSave.forEach(a => {
+      if (a.salgSessionId && a.salg != null && a.salg !== '') {
+        salgCalls.push(
+          api.patch(`/work-schedule-session/${a.salgSessionId}/san-luong`, { sanLuong: Number(a.salg) })
+        )
+      }
+    })
+
+    setSavingDay(dayStr)
+    try {
+      await Promise.all([
+        ...Object.entries(wsMap).map(([wsId, ngayFull]) =>
+          api.patch(`/work-schedule/${wsId}/ngay-thuc-hien`, { ngayThucHien: ngayFull })
+        ),
+        ...sessionUpsertCalls,
+        ...salgCalls,
+      ])
+      message.success(`Đã lưu ${Object.keys(wsMap).length} mục cho ngày ${dayStr}`)
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.response?.data || ''
+      message.error(`Lưu thất bại${msg ? ': ' + msg : ' — thử lại'}`)
+    } finally {
+      setSavingDay(null)
+    }
+  }
 
   // ── Drag handlers ──────────────────────────────────────────────────────────
   function onDragStartProduct(e, plan) {
@@ -644,25 +755,27 @@ export default function KeHoachToPage() {
     const p = dragPayload.current
     const ngay = dayStr || selectedDay
     setAssigns(prev => [...prev, {
-      id: uidRef.current++,
-      wsId: p.id,
-      ten: p.tenTrinh || p.maBravo || p.maSp || '(Chưa có tên)',
-      maSp: p.maSp || '',
-      maBravo: p.maBravo || '',
-      maDonHang: p.maDonHang || '',
-      soLo: p.soLo || '',
-      coLo: p.coLo || null,
-      toNhom: p.toNhom || '',
-      congDoan: p.congDoan || '',
-      isUrgent: isUrgent(p),
+      id:            uidRef.current++,
+      wsId:          p.id,
+      ten:           p.tenTrinh || p.maBravo || p.maSp || '(Chưa có tên)',
+      maSp:          p.maSp || '',
+      maBravo:       p.maBravo || '',
+      maDonHang:     p.maDonHang || '',
+      soLo:          p.soLo || '',
+      coLo:          p.coLo || null,
+      salg:          null,
+      salgSessionId: null,
+      toNhom:        p.toNhom || '',
+      congDoan:      p.congDoan || '',
+      isUrgent:      isUrgent(p),
       ngay,
-      ngayFull: getFullDate(ngay),
-      ca: 'Ca 1',
-      caStart: '',
-      caEnd: '',
-      mas: [],
-      sessionIds: {},
-      note: '',
+      ngayFull:      getFullDate(ngay),
+      ca:            'Ca 1',
+      caStart:       '',
+      caEnd:         '',
+      mas:           [],
+      sessionIds:    {},
+      note:          '',
     }])
   }
 
@@ -683,8 +796,6 @@ export default function KeHoachToPage() {
       if (!assign.wsId || !assign.ngayFull) return
 
       const caSession = CA_TO_SESSION[assign.ca]
-      const thoiGian  = DEFAULT_GIO[caSession] ?? 7
-      const congThuc  = parseFloat((thoiGian / (caSession === 'HC' ? 8 : 7)).toFixed(2))
 
       try {
         const { data } = await api.post('/work-schedule-session', {
@@ -694,9 +805,6 @@ export default function KeHoachToPage() {
           nguoiThucHien:  emp.hoVaTen || emp.maNhanVien,
           nhomThucHien:   emp.toNhom  || assign.toNhom || null,
           caSanXuat:      caSession,
-          thoiGianBatDau: thoiGian,
-          congThucHien:   congThuc,
-          ...(planSource === 'SCHEDULE' ? { loaiSession: 'KH_TO' } : {}),
         })
         setAssigns(prev => prev.map(a =>
           a.id === assignId
@@ -708,7 +816,7 @@ export default function KeHoachToPage() {
           // Session đã tồn tại → fetch session hiện có để lấy ID và lock status
           try {
             const { data: existingSessions } = await api.get('/work-schedule-session', {
-              params: { scheduleId: assign.wsId, ...(planSource === 'SCHEDULE' ? { loaiSession: 'KH_TO' } : {}) }
+              params: { scheduleId: assign.wsId }
             })
             const found = Array.isArray(existingSessions)
               ? existingSessions.find(s => s.maNhanVien === emp.maNhanVien && s.ngay === assign.ngayFull)
@@ -743,10 +851,41 @@ export default function KeHoachToPage() {
 
   async function removePerson(assignId, ma) {
     const assign = assigns.find(a => a.id === assignId)
-    const sessionInfo = assign?.sessionIds?.[ma]
+    let sessionInfo = assign?.sessionIds?.[ma]
+    const caSession = CA_TO_SESSION[assign?.ca]
 
-    if (!sessionInfo) {
-      // Chưa có session → xóa local
+    // Fallback 1: tìm session theo wsId của assign
+    if (!sessionInfo?.id && assign?.wsId && assign?.ngayFull) {
+      try {
+        const { data: sessions } = await api.get('/work-schedule-session', {
+          params: { scheduleId: assign.wsId, loaiSession: 'KH_TO' }
+        })
+        const found = (Array.isArray(sessions) ? sessions : []).find(s =>
+          s.maNhanVien === ma &&
+          s.ngay === assign.ngayFull &&
+          (!caSession || s.caSanXuat === caSession)
+        )
+        if (found?.id) sessionInfo = { id: found.id, locked: found.sanLuong != null }
+      } catch { /* không fetch được → thử fallback 2 */ }
+    }
+
+    // Fallback 2: tìm theo maNhanVien (session có thể nằm ở wsId khác)
+    if (!sessionInfo?.id && assign?.ngayFull) {
+      try {
+        const { data: empSessions } = await api.get('/work-schedule-session/by-employee', {
+          params: { maNhanVien: ma }
+        })
+        const found = (Array.isArray(empSessions) ? empSessions : []).find(s =>
+          s.loaiSession === 'KH_TO' &&
+          s.ngay === assign.ngayFull &&
+          (!caSession || s.caSanXuat === caSession) &&
+          (!assign.maSp || !s.maSp || s.maSp === assign.maSp)
+        )
+        if (found?.id) sessionInfo = { id: found.id, locked: found.sanLuong != null }
+      } catch { /* không fetch được → tiếp tục xóa local */ }
+    }
+
+    if (!sessionInfo?.id) {
       setAssigns(prev => prev.map(a =>
         a.id === assignId ? { ...a, mas: a.mas.filter(m => m !== ma) } : a
       ))
@@ -795,6 +934,41 @@ export default function KeHoachToPage() {
     ))
   }
 
+  async function syncCaToSessions(assignId, newCa) {
+    const assign = assigns.find(a => a.id === assignId)
+    if (!assign?.wsId) return
+    const sessions = Object.entries(assign.sessionIds || {}).filter(([, s]) => s?.id)
+    if (!sessions.length) return
+
+    const caSession = newCa === 'Tùy chọn' ? 'TC' : (CA_TO_SESSION[newCa] ?? 'Ca 1')
+
+    const results = await Promise.allSettled(
+      sessions.map(([, s]) =>
+        api.patch(`/work-schedule-session/${s.id}/ca`, {
+          caSanXuat: caSession,
+        })
+      )
+    )
+
+    const failed = results.filter(r => r.status === 'rejected')
+    if (failed.length > 0) {
+      updateAssign(assignId, 'ca', assign.ca)
+      message.error(`Cập nhật ca thất bại (${failed.length}/${results.length} sessions) — thử lại`)
+    }
+  }
+
+  async function syncNoteToSessions(assignId, note) {
+    const assign = assigns.find(a => a.id === assignId)
+    if (!assign?.wsId) return
+    const sessions = Object.entries(assign.sessionIds || {}).filter(([, s]) => s?.id)
+    if (!sessions.length) return
+    try {
+      await Promise.all(sessions.map(([, s]) =>
+        api.patch(`/work-schedule-session/${s.id}/ghi-chu`, { ghiChu: note || '' })
+      ))
+    } catch { /* ghi chú không quan trọng, bỏ qua lỗi */ }
+  }
+
   // Di chuyển lên / xuống trong cùng một ngày
   function moveAssign(assignId, direction) {
     setAssigns(prev => {
@@ -841,6 +1015,24 @@ export default function KeHoachToPage() {
     const cloned = dayAssigns.map(a => ({ ...a, id: uidRef.current++, ngay: nextDay, mas: [...a.mas] }))
     setAssigns(prev => [...prev, ...cloned])
     message.success(`Đã nhân bản ${cloned.length} việc → ${DOW[days[dayIdx + 1].day()]} ${nextDay}`)
+  }
+
+  async function deletePlan(planId) {
+    try {
+      await api.delete(`/work-schedule/${planId}`)
+      setPlans(prev => prev.filter(p => p.id !== planId))
+      setAssignsByTo(prev => {
+        const updated = {}
+        Object.keys(prev).forEach(k => {
+          updated[k] = (prev[k] || []).filter(a => a.wsId !== planId)
+        })
+        return updated
+      })
+      message.success('Đã xóa kế hoạch')
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.response?.data || ''
+      message.error(`Xóa thất bại: ${msg || 'Thử lại'}`)
+    }
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -1020,26 +1212,44 @@ export default function KeHoachToPage() {
                   ) : filteredPlans.map(p => {
                     const pDay = p.ngayThucHien ? dayjs(p.ngayThucHien) : null
                     const urgent = isUrgent(p)
+                    const ctxItems = {
+                      items: [{
+                        key: 'delete',
+                        danger: true,
+                        label: (
+                          <Popconfirm
+                            title={`Xóa kế hoạch "${p.tenTrinh || p.maSp || p.id}"?`}
+                            okText="Xóa" cancelText="Huỷ"
+                            okButtonProps={{ danger: true, size: 'small' }}
+                            onConfirm={() => deletePlan(p.id)}
+                          >
+                            <span onClick={e => e.stopPropagation()}>🗑 Xóa kế hoạch này</span>
+                          </Popconfirm>
+                        ),
+                      }],
+                    }
                     return (
-                      <div key={p.id} draggable onDragStart={e => onDragStartProduct(e, p)}
-                        style={{ border: `1px solid ${urgent ? '#fca5a5' : '#d1fae5'}`, background: urgent ? '#fff5f5' : '#ecfdf5', borderRadius: 10, padding: '8px 10px', cursor: 'grab' }}>
-                        <div style={{ fontWeight: 700, fontSize: 12.5, color: urgent ? '#b91c1c' : '#065f46', lineHeight: 1.35 }}>
-                          {p.tenTrinh || p.maBravo || p.maSp || '(Chưa có tên)'}
+                      <Dropdown key={p.id} menu={ctxItems} trigger={['contextMenu']}>
+                        <div draggable onDragStart={e => onDragStartProduct(e, p)}
+                          style={{ border: `1px solid ${urgent ? '#fca5a5' : '#d1fae5'}`, background: urgent ? '#fff5f5' : '#ecfdf5', borderRadius: 10, padding: '8px 10px', cursor: 'grab' }}>
+                          <div style={{ fontWeight: 700, fontSize: 12.5, color: urgent ? '#b91c1c' : '#065f46', lineHeight: 1.35 }}>
+                            {p.tenTrinh || p.maBravo || p.maSp || '(Chưa có tên)'}
+                          </div>
+                          <div style={{ fontSize: 10.5, color: '#64748b', fontFamily: 'monospace', marginTop: 2, display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+                            {p.maSp && <span>{p.maSp}</span>}
+                            {p.maDonHang && <span style={{ color: '#818cf8' }}>ĐH {p.maDonHang}</span>}
+                            {p.soLo && <span style={{ background: '#ede9fe', color: '#6d28d9', borderRadius: 4, padding: '1px 5px', fontSize: 10 }}>Lô {p.soLo}</span>}
+                            {p.coLo && <span style={{ color: '#475569' }}>SL {Number(p.coLo).toLocaleString('vi-VN')}</span>}
+                          </div>
+                          <div style={{ display: 'flex', gap: 5, marginTop: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+                            {p.toNhom && <span style={{ fontSize: 10, fontWeight: 800, background: '#ccfbf1', color: '#0f766e', borderRadius: 4, padding: '1px 6px' }}>{p.toNhom}</span>}
+                            {p.congDoan && <span style={{ fontSize: 10, fontWeight: 700, background: '#e0f2fe', color: '#0369a1', borderRadius: 4, padding: '1px 6px' }}>{p.congDoan}</span>}
+                            {pDay && <span style={{ fontSize: 10, fontWeight: 700, background: '#f1f5f9', color: '#475569', borderRadius: 4, padding: '1px 6px' }}>{DOW[pDay.day()]} {fmtDay(pDay)}</span>}
+                            {urgent && <span style={{ fontSize: 10, fontWeight: 800, background: '#fef2f2', color: '#dc2626', borderRadius: 4, padding: '1px 6px' }}>⚠ Gấp</span>}
+                            {p.tinhTrang && <span style={{ fontSize: 10, background: p.tinhTrang === 'done' ? '#dcfce7' : '#fef9c3', color: p.tinhTrang === 'done' ? '#166534' : '#854d0e', borderRadius: 4, padding: '1px 6px' }}>{p.tinhTrang}</span>}
+                          </div>
                         </div>
-                        <div style={{ fontSize: 10.5, color: '#64748b', fontFamily: 'monospace', marginTop: 2, display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
-                          {p.maSp && <span>{p.maSp}</span>}
-                          {p.maDonHang && <span style={{ color: '#818cf8' }}>ĐH {p.maDonHang}</span>}
-                          {p.soLo && <span style={{ background: '#ede9fe', color: '#6d28d9', borderRadius: 4, padding: '1px 5px', fontSize: 10 }}>Lô {p.soLo}</span>}
-                          {p.coLo && <span style={{ color: '#475569' }}>SL {Number(p.coLo).toLocaleString('vi-VN')}</span>}
-                        </div>
-                        <div style={{ display: 'flex', gap: 5, marginTop: 5, flexWrap: 'wrap', alignItems: 'center' }}>
-                          {p.toNhom && <span style={{ fontSize: 10, fontWeight: 800, background: '#ccfbf1', color: '#0f766e', borderRadius: 4, padding: '1px 6px' }}>{p.toNhom}</span>}
-                          {p.congDoan && <span style={{ fontSize: 10, fontWeight: 700, background: '#e0f2fe', color: '#0369a1', borderRadius: 4, padding: '1px 6px' }}>{p.congDoan}</span>}
-                          {pDay && <span style={{ fontSize: 10, fontWeight: 700, background: '#f1f5f9', color: '#475569', borderRadius: 4, padding: '1px 6px' }}>{DOW[pDay.day()]} {fmtDay(pDay)}</span>}
-                          {urgent && <span style={{ fontSize: 10, fontWeight: 800, background: '#fef2f2', color: '#dc2626', borderRadius: 4, padding: '1px 6px' }}>⚠ Gấp</span>}
-                          {p.tinhTrang && <span style={{ fontSize: 10, background: p.tinhTrang === 'done' ? '#dcfce7' : '#fef9c3', color: p.tinhTrang === 'done' ? '#166534' : '#854d0e', borderRadius: 4, padding: '1px 6px' }}>{p.tinhTrang}</span>}
-                        </div>
-                      </div>
+                      </Dropdown>
                     )
                   })}
                 </div>
@@ -1208,7 +1418,7 @@ export default function KeHoachToPage() {
               <div style={{ flex: 1, overflowY: 'auto', margin: '0 12px 12px', padding: 6, borderRadius: 12, background: '#f1f5f9' }}>
                 {(() => {
                   const renderDays = showAllDays
-                    ? [...new Set(assigns.map(a => a.ngay))].sort((a, b) => b.localeCompare(a)).map(s => dayjs(s))
+                    ? [...new Set(assigns.map(a => a.ngayFull).filter(Boolean))].sort((a, b) => b.localeCompare(a)).map(s => dayjs(s))
                     : [...days].reverse()
                   return renderDays
                 })().map(d => {
@@ -1231,12 +1441,27 @@ export default function KeHoachToPage() {
                         {(() => {
                           const ni = days.findIndex(d2 => fmtDay(d2) === dayStr)
                           const nd = ni >= 0 && ni < days.length - 1 ? days[ni + 1] : null
+                          const hasSaveable = dayAssigns.some(a => a.wsId && a.ngayFull)
                           return (
-                            <Tooltip title={nd ? `Sao chép sang ${DOW[nd.day()]} ${fmtDay(nd)}` : 'Đã là ngày cuối tuần'}>
-                              <button onClick={() => cloneDay(dayStr)} disabled={!nd} style={{ marginLeft: 'auto', border: '1px solid #e2e8f0', background: nd ? '#f8fafc' : '#f1f5f9', borderRadius: 7, padding: '3px 9px', fontSize: 11, fontWeight: 600, color: nd ? '#64748b' : '#cbd5e1', cursor: nd ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                ⧉ Nhân bản
-                              </button>
-                            </Tooltip>
+                            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
+                              {hasSaveable && (
+                                <Button
+                                  size="small"
+                                  type="primary"
+                                  icon={<SaveOutlined />}
+                                  loading={savingDay === dayStr}
+                                  onClick={() => handleSaveDay(dayStr)}
+                                  style={{ background: '#16a34a', borderColor: '#16a34a', fontSize: 11, height: 26 }}
+                                >
+                                  Lưu
+                                </Button>
+                              )}
+                              <Tooltip title={nd ? `Sao chép sang ${DOW[nd.day()]} ${fmtDay(nd)}` : 'Đã là ngày cuối tuần'}>
+                                <button onClick={() => cloneDay(dayStr)} disabled={!nd} style={{ border: '1px solid #e2e8f0', background: nd ? '#f8fafc' : '#f1f5f9', borderRadius: 7, padding: '3px 9px', fontSize: 11, fontWeight: 600, color: nd ? '#64748b' : '#cbd5e1', cursor: nd ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  ⧉ Nhân bản
+                                </button>
+                              </Tooltip>
+                            </div>
                           )
                         })()}
                       </div>
@@ -1246,7 +1471,8 @@ export default function KeHoachToPage() {
                           onUpdate={updateAssign} onRemove={removeAssign}
                           isFirst={idx === 0} isLast={idx === dayAssigns.length - 1}
                           onMoveUp={() => moveAssign(a.id, 'up')} onMoveDown={() => moveAssign(a.id, 'down')}
-                          onClone={cloneAssign} onDragStartPersonMove={onDragStartPersonMove} />
+                          onClone={cloneAssign} onDragStartPersonMove={onDragStartPersonMove}
+                          onSyncCa={syncCaToSessions} onSyncNote={syncNoteToSessions} />
                       ))}
                       <div
                         onDragOver={onDragOver} onDrop={e => onDropProduct(e, dayStr)}

@@ -69,6 +69,7 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
                OR w.source = :source
                OR (:source = 'SCHEDULE' AND w.source IS NULL))
           AND (:toNhom IS NULL OR w.toNhom = :toNhom)
+          AND (:isPlanned IS NULL OR w.isPlanned = :isPlanned)
         """)
     List<WorkSchedule> searchAll(
             @Param("fromDate") LocalDate fromDate,
@@ -81,7 +82,8 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
             @Param("tinhTrang") String tinhTrang,
             @Param("congDoan") String congDoan,
             @Param("source") String source,
-            @Param("toNhom") String toNhom
+            @Param("toNhom") String toNhom,
+            @Param("isPlanned") Boolean isPlanned
     );
 
     @Query("""

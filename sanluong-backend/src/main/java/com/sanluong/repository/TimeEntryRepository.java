@@ -20,4 +20,6 @@ public interface TimeEntryRepository extends JpaRepository<TimeEntry, Long> {
     List<TimeEntry> findByRange(
             @Param("from") LocalDate from,
             @Param("to") LocalDate to);
+
+    java.util.Optional<TimeEntry> findByMaNhanVienAndNgay(String maNhanVien, LocalDate ngay);
 }

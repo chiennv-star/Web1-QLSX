@@ -1121,7 +1121,7 @@ function DailyDetailTab() {
         okText="Xác nhận từ chối"
         cancelText="Hủy"
         okButtonProps={{ danger: true, loading: actionLoading }}
-        destroyOnClose
+        destroyOnHidden
       >
         <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 10 }}>
           Lý do từ chối (không bắt buộc):
@@ -1235,7 +1235,7 @@ function DayDetailModal({ open, date, rows, onClose }) {
       onCancel={onClose}
       footer={null}
       width={1100}
-      destroyOnClose
+      destroyOnHidden
       styles={{ body: { padding: 0, background: '#f4f6f9' } }}
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

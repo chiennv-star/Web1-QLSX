@@ -331,6 +331,13 @@ export default function LenhSanXuatDetailPage() {
           ? { pageSize: 30, showSizeChanger: true, showTotal: (t) => `${t} đơn hàng` }
           : false
         }
+        onRow={(record) => ({
+          onClick: () => navigate(
+            `/lenh-san-xuat/${encodeURIComponent(maBravo)}/don-hang/${record.id}`,
+            { state: { order: record, product } }
+          ),
+          style: { cursor: 'pointer' },
+        })}
       />
     </div>
   )

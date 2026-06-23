@@ -265,8 +265,7 @@ export default function MainLayout() {
   }
 
   const handleNavigate = (key) => {
-    const dest = key === '/lenh-san-xuat' ? '/khoach?tab=lenh-sx' : key
-    navigate(dest)
+    navigate(key)
     if (isMobile) setDrawerOpen(false)
   }
 
@@ -479,7 +478,7 @@ export default function MainLayout() {
       okText="Xác nhận" cancelText="Huỷ"
       confirmLoading={pwSaving}
       width={420}
-      destroyOnClose
+      destroyOnHidden
     >
       <Form form={pwForm} layout="vertical" style={{ marginTop: 16 }}>
         <Form.Item label="Mật khẩu hiện tại" name="oldPassword"
