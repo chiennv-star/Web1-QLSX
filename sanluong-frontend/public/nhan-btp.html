@@ -287,6 +287,11 @@
             border-right: none;
         }
 
+        .label-header-cell.active {
+            background: #52A86F;
+            color: white;
+        }
+
         /* Nội dung: chiếm hết phần còn lại */
         .label-content {
             flex: 1;
@@ -531,7 +536,7 @@
             } else if (data.stage === 'Pha chế') {
                 headerClass2 = ' active';
             } else if (data.stage === 'Phân liều') {
-                headerClass3 = ' green active';
+                headerClass3 = ' active';
             }
 
             return `
@@ -567,13 +572,13 @@
 
         function updatePreview() {
             const data = {
-                productName: document.getElementById('productName').value || '(Chưa nhập)',
-                batchCode: document.getElementById('batchCode').value || '(Chưa nhập)',
+                productName: document.getElementById('productName').value || '',
+                batchCode: document.getElementById('batchCode').value || '',
                 mixCode: document.getElementById('mixCode').value || '',
-                mfgDate: formatDate(document.getElementById('mfgDate').value) || '(Chưa nhập)',
+                mfgDate: formatDate(document.getElementById('mfgDate').value) || '',
                 batchDate: formatDate(document.getElementById('batchDate').value) || '',
-                quantity: document.getElementById('quantity').value || '(Chưa nhập)',
-                stage: document.getElementById('stage').value || '(Chưa chọn)',
+                quantity: document.getElementById('quantity').value || '',
+                stage: document.getElementById('stage').value || '',
                 personnel: document.getElementById('personnel').value || '',
                 notes: document.getElementById('notes').value || ''
             };
@@ -623,6 +628,7 @@
             html += '.label-header { display: grid; grid-template-columns: 1fr 1.5fr 1fr; border-bottom: 1px solid #000; height: 21px; }';
             html += '.label-header-cell { border-right: 1px solid #000; padding: 2px 2px; font-size: 9.36px; font-weight: bold; text-align: center; display: flex; align-items: center; justify-content: center; }';
             html += '.label-header-cell:last-child { border-right: none; }';
+            html += '.label-header-cell.active { background: #52A86F; color: white; }';
             html += '.label-content { flex: 1; display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #000; min-height: 55px; }';
             html += '.label-left { border-right: 1px solid #000; padding: 2px 3px; display: flex; flex-direction: column; justify-content: space-around; font-size: 8.4px; }';
             html += '.label-right { padding: 2px 3px; display: flex; flex-direction: column; justify-content: space-around; font-size: 8.4px; }';
