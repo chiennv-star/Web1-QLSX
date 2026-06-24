@@ -285,23 +285,6 @@
 
         .label-header-cell:last-child {
             border-right: none;
-            background: #52A86F;
-            color: white;
-        }
-
-        .label-header-cell.active {
-            background: #52A86F;
-            color: white;
-        }
-
-        .label-header-cell.active.green {
-            background: #52A86F;
-            color: white;
-        }
-
-        .label-header-cell.green {
-            background: #52A86F;
-            color: white;
         }
 
         /* Nội dung: chiếm hết phần còn lại */
@@ -639,7 +622,7 @@
             html += '.label-title { font-weight: bold; font-size: 8.5px; text-align: center; padding: 2px; border-bottom: 1px solid #000; }';
             html += '.label-header { display: grid; grid-template-columns: 1fr 1.5fr 1fr; border-bottom: 1px solid #000; height: 21px; }';
             html += '.label-header-cell { border-right: 1px solid #000; padding: 2px 2px; font-size: 9.36px; font-weight: bold; text-align: center; display: flex; align-items: center; justify-content: center; }';
-            html += '.label-header-cell.green { background: #52A86F; color: white; border-right: none; }';
+            html += '.label-header-cell:last-child { border-right: none; }';
             html += '.label-content { flex: 1; display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #000; min-height: 55px; }';
             html += '.label-left { border-right: 1px solid #000; padding: 2px 3px; display: flex; flex-direction: column; justify-content: space-around; font-size: 8.4px; }';
             html += '.label-right { padding: 2px 3px; display: flex; flex-direction: column; justify-content: space-around; font-size: 8.4px; }';
