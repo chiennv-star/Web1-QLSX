@@ -1302,7 +1302,15 @@ function ProductMasterTab() {
   }
 
   const loaiSpOptions = useMemo(() => {
-    const defaults = ['Nhũ Tương', 'Dung Dịch', 'Gel', 'Sơn sáp', 'Sáp', 'Bột', 'Nến', 'Kem O/W', 'Kem W/O']
+    const defaults = [
+      'Nhũ Tương', 'Dung Dịch', 'Gel', 'Serum', 'Toner',
+      'Kem O/W', 'Kem W/O', 'Kem chống nắng',
+      'Sơn sáp', 'Son môi', 'Sáp', 'Nến',
+      'Bột', 'Phấn',
+      'Dầu gội', 'Sữa tắm', 'Sữa rửa mặt',
+      'Nước tẩy trang', 'Xịt khoáng', 'Nước súc miệng',
+      'Chiết xuất', 'Tinh chất',
+    ]
     const fromData = data.filter(r => r.loaiSanPham).map(r => r.loaiSanPham)
     return [...new Set([...defaults, ...fromData])]
   }, [data])
@@ -1522,9 +1530,10 @@ function ProductMasterTab() {
             <Col span={8}>
               <Form.Item label="Loại sản phẩm" name="loaiSanPham">
                 <AutoComplete
-                  placeholder="VD: Kem dưỡng, Dầu gội..."
-                  options={['Nhũ Tương', 'Dung Dịch', 'Gel', 'Son', 'Sáp', 'Bột', 'Nến', 'Kem O/W', 'Kem W/O'].map(v => ({ value: v }))}
+                  placeholder="Chọn hoặc nhập loại SP..."
+                  options={loaiSpOptions.map(v => ({ value: v }))}
                   filterOption={(input, opt) => opt.value.toLowerCase().includes(input.toLowerCase())}
+                  allowClear
                 />
               </Form.Item>
             </Col>
