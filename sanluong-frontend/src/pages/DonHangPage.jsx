@@ -1064,8 +1064,8 @@ export default function DonHangPage() {
   const completedData = data.filter(r => r.tinhTrangSx === 'done' && baseFilter(r))
 
   // ── Load product master cho tab Xu hướng ─────────────────────────────────
-  const loadProductMaster = useCallback(async () => {
-    if (Object.keys(productMasterMap).length > 0) return // đã load rồi
+  const loadProductMaster = useCallback(async ({ force = false } = {}) => {
+    if (!force && Object.keys(productMasterMap).length > 0) return
     setLoadingMaster(true)
     try {
       const { data: pm } = await api.get('/product-master', { params: { page: 0, size: 9999 } })
@@ -1594,6 +1594,20 @@ export default function DonHangPage() {
             </span>
           </div>
         ))}
+        {(activeTab === 'trend' || activeTab === 'analysis') && (
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', paddingRight: 12 }}>
+            <Tooltip title="Tải lại dữ liệu Năng Suất & Loại SP từ Danh Mục TP">
+              <Button
+                size="small" icon={<ReloadOutlined />}
+                loading={loadingMaster}
+                onClick={() => loadProductMaster({ force: true })}
+                style={{ fontSize: 12, color: '#1677ff', borderColor: '#1677ff' }}
+              >
+                Cập nhật NS
+              </Button>
+            </Tooltip>
+          </div>
+        )}
       </div>
       </div>{/* end sticky header wrapper */}
 
