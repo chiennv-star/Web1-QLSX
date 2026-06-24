@@ -1459,7 +1459,7 @@ function TongHopTab() {
     {
       title: 'NGÀY', dataIndex: 'ngay', key: 'ngay',
       width: 110, fixed: 'left', align: 'center',
-      onHeaderCell: () => ({ style: { background: '#006666', color: '#ffffff', fontSize: 11 } }),
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#ffffff', fontSize: 11 } }),
       render: v => (
         <span style={{ fontWeight: 700, color: '#1D4ED8' }}>
           {dayjs(v).format('DD/MM/YYYY')}
@@ -1476,13 +1476,13 @@ function TongHopTab() {
       ),
       key: s.key,
       align: 'center',
-      onHeaderCell: () => ({ style: { background: '#006666', color: '#ffffff', textAlign: 'center', borderLeft: '2px solid rgba(255,255,255,0.2)' } }),
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#ffffff', textAlign: 'center', borderLeft: '2px solid rgba(255,255,255,0.2)' } }),
       children: [
         {
           title: 'SL',
           key: `${s.key}_sl`,
           width: 95, align: 'center',
-          onHeaderCell: () => ({ style: { background: '#004d4d', color: '#ffffff', fontSize: 10 } }),
+          onHeaderCell: () => ({ style: { background: '#29a3a3', color: '#ffffff', fontSize: 10 } }),
           render: (_, r) => {
             const val = r[s.key]?.sl
             if (!val) return <span style={{ color: '#d1d5db' }}>—</span>
@@ -1498,7 +1498,7 @@ function TongHopTab() {
           title: 'Công',
           key: `${s.key}_cong`,
           width: 88, align: 'center',
-          onHeaderCell: () => ({ style: { background: '#004d4d', color: '#ffffff', fontSize: 10 } }),
+          onHeaderCell: () => ({ style: { background: '#29a3a3', color: '#ffffff', fontSize: 10 } }),
           render: (_, r) => {
             const val = r[s.key]?.cong
             if (!val) return <span style={{ color: '#d1d5db' }}>—</span>
@@ -1509,7 +1509,7 @@ function TongHopTab() {
     })),
     {
       title: 'TỔNG SL', key: 'grandSl', width: 110, align: 'center', fixed: 'right',
-      onHeaderCell: () => ({ style: { background: '#006666', color: '#ffffff', fontSize: 11 } }),
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#ffffff', fontSize: 11 } }),
       render: (_, r) => {
         const total = STAGES.reduce((sum, s) => sum + (r[s.key]?.sl || 0), 0)
         return total
@@ -1522,7 +1522,7 @@ function TongHopTab() {
     },
     {
       title: `TỔNG CÔNG (${Object.values(empCounts).reduce((a, b) => a + b, 0) || '...'})`, key: 'grandCong', width: 120, align: 'center', fixed: 'right',
-      onHeaderCell: () => ({ style: { background: '#006666', color: '#ffffff', fontSize: 11 } }),
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#ffffff', fontSize: 11 } }),
       render: (_, r) => {
         const total = STAGES.reduce((sum, s) => sum + (r[s.key]?.cong || 0), 0)
         return total
@@ -1567,14 +1567,14 @@ function TongHopTab() {
 
       <style>{`
         .tonghop-table .ant-table-thead > tr > th {
-          background: #006666 !important;
+          background: #33CCCC !important;
           color: #ffffff !important; text-align: center !important;
           text-transform: uppercase; font-size: 11px !important; font-weight: 700 !important;
           letter-spacing: 0.5px; padding: 8px 6px !important;
           border-right: 1px solid rgba(255,255,255,0.18) !important; white-space: nowrap;
         }
         .tonghop-table .ant-table-thead > tr:last-child > th {
-          background: #004d4d !important;
+          background: #29a3a3 !important;
         }
         .tonghop-table .ant-table-thead > tr > th::before { display: none !important; }
         .tonghop-table .ant-table-thead > tr:first-child > th {
@@ -1590,9 +1590,9 @@ function TongHopTab() {
         .tonghop-table .ant-table-tbody > tr:nth-child(even) > td { background: #ffffff; }
         .tonghop-table .ant-table-tbody > tr:hover > td { background: #99CCCC !important; }
         .tonghop-table .ant-table-summary > tr > td {
-          background: #006666 !important; color: #ffffff !important;
+          background: #33CCCC !important; color: #ffffff !important;
           font-weight: 700; font-size: 12px; padding: 8px 10px !important;
-          border-top: 2px solid #004d4d !important;
+          border-top: 2px solid #29a3a3 !important;
         }
       `}</style>
 
@@ -2414,7 +2414,7 @@ export default function DailySanLuongPage() {
     <>
       <style>{`
         .sl-page-tabs > .ant-tabs-nav {
-          background: #006666 !important;
+          background: #33CCCC !important;
           padding: 0 12px; margin: 0 !important; box-shadow: 0 2px 12px rgba(0,0,0,0.22);
           position: sticky !important; top: 0; z-index: 10;
         }
