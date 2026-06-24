@@ -1799,27 +1799,148 @@ export default function DonHangPage() {
               : <span style={{ color: '#d9d9d9' }}>—</span>,
           },
         ]
+        // ── Thống kê theo loại SP ─────────────────────────────────────────
+        const typeMap = {}
+        let totalSlDat = 0
+        trendData.forEach(r => {
+          const loai = r._pm.loaiSanPham || '(Chưa phân loại)'
+          const slDat = Number(r.soLuongDatHang) || 0
+          const slCon = Number(r.soLuongConLai)  || 0
+          totalSlDat += slDat
+          if (!typeMap[loai]) typeMap[loai] = { loai, donHang: 0, skuSet: new Set(), slDat: 0, slCon: 0, congDg: 0, congPc: 0, congPl: 0 }
+          const s = typeMap[loai]
+          s.donHang++
+          s.skuSet.add(r.maBravo)
+          s.slDat += slDat
+          s.slCon += slCon
+          if (r._pm.slTrungBinh && Number(r._pm.slTrungBinh) > 0) s.congDg += slDat / Number(r._pm.slTrungBinh)
+          if (r._pm.nangSuatPc  && Number(r._pm.nangSuatPc)  > 0) s.congPc += slDat / Number(r._pm.nangSuatPc)
+          if (r._pm.nangSuatPl  && Number(r._pm.nangSuatPl)  > 0) s.congPl += slDat / Number(r._pm.nangSuatPl)
+        })
+        const typeRows = Object.values(typeMap)
+          .map(s => ({ ...s, sku: s.skuSet.size, tyLe: totalSlDat > 0 ? s.slDat / totalSlDat * 100 : 0 }))
+          .sort((a, b) => b.slDat - a.slDat)
+        const TYPE_COLORS = ['#1677ff','#52c41a','#fa8c16','#722ed1','#eb2f96','#13c2c2','#faad14','#f5222d','#a0d911','#2f54eb']
+        const colorOf = loai => TYPE_COLORS[typeRows.findIndex(r => r.loai === loai) % TYPE_COLORS.length]
+        const fmtCong = v => v > 0 ? Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) : '—'
+        const typeColumns = [
+          {
+            title: 'Loại Sản Phẩm', dataIndex: 'loai', key: 'loai', width: 160,
+            render: (v, r) => <Tag color={colorOf(v)} style={{ fontWeight: 600, fontSize: 12 }}>{v}</Tag>,
+          },
+          {
+            title: 'Số Đơn', dataIndex: 'donHang', key: 'donHang', width: 80, align: 'center',
+            render: v => <span style={{ fontWeight: 700, color: '#374151' }}>{v}</span>,
+          },
+          {
+            title: 'Số SKU', dataIndex: 'sku', key: 'sku', width: 75, align: 'center',
+            render: v => <span style={{ color: '#0369a1', fontWeight: 600 }}>{v}</span>,
+          },
+          {
+            title: 'SL Đặt', dataIndex: 'slDat', key: 'slDat', width: 100, align: 'right',
+            sorter: (a, b) => a.slDat - b.slDat,
+            render: v => <span style={{ fontWeight: 700 }}>{Number(v).toLocaleString('vi-VN')}</span>,
+          },
+          {
+            title: 'SL Còn Lại', dataIndex: 'slCon', key: 'slCon', width: 105, align: 'right',
+            render: v => <span style={{ fontWeight: 700, color: v > 0 ? '#cf1322' : '#389e0d' }}>{Number(v).toLocaleString('vi-VN')}</span>,
+          },
+          {
+            title: 'Tỷ Lệ SL', dataIndex: 'tyLe', key: 'tyLe', width: 160, align: 'center',
+            sorter: (a, b) => a.tyLe - b.tyLe,
+            render: (v, r) => (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Progress percent={Math.round(v)} size="small" strokeColor={colorOf(r.loai)}
+                  style={{ flex: 1, marginBottom: 0 }} showInfo={false} />
+                <span style={{ fontWeight: 700, color: colorOf(r.loai), minWidth: 40 }}>{v.toFixed(1)}%</span>
+              </div>
+            ),
+          },
+          {
+            title: 'Công ĐG', dataIndex: 'congDg', key: 'congDg', width: 95, align: 'right',
+            sorter: (a, b) => a.congDg - b.congDg,
+            render: v => v > 0
+              ? <span style={{ color: '#7c3aed', fontWeight: 700 }}>{fmtCong(v)}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          {
+            title: 'Công PC', dataIndex: 'congPc', key: 'congPc', width: 95, align: 'right',
+            sorter: (a, b) => a.congPc - b.congPc,
+            render: v => v > 0
+              ? <span style={{ color: '#1d4ed8', fontWeight: 600 }}>{fmtCong(v)}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          {
+            title: 'Công PL', dataIndex: 'congPl', key: 'congPl', width: 95, align: 'right',
+            sorter: (a, b) => a.congPl - b.congPl,
+            render: v => v > 0
+              ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{fmtCong(v)}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+        ]
+        const typeSummary = () => {
+          const totSlDat = typeRows.reduce((s, r) => s + r.slDat, 0)
+          const totSlCon = typeRows.reduce((s, r) => s + r.slCon, 0)
+          const totDon   = typeRows.reduce((s, r) => s + r.donHang, 0)
+          const totDg    = typeRows.reduce((s, r) => s + r.congDg, 0)
+          const totPc    = typeRows.reduce((s, r) => s + r.congPc, 0)
+          const totPl    = typeRows.reduce((s, r) => s + r.congPl, 0)
+          const tdStyle  = { fontWeight: 700, background: '#f0f5ff', padding: '6px 8px' }
+          return (
+            <Table.Summary.Row>
+              <Table.Summary.Cell index={0} colSpan={2}><span style={{ ...tdStyle, display:'block' }}>Tổng cộng ({totDon} đơn)</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={1} align="center"><span style={tdStyle}>{typeRows.reduce((s, r) => s + r.sku, 0)}</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={2} align="right"><span style={tdStyle}>{totSlDat.toLocaleString('vi-VN')}</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={3} align="right"><span style={{ ...tdStyle, color: '#cf1322' }}>{totSlCon.toLocaleString('vi-VN')}</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={4} align="center"><span style={tdStyle}>100%</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={5} align="right"><span style={{ ...tdStyle, color: '#7c3aed' }}>{fmtCong(totDg)}</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={6} align="right"><span style={{ ...tdStyle, color: '#1d4ed8' }}>{fmtCong(totPc)}</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={7} align="right"><span style={{ ...tdStyle, color: '#0e7490' }}>{fmtCong(totPl)}</span></Table.Summary.Cell>
+            </Table.Summary.Row>
+          )
+        }
         return (
-          <Table
-            className="dh-table"
-            columns={trendColumns}
-            dataSource={trendData}
-            rowKey="id"
-            loading={loading || loadingMaster}
-            size="small"
-            scroll={{ x: 2310 }}
-            sticky={{ offsetHeader: headerOffset }}
-            rowHoverable={false}
-            rowClassName={rowClassName}
-            onRow={r => ({ onClick: () => openDetail(r), style: { cursor: 'pointer' } })}
-            pagination={{
-              defaultPageSize: 50,
-              pageSizeOptions: ['20', '50', '100'],
-              showSizeChanger: true,
-              showTotal: t => `${t} đơn hàng`,
-            }}
-            locale={{ emptyText: <span style={{ color: '#d9d9d9' }}>Không có dữ liệu</span> }}
-          />
+          <>
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '14px 16px', marginBottom: 16 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#1e293b', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>📊</span>
+                <span>Thống Kê Xu Hướng Theo Loại Sản Phẩm</span>
+                <span style={{ fontSize: 12, fontWeight: 400, color: '#64748b' }}>— Công = SL Đặt ÷ Năng Suất (người/ngày)</span>
+              </div>
+              <Table
+                columns={typeColumns}
+                dataSource={typeRows}
+                rowKey="loai"
+                size="small"
+                pagination={false}
+                loading={loading || loadingMaster}
+                scroll={{ x: 970 }}
+                rowHoverable={false}
+                summary={typeSummary}
+                locale={{ emptyText: <span style={{ color: '#d9d9d9' }}>Không có dữ liệu</span> }}
+              />
+            </div>
+            <Table
+              className="dh-table"
+              columns={trendColumns}
+              dataSource={trendData}
+              rowKey="id"
+              loading={loading || loadingMaster}
+              size="small"
+              scroll={{ x: 2310 }}
+              sticky={{ offsetHeader: headerOffset }}
+              rowHoverable={false}
+              rowClassName={rowClassName}
+              onRow={r => ({ onClick: () => openDetail(r), style: { cursor: 'pointer' } })}
+              pagination={{
+                defaultPageSize: 50,
+                pageSizeOptions: ['20', '50', '100'],
+                showSizeChanger: true,
+                showTotal: t => `${t} đơn hàng`,
+              }}
+              locale={{ emptyText: <span style={{ color: '#d9d9d9' }}>Không có dữ liệu</span> }}
+            />
+          </>
         )
       })()
       ) : activeTab === 'analysis' ? (
