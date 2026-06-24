@@ -221,7 +221,7 @@
             box-sizing: border-box;
         }
 
-        /* Mỗi label chiếm toàn bộ ô grid */
+        /* Mỗi label chiếm toàn bộ ô grid — height: 100% bắt buộc để flex:1 bên trong hoạt động */
         .label {
             display: flex;
             flex-direction: column;
@@ -230,7 +230,8 @@
             page-break-inside: avoid;
             break-inside: avoid;
             overflow: hidden;
-            min-height: 0;
+            height: 100%;
+            box-sizing: border-box;
         }
 
         .label-company {
