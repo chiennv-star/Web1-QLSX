@@ -2272,6 +2272,34 @@ export default function DonHangPage() {
                                   )
                                 })}
                               </tbody>
+                              <tfoot>
+                                {(() => {
+                                  const sumPc  = group.orders.reduce((s, x) => s + (x.tPc  || 0), 0)
+                                  const sumPl  = group.orders.reduce((s, x) => s + (x.tPl  || 0), 0)
+                                  const sumBbc = group.orders.reduce((s, x) => s + (x.tBbc || 0), 0)
+                                  const sumDg  = group.orders.reduce((s, x) => s + (x.tDg  || 0), 0)
+                                  const sumAll = group.orders.reduce((s, x) => s + (x.total || 0), 0)
+                                  const tdSum  = (v, bold) => (
+                                    <td style={{ padding: '7px 8px', textAlign: 'right', fontWeight: bold ? 700 : 600, color: '#0f766e', background: '#f0fdf4', borderTop: '2px solid #bbf7d0' }}>
+                                      {v > 0 ? fmtH(v) : <span style={{ color: '#d1d5db' }}>—</span>}
+                                    </td>
+                                  )
+                                  return (
+                                    <tr>
+                                      <td colSpan={2} style={{ padding: '7px 8px', fontWeight: 700, color: '#0f766e', background: '#f0fdf4', borderTop: '2px solid #bbf7d0', fontSize: 12 }}>Tổng nhóm</td>
+                                      <td style={{ padding: '7px 8px', textAlign: 'right', fontWeight: 700, color: '#0f766e', background: '#f0fdf4', borderTop: '2px solid #bbf7d0' }}>
+                                        {group.orders.reduce((s, x) => s + (Number(x.soLuongConLai) || 0), 0).toLocaleString('vi-VN')}
+                                      </td>
+                                      {tdSum(sumPc)}
+                                      {tdSum(sumPl)}
+                                      {tdSum(sumBbc)}
+                                      {tdSum(sumDg)}
+                                      {tdSum(sumAll, true)}
+                                      <td colSpan={2} style={{ background: '#f0fdf4', borderTop: '2px solid #bbf7d0' }} />
+                                    </tr>
+                                  )
+                                })()}
+                              </tfoot>
                             </table>
                           )}
                         </div>
