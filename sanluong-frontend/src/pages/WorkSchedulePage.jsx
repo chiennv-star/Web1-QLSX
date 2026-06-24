@@ -215,6 +215,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const [employees, setEmployees] = useState([])
   const scrollDivRef = useRef(null)  // ref cho div overflowY:auto bên dưới
   const caChangedRef = useRef({}) // { rowKey: { ngay, maNhanVien, newCa } }
+  const sessionsRef = useRef([]) // luôn trỏ tới sessions mới nhất, tránh stale closure trong onBlur
   const VAI_TRO_KEY = 'vaitro_options'
   const DEFAULT_VAI_TRO = ['Trưởng ca', 'Phụ máy']
   const [vaiTroOptions, setVaiTroOptions] = useState(() => {
@@ -235,6 +236,9 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     window.addEventListener('click', close)
     return () => window.removeEventListener('click', close)
   }, [])
+
+  // Sync ref với sessions mới nhất để tránh stale closure trong onBlur handlers
+  useEffect(() => { sessionsRef.current = sessions }, [sessions])
 
   useEffect(() => {
     if (!open || !schedule) {
@@ -1159,8 +1163,10 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                           <tr key={rowKey}
                             className={!s.id ? 'ws-row-new' : ''}
                             onBlur={e => {
-                              if (!e.currentTarget.contains(e.relatedTarget) && s.nguoiThucHien && s.maNhanVien) {
-                                saveRow(s)
+                              if (!e.currentTarget.contains(e.relatedTarget)) {
+                                // Dùng sessionsRef để lấy state mới nhất, tránh stale closure React 18
+                                const latest = sessionsRef.current.find(r => r.id ? r.id === rowKey : r._tempId === rowKey)
+                                if (latest?.nguoiThucHien && latest?.maNhanVien) saveRow(latest)
                               }
                             }}
                             onContextMenu={canEditDetail ? e => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, s, ngayKey: k }) } : undefined}>
