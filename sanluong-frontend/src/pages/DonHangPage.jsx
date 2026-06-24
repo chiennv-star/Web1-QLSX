@@ -1829,23 +1829,24 @@ export default function DonHangPage() {
         const trendData = displayData.map(r => ({ ...r, _pm: productMasterMap[r.maBravo] || {} }))
 
         // ── Thống kê theo loại SP ─────────────────────────────────────────
-        // normalizeLoai: gộp các giá trị khác chữ hoa/thường hoặc thừa khoảng trắng
+        // normalizeLoai: capitalize chữ đầu mỗi từ (không dùng \b vì không hỗ trợ tiếng Việt)
         const normalizeLoai = raw => {
           if (!raw) return null
-          const t = raw.trim().replace(/\s+/g, ' ')
-          // Title-case từng từ, giữ nguyên ký tự đặc biệt như O/W, W/O
-          return t.replace(/\b\p{L}/gu, c => c.toUpperCase())
+          return raw.trim().replace(/\s+/g, ' ')
+            .split(' ').map(w => w ? w.charAt(0).toUpperCase() + w.slice(1) : '').join(' ')
         }
+        // loaiKey dùng để group (lowercase), loaiDisplay để hiển thị (title-case)
+        const loaiKey = raw => (raw || '').trim().toLowerCase().replace(/\s+/g, ' ') || '(chưa phân loại)'
         const typeMap = {}
         let totalSlDat = 0
         trendData.forEach(r => {
-          const loaiNorm = normalizeLoai(r._pm.loaiSanPham) || '(Chưa phân loại)'
-          const loai = loaiNorm
+          const key  = loaiKey(r._pm.loaiSanPham)
+          const loai = normalizeLoai(r._pm.loaiSanPham) || '(Chưa phân loại)'
           const slDat = Number(r.soLuongDatHang) || 0
           const slCon = Number(r.soLuongConLai)  || 0
           totalSlDat += slDat
-          if (!typeMap[loai]) typeMap[loai] = { loai, donHang: 0, skuSet: new Set(), slDat: 0, slCon: 0, congDg: 0, congPc: 0, congPl: 0 }
-          const s = typeMap[loai]
+          if (!typeMap[key]) typeMap[key] = { loai, donHang: 0, skuSet: new Set(), slDat: 0, slCon: 0, congDg: 0, congPc: 0, congPl: 0 }
+          const s = typeMap[key]
           s.donHang++
           s.skuSet.add(r.maBravo)
           s.slDat += slDat
@@ -2185,20 +2186,20 @@ export default function DonHangPage() {
                 </div>
               )}
               {loadingMaster ? <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Đang tải dữ liệu năng suất...</div> : (() => {
-                // Group ordersWithData by loại SP (normalize case/whitespace)
-                const normLoai = raw => {
-                  if (!raw) return null
-                  const t = raw.trim().replace(/\s+/g, ' ')
-                  return t.replace(/\b\p{L}/gu, c => c.toUpperCase())
-                }
-                const loaiGroups = {}
+                // Group ordersWithData by loại SP — key: lowercase, display: title-case mỗi từ
+                const normDisplay = raw => raw
+                  ? raw.trim().replace(/\s+/g, ' ').split(' ').map(w => w ? w.charAt(0).toUpperCase() + w.slice(1) : '').join(' ')
+                  : null
+                const normKey = raw => (raw || '').trim().toLowerCase().replace(/\s+/g, ' ')
+                const loaiGroups = {}   // key → { display, orders[] }
                 ordersWithData.forEach(r => {
-                  const loai = normLoai(r._pm?.loaiSanPham) || '(Chưa phân loại)'
-                  if (!loaiGroups[loai]) loaiGroups[loai] = []
-                  loaiGroups[loai].push(r)
+                  const key     = normKey(r._pm?.loaiSanPham)  || '(chưa phân loại)'
+                  const display = normDisplay(r._pm?.loaiSanPham) || '(Chưa phân loại)'
+                  if (!loaiGroups[key]) loaiGroups[key] = { display, orders: [] }
+                  loaiGroups[key].orders.push(r)
                 })
                 const groupList = Object.entries(loaiGroups)
-                  .map(([loai, orders]) => ({ loai, orders, totalH: orders.reduce((s, x) => s + x.total, 0) }))
+                  .map(([, { display, orders }]) => ({ loai: display, orders, totalH: orders.reduce((s, x) => s + x.total, 0) }))
                   .sort((a, b) => b.totalH - a.totalH)
 
                 const thStyle = { padding: '8px 8px', fontWeight: 600, color: '#374151', borderBottom: '2px solid #e5e7eb', whiteSpace: 'nowrap', background: '#f3f4f6' }
