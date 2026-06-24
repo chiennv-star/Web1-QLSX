@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   Table, Button, Space, Input, Modal, Form, Select, Switch,
   Popconfirm, message, Tag, Tooltip, Row, Col, DatePicker,
@@ -1096,6 +1096,71 @@ function ProductMasterDrawer({ open, record, onClose, onEdit }) {
   )
 }
 
+function LoaiSpCell({ record, value, canEdit, allOptions, onPatch }) {
+  const [inputVal, setInputVal] = useState('')
+  const [popOpen,  setPopOpen]  = useState(false)
+
+  if (!canEdit) {
+    return value
+      ? <Tag color="purple" style={{ marginRight: 0, fontSize: 11 }}>{value}</Tag>
+      : <span style={{ color: '#d9d9d9' }}>—</span>
+  }
+
+  const handleSelect = opt => {
+    onPatch(record, value === opt ? null : opt)
+    setPopOpen(false)
+  }
+  const handleAdd = () => {
+    const v = inputVal.trim()
+    if (!v) return
+    onPatch(record, v)
+    setInputVal('')
+    setPopOpen(false)
+  }
+
+  const content = (
+    <div style={{ minWidth: 170 }} onClick={e => e.stopPropagation()}>
+      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 8 }}>Chọn hoặc nhập loại SP mới:</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
+        {allOptions.map(opt => (
+          <Tag key={opt}
+            color={value === opt ? 'purple' : 'default'}
+            style={{ cursor: 'pointer', fontWeight: 600, margin: 0, opacity: value === opt ? 1 : 0.65 }}
+            onClick={() => handleSelect(opt)}>
+            {value === opt ? '✓ ' : ''}{opt}
+          </Tag>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <Input size="small" placeholder="Loại mới..." value={inputVal}
+          onChange={e => setInputVal(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleAdd()}
+          style={{ flex: 1 }}
+        />
+        <Button size="small" type="primary" disabled={!inputVal.trim()} onClick={handleAdd}>Thêm</Button>
+      </div>
+      {value && (
+        <div style={{ marginTop: 8, textAlign: 'center' }}>
+          <span style={{ color: '#cf1322', cursor: 'pointer', fontSize: 12 }}
+            onClick={() => { onPatch(record, null); setPopOpen(false) }}>
+            ✕ Xóa loại SP
+          </span>
+        </div>
+      )}
+    </div>
+  )
+
+  return (
+    <Popover content={content} trigger="click" open={popOpen} onOpenChange={setPopOpen} placement="bottom">
+      <div data-no-row-click style={{ cursor: 'pointer', display: 'inline-block' }}>
+        {value
+          ? <Tag color="purple" style={{ marginRight: 0, fontSize: 11 }}>{value}</Tag>
+          : <span style={{ color: '#94a3b8', fontSize: 11, border: '1px dashed #cbd5e1', borderRadius: 4, padding: '1px 6px' }}>+ Thêm</span>}
+      </div>
+    </Popover>
+  )
+}
+
 function ProductMasterTab() {
   const { canEditProductMaster, isAdmin } = useAuth()
   const canEdit = canEditProductMaster()
@@ -1229,6 +1294,19 @@ function ProductMasterTab() {
     } catch { message.error('Cập nhật thất bại') }
   }
 
+  const patchLoaiSp = async (record, newValue) => {
+    try {
+      await api.patch(`/product-master/${record.id}/loai-san-pham`, { value: newValue ?? null })
+      setData(prev => prev.map(r => r.id === record.id ? { ...r, loaiSanPham: newValue ?? null } : r))
+    } catch { message.error('Cập nhật thất bại') }
+  }
+
+  const loaiSpOptions = useMemo(() => {
+    const defaults = ['Nhũ Tương', 'Dung Dịch', 'Gel', 'Sơn sáp', 'Sáp', 'Bột', 'Nến', 'Kem O/W', 'Kem W/O']
+    const fromData = data.filter(r => r.loaiSanPham).map(r => r.loaiSanPham)
+    return [...new Set([...defaults, ...fromData])]
+  }, [data])
+
   const openEdit = (r) => {
     setEditItem(r)
     form.setFieldsValue({
@@ -1258,8 +1336,10 @@ function ProductMasterTab() {
       render: v => v ? <span style={{ fontFamily: 'monospace', color: '#1677ff' }}>{v}</span> : '—' },
     { title: 'Tên / Tiến Trình', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 240, ellipsis: true,
       render: v => <span style={{ fontSize: 12 }}>{v || '—'}</span> },
-    { title: 'Loại SP', dataIndex: 'loaiSanPham', key: 'loaiSanPham', width: 130,
-      render: v => v ? <Tag color="purple" style={{ marginRight: 0, fontSize: 11 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span> },
+    { title: 'Loại SP', dataIndex: 'loaiSanPham', key: 'loaiSanPham', width: 140,
+      render: (v, record) => (
+        <LoaiSpCell record={record} value={v} canEdit={canEdit} allOptions={loaiSpOptions} onPatch={patchLoaiSp} />
+      )},
     { title: 'Tổ/Nhóm PCPL', dataIndex: 'toNhomPcpl', key: 'toNhomPcpl', width: 120, align: 'center',
       render: (v, record) => {
         const opts = [

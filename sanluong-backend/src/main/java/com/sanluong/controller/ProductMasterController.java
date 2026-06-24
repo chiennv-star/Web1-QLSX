@@ -90,6 +90,12 @@ public class ProductMasterController {
         return ResponseEntity.ok(service.patchToNhomPcpl(id, body.get("value")));
     }
 
+    @PatchMapping("/{id}/loai-san-pham")
+    public ResponseEntity<?> patchLoaiSanPham(@PathVariable Long id,
+                                               @RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(service.patchLoaiSanPham(id, body.get("value")));
+    }
+
     @GetMapping("/{id}/history")
     public ResponseEntity<?> getHistory(@PathVariable Long id) {
         return ResponseEntity.ok(service.getHistory(id));
