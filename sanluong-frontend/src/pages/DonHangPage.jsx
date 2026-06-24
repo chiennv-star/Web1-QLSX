@@ -1079,13 +1079,11 @@ export default function DonHangPage() {
     if (Object.keys(employeeCounts).length > 0) return
     try {
       const groups = ['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG']
-      const results = await Promise.allSettled(
-        groups.map(g => api.get('/employees', { params: { toNhom: g, excludeTinhTrang: 'tam_nghi' } }))
+      const results = await Promise.all(
+        groups.map(g => api.get('/employees', { params: { page: 0, size: 1, toNhom: g, excludeTinhTrang: 'tam_nghi' } }))
       )
       const counts = {}
-      groups.forEach((g, i) => {
-        counts[g] = results[i].status === 'fulfilled' ? (results[i].value.data?.length || 0) : 0
-      })
+      groups.forEach((g, i) => { counts[g] = results[i].data.totalElements || 0 })
       setEmployeeCounts(counts)
     } catch { /* non-blocking */ }
   }, [employeeCounts])
