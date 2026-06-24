@@ -1170,6 +1170,9 @@ function ProductMasterTab() {
   const [pagination,  setPagination]  = useState({ current: 1, pageSize: 20, total: 0 })
   const [keyword,     setKeyword]     = useState('')
   const [filterPcpl, setFilterPcpl]  = useState(null)
+  const [filterLoaiSp, setFilterLoaiSp] = useState(null)
+  const [filterMay,    setFilterMay]    = useState('')
+  const [allData,      setAllData]      = useState(null) // loaded when local filters active
   const [modalOpen,   setModalOpen]   = useState(false)
   const [detailOpen,  setDetailOpen]  = useState(false)
   const [detailItem,  setDetailItem]  = useState(null)
@@ -1197,6 +1200,45 @@ function ProductMasterTab() {
     } catch { message.error('Không thể tải danh mục') }
     finally { if (!silent) setLoading(false) }
   }, [keyword, filterPcpl])
+
+  // Fetch toàn bộ data (không phân trang) để áp filter local
+  const fetchAll = useCallback(async (kw = keyword, pcpl = filterPcpl) => {
+    setLoading(true)
+    try {
+      const params = { page: 0, size: 5000 }
+      if (kw?.trim()) params.keyword = kw.trim()
+      if (pcpl) params.toNhomPcpl = pcpl
+      const { data: res } = await api.get('/product-master', { params })
+      setAllData(res.content)
+    } catch { message.error('Không thể tải danh mục') }
+    finally { setLoading(false) }
+  }, [keyword, filterPcpl])
+
+  // displayData: áp loaiSp + may filter lên allData (hoặc data nếu chưa load all)
+  const normStr = v => (v || '').trim().toLowerCase()
+  const displayData = useMemo(() => {
+    const base = allData ?? data
+    let d = base
+    if (filterLoaiSp) d = d.filter(r => normStr(r.loaiSanPham) === normStr(filterLoaiSp))
+    if (filterMay?.trim()) {
+      const q = filterMay.trim().toLowerCase()
+      d = d.filter(r =>
+        (r.mayMocPc   || '').toLowerCase().includes(q) ||
+        (r.mayMocPl   || '').toLowerCase().includes(q) ||
+        (r.mayMocBbc1 || '').toLowerCase().includes(q) ||
+        (r.mayMocDg   || '').toLowerCase().includes(q)
+      )
+    }
+    return d
+  }, [data, allData, filterLoaiSp, filterMay])
+
+  const hasLocalFilter = !!(filterLoaiSp || filterMay?.trim())
+
+  // Khi local filter thay đổi → load all; khi xóa filter → dùng lại data server
+  useEffect(() => {
+    if (hasLocalFilter) fetchAll()
+    else setAllData(null)
+  }, [filterLoaiSp, filterMay]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchData() }, [])
 
@@ -1412,18 +1454,36 @@ function ProductMasterTab() {
 
   return (
     <>
-      <div style={{ padding: '10px 16px 8px', display: 'flex', gap: 8, alignItems: 'center' }}>
-        <Input.Search size="small" placeholder="Tìm Mã TP / Tên..." style={{ width: 240 }}
+      <div style={{ padding: '10px 16px 8px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Input.Search size="small" placeholder="Tìm Mã TP / Tên..." style={{ width: 220 }}
           value={keyword} onChange={e => setKeyword(e.target.value)}
-          onSearch={() => fetchData(0)} allowClear />
-        <Select size="small" allowClear placeholder="Tất cả tổ PCPL" style={{ width: 150 }}
+          onSearch={() => { if (hasLocalFilter) fetchAll(keyword, filterPcpl); else fetchData(0) }} allowClear />
+        <Select size="small" allowClear placeholder="Tất cả tổ PCPL" style={{ width: 140 }}
           value={filterPcpl}
-          onChange={v => { setFilterPcpl(v ?? null); fetchData(0, pagination.pageSize, keyword, v ?? null) }}
+          onChange={v => {
+            const next = v ?? null; setFilterPcpl(next)
+            if (hasLocalFilter) fetchAll(keyword, next)
+            else fetchData(0, pagination.pageSize, keyword, next)
+          }}
           options={[
             { value: 'PCPL1', label: <><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#2f54eb', marginRight: 6 }} />PCPL1</> },
             { value: 'PCPL2', label: <><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#13c2c2', marginRight: 6 }} />PCPL2</> },
           ]} />
-        <Button size="small" icon={<ReloadOutlined />} onClick={() => fetchData(0)} />
+        <Select size="small" allowClear placeholder="Tất cả loại SP" style={{ width: 160 }}
+          value={filterLoaiSp} showSearch
+          onChange={v => setFilterLoaiSp(v ?? null)}
+          filterOption={(input, opt) => (opt.value || '').toLowerCase().includes(input.toLowerCase())}
+          options={loaiSpOptions.map(v => ({ value: v, label: v }))} />
+        <Input size="small" placeholder="Tìm theo máy..." style={{ width: 150 }}
+          value={filterMay} onChange={e => setFilterMay(e.target.value)} allowClear />
+        {hasLocalFilter && (
+          <span style={{ fontSize: 11, color: '#1677ff', fontStyle: 'italic' }}>
+            {displayData.length} kết quả
+          </span>
+        )}
+        <Button size="small" icon={<ReloadOutlined />} onClick={() => {
+          if (hasLocalFilter) fetchAll(); else fetchData(0)
+        }} />
         {canEdit && (
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
             <Button size="small" icon={<FileExcelOutlined />}
@@ -1446,7 +1506,7 @@ function ProductMasterTab() {
           </div>
         )}
       </div>
-      <Table className="dm-table" columns={columns} dataSource={data} rowKey="id"
+      <Table className="dm-table" columns={columns} dataSource={displayData} rowKey="id"
         loading={loading} size="small" scroll={{ x: 1500 }}
         sticky={{ offsetHeader: 44 }}
         rowClassName={r => r.id === newItemId ? 'row-new-highlight' : ''}
@@ -1457,7 +1517,12 @@ function ProductMasterTab() {
             canEdit ? openEdit(record) : (() => { setDetailItem(record); setDetailOpen(true) })()
           },
         })}
-        pagination={{
+        pagination={hasLocalFilter ? {
+          size: 'small', showSizeChanger: true,
+          pageSizeOptions: ['20', '50', '100', '200'],
+          defaultPageSize: 50,
+          showTotal: t => `${t} mã TP (đã lọc)`,
+        } : {
           ...pagination, size: 'small', showSizeChanger: true,
           pageSizeOptions: ['20', '50', '100'],
           showTotal: t => `Tổng ${t} mã TP`,
