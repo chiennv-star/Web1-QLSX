@@ -961,6 +961,7 @@ export default function DonHangPage() {
   const [productMasterMap,  setProductMasterMap]  = useState({})
   const [loadingMaster,     setLoadingMaster]     = useState(false)
   const [analysisFullscreen, setAnalysisFullscreen] = useState(false)
+  const [employeeCounts,    setEmployeeCounts]    = useState({})
 
   // Sticky header offset
   const headerWrapRef = useRef(null)
@@ -1074,8 +1075,26 @@ export default function DonHangPage() {
     finally { setLoadingMaster(false) }
   }, [productMasterMap])
 
+  const loadEmployeeCounts = useCallback(async () => {
+    if (Object.keys(employeeCounts).length > 0) return
+    try {
+      const groups = ['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG']
+      const results = await Promise.allSettled(
+        groups.map(g => api.get('/employees', { params: { toNhom: g, excludeTinhTrang: 'tam_nghi' } }))
+      )
+      const counts = {}
+      groups.forEach((g, i) => {
+        counts[g] = results[i].status === 'fulfilled' ? (results[i].value.data?.length || 0) : 0
+      })
+      setEmployeeCounts(counts)
+    } catch { /* non-blocking */ }
+  }, [employeeCounts])
+
   useEffect(() => {
-    if (activeTab === 'trend' || activeTab === 'analysis') loadProductMaster()
+    if (activeTab === 'trend' || activeTab === 'analysis') {
+      loadProductMaster()
+      loadEmployeeCounts()
+    }
   }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Sync from Kế Hoạch ────────────────────────────────────────────────────
@@ -1813,6 +1832,14 @@ export default function DonHangPage() {
           BBC1: { label: 'VS BBC1',   bg: '#fee2e2', color: '#991b1b' },
           DG:   { label: 'Đóng Gói', bg: '#f5f3ff', color: '#6d28d9' },
         }
+        // Số nhân sự mỗi tổ (đã loại tạm nghỉ), map sang 4 công đoạn
+        const stageWorkers = {
+          PC:   (employeeCounts['PCPL1'] || 0) + (employeeCounts['PCPL2'] || 0),
+          PL:   employeeCounts['PCPL3'] || 0,
+          BBC1: employeeCounts['BBC1']  || 0,
+          DG:   employeeCounts['ĐG']   || 0,
+        }
+        const fmtDays = v => (v != null && v > 0) ? Number(v).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'
         const orderAnalysis = trendData.map(r => {
           const sl   = Number(r.soLuongConLai)   || 0
           const nsPc  = Number(r._pm.nangSuatPc)  || 0
@@ -1847,7 +1874,8 @@ export default function DonHangPage() {
           const vals = ordersWithData.filter(r => r[s.tField] != null)
           const totalH = vals.reduce((sum, r) => sum + r[s.tField], 0)
           const bnCount = ordersWithData.filter(r => r.bottleneck?.key === s.key).length
-          return { ...s, totalH, orderCount: vals.length, bnCount }
+          const soNguoi = stageWorkers[s.key] || 0
+          return { ...s, totalH, orderCount: vals.length, bnCount, soNguoi }
         })
         const maxStageH = Math.max(...stageSummary.map(s => s.totalH)) || 1
         const bottleneckStage = stageSummary.reduce((a, b) => b.totalH > a.totalH ? b : a)
@@ -1968,7 +1996,7 @@ export default function DonHangPage() {
 
             {/* ── Section 1: Thời gian SX ── */}
             <div style={{ marginBottom: 36 }}>
-              <SecTitle n="1" title="Thời gian sản xuất theo công đoạn (giờ)" sub="t = SL Còn Lại ÷ NS. Cột Nút thắt là công đoạn lâu nhất của từng đơn." />
+              <SecTitle n="1" title="Thời gian sản xuất theo công đoạn (công)" sub="t = SL Còn Lại ÷ NS (sp/công). Ngày HT = Tổng công ÷ Số người tổ. Nút thắt là công đoạn lâu nhất của từng đơn." />
 
               {/* ── Bảng tổng hợp giờ từng công đoạn ── */}
               {ordersWithData.length > 0 && (
@@ -1977,7 +2005,7 @@ export default function DonHangPage() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, background: '#f8fafc', borderRadius: 8, overflow: 'hidden' }}>
                     <thead>
                       <tr style={{ background: '#e2e8f0' }}>
-                        {['Công đoạn','Tổng giờ (h)','Số đơn có NS','Đơn là nút thắt','Tải (% so cao nhất)'].map(h => (
+                        {['Công đoạn','Tổng công','Số người','Ngày HT','Đơn là nút thắt','Tải (% so cao nhất)'].map(h => (
                           <th key={h} style={{ padding: '8px 12px', textAlign: h === 'Công đoạn' ? 'left' : 'right', fontWeight: 600, color: '#374151', borderBottom: '2px solid #cbd5e1', whiteSpace: 'nowrap' }}>{h}</th>
                         ))}
                       </tr>
@@ -1993,7 +2021,12 @@ export default function DonHangPage() {
                               {isBN && <span style={{ fontSize: 10, background: s.color, color: '#fff', borderRadius: 4, padding: '1px 6px' }}>NÚT THẮT</span>}
                             </td>
                             <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 700, color: s.color }}>{fmtH(s.totalH)}</td>
-                            <td style={{ padding: '9px 12px', textAlign: 'right', color: '#374151' }}>{s.orderCount}</td>
+                            <td style={{ padding: '9px 12px', textAlign: 'right', color: '#374151', fontWeight: 600 }}>
+                              {s.soNguoi > 0 ? s.soNguoi : <span style={{ color: '#d1d5db', fontSize: 11 }}>—</span>}
+                            </td>
+                            <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 700, color: s.soNguoi > 0 ? (isBN ? s.color : '#059669') : '#d1d5db' }}>
+                              {s.soNguoi > 0 ? <>{fmtDays(s.totalH / s.soNguoi)} <span style={{ fontWeight: 400, fontSize: 11 }}>ngày</span></> : '—'}
+                            </td>
                             <td style={{ padding: '9px 12px', textAlign: 'right', color: '#374151' }}>{s.bnCount}</td>
                             <td style={{ padding: '9px 12px', textAlign: 'right' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
@@ -2009,7 +2042,7 @@ export default function DonHangPage() {
                       <tr style={{ background: '#f1f5f9', borderTop: '2px solid #cbd5e1' }}>
                         <td style={{ padding: '9px 12px', fontWeight: 700, color: '#111827' }}>Tổng cộng</td>
                         <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 700, color: '#111827' }}>{fmtH(stageSummary.reduce((s, x) => s + x.totalH, 0))}</td>
-                        <td colSpan={3} style={{ padding: '9px 12px', textAlign: 'right', color: '#6b7280', fontSize: 12 }}>{ordersWithData.length} đơn có dữ liệu NS</td>
+                        <td colSpan={4} style={{ padding: '9px 12px', textAlign: 'right', color: '#6b7280', fontSize: 12 }}>{ordersWithData.length} đơn có dữ liệu NS</td>
                       </tr>
                     </tbody>
                   </table>
@@ -2019,8 +2052,8 @@ export default function DonHangPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: '#f3f4f6' }}>
-                    {['Mã Bravo','Sản phẩm','SL Còn Lại','t. Pha Chế (h)','t. Phân Liều (h)','t. VS BBC1 (h)','t. Đóng Gói (h)','Tổng (h)','Nút thắt'].map(h => (
-                      <th key={h} style={{ padding: '9px 8px', textAlign: h.startsWith('t.') || h === 'Tổng (h)' || h === 'SL Còn Lại' ? 'right' : 'left', fontWeight: 600, color: '#374151', borderBottom: '2px solid #e5e7eb', whiteSpace: 'nowrap' }}>{h}</th>
+                    {['Mã Bravo','Sản phẩm','SL Còn Lại','t. Pha Chế (h)','t. Phân Liều (h)','t. VS BBC1 (h)','t. Đóng Gói (h)','Tổng (h)','Nút thắt','Ngày HT'].map(h => (
+                      <th key={h} style={{ padding: '9px 8px', textAlign: h.startsWith('t.') || h === 'Tổng (h)' || h === 'SL Còn Lại' || h === 'Ngày HT' ? 'right' : 'left', fontWeight: 600, color: '#374151', borderBottom: '2px solid #e5e7eb', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -2041,6 +2074,15 @@ export default function DonHangPage() {
                           {bn && <span style={{ background: bn.bg, color: bn.color, fontWeight: 600, padding: '2px 8px', borderRadius: 4, fontSize: 12, whiteSpace: 'nowrap' }}>
                             {bn.label} {fmtH(r.bottleneck.t)}h
                           </span>}
+                        </td>
+                        <td style={{ padding: '8px 8px', textAlign: 'right' }}>
+                          {(() => {
+                            if (!r.bottleneck) return <span style={{ color: '#d1d5db' }}>—</span>
+                            const w = stageWorkers[r.bottleneck.key] || 0
+                            if (w === 0) return <span style={{ color: '#d1d5db', fontSize: 11 }}>—</span>
+                            const days = r.bottleneck.t / w
+                            return <span style={{ fontWeight: 700, color: bn?.color || '#374151' }}>{fmtDays(days)} <span style={{ fontWeight: 400, fontSize: 11 }}>ngày</span></span>
+                          })()}
                         </td>
                       </tr>
                     )
