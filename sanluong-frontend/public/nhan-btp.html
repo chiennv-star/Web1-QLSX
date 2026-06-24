@@ -615,41 +615,48 @@
             updatePreview();
         }
 
-        function buildLabelTable(data) {
+        function buildLabelTable(data, fs) {
+            // fs = font size scale: 1 = screen preview, 1.45 = Word/Excel export
+            const f = fs || 1;
+            const fComp  = (10 * f).toFixed(1) + 'pt';
+            const fTitle = (11 * f).toFixed(1) + 'pt';
+            const fHdr   = (9.5 * f).toFixed(1) + 'pt';
+            const fBody  = (9.5 * f).toFixed(1) + 'pt';
+            const fNote  = (9   * f).toFixed(1) + 'pt';
+            const pad    = Math.round(3 * f) + 'px';
             const s1 = data.stage === 'Vệ sinh bao bì' ? 'background:#52A86F;color:white;' : '';
             const s2 = data.stage === 'Pha chế'        ? 'background:#52A86F;color:white;' : '';
             const s3 = data.stage === 'Phân liều'       ? 'background:#52A86F;color:white;' : '';
-            const td = 'style="border:1px solid #000;padding:3px;font-family:\'Times New Roman\',Times,serif;"';
             return `
-            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #000;border-collapse:collapse;font-family:'Times New Roman',Times,serif;font-size:10pt;">
-              <tr><td colspan="2" style="border-bottom:1px solid #000;text-align:center;font-weight:bold;padding:4px;font-size:10pt;">CÔNG TY CỔ PHẦN MỸ PHẨM THIÊN NHIÊN SONG AN</td></tr>
-              <tr><td colspan="2" style="border-bottom:1px solid #000;text-align:center;font-weight:bold;padding:3px;font-size:10.5pt;">NHÃN BÁN THÀNH PHẨM</td></tr>
+            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #000;border-collapse:collapse;font-family:'Times New Roman',Times,serif;font-size:${fBody};">
+              <tr><td colspan="2" style="border-bottom:1px solid #000;text-align:center;font-weight:bold;padding:${pad};font-size:${fComp};">CÔNG TY CỔ PHẦN MỸ PHẨM THIÊN NHIÊN SONG AN</td></tr>
+              <tr><td colspan="2" style="border-bottom:1px solid #000;text-align:center;font-weight:bold;padding:${pad};font-size:${fTitle};">NHÃN BÁN THÀNH PHẨM</td></tr>
               <tr>
                 <td colspan="2" style="border-bottom:1px solid #000;padding:0;">
                   <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
                     <tr>
-                      <td style="width:27%;border-right:1px solid #000;text-align:center;font-weight:bold;padding:3px;font-size:9.5pt;${s1}">Vệ sinh bao bì •</td>
-                      <td style="width:46%;border-right:1px solid #000;text-align:center;font-weight:bold;padding:3px;font-size:9.5pt;${s2}">Pha chế •</td>
-                      <td style="width:27%;text-align:center;font-weight:bold;padding:3px;font-size:9.5pt;${s3}">Phân liều •</td>
+                      <td style="width:27%;border-right:1px solid #000;text-align:center;font-weight:bold;padding:${pad};font-size:${fHdr};${s1}">Vệ sinh bao bì •</td>
+                      <td style="width:46%;border-right:1px solid #000;text-align:center;font-weight:bold;padding:${pad};font-size:${fHdr};${s2}">Pha chế •</td>
+                      <td style="width:27%;text-align:center;font-weight:bold;padding:${pad};font-size:${fHdr};${s3}">Phân liều •</td>
                     </tr>
                   </table>
                 </td>
               </tr>
               <tr>
-                <td style="width:68%;border-right:1px solid #000;border-bottom:1px solid #000;padding:4px;vertical-align:top;font-size:9.5pt;">
-                  <div style="margin-bottom:4px;"><strong>Tên SP:</strong> ${data.productName}</div>
-                  <div style="margin-bottom:4px;"><strong>Số lô SP:</strong> ${data.batchCode}</div>
-                  <div style="margin-bottom:4px;"><strong>Số lượng:</strong> ${data.quantity}</div>
+                <td style="width:68%;border-right:1px solid #000;border-bottom:1px solid #000;padding:${pad};vertical-align:top;font-size:${fBody};">
+                  <div style="margin-bottom:${pad};"><strong>Tên SP:</strong> ${data.productName}</div>
+                  <div style="margin-bottom:${pad};"><strong>Số lô SP:</strong> ${data.batchCode}</div>
+                  <div style="margin-bottom:${pad};"><strong>Số lượng:</strong> ${data.quantity}</div>
                   <div><strong>Người TH:</strong> ${data.personnel}</div>
                 </td>
-                <td style="width:32%;border-bottom:1px solid #000;padding:4px;vertical-align:top;font-size:9.5pt;">
-                  <div style="margin-bottom:4px;"><strong>NSX:</strong> ${data.mfgDate}</div>
-                  <div style="margin-bottom:4px;"><strong>Số mẻ:</strong> ${data.mixCode}</div>
-                  <div style="margin-bottom:4px;"><strong>Công đoạn:</strong> ${data.stage}</div>
+                <td style="width:32%;border-bottom:1px solid #000;padding:${pad};vertical-align:top;font-size:${fBody};">
+                  <div style="margin-bottom:${pad};"><strong>NSX:</strong> ${data.mfgDate}</div>
+                  <div style="margin-bottom:${pad};"><strong>Số mẻ:</strong> ${data.mixCode}</div>
+                  <div style="margin-bottom:${pad};"><strong>Công đoạn:</strong> ${data.stage}</div>
                   <div><strong>Ngày TH:</strong> ${data.batchDate}</div>
                 </td>
               </tr>
-              <tr><td colspan="2" style="padding:3px;font-size:9pt;">Ghi chú: ${data.notes}</td></tr>
+              <tr><td colspan="2" style="padding:${pad};font-size:${fNote};">Ghi chú: ${data.notes}</td></tr>
             </table>`;
         }
 
@@ -671,22 +678,26 @@
             const data  = getFormData();
             const batch = data.batchCode;
             const pages = parseInt(document.getElementById('pages').value) || 1;
-            const label = buildLabelTable(data);
+            // A4 portrait 8mm margins: 194mm wide, 281mm tall → 2 cols × 4 rows
+            // col width = (194 - 4mm gap) / 2 = 95mm; row height = (281 - 9mm gaps) / 4 = 68mm
+            const label = buildLabelTable(data, 1.45);
 
             let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">';
             html += '<head><meta charset="utf-8">';
-            html += '<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>90</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->';
-            html += '<style>@page { size: A4; margin: 8mm; } body { font-family: "Times New Roman", Times, serif; margin: 0; } td { mso-number-format: "@"; } </style>';
+            html += '<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->';
+            html += '<style>@page{size:210mm 297mm;margin:8mm;} body{font-family:"Times New Roman",Times,serif;margin:0;} table{border-collapse:collapse;} td{mso-number-format:"@";}</style>';
             html += '</head><body>';
 
             for (let p = 0; p < pages; p++) {
-                if (p > 0) html += '<br style="page-break-before:always;mso-break-type:page-break">';
-                html += '<table width="100%" cellpadding="2" cellspacing="2" style="border-collapse:separate;border-spacing:3mm;table-layout:fixed;">';
+                if (p > 0) html += '<div style="page-break-before:always;mso-break-type:page-break"></div>';
+                html += '<table style="width:194mm;table-layout:fixed;border-collapse:collapse;" cellpadding="0" cellspacing="0">';
                 for (let row = 0; row < 4; row++) {
-                    html += '<tr>';
-                    html += `<td width="50%" style="vertical-align:top;padding:2mm;">${label}</td>`;
-                    html += `<td width="50%" style="vertical-align:top;padding:2mm;">${label}</td>`;
+                    html += `<tr style="height:68mm;">`;
+                    html += `<td style="width:95mm;vertical-align:top;padding:1mm 2mm 1mm 0;">${label}</td>`;
+                    html += `<td style="width:4mm;"></td>`;
+                    html += `<td style="width:95mm;vertical-align:top;padding:1mm 0 1mm 2mm;">${label}</td>`;
                     html += '</tr>';
+                    if (row < 3) html += '<tr style="height:3mm;"><td colspan="3"></td></tr>';
                 }
                 html += '</table>';
             }
@@ -704,23 +715,25 @@
             const data  = getFormData();
             const batch = data.batchCode;
             const pages = parseInt(document.getElementById('pages').value) || 1;
-            const label = buildLabelTable(data);
+            const label = buildLabelTable(data, 1.45);
 
             let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
             html += '<head><meta charset="utf-8">';
             html += '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
-            html += '<x:Name>Nhãn BTP</x:Name><x:WorksheetOptions><x:Print><x:FitWidth>1</x:FitWidth></x:Print></x:WorksheetOptions>';
+            html += '<x:Name>Nhãn BTP</x:Name><x:WorksheetOptions><x:Print><x:FitWidth>1</x:FitWidth><x:FitHeight>1</x:FitHeight></x:Print></x:WorksheetOptions>';
             html += '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
-            html += '<style>table { border-collapse: collapse; } td { font-family: "Times New Roman", Times, serif; vertical-align: top; } </style>';
+            html += '<style>table{border-collapse:collapse;} td{font-family:"Times New Roman",Times,serif;vertical-align:top;}</style>';
             html += '</head><body>';
 
             for (let p = 0; p < pages; p++) {
-                html += '<table width="100%" cellpadding="2" cellspacing="4" style="table-layout:fixed;">';
+                html += '<table style="width:194mm;table-layout:fixed;border-collapse:collapse;" cellpadding="0" cellspacing="0">';
                 for (let row = 0; row < 4; row++) {
-                    html += '<tr>';
-                    html += `<td width="50%" style="vertical-align:top;padding:2mm;">${label}</td>`;
-                    html += `<td width="50%" style="vertical-align:top;padding:2mm;">${label}</td>`;
+                    html += `<tr style="height:68mm;">`;
+                    html += `<td style="width:95mm;vertical-align:top;padding:1mm 2mm 1mm 0;">${label}</td>`;
+                    html += `<td style="width:4mm;"></td>`;
+                    html += `<td style="width:95mm;vertical-align:top;padding:1mm 0 1mm 2mm;">${label}</td>`;
                     html += '</tr>';
+                    if (row < 3) html += '<tr style="height:3mm;"><td colspan="3"></td></tr>';
                 }
                 html += '</table>';
                 if (p < pages - 1) html += '<br style="page-break-before:always">';
