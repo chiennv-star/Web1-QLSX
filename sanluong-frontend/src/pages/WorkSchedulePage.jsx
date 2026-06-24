@@ -3109,8 +3109,6 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
           const params = new URLSearchParams({
             productName: record.tenTrinh || record.maSp || '',
             batchCode:   record.soLo || '',
-            mfgDate:     record.ngayThucHien || '',
-            batchDate:   record.ngayThucHien || '',
             stage:       STAGE_MAP[congDoan] || '',
             quantity:    record[slField] != null ? String(record[slField]) : '',
             personnel:   record.nguoiThucHien || '',
