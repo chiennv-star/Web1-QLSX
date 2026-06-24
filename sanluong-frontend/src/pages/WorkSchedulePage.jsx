@@ -10,7 +10,8 @@ import {
   ReloadOutlined, WarningOutlined, CalendarOutlined,
   SyncOutlined, CheckCircleOutlined, EyeOutlined, LinkOutlined,
   CheckOutlined, CloseOutlined, EyeInvisibleOutlined,
-  EyeTwoTone, SettingOutlined, DownOutlined, FilterOutlined, UsergroupAddOutlined
+  EyeTwoTone, SettingOutlined, DownOutlined, FilterOutlined, UsergroupAddOutlined,
+  PrinterOutlined
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import api from '../api/axios'
@@ -3094,6 +3095,38 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       render: v => v
         ? <Tooltip title={v}><Tag color="orange" icon={<WarningOutlined />} style={{ marginRight: 0 }}>Có</Tag></Tooltip>
         : <Tag color="green" style={{ marginRight: 0 }}>Không</Tag>
+    },
+    {
+      title: 'In Nhãn', key: 'printLabel', width: 72, align: 'center', fixed: 'right',
+      render: (_, record) => {
+        const STAGE_MAP = {
+          PC: 'Pha chế', PCPL1: 'Pha chế', PCPL2: 'Pha chế',
+          PL: 'Phân liều',
+          BBC1: 'Vệ sinh bao bì',
+        }
+        const slField = SL_FIELD_MAP[congDoan] || 'slPc'
+        const handlePrint = () => {
+          const params = new URLSearchParams({
+            productName: record.tenTrinh || record.maSp || '',
+            batchCode:   record.soLo || '',
+            mfgDate:     record.ngayThucHien || '',
+            batchDate:   record.ngayThucHien || '',
+            stage:       STAGE_MAP[congDoan] || '',
+            quantity:    record[slField] != null ? String(record[slField]) : '',
+            personnel:   record.nguoiThucHien || '',
+            notes:       record.chuY || '',
+          })
+          window.open(`/nhan-btp.html?${params.toString()}`, '_blank')
+        }
+        return (
+          <Tooltip title="In nhãn BTP">
+            <Button size="small" type="text" icon={<PrinterOutlined />}
+              style={{ color: '#2d6a47', fontSize: 15 }}
+              onClick={e => { e.stopPropagation(); handlePrint() }}
+            />
+          </Tooltip>
+        )
+      }
     },
     {
       key: 'action', width: 100, fixed: 'right', align: 'center',
