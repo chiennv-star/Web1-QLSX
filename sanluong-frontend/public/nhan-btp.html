@@ -615,40 +615,85 @@
             updatePreview();
         }
 
+        function buildLabelTable(data) {
+            const s1 = data.stage === 'Vệ sinh bao bì' ? 'background:#52A86F;color:white;' : '';
+            const s2 = data.stage === 'Pha chế'        ? 'background:#52A86F;color:white;' : '';
+            const s3 = data.stage === 'Phân liều'       ? 'background:#52A86F;color:white;' : '';
+            const td = 'style="border:1px solid #000;padding:3px;font-family:\'Times New Roman\',Times,serif;"';
+            return `
+            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #000;border-collapse:collapse;font-family:'Times New Roman',Times,serif;font-size:10pt;">
+              <tr><td colspan="2" style="border-bottom:1px solid #000;text-align:center;font-weight:bold;padding:4px;font-size:10pt;">CÔNG TY CỔ PHẦN MỸ PHẨM THIÊN NHIÊN SONG AN</td></tr>
+              <tr><td colspan="2" style="border-bottom:1px solid #000;text-align:center;font-weight:bold;padding:3px;font-size:10.5pt;">NHÃN BÁN THÀNH PHẨM</td></tr>
+              <tr>
+                <td colspan="2" style="border-bottom:1px solid #000;padding:0;">
+                  <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                    <tr>
+                      <td style="width:27%;border-right:1px solid #000;text-align:center;font-weight:bold;padding:3px;font-size:9.5pt;${s1}">Vệ sinh bao bì •</td>
+                      <td style="width:46%;border-right:1px solid #000;text-align:center;font-weight:bold;padding:3px;font-size:9.5pt;${s2}">Pha chế •</td>
+                      <td style="width:27%;text-align:center;font-weight:bold;padding:3px;font-size:9.5pt;${s3}">Phân liều •</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="width:68%;border-right:1px solid #000;border-bottom:1px solid #000;padding:4px;vertical-align:top;font-size:9.5pt;">
+                  <div style="margin-bottom:4px;"><strong>Tên SP:</strong> ${data.productName}</div>
+                  <div style="margin-bottom:4px;"><strong>Số lô SP:</strong> ${data.batchCode}</div>
+                  <div style="margin-bottom:4px;"><strong>Số lượng:</strong> ${data.quantity}</div>
+                  <div><strong>Người TH:</strong> ${data.personnel}</div>
+                </td>
+                <td style="width:32%;border-bottom:1px solid #000;padding:4px;vertical-align:top;font-size:9.5pt;">
+                  <div style="margin-bottom:4px;"><strong>NSX:</strong> ${data.mfgDate}</div>
+                  <div style="margin-bottom:4px;"><strong>Số mẻ:</strong> ${data.mixCode}</div>
+                  <div style="margin-bottom:4px;"><strong>Công đoạn:</strong> ${data.stage}</div>
+                  <div><strong>Ngày TH:</strong> ${data.batchDate}</div>
+                </td>
+              </tr>
+              <tr><td colspan="2" style="padding:3px;font-size:9pt;">Ghi chú: ${data.notes}</td></tr>
+            </table>`;
+        }
+
+        function getFormData() {
+            return {
+                productName: document.getElementById('productName').value || '',
+                batchCode:   document.getElementById('batchCode').value   || '',
+                mixCode:     document.getElementById('mixCode').value     || '',
+                mfgDate:     formatDate(document.getElementById('mfgDate').value)    || '',
+                batchDate:   formatDate(document.getElementById('batchDate').value)  || '',
+                quantity:    document.getElementById('quantity').value    || '',
+                stage:       document.getElementById('stage').value       || '',
+                personnel:   document.getElementById('personnel').value   || '',
+                notes:       document.getElementById('notes').value       || '',
+            };
+        }
+
         function exportToWord() {
-            const batch = document.getElementById('batchCode').value || '';
+            const data  = getFormData();
+            const batch = data.batchCode;
             const pages = parseInt(document.getElementById('pages').value) || 1;
+            const label = buildLabelTable(data);
 
-            let html = '<html><head><meta charset="utf-8"><style>';
-            html += "body { margin: 10mm; font-family: 'Times New Roman', Times, serif; }";
-            html += '.a4-page { page-break-after: always; width: 100%; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(4, 1fr); gap: 8mm; padding: 8mm; }';
-            html += '.label { border: 1px solid #000; padding: 0; font-size: 9px; display: flex; flex-direction: column; }';
-            html += '.label-company { font-weight: bold; font-size: 10.1px; text-align: center; padding: 4px; border-bottom: 1px solid #000; }';
-            html += '.label-title { font-weight: bold; font-size: 10.2px; text-align: center; padding: 3px; border-bottom: 1px solid #000; }';
-            html += '.label-header { display: grid; grid-template-columns: 1fr 1.5fr 1fr; border-bottom: 1px solid #000; height: 27px; }';
-            html += '.label-header-cell { border-right: 1px solid #000; padding: 3px 2px; font-size: 11.2px; font-weight: bold; text-align: center; display: flex; align-items: center; justify-content: center; }';
-            html += '.label-header-cell:last-child { border-right: none; }';
-            html += '.label-header-cell.active { background: #52A86F; color: white; }';
-            html += '.label-content { flex: 1; display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #000; min-height: 55px; }';
-            html += '.label-left { border-right: 1px solid #000; padding: 2px 3px; display: flex; flex-direction: column; justify-content: space-around; font-size: 10.9px; }';
-            html += '.label-right { padding: 2px 3px; display: flex; flex-direction: column; justify-content: space-around; font-size: 10.9px; }';
-            html += '.label-row { font-size: 10.9px; line-height: 1.2; display: flex; align-items: center; }';
-            html += '.label-row strong { font-weight: bold; min-width: 38px; margin-right: 2px; }';
-            html += '.label-note { padding: 2px 3px; font-size: 10.9px; border-top: 1px solid #000; min-height: 12px; display: flex; align-items: center; }';
-            html += '</style></head><body>';
+            let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">';
+            html += '<head><meta charset="utf-8">';
+            html += '<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>90</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->';
+            html += '<style>@page { size: A4; margin: 8mm; } body { font-family: "Times New Roman", Times, serif; margin: 0; } td { mso-number-format: "@"; } </style>';
+            html += '</head><body>';
 
-            const printContainer = document.getElementById('printContainer');
-            const a4Pages = printContainer.querySelectorAll('.a4-page');
-
-            a4Pages.forEach(page => {
-                html += '<div class="a4-page">';
-                html += page.innerHTML;
-                html += '</div>';
-            });
+            for (let p = 0; p < pages; p++) {
+                if (p > 0) html += '<br style="page-break-before:always;mso-break-type:page-break">';
+                html += '<table width="100%" cellpadding="2" cellspacing="2" style="border-collapse:separate;border-spacing:3mm;table-layout:fixed;">';
+                for (let row = 0; row < 4; row++) {
+                    html += '<tr>';
+                    html += `<td width="50%" style="vertical-align:top;padding:2mm;">${label}</td>`;
+                    html += `<td width="50%" style="vertical-align:top;padding:2mm;">${label}</td>`;
+                    html += '</tr>';
+                }
+                html += '</table>';
+            }
 
             html += '</body></html>';
 
-            const blob = new Blob([html], { type: 'application/msword' });
+            const blob = new Blob(['﻿' + html], { type: 'application/msword' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = `nhan_btp_${batch || 'new'}_${pages}trang.doc`;
@@ -656,29 +701,37 @@
         }
 
         function exportToExcel() {
-            const batch = document.getElementById('batchCode').value || '';
-            const mixCode = document.getElementById('mixCode').value || '';
-            const mfgDate = formatDate(document.getElementById('mfgDate').value) || '';
-            const batchDate = formatDate(document.getElementById('batchDate').value) || '';
-            const qty = document.getElementById('quantity').value || '';
-            const stage = document.getElementById('stage').value || '';
-            const personnel = document.getElementById('personnel').value || '';
-            const notes = document.getElementById('notes').value || '';
-            const pages = document.getElementById('pages').value || '1';
-            const product = document.getElementById('productName').value || '';
+            const data  = getFormData();
+            const batch = data.batchCode;
+            const pages = parseInt(document.getElementById('pages').value) || 1;
+            const label = buildLabelTable(data);
 
-            let csv = 'Nhãn BTP Song An - 8 Nhãn/Trang\n\n';
-            csv += 'Thông Tin Sản Phẩm\n';
-            csv += 'Tên Sản Phẩm,Số Lô NSX,Số Mẻ,NSX,Ngày TH,Số Lượng,Số Trang\n';
-            csv += `"${product}","${batch}","${mixCode}","${mfgDate}","${batchDate}","${qty}","${pages}"\n\n`;
-            csv += 'Thông Tin Thực Hiện\n';
-            csv += 'Công Đoạn,Nhân Viên,Ghi Chú\n';
-            csv += `"${stage}","${personnel}","${notes}"\n`;
+            let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            html += '<head><meta charset="utf-8">';
+            html += '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
+            html += '<x:Name>Nhãn BTP</x:Name><x:WorksheetOptions><x:Print><x:FitWidth>1</x:FitWidth></x:Print></x:WorksheetOptions>';
+            html += '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+            html += '<style>table { border-collapse: collapse; } td { font-family: "Times New Roman", Times, serif; vertical-align: top; } </style>';
+            html += '</head><body>';
 
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            for (let p = 0; p < pages; p++) {
+                html += '<table width="100%" cellpadding="2" cellspacing="4" style="table-layout:fixed;">';
+                for (let row = 0; row < 4; row++) {
+                    html += '<tr>';
+                    html += `<td width="50%" style="vertical-align:top;padding:2mm;">${label}</td>`;
+                    html += `<td width="50%" style="vertical-align:top;padding:2mm;">${label}</td>`;
+                    html += '</tr>';
+                }
+                html += '</table>';
+                if (p < pages - 1) html += '<br style="page-break-before:always">';
+            }
+
+            html += '</body></html>';
+
+            const blob = new Blob(['﻿' + html], { type: 'application/vnd.ms-excel' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `nhan_btp_${batch || 'new'}_${pages}trang.csv`;
+            link.download = `nhan_btp_${batch || 'new'}_${pages}trang.xls`;
             link.click();
         }
 
