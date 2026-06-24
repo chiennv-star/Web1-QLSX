@@ -1799,6 +1799,34 @@ export default function DonHangPage() {
               : <span style={{ color: '#d9d9d9' }}>—</span>,
           },
         ]
+        return (
+          <Table
+            className="dh-table"
+            columns={trendColumns}
+            dataSource={trendData}
+            rowKey="id"
+            loading={loading || loadingMaster}
+            size="small"
+            scroll={{ x: 2310 }}
+            sticky={{ offsetHeader: headerOffset }}
+            rowHoverable={false}
+            rowClassName={rowClassName}
+            onRow={r => ({ onClick: () => openDetail(r), style: { cursor: 'pointer' } })}
+            pagination={{
+              defaultPageSize: 50,
+              pageSizeOptions: ['20', '50', '100'],
+              showSizeChanger: true,
+              showTotal: t => `${t} đơn hàng`,
+            }}
+            locale={{ emptyText: <span style={{ color: '#d9d9d9' }}>Không có dữ liệu</span> }}
+          />
+        )
+      })()
+      ) : activeTab === 'analysis' ? (
+      /* ── Tab: Phân Tích Năng Suất & Tải Máy ── */
+      (() => {
+        const trendData = displayData.map(r => ({ ...r, _pm: productMasterMap[r.maBravo] || {} }))
+
         // ── Thống kê theo loại SP ─────────────────────────────────────────
         const typeMap = {}
         let totalSlDat = 0
@@ -1826,7 +1854,7 @@ export default function DonHangPage() {
         const typeColumns = [
           {
             title: 'Loại Sản Phẩm', dataIndex: 'loai', key: 'loai', width: 160,
-            render: (v, r) => <Tag color={colorOf(v)} style={{ fontWeight: 600, fontSize: 12 }}>{v}</Tag>,
+            render: (v) => <Tag color={colorOf(v)} style={{ fontWeight: 600, fontSize: 12 }}>{v}</Tag>,
           },
           {
             title: 'Số Đơn', dataIndex: 'donHang', key: 'donHang', width: 80, align: 'center',
@@ -1837,16 +1865,16 @@ export default function DonHangPage() {
             render: v => <span style={{ color: '#0369a1', fontWeight: 600 }}>{v}</span>,
           },
           {
-            title: 'SL Đặt', dataIndex: 'slDat', key: 'slDat', width: 100, align: 'right',
+            title: 'SL Đặt', dataIndex: 'slDat', key: 'slDat', width: 110, align: 'right',
             sorter: (a, b) => a.slDat - b.slDat,
             render: v => <span style={{ fontWeight: 700 }}>{Number(v).toLocaleString('vi-VN')}</span>,
           },
           {
-            title: 'SL Còn Lại', dataIndex: 'slCon', key: 'slCon', width: 105, align: 'right',
+            title: 'SL Còn Lại', dataIndex: 'slCon', key: 'slCon', width: 110, align: 'right',
             render: v => <span style={{ fontWeight: 700, color: v > 0 ? '#cf1322' : '#389e0d' }}>{Number(v).toLocaleString('vi-VN')}</span>,
           },
           {
-            title: 'Tỷ Lệ SL', dataIndex: 'tyLe', key: 'tyLe', width: 160, align: 'center',
+            title: 'Tỷ Lệ SL', dataIndex: 'tyLe', key: 'tyLe', width: 170, align: 'center',
             sorter: (a, b) => a.tyLe - b.tyLe,
             render: (v, r) => (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1857,21 +1885,21 @@ export default function DonHangPage() {
             ),
           },
           {
-            title: 'Công ĐG', dataIndex: 'congDg', key: 'congDg', width: 95, align: 'right',
+            title: 'Công ĐG', dataIndex: 'congDg', key: 'congDg', width: 100, align: 'right',
             sorter: (a, b) => a.congDg - b.congDg,
             render: v => v > 0
               ? <span style={{ color: '#7c3aed', fontWeight: 700 }}>{fmtCong(v)}</span>
               : <span style={{ color: '#d9d9d9' }}>—</span>,
           },
           {
-            title: 'Công PC', dataIndex: 'congPc', key: 'congPc', width: 95, align: 'right',
+            title: 'Công PC', dataIndex: 'congPc', key: 'congPc', width: 100, align: 'right',
             sorter: (a, b) => a.congPc - b.congPc,
             render: v => v > 0
               ? <span style={{ color: '#1d4ed8', fontWeight: 600 }}>{fmtCong(v)}</span>
               : <span style={{ color: '#d9d9d9' }}>—</span>,
           },
           {
-            title: 'Công PL', dataIndex: 'congPl', key: 'congPl', width: 95, align: 'right',
+            title: 'Công PL', dataIndex: 'congPl', key: 'congPl', width: 100, align: 'right',
             sorter: (a, b) => a.congPl - b.congPl,
             render: v => v > 0
               ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{fmtCong(v)}</span>
@@ -1899,54 +1927,7 @@ export default function DonHangPage() {
             </Table.Summary.Row>
           )
         }
-        return (
-          <>
-            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '14px 16px', marginBottom: 16 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: '#1e293b', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>📊</span>
-                <span>Thống Kê Xu Hướng Theo Loại Sản Phẩm</span>
-                <span style={{ fontSize: 12, fontWeight: 400, color: '#64748b' }}>— Công = SL Đặt ÷ Năng Suất (người/ngày)</span>
-              </div>
-              <Table
-                columns={typeColumns}
-                dataSource={typeRows}
-                rowKey="loai"
-                size="small"
-                pagination={false}
-                loading={loading || loadingMaster}
-                scroll={{ x: 970 }}
-                rowHoverable={false}
-                summary={typeSummary}
-                locale={{ emptyText: <span style={{ color: '#d9d9d9' }}>Không có dữ liệu</span> }}
-              />
-            </div>
-            <Table
-              className="dh-table"
-              columns={trendColumns}
-              dataSource={trendData}
-              rowKey="id"
-              loading={loading || loadingMaster}
-              size="small"
-              scroll={{ x: 2310 }}
-              sticky={{ offsetHeader: headerOffset }}
-              rowHoverable={false}
-              rowClassName={rowClassName}
-              onRow={r => ({ onClick: () => openDetail(r), style: { cursor: 'pointer' } })}
-              pagination={{
-                defaultPageSize: 50,
-                pageSizeOptions: ['20', '50', '100'],
-                showSizeChanger: true,
-                showTotal: t => `${t} đơn hàng`,
-              }}
-              locale={{ emptyText: <span style={{ color: '#d9d9d9' }}>Không có dữ liệu</span> }}
-            />
-          </>
-        )
-      })()
-      ) : activeTab === 'analysis' ? (
-      /* ── Tab: Phân Tích Năng Suất & Tải Máy ── */
-      (() => {
-        const trendData = displayData.map(r => ({ ...r, _pm: productMasterMap[r.maBravo] || {} }))
+
         const fmtH  = v  => (v != null && v > 0) ? Number(v).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'
         const fmtN  = v  => v != null ? Number(v).toLocaleString('vi-VN') : '—'
 
@@ -2112,6 +2093,27 @@ export default function DonHangPage() {
               >
                 {analysisFullscreen ? '✕ Đóng' : '⛶ Mở toàn màn hình'}
               </button>
+            </div>
+
+            {/* ── Bảng thống kê loại SP ── */}
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '14px 16px', marginBottom: 20 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#1e293b', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>📊</span>
+                <span>Thống Kê Xu Hướng Theo Loại Sản Phẩm</span>
+                <span style={{ fontSize: 12, fontWeight: 400, color: '#64748b' }}>— Công = SL Đặt ÷ Năng Suất (người/ngày)</span>
+              </div>
+              <Table
+                columns={typeColumns}
+                dataSource={typeRows}
+                rowKey="loai"
+                size="small"
+                pagination={false}
+                loading={loading || loadingMaster}
+                scroll={{ x: 1010 }}
+                rowHoverable={false}
+                summary={typeSummary}
+                locale={{ emptyText: <span style={{ color: '#d9d9d9' }}>Không có dữ liệu</span> }}
+              />
             </div>
 
             {/* Intro callout */}
