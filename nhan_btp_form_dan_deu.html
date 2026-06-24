@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biểu mẫu In Nhãn BTP - 8 Nhãn/Trang</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 15px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: linear-gradient(135deg, #1a472a 0%, #2d6a47 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        header p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .form-section {
+            background: white;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .form-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1a472a;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-grid.full {
+            grid-template-columns: 1fr;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        input[type="text"],
+        input[type="date"],
+        input[type="number"],
+        textarea,
+        select {
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 12px;
+            font-family: Arial;
+            transition: border-color 0.2s;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #2d6a47;
+            background: #f9fdf7;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 50px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-top: 3px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        input[type="checkbox"] {
+            width: 15px;
+            height: 15px;
+            cursor: pointer;
+            accent-color: #2d6a47;
+        }
+
+        .checkbox-item label {
+            margin: 0;
+            text-transform: none;
+            font-weight: 500;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #2d6a47;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1a472a;
+            box-shadow: 0 2px 4px rgba(26, 71, 42, 0.3);
+        }
+
+        .btn-secondary {
+            background: #e8e8e8;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+
+        .preview-section {
+            background: white;
+            padding: 20px;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .preview-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1a472a;
+        }
+
+        .preview-info {
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* A4 PAGE */
+        .a4-page {
+            width: 210mm;
+            height: 297mm;
+            margin: 0 auto 20px;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: repeat(4, 1fr);
+            page-break-after: always;
+            border: 1px solid #ccc;
+            padding: 6mm;
+            gap: 4mm;
+        }
+
+        .label {
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #000;
+            padding: 0;
+            background: white;
+            page-break-inside: avoid;
+            break-inside: avoid;
+            font-size: 9px;
+            overflow: hidden;
+        }
+
+        .label-company {
+            text-align: center;
+            font-weight: bold;
+            font-size: 8.4px;
+            background: white;
+            border-bottom: 1px solid #000;
+            padding: 3px 3px;
+            line-height: 1.1;
+        }
+
+        .label-title {
+            text-align: center;
+            font-weight: bold;
+            font-size: 9.6px;
+            background: white;
+            border-bottom: 1px solid #000;
+            padding: 2px;
+            line-height: 1;
+        }
+
+        /* Header 3 cột - tăng 1.5 lần */
+        .label-header {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr 1fr;
+            border-bottom: 1px solid #000;
+            height: 21px;
+        }
+
+        .label-header-cell {
+            border-right: 1px solid #000;
+            padding: 2px 2px;
+            font-size: 9.36px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            line-height: 1.2;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            background: white;
+            color: #000;
+        }
+
+        .label-header-cell:last-child {
+            border-right: none;
+            background: #52A86F;
+            color: white;
+        }
+
+        .label-header-cell.active {
+            background: #52A86F;
+            color: white;
+        }
+
+        .label-header-cell.active.green {
+            background: #52A86F;
+            color: white;
+        }
+
+        .label-header-cell.green {
+            background: #52A86F;
+            color: white;
+        }
+
+        /* Nội dung - 2 cột dãn đều (cột trái rộng hơn) */
+        .label-content {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            border-bottom: 1px solid #000;
+            min-height: 55px;
+        }
+
+        .label-left,
+        .label-right {
+            padding: 2px 2px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            font-size: 8.4px;
+        }
+
+        .label-left {
+            border-right: 1px solid #000;
+        }
+
+        .label-row {
+            font-size: 8.4px;
+            line-height: 1.3;
+            word-break: break-word;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .label-row strong {
+            font-weight: bold;
+            min-width: 35px;
+            margin-right: 1px;
+            flex-shrink: 0;
+        }
+
+        .label-row span {
+            flex: 1;
+            word-wrap: break-word;
+            word-break: break-word;
+        }
+
+        /* Ghi chú */
+        .label-note {
+            padding: 2px 3px;
+            font-size: 8.4px;
+            border-top: 1px solid #000;
+            min-height: 12px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+                margin: 0;
+            }
+
+            header,
+            .form-section,
+            .preview-header {
+                display: none !important;
+            }
+
+            .preview-section {
+                padding: 0;
+                box-shadow: none;
+                background: transparent;
+            }
+
+            .a4-page {
+                width: 210mm;
+                height: 297mm;
+                margin: 0;
+                box-shadow: none;
+                border: none;
+                page-break-after: always;
+            }
+
+            @page {
+                size: A4;
+                margin: 0;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .a4-page {
+                width: 100%;
+                height: auto;
+            }
+        }
+
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏷️ Biểu Mẫu In Nhãn BTP - 8 Nhãn/Trang A4</h1>
+            <p>Công ty Cổ phần Mỹ phẩm Thiên nhiên Song An</p>
+        </header>
+
+        <div class="form-section">
+            <div class="form-title">📋 Nhập Thông Tin Sản Phẩm</div>
+            
+            <div class="input-row">
+                <div class="form-group">
+                    <label for="productName">Tên Sản Phẩm *</label>
+                    <input type="text" id="productName" placeholder="VD: Tẩy trang cho mọi loại da 50ml" onchange="updatePreview()" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="batchCode">Số Lô NSX *</label>
+                    <input type="text" id="batchCode" placeholder="VD: 250626" onchange="updatePreview()" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="mfgDate">Ngày NSX *</label>
+                    <input type="date" id="mfgDate" onchange="updatePreview()" required>
+                </div>
+            </div>
+
+            <div class="input-row">
+                <div class="form-group">
+                    <label for="stage">Công Đoạn *</label>
+                    <select id="stage" onchange="updatePreview()" required>
+                        <option value="">-- Chọn --</option>
+                        <option value="Pha chế">Pha chế</option>
+                        <option value="Phân liều">Phân liều</option>
+                        <option value="Vệ sinh bao bì">Vệ sinh bao bì</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="quantity">Số Lượng *</label>
+                    <input type="number" id="quantity" placeholder="VD: 215" onchange="updatePreview()" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="pages">Số Trang In</label>
+                    <input type="number" id="pages" value="1" min="1" max="100" onchange="updatePreview()">
+                </div>
+            </div>
+
+            <div class="input-row">
+                <div class="form-group">
+                    <label for="mixCode">Số Mẻ</label>
+                    <input type="text" id="mixCode" placeholder="VD: 2" onchange="updatePreview()">
+                </div>
+
+                <div class="form-group">
+                    <label for="batchDate">Ngày TH</label>
+                    <input type="date" id="batchDate" onchange="updatePreview()">
+                </div>
+
+                <div class="form-group">
+                    <label for="personnel">Người TH</label>
+                    <input type="text" id="personnel" placeholder="VD: Bảo, My, Tùng 98, Nam" onchange="updatePreview()">
+                </div>
+            </div>
+
+            <div class="form-grid full">
+                <div class="form-group">
+                    <label for="notes">Ghi Chú</label>
+                    <textarea id="notes" placeholder="Thêm ghi chú nếu cần" onchange="updatePreview()"></textarea>
+                </div>
+            </div>
+
+            <div class="form-title" style="margin-top: 15px;">✓ Kiểm Tra Chất Lượng</div>
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="qc1" onchange="updatePreview()">
+                        <label for="qc1">Vệ sinh bao bì</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="qc2" onchange="updatePreview()">
+                        <label for="qc2">Pha chế</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="qc3" onchange="updatePreview()">
+                        <label for="qc3">Phân liều</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-primary" onclick="updatePreview()">🔄 Cập Nhật Xem Trước</button>
+                <button class="btn-secondary" onclick="resetForm()">🔄 Làm Mới</button>
+                <button class="btn-secondary" onclick="window.print()">🖨️ In Ngay (Ctrl+P)</button>
+                <button class="btn-secondary" onclick="exportToWord()">📄 Export Word</button>
+                <button class="btn-secondary" onclick="exportToExcel()">📊 Export Excel</button>
+            </div>
+        </div>
+
+        <div class="preview-section">
+            <div class="preview-header">
+                <div class="preview-title">👀 Xem Trước In (A4 - 8 Nhãn)</div>
+                <div class="preview-info" id="pageInfo">0 trang (0 nhãn)</div>
+            </div>
+
+            <div id="printContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr + 'T00:00:00');
+            const d = String(date.getDate()).padStart(2, '0');
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const y = String(date.getFullYear()).slice(-2);
+            return d + m + y;
+        }
+
+        function createLabel(data) {
+            let headerClass1 = '';
+            let headerClass2 = '';
+            let headerClass3 = ' green';
+            
+            // Xác định cột nào sẽ highlight dựa trên công đoạn
+            if (data.stage === 'Vệ sinh bao bì') {
+                headerClass1 = ' active';
+            } else if (data.stage === 'Pha chế') {
+                headerClass2 = ' active';
+            } else if (data.stage === 'Phân liều') {
+                headerClass3 = ' green active';
+            }
+            
+            return `
+                <div class="label">
+                    <div class="label-company">CÔNG TY CỔ PHẦN MỸ PHẨM THIÊN NHIÊN SONG AN</div>
+                    <div class="label-title">NHÃN BÁN THÀNH PHẨM</div>
+                    
+                    <div class="label-header">
+                        <div class="label-header-cell${headerClass1}">Vệ sinh bao bì •</div>
+                        <div class="label-header-cell${headerClass2}">Pha chế •</div>
+                        <div class="label-header-cell${headerClass3}">Phân liều •</div>
+                    </div>
+
+                    <div class="label-content">
+                        <div class="label-left">
+                            <div class="label-row"><strong>Tên SP:</strong><span>${data.productName}</span></div>
+                            <div class="label-row"><strong>Số lô SP:</strong><span>${data.batchCode}</span></div>
+                            <div class="label-row"><strong>Số lượng:</strong><span>${data.quantity}</span></div>
+                            <div class="label-row"><strong>Người TH:</strong><span>${data.personnel}</span></div>
+                        </div>
+                        <div class="label-right">
+                            <div class="label-row"><strong>NSX:</strong><span>${data.mfgDate}</span></div>
+                            <div class="label-row"><strong>Số mẻ:</strong><span>${data.mixCode}</span></div>
+                            <div class="label-row"><strong>Công đoạn:</strong><span>${data.stage}</span></div>
+                            <div class="label-row"><strong>Ngày TH:</strong><span>${data.batchDate}</span></div>
+                        </div>
+                    </div>
+
+                    <div class="label-note">Ghi chú: ${data.notes}</div>
+                </div>
+            `;
+        }
+
+        function updatePreview() {
+            const data = {
+                productName: document.getElementById('productName').value || '(Chưa nhập)',
+                batchCode: document.getElementById('batchCode').value || '(Chưa nhập)',
+                mixCode: document.getElementById('mixCode').value || '',
+                mfgDate: formatDate(document.getElementById('mfgDate').value) || '(Chưa nhập)',
+                batchDate: formatDate(document.getElementById('batchDate').value) || '',
+                quantity: document.getElementById('quantity').value || '(Chưa nhập)',
+                stage: document.getElementById('stage').value || '(Chưa chọn)',
+                personnel: document.getElementById('personnel').value || '',
+                notes: document.getElementById('notes').value || ''
+            };
+
+            const pages = parseInt(document.getElementById('pages').value) || 1;
+            let html = '';
+
+            for (let p = 0; p < pages; p++) {
+                html += '<div class="a4-page">';
+                for (let i = 0; i < 8; i++) {
+                    html += createLabel(data);
+                }
+                html += '</div>';
+            }
+
+            document.getElementById('printContainer').innerHTML = html;
+            document.getElementById('pageInfo').textContent = `📄 ${pages} trang (${pages * 8} nhãn)`;
+        }
+
+        function resetForm() {
+            document.getElementById('productName').value = '';
+            document.getElementById('batchCode').value = '';
+            document.getElementById('mixCode').value = '';
+            document.getElementById('mfgDate').value = '';
+            document.getElementById('stage').value = '';
+            document.getElementById('batchDate').value = '';
+            document.getElementById('quantity').value = '';
+            document.getElementById('personnel').value = '';
+            document.getElementById('notes').value = '';
+            document.getElementById('pages').value = '1';
+            document.getElementById('qc1').checked = false;
+            document.getElementById('qc2').checked = false;
+            document.getElementById('qc3').checked = false;
+            updatePreview();
+        }
+
+        function exportToWord() {
+            const product = document.getElementById('productName').value || '';
+            const batch = document.getElementById('batchCode').value || '';
+            const pages = parseInt(document.getElementById('pages').value) || 1;
+            
+            let html = '<html><head><meta charset="utf-8"><style>';
+            html += 'body { margin: 10mm; font-family: Arial; }';
+            html += '.a4-page { page-break-after: always; width: 100%; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(4, 1fr); gap: 8mm; padding: 8mm; }';
+            html += '.label { border: 1px solid #000; padding: 0; font-size: 9px; display: flex; flex-direction: column; }';
+            html += '.label-company { font-weight: bold; font-size: 8.4px; text-align: center; padding: 3px; border-bottom: 1px solid #000; }';
+            html += '.label-title { font-weight: bold; font-size: 8.5px; text-align: center; padding: 2px; border-bottom: 1px solid #000; }';
+            html += '.label-header { display: grid; grid-template-columns: 1fr 1.5fr 1fr; border-bottom: 1px solid #000; height: 21px; }';
+            html += '.label-header-cell { border-right: 1px solid #000; padding: 2px 2px; font-size: 9.36px; font-weight: bold; text-align: center; display: flex; align-items: center; justify-content: center; }';
+            html += '.label-header-cell.green { background: #52A86F; color: white; border-right: none; }';
+            html += '.label-content { flex: 1; display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #000; min-height: 55px; }';
+            html += '.label-left { border-right: 1px solid #000; padding: 2px 3px; display: flex; flex-direction: column; justify-content: space-around; font-size: 8.4px; }';
+            html += '.label-right { padding: 2px 3px; display: flex; flex-direction: column; justify-content: space-around; font-size: 8.4px; }';
+            html += '.label-row { font-size: 8.4px; line-height: 1.2; display: flex; align-items: center; }';
+            html += '.label-row strong { font-weight: bold; min-width: 38px; margin-right: 2px; }';
+            html += '.label-note { padding: 2px 3px; font-size: 8.4px; border-top: 1px solid #000; min-height: 12px; display: flex; align-items: center; }';
+            html += '</style></head><body>';
+
+            const printContainer = document.getElementById('printContainer');
+            const a4Pages = printContainer.querySelectorAll('.a4-page');
+            
+            a4Pages.forEach(page => {
+                html += '<div class="a4-page">';
+                html += page.innerHTML;
+                html += '</div>';
+            });
+
+            html += '</body></html>';
+
+            const blob = new Blob([html], { type: 'application/msword' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `nhan_btp_${batch || 'new'}_${pages}trang.doc`;
+            link.click();
+        }
+
+        function exportToExcel() {
+            const product = document.getElementById('productName').value || '';
+            const batch = document.getElementById('batchCode').value || '';
+            const mixCode = document.getElementById('mixCode').value || '';
+            const mfgDate = formatDate(document.getElementById('mfgDate').value) || '';
+            const batchDate = formatDate(document.getElementById('batchDate').value) || '';
+            const qty = document.getElementById('quantity').value || '';
+            const stage = document.getElementById('stage').value || '';
+            const personnel = document.getElementById('personnel').value || '';
+            const notes = document.getElementById('notes').value || '';
+            const pages = document.getElementById('pages').value || '1';
+
+            let csv = 'Nhãn BTP Song An - 8 Nhãn/Trang\n\n';
+            csv += 'Thông Tin Sản Phẩm\n';
+            csv += 'Tên Sản Phẩm,Số Lô NSX,Số Mẻ,NSX,Ngày TH,Số Lượng,Số Trang\n';
+            csv += `"${product}","${batch}","${mixCode}","${mfgDate}","${batchDate}","${qty}","${pages}"\n\n`;
+            csv += 'Thông Tin Thực Hiện\n';
+            csv += 'Công Đoạn,Nhân Viên,Ghi Chú\n';
+            csv += `"${stage}","${personnel}","${notes}"\n`;
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `nhan_btp_${batch || 'new'}_${pages}trang.csv`;
+            link.click();
+        }
+
+        // Initialize
+        updatePreview();
+    </script>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phân tích năng suất & tải máy - QTSX Song An</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; background:#f4f5f7; color:#1f2937; line-height:1.6; padding:24px; }
+.container { max-width:1200px; margin:0 auto; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.08); overflow:hidden; }
+.header { background:linear-gradient(135deg,#0f766e,#14b8a6); color:#fff; padding:36px 40px; }
+.header h1 { font-size:28px; font-weight:600; margin-bottom:6px; }
+.header p { opacity:.92; font-size:15px; }
+.content { padding:36px 40px; }
+section { margin-bottom:40px; }
+h2 { font-size:20px; font-weight:600; color:#111827; margin-bottom:8px; padding-bottom:8px; border-bottom:2px solid #e5e7eb; }
+.sub { color:#6b7280; font-size:14px; margin-bottom:18px; }
+h3 { font-size:15px; font-weight:600; color:#374151; margin:18px 0 10px; }
+
+.callout { background:#ecfdf5; border-left:4px solid #10b981; padding:16px 18px; border-radius:0 6px 6px 0; margin-bottom:20px; font-size:14px; }
+.callout.amber { background:#fffbeb; border-color:#f59e0b; }
+.callout.blue { background:#eff6ff; border-color:#3b82f6; }
+.callout.red { background:#fef2f2; border-color:#dc2626; }
+.callout b { color:#111827; }
+
+table { width:100%; border-collapse:collapse; margin:14px 0; font-size:13px; }
+th { background:#f3f4f6; padding:10px 8px; text-align:left; font-weight:600; color:#374151; border-bottom:2px solid #e5e7eb; white-space:nowrap; }
+td { padding:9px 8px; border-bottom:1px solid #eef0f2; }
+tr:hover td { background:#fafbfc; }
+.num { text-align:right; font-variant-numeric:tabular-nums; }
+.bn { font-weight:600; padding:2px 8px; border-radius:4px; font-size:12px; }
+.bn-bbc1 { background:#fee2e2; color:#991b1b; }
+.bn-pl { background:#fef3c7; color:#92400e; }
+.bn-pc { background:#dbeafe; color:#1e40af; }
+
+.bar-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.bar-label { width:200px; font-size:13px; color:#374151; flex-shrink:0; }
+.bar-track { flex:1; background:#f1f3f5; border-radius:4px; height:26px; position:relative; overflow:hidden; }
+.bar-fill { height:100%; border-radius:4px; display:flex; align-items:center; padding-left:10px; color:#fff; font-size:12px; font-weight:600; }
+
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.box { border:1px solid #e5e7eb; border-radius:8px; padding:16px; }
+.box-title { font-weight:600; color:#111827; margin-bottom:8px; font-size:14px; }
+.box ul { padding-left:18px; font-size:13px; color:#4b5563; }
+.box li { margin-bottom:5px; }
+
+.rank { display:flex; align-items:center; gap:14px; padding:12px 14px; border:1px solid #e5e7eb; border-radius:8px; margin-bottom:8px; }
+.rank-no { width:30px; height:30px; border-radius:50%; background:#0f766e; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:14px; flex-shrink:0; }
+.rank-no.p2 { background:#f59e0b; }
+.rank-no.p3 { background:#3b82f6; }
+.rank-body { flex:1; }
+.rank-name { font-weight:600; font-size:14px; color:#111827; }
+.rank-meta { font-size:12px; color:#6b7280; }
+.rank-time { font-size:18px; font-weight:600; color:#0f766e; white-space:nowrap; }
+
+.legend { display:flex; gap:16px; flex-wrap:wrap; font-size:12px; color:#6b7280; margin-bottom:12px; }
+.legend span { display:flex; align-items:center; gap:5px; }
+.dot { width:11px; height:11px; border-radius:2px; }
+
+.footer { background:#f3f4f6; padding:18px 40px; border-top:1px solid #e5e7eb; font-size:12px; color:#6b7280; text-align:center; }
+@media print { body{background:#fff;padding:0;} .container{box-shadow:none;} section{page-break-inside:avoid;} }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>Phân tích năng suất &amp; tải máy</h1>
+<p>Góc nhìn chuyên gia lập kế hoạch — cơ sở tham khảo để xếp đơn hàng sản xuất</p>
+</div>
+<div class="content">
+
+<section>
+<h2>1. Logic phân tích</h2>
+<p class="sub">Cách đọc dữ liệu năng suất và máy móc để ra quyết định xếp đơn</p>
+<div class="callout">
+<b>Nguyên tắc nút thắt (bottleneck):</b> Thời gian sản xuất mỗi công đoạn = <b>SL Đặt ÷ Năng suất (NS)</b>. Công đoạn nào mất nhiều giờ nhất chính là <b>nút thắt</b> — nó quyết định tiến độ hoàn thành cả đơn, các công đoạn khác phải chờ theo.
+</div>
+<div class="callout red">
+<b>Phát hiện chính:</b> Năng suất chiết rót <b>BBC1 chỉ ~1.000/h</b> ở hầu hết đơn, trong khi pha chế PC đạt 1.500–8.800/h. Vì vậy <b>công đoạn chiết rót (máy BBC1) là nút thắt chủ đạo</b> — máy khuấy/nhũ hóa hầu như không phải lo, mà phải tập trung điều phối các máy chiết.
+</div>
+</section>
+
+<section>
+<h2>2. Thời gian sản xuất theo công đoạn (giờ)</h2>
+<p class="sub">t = SL ÷ NS. Cột "Nút thắt" là công đoạn lâu nhất của từng đơn.</p>
+<table>
+<thead><tr>
+<th>Mã Bravo</th><th>Sản phẩm</th><th class="num">SL Đặt</th>
+<th class="num">t.Pha chế</th><th class="num">t.Pha loãng</th><th class="num">t.Chiết rót</th>
+<th class="num">Tổng (h)</th><th>Nút thắt</th>
+</tr></thead>
+<tbody>
+<tr><td>10201194</td><td>Bọt Rau má</td><td class="num">36.000</td><td class="num">9,6</td><td class="num">31,6</td><td class="num">36,0</td><td class="num"><b>77,1</b></td><td><span class="bn bn-bbc1">Chiết rót 36h</span></td></tr>
+<tr><td>10204288</td><td>Hẩy Hẩy cho da</td><td class="num">25.000</td><td class="num">6,4</td><td class="num">8,4</td><td class="num">25,0</td><td class="num"><b>39,8</b></td><td><span class="bn bn-bbc1">Chiết rót 25h</span></td></tr>
+<tr><td>10301313</td><td>Ngừa rụng tóc</td><td class="num">15.000</td><td class="num">11,7</td><td class="num">17,8</td><td class="num">—</td><td class="num"><b>29,6</b></td><td><span class="bn bn-pl">Pha loãng 17,8h</span></td></tr>
+<tr><td>10204264</td><td>Sâm 1700 SPF</td><td class="num">15.000</td><td class="num">5,2</td><td class="num">6,4</td><td class="num">15,0</td><td class="num"><b>26,6</b></td><td><span class="bn bn-bbc1">Chiết rót 15h</span></td></tr>
+<tr><td>10301306</td><td>Sơ suôn mượt</td><td class="num">12.000</td><td class="num">10,4</td><td class="num">15,0</td><td class="num">—</td><td class="num"><b>25,3</b></td><td><span class="bn bn-pl">Pha loãng 15h</span></td></tr>
+<tr><td>10205216</td><td>Rau má 350ml</td><td class="num">5.000</td><td class="num">2,7</td><td class="num">5,6</td><td class="num">5,0</td><td class="num"><b>13,2</b></td><td><span class="bn bn-pl">Pha loãng 5,6h</span></td></tr>
+<tr><td>10703345</td><td>Tinh SPF 35 PA</td><td class="num">3.000</td><td class="num">1,1</td><td class="num">10,3</td><td class="num">—</td><td class="num"><b>11,4</b></td><td><span class="bn bn-pl">Pha loãng 10,3h</span></td></tr>
+<tr><td>10207295</td><td>Rau má Natural Anti</td><td class="num">6.000</td><td class="num">0,7</td><td class="num">4,2</td><td class="num">6,0</td><td class="num"><b>10,9</b></td><td><span class="bn bn-bbc1">Chiết rót 6h</span></td></tr>
+<tr><td>10206320</td><td>Phục hồi tơ tằm</td><td class="num">3.000</td><td class="num">2,0</td><td class="num">3,4</td><td class="num">3,0</td><td class="num"><b>8,4</b></td><td><span class="bn bn-pl">Pha loãng 3,4h</span></td></tr>
+<tr><td>10101205</td><td>SP ...04</td><td class="num">2.000</td><td class="num">3,4</td><td class="num">—</td><td class="num">2,0</td><td class="num"><b>5,4</b></td><td><span class="bn bn-pc">Pha chế 3,4h</span></td></tr>
+<tr><td>11001018</td><td>Trầu không</td><td class="num">1.515</td><td class="num">0,8</td><td class="num">1,4</td><td class="num">1,5</td><td class="num"><b>3,7</b></td><td><span class="bn bn-bbc1">Chiết rót 1,5h</span></td></tr>
+<tr><td>11005049</td><td>Sahemul 50ml</td><td class="num">123</td><td class="num">0,0</td><td class="num">0,1</td><td class="num">0,1</td><td class="num"><b>0,3</b></td><td><span class="bn bn-bbc1">Chiết rót 0,1h</span></td></tr>
+</tbody>
+</table>
+<div class="callout amber"><b>Lưu ý:</b> Đơn ID 10203178 (SL 122.222.222) bị loại khỏi phân tích vì số liệu bất thường (lỗi nhập). Các đơn không có giá trị NS (hương dầu 4.5g, SP 203/202...) chưa thể tính — cần bổ sung năng suất trước khi xếp lịch.</div>
+</section>
+
+<section>
+<h2>3. Tải máy — đâu là máy nghẽn nhất</h2>
+<p class="sub">Tổng giờ mỗi máy phải gánh nếu chạy toàn bộ đơn trong bảng</p>
+
+<h3>Máy chiết rót (BBC1) — nơi tập trung nút thắt</h3>
+<div class="bar-row"><div class="bar-label">Máy Chiết Tube Hàn Nhiệt</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:#dc2626;">46,0 h — 3 đơn</div></div></div>
+<div class="bar-row"><div class="bar-label">Máy Chiết 4 vòi bơm khí</div><div class="bar-track"><div class="bar-fill" style="width:89%;background:#ef4444;">41,0 h — 2 đơn</div></div></div>
+<div class="bar-row"><div class="bar-label">Máy Chiết Bánh Răng</div><div class="bar-track"><div class="bar-fill" style="width:7%;background:#f59e0b;">3,0 h</div></div></div>
+<div class="bar-row"><div class="bar-label">Máy Chiết (khác)</div><div class="bar-track"><div class="bar-fill" style="width:5%;background:#f59e0b;">2,0 h</div></div></div>
+
+<h3>Máy pha chế (PC) — dư công suất, không phải lo</h3>
+<div class="bar-row"><div class="bar-label">Máy nhũ hóa 500L</div><div class="bar-track"><div class="bar-fill" style="width:31%;background:#0f766e;">14,3 h — 4 đơn</div></div></div>
+<div class="bar-row"><div class="bar-label">Máy khuấy 700L</div><div class="bar-track"><div class="bar-fill" style="width:28%;background:#14b8a6;">13,0 h — 3 đơn</div></div></div>
+<div class="bar-row"><div class="bar-label">Máy nhũ hóa 100L</div><div class="bar-track"><div class="bar-fill" style="width:2%;background:#5dcaa5;">~0 h</div></div></div>
+
+<div class="callout"><b>Đọc biểu đồ:</b> Hai máy chiết <b>Tube Hàn Nhiệt (46h)</b> và <b>4 vòi bơm khí (41h)</b> gánh gần như toàn bộ khối lượng. Máy pha chế chỉ chiếm 13–14h → khâu pha chế <b>không bao giờ là điểm kẹt</b>, mọi sự chú ý nên dồn vào lịch 2 máy chiết này.</div>
+</section>
+
+<section>
+<h2>4. Xung đột &amp; cơ hội chạy song song</h2>
+<div class="grid2">
+<div class="box">
+<div class="box-title" style="color:#991b1b;">⚠ Xung đột cần xử lý</div>
+<ul>
+<li><b>Máy Chiết Tube Hàn Nhiệt</b> phải làm liên tiếp 3 đơn: Hẩy Hẩy (25h) + Sâm 1700 (15h) + Natural Anti (6h) = 46h → dễ thành điểm kẹt, phải xếp xen kẽ khéo.</li>
+<li><b>Máy Chiết 4 vòi bơm khí</b>: Bọt Rau má (36h) chiếm gần hết → đơn Rau má 350ml (5h) phải chờ hoặc chuyển máy.</li>
+</ul>
+</div>
+<div class="box">
+<div class="box-title" style="color:#065f46;">✓ Cơ hội song song</div>
+<ul>
+<li>2 đơn lớn nhất — <b>Bọt Rau má</b> (máy 4 vòi) và <b>Hẩy Hẩy</b> (máy Tube) — dùng <b>máy chiết khác nhau</b> → chạy song song được, không tranh nút thắt.</li>
+<li>Các đơn nút thắt ở <b>pha loãng</b> (Ngừa rụng tóc, Sơ suôn mượt, Tinh SPF) không tốn máy chiết → có thể chèn vào lúc máy chiết bận.</li>
+</ul>
+</div>
+</div>
+</section>
+
+<section>
+<h2>5. Đề xuất thứ tự xếp đơn</h2>
+<p class="sub">Ưu tiên đơn khối lượng lớn / nút thắt dài để giải phóng máy chiết sớm, đơn nhỏ chèn vào khe trống</p>
+
+<div class="legend">
+<span><span class="dot" style="background:#0f766e;"></span>Ưu tiên 1 — đơn nặng, máy chiết</span>
+<span><span class="dot" style="background:#f59e0b;"></span>Ưu tiên 2 — nút thắt pha loãng</span>
+<span><span class="dot" style="background:#3b82f6;"></span>Ưu tiên 3 — đơn nhỏ, chèn khe</span>
+</div>
+
+<div class="rank"><div class="rank-no">1</div><div class="rank-body"><div class="rank-name">Bọt Rau má (10201194)</div><div class="rank-meta">36.000 SL · Máy Chiết 4 vòi bơm khí · nút thắt chiết rót</div></div><div class="rank-time">77,1 h</div></div>
+<div class="rank"><div class="rank-no">2</div><div class="rank-body"><div class="rank-name">Hẩy Hẩy cho da (10204288)</div><div class="rank-meta">25.000 SL · Máy Chiết Tube Hàn Nhiệt · chạy SONG SONG với đơn 1</div></div><div class="rank-time">39,8 h</div></div>
+<div class="rank"><div class="rank-no p2">3</div><div class="rank-body"><div class="rank-name">Ngừa rụng tóc (10301313)</div><div class="rank-meta">15.000 SL · nút thắt pha loãng 17,8h · KHÔNG dùng máy chiết → chèn được</div></div><div class="rank-time">29,6 h</div></div>
+<div class="rank"><div class="rank-no">4</div><div class="rank-body"><div class="rank-name">Sâm 1700 SPF (10204264)</div><div class="rank-meta">15.000 SL · Máy Chiết Tube · xếp sau Hẩy Hẩy trên cùng máy</div></div><div class="rank-time">26,6 h</div></div>
+<div class="rank"><div class="rank-no p2">5</div><div class="rank-body"><div class="rank-name">Sơ suôn mượt (10301306)</div><div class="rank-meta">12.000 SL · nút thắt pha loãng 15h · chèn lúc máy chiết bận</div></div><div class="rank-time">25,3 h</div></div>
+<div class="rank"><div class="rank-no p3">6</div><div class="rank-body"><div class="rank-name">Rau má 350ml (10205216)</div><div class="rank-meta">5.000 SL · Máy Chiết 4 vòi · xếp sau Bọt Rau má (cùng máy)</div></div><div class="rank-time">13,2 h</div></div>
+<div class="rank"><div class="rank-no p3">7</div><div class="rank-body"><div class="rank-name">Các đơn nhỏ còn lại</div><div class="rank-meta">Natural Anti, Phục hồi tơ tằm, Tinh SPF, SP04, Trầu không, Sahemul · tổng &lt;40h · chèn linh hoạt</div></div><div class="rank-time">&lt; 11 h/đơn</div></div>
+
+<div class="callout blue" style="margin-top:18px;">
+<b>Chiến lược tổng thể:</b> Khởi động ngay 2 đơn lớn trên 2 máy chiết khác nhau (Bọt Rau má + Hẩy Hẩy) để chạy song song. Trong lúc đó, dồn các đơn nút thắt pha loãng (Ngừa rụng tóc, Sơ suôn mượt) vào khâu pha loãng đang rảnh. Khi máy chiết giải phóng, đưa tiếp Sâm 1700 và Rau má 350ml lên đúng máy. Đơn nhỏ luôn để dành lấp khe.
+</div>
+</section>
+
+</div>
+<div class="footer">
+<p>Báo cáo tạo lúc <b id="ts"></b> · Phân tích tham khảo dựa trên dữ liệu năng suất &amp; máy móc đọc từ bảng Bravo · Công ty CP Mỹ phẩm Thiên nhiên Song An</p>
+</div>
+</div>
+<script>
+document.getElementById('ts').textContent = new Date().toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+</script>
+</body>
+</html>
