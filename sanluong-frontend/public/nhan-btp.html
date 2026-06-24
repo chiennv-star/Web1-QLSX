@@ -424,12 +424,12 @@
 
                 <div class="form-group">
                     <label for="batchCode">Số Lô NSX *</label>
-                    <input type="text" id="batchCode" placeholder="VD: 250626" onchange="updatePreview()" required>
+                    <input type="text" id="batchCode" placeholder="VD: 250626" oninput="onBatchCodeInput()" onchange="updatePreview()" required>
                 </div>
 
                 <div class="form-group">
                     <label for="mfgDate">Ngày NSX *</label>
-                    <input type="date" id="mfgDate" onchange="updatePreview()" required>
+                    <input type="date" id="mfgDate" onchange="onMfgDateManual()" required>
                 </div>
             </div>
 
@@ -517,6 +517,50 @@
     </div>
 
     <script>
+        // Parse DDMMYY từ Số Lô NSX → YYYY-MM-DD cho input[type=date]
+        // Hỗ trợ: 6 chữ số liên tiếp ở đầu (vd: "050726", "050726A", "B050726")
+        function parseBatchToDate(batchCode) {
+            if (!batchCode) return null;
+            const digits = batchCode.replace(/\D/g, '');
+            if (digits.length < 6) return null;
+            // Thử từng vị trí 6 chữ số liên tiếp
+            for (let i = 0; i <= digits.length - 6; i++) {
+                const chunk = digits.slice(i, i + 6);
+                const dd = parseInt(chunk.slice(0, 2), 10);
+                const mm = parseInt(chunk.slice(2, 4), 10);
+                const yy = parseInt(chunk.slice(4, 6), 10);
+                if (dd >= 1 && dd <= 31 && mm >= 1 && mm <= 12) {
+                    const yyyy = 2000 + yy;
+                    return `${yyyy}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+                }
+            }
+            return null;
+        }
+
+        let mfgDateManuallySet = false;
+
+        function onMfgDateManual() {
+            mfgDateManuallySet = true;
+            updatePreview();
+        }
+
+        function onBatchCodeInput() {
+            if (!mfgDateManuallySet) {
+                const parsed = parseBatchToDate(document.getElementById('batchCode').value);
+                if (parsed) {
+                    document.getElementById('mfgDate').value = parsed;
+                }
+            }
+            updatePreview();
+        }
+
+        function todayISO() {
+            const now = new Date();
+            const d = String(now.getDate()).padStart(2, '0');
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            return `${now.getFullYear()}-${m}-${d}`;
+        }
+
         function formatDate(dateStr) {
             if (!dateStr) return '';
             const date = new Date(dateStr + 'T00:00:00');
@@ -599,12 +643,13 @@
         }
 
         function resetForm() {
+            mfgDateManuallySet = false;
             document.getElementById('productName').value = '';
             document.getElementById('batchCode').value = '';
             document.getElementById('mixCode').value = '';
             document.getElementById('mfgDate').value = '';
             document.getElementById('stage').value = '';
-            document.getElementById('batchDate').value = '';
+            document.getElementById('batchDate').value = todayISO();
             document.getElementById('quantity').value = '';
             document.getElementById('personnel').value = '';
             document.getElementById('notes').value = '';
@@ -751,11 +796,23 @@
         // Đọc URL params để tự điền form khi mở từ hệ thống QTSX
         document.addEventListener('DOMContentLoaded', () => {
             const p = new URLSearchParams(window.location.search);
+
+            // Ngày TH mặc định = hôm nay (ngày in)
+            const batchDateEl = document.getElementById('batchDate');
+            if (!p.get('batchDate')) batchDateEl.value = todayISO();
+
             if (p.get('productName') || p.get('batchCode')) {
                 if (p.get('productName')) document.getElementById('productName').value = p.get('productName');
                 if (p.get('batchCode'))   document.getElementById('batchCode').value   = p.get('batchCode');
-                if (p.get('mfgDate'))     document.getElementById('mfgDate').value     = p.get('mfgDate');
-                if (p.get('batchDate'))   document.getElementById('batchDate').value   = p.get('batchDate');
+                if (p.get('mfgDate')) {
+                    document.getElementById('mfgDate').value = p.get('mfgDate');
+                    mfgDateManuallySet = true;
+                } else {
+                    // Thử parse ngày NSX từ batch code
+                    const parsed = parseBatchToDate(p.get('batchCode') || '');
+                    if (parsed) document.getElementById('mfgDate').value = parsed;
+                }
+                if (p.get('batchDate'))   batchDateEl.value                            = p.get('batchDate');
                 if (p.get('stage'))       document.getElementById('stage').value       = p.get('stage');
                 if (p.get('quantity'))    document.getElementById('quantity').value    = p.get('quantity');
                 if (p.get('mixCode'))     document.getElementById('mixCode').value     = p.get('mixCode');
