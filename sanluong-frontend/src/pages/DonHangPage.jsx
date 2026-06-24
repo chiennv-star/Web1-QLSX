@@ -1829,10 +1829,18 @@ export default function DonHangPage() {
         const trendData = displayData.map(r => ({ ...r, _pm: productMasterMap[r.maBravo] || {} }))
 
         // ── Thống kê theo loại SP ─────────────────────────────────────────
+        // normalizeLoai: gộp các giá trị khác chữ hoa/thường hoặc thừa khoảng trắng
+        const normalizeLoai = raw => {
+          if (!raw) return null
+          const t = raw.trim().replace(/\s+/g, ' ')
+          // Title-case từng từ, giữ nguyên ký tự đặc biệt như O/W, W/O
+          return t.replace(/\b\p{L}/gu, c => c.toUpperCase())
+        }
         const typeMap = {}
         let totalSlDat = 0
         trendData.forEach(r => {
-          const loai = r._pm.loaiSanPham || '(Chưa phân loại)'
+          const loaiNorm = normalizeLoai(r._pm.loaiSanPham) || '(Chưa phân loại)'
+          const loai = loaiNorm
           const slDat = Number(r.soLuongDatHang) || 0
           const slCon = Number(r.soLuongConLai)  || 0
           totalSlDat += slDat
@@ -2177,10 +2185,15 @@ export default function DonHangPage() {
                 </div>
               )}
               {loadingMaster ? <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Đang tải dữ liệu năng suất...</div> : (() => {
-                // Group ordersWithData by loại SP
+                // Group ordersWithData by loại SP (normalize case/whitespace)
+                const normLoai = raw => {
+                  if (!raw) return null
+                  const t = raw.trim().replace(/\s+/g, ' ')
+                  return t.replace(/\b\p{L}/gu, c => c.toUpperCase())
+                }
                 const loaiGroups = {}
                 ordersWithData.forEach(r => {
-                  const loai = r._pm?.loaiSanPham || '(Chưa phân loại)'
+                  const loai = normLoai(r._pm?.loaiSanPham) || '(Chưa phân loại)'
                   if (!loaiGroups[loai]) loaiGroups[loai] = []
                   loaiGroups[loai].push(r)
                 })
