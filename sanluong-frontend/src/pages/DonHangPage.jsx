@@ -1714,6 +1714,12 @@ export default function DonHangPage() {
             render: v => <span style={{ fontSize: 13, color: '#1e293b', fontWeight: 500 }}>{v || <span style={{ color: '#d9d9d9' }}>—</span>}</span>,
           },
           {
+            title: 'Loại SP', key: 'loaiSp', width: 110,
+            render: (_, r) => r._pm.loaiSanPham
+              ? <span style={{ fontSize: 12, color: '#374151' }}>{r._pm.loaiSanPham}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          {
             title: 'Mã Đơn Hàng', dataIndex: 'maDonHang', key: 'maDonHang', width: 115, align: 'center',
             render: v => v
               ? <span style={{ fontFamily: 'monospace', color: 'rgb(0,0,205)', fontWeight: 600, fontSize: 12 }}>{v}</span>
@@ -1801,7 +1807,7 @@ export default function DonHangPage() {
             rowKey="id"
             loading={loading || loadingMaster}
             size="small"
-            scroll={{ x: 2200 }}
+            scroll={{ x: 2310 }}
             sticky={{ offsetHeader: headerOffset }}
             rowHoverable={false}
             rowClassName={rowClassName}
