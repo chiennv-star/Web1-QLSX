@@ -204,16 +204,16 @@
             color: #666;
         }
 
-        /* A4 LANDSCAPE - 4 cột × 2 hàng, lấp đầy cả chiều rộng và chiều cao */
+        /* A4 PORTRAIT - 2 cột × 4 hàng, lấp đầy cả chiều rộng và chiều cao */
         .a4-page {
-            width: 297mm;
-            height: 210mm;
+            width: 210mm;
+            height: 297mm;
             margin: 0 auto 20px;
             background: white;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            grid-template-rows: 1fr 1fr;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: repeat(4, 1fr);
             page-break-after: always;
             border: 1px solid #ccc;
             padding: 4mm;
@@ -379,8 +379,8 @@
             }
 
             .a4-page {
-                width: 297mm;
-                height: 210mm;
+                width: 210mm;
+                height: 297mm;
                 margin: 0;
                 box-shadow: none;
                 border: none;
@@ -388,7 +388,7 @@
             }
 
             @page {
-                size: A4 landscape;
+                size: A4 portrait;
                 margin: 0;
             }
         }
