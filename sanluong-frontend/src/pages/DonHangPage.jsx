@@ -962,6 +962,7 @@ export default function DonHangPage() {
   const [loadingMaster,     setLoadingMaster]     = useState(false)
   const [analysisFullscreen, setAnalysisFullscreen] = useState(false)
   const [employeeCounts,    setEmployeeCounts]    = useState({})
+  const [collapsedLoaiSp,   setCollapsedLoaiSp]   = useState(new Set())
 
   // Sticky header offset
   const headerWrapRef = useRef(null)
@@ -2175,48 +2176,110 @@ export default function DonHangPage() {
                   </table>
                 </div>
               )}
-              {loadingMaster ? <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Đang tải dữ liệu năng suất...</div> : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ background: '#f3f4f6' }}>
-                    {['Mã Bravo','Sản phẩm','SL Còn Lại','t. Pha Chế (h)','t. Phân Liều (h)','t. VS BBC1 (h)','t. Đóng Gói (h)','Tổng (h)','Nút thắt','Ngày HT'].map(h => (
-                      <th key={h} style={{ padding: '9px 8px', textAlign: h.startsWith('t.') || h === 'Tổng (h)' || h === 'SL Còn Lại' || h === 'Ngày HT' ? 'right' : 'left', fontWeight: 600, color: '#374151', borderBottom: '2px solid #e5e7eb', whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {ordersWithData.map((r, i) => {
-                    const bn = r.bottleneck ? BN_CFG[r.bottleneck.key] : null
-                    return (
-                      <tr key={r.id} style={{ background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
-                        <td style={{ padding: '8px 8px', fontFamily: 'monospace', color: '#1677ff', fontWeight: 700, fontSize: 12 }}>{r.maBravo}</td>
-                        <td style={{ padding: '8px 8px', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.tenSanPham}>{r.tenSanPham || '—'}</td>
-                        <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 600 }}>{fmtN(r.soLuongConLai)}</td>
-                        <td style={{ padding: '8px 8px', textAlign: 'right', color: r.bottleneck?.key === 'PC'   ? '#1e40af' : '#374151', fontWeight: r.bottleneck?.key === 'PC'   ? 700 : 400 }}>{fmtH(r.tPc)}</td>
-                        <td style={{ padding: '8px 8px', textAlign: 'right', color: r.bottleneck?.key === 'PL'   ? '#92400e' : '#374151', fontWeight: r.bottleneck?.key === 'PL'   ? 700 : 400 }}>{fmtH(r.tPl)}</td>
-                        <td style={{ padding: '8px 8px', textAlign: 'right', color: r.bottleneck?.key === 'BBC1' ? '#991b1b' : '#374151', fontWeight: r.bottleneck?.key === 'BBC1' ? 700 : 400 }}>{fmtH(r.tBbc)}</td>
-                        <td style={{ padding: '8px 8px', textAlign: 'right', color: r.bottleneck?.key === 'DG'   ? '#6d28d9' : '#374151', fontWeight: r.bottleneck?.key === 'DG'   ? 700 : 400 }}>{fmtH(r.tDg)}</td>
-                        <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700 }}>{fmtH(r.total)}</td>
-                        <td style={{ padding: '8px 8px' }}>
-                          {bn && <span style={{ background: bn.bg, color: bn.color, fontWeight: 600, padding: '2px 8px', borderRadius: 4, fontSize: 12, whiteSpace: 'nowrap' }}>
-                            {bn.label} {fmtH(r.bottleneck.t)}h
-                          </span>}
-                        </td>
-                        <td style={{ padding: '8px 8px', textAlign: 'right' }}>
-                          {(() => {
-                            if (!r.bottleneck) return <span style={{ color: '#d1d5db' }}>—</span>
-                            const w = stageWorkers[r.bottleneck.key] || 0
-                            if (w === 0) return <span style={{ color: '#d1d5db', fontSize: 11 }}>—</span>
-                            const days = r.bottleneck.t / w
-                            return <span style={{ fontWeight: 700, color: bn?.color || '#374151' }}>{fmtDays(days)} <span style={{ fontWeight: 400, fontSize: 11 }}>ngày</span></span>
-                          })()}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-              )}
+              {loadingMaster ? <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Đang tải dữ liệu năng suất...</div> : (() => {
+                // Group ordersWithData by loại SP
+                const loaiGroups = {}
+                ordersWithData.forEach(r => {
+                  const loai = r._pm?.loaiSanPham || '(Chưa phân loại)'
+                  if (!loaiGroups[loai]) loaiGroups[loai] = []
+                  loaiGroups[loai].push(r)
+                })
+                const groupList = Object.entries(loaiGroups)
+                  .map(([loai, orders]) => ({ loai, orders, totalH: orders.reduce((s, x) => s + x.total, 0) }))
+                  .sort((a, b) => b.totalH - a.totalH)
+
+                const thStyle = { padding: '8px 8px', fontWeight: 600, color: '#374151', borderBottom: '2px solid #e5e7eb', whiteSpace: 'nowrap', background: '#f3f4f6' }
+                const TABLE_COLS = ['Mã Bravo','Sản phẩm','SL Còn Lại','t. Pha Chế (h)','t. Phân Liều (h)','t. VS BBC1 (h)','t. Đóng Gói (h)','Tổng (h)','Nút thắt','Ngày HT']
+                const toggleGroup = (loai) => setCollapsedLoaiSp(prev => {
+                  const next = new Set(prev)
+                  next.has(loai) ? next.delete(loai) : next.add(loai)
+                  return next
+                })
+                const allCollapsed = groupList.every(g => collapsedLoaiSp.has(g.loai))
+
+                return (
+                  <div>
+                    {/* Title row */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>Chi tiết đơn hàng</div>
+                      <button
+                        onClick={() => setCollapsedLoaiSp(allCollapsed ? new Set() : new Set(groupList.map(g => g.loai)))}
+                        style={{ fontSize: 12, color: '#6b7280', background: 'none', border: '1px solid #e5e7eb', borderRadius: 4, padding: '2px 10px', cursor: 'pointer' }}
+                      >
+                        {allCollapsed ? 'Mở tất cả' : 'Thu gọn tất cả'}
+                      </button>
+                    </div>
+
+                    {groupList.map(group => {
+                      const isCollapsed = collapsedLoaiSp.has(group.loai)
+                      const groupBn = group.orders.filter(r => r.bottleneck).length
+                      return (
+                        <div key={group.loai} style={{ marginBottom: 10, border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+                          {/* Group header */}
+                          <div
+                            onClick={() => toggleGroup(group.loai)}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', background: '#f8fafc', cursor: 'pointer', userSelect: 'none', borderBottom: isCollapsed ? 'none' : '1px solid #e5e7eb' }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{group.loai}</span>
+                              <span style={{ fontSize: 11, color: '#6b7280', background: '#e5e7eb', borderRadius: 10, padding: '1px 8px' }}>{group.orders.length} đơn</span>
+                              {groupBn > 0 && <span style={{ fontSize: 11, color: '#dc2626', background: '#fee2e2', borderRadius: 10, padding: '1px 8px' }}>{groupBn} nút thắt</span>}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: '#0f766e' }}>{fmtH(group.totalH)} h</span>
+                              <span style={{ fontSize: 16, color: '#9ca3af', lineHeight: 1 }}>{isCollapsed ? '▶' : '▼'}</span>
+                            </div>
+                          </div>
+
+                          {/* Group table */}
+                          {!isCollapsed && (
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                              <thead>
+                                <tr>
+                                  {TABLE_COLS.map(h => (
+                                    <th key={h} style={{ ...thStyle, textAlign: h.startsWith('t.') || h === 'Tổng (h)' || h === 'SL Còn Lại' || h === 'Ngày HT' ? 'right' : 'left' }}>{h}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {group.orders.map((r, i) => {
+                                  const bn = r.bottleneck ? BN_CFG[r.bottleneck.key] : null
+                                  return (
+                                    <tr key={r.id} style={{ background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
+                                      <td style={{ padding: '8px 8px', fontFamily: 'monospace', color: '#1677ff', fontWeight: 700, fontSize: 12 }}>{r.maBravo}</td>
+                                      <td style={{ padding: '8px 8px', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.tenSanPham}>{r.tenSanPham || '—'}</td>
+                                      <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 600 }}>{fmtN(r.soLuongConLai)}</td>
+                                      <td style={{ padding: '8px 8px', textAlign: 'right', color: r.bottleneck?.key === 'PC'   ? '#1e40af' : '#374151', fontWeight: r.bottleneck?.key === 'PC'   ? 700 : 400 }}>{fmtH(r.tPc)}</td>
+                                      <td style={{ padding: '8px 8px', textAlign: 'right', color: r.bottleneck?.key === 'PL'   ? '#92400e' : '#374151', fontWeight: r.bottleneck?.key === 'PL'   ? 700 : 400 }}>{fmtH(r.tPl)}</td>
+                                      <td style={{ padding: '8px 8px', textAlign: 'right', color: r.bottleneck?.key === 'BBC1' ? '#991b1b' : '#374151', fontWeight: r.bottleneck?.key === 'BBC1' ? 700 : 400 }}>{fmtH(r.tBbc)}</td>
+                                      <td style={{ padding: '8px 8px', textAlign: 'right', color: r.bottleneck?.key === 'DG'   ? '#6d28d9' : '#374151', fontWeight: r.bottleneck?.key === 'DG'   ? 700 : 400 }}>{fmtH(r.tDg)}</td>
+                                      <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700 }}>{fmtH(r.total)}</td>
+                                      <td style={{ padding: '8px 8px' }}>
+                                        {bn && <span style={{ background: bn.bg, color: bn.color, fontWeight: 600, padding: '2px 8px', borderRadius: 4, fontSize: 12, whiteSpace: 'nowrap' }}>
+                                          {bn.label} {fmtH(r.bottleneck.t)}h
+                                        </span>}
+                                      </td>
+                                      <td style={{ padding: '8px 8px', textAlign: 'right' }}>
+                                        {(() => {
+                                          if (!r.bottleneck) return <span style={{ color: '#d1d5db' }}>—</span>
+                                          const w = stageWorkers[r.bottleneck.key] || 0
+                                          if (w === 0) return <span style={{ color: '#d1d5db', fontSize: 11 }}>—</span>
+                                          const days = r.bottleneck.t / w
+                                          return <span style={{ fontWeight: 700, color: bn?.color || '#374151' }}>{fmtDays(days)} <span style={{ fontWeight: 400, fontSize: 11 }}>ngày</span></span>
+                                        })()}
+                                      </td>
+                                    </tr>
+                                  )
+                                })}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
               {ordersWithoutData.length > 0 && (
                 <Callout color="amber">
                   <b>Lưu ý:</b> {ordersWithoutData.length} đơn chưa có đủ dữ liệu năng suất: {ordersWithoutData.slice(0,5).map(r => r.maBravo || r.maSp).join(', ')}{ordersWithoutData.length > 5 ? '...' : ''}. Cần bổ sung NS trong Danh mục TP trước khi phân tích.
