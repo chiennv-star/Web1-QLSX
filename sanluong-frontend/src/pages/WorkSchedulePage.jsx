@@ -3544,6 +3544,7 @@ function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
   const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 1000, total: 0 })
   const [filters, setFilters] = useState({ dateRange: null, maSp: '', soLo: '', tenTrinh: '', maBravo: '' })
+  const [loaiSpMap, setLoaiSpMap] = useState({})
 
   const fetchDone = useCallback(async (page = 0, size = 1000, f = filters) => {
     setLoading(true)
@@ -3561,9 +3562,20 @@ function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
           maBravo: f.maBravo || undefined,
         }
       })
-      setData(res.content || [])
+      const rows = res.content || []
+      setData(rows)
       setPagination(p => ({ ...p, total: res.totalElements, current: page + 1, pageSize: size }))
       onCountChange?.(res.totalElements)
+      const codes = [...new Set(rows.map(r => r.maSp).filter(Boolean))]
+      if (codes.length > 0) {
+        api.get('/product-master/lookup-batch', { params: { codes } })
+          .then(({ data: batchMap }) => {
+            const loaiMap = {}
+            codes.forEach(maSp => { if (batchMap[maSp]?.loaiSanPham) loaiMap[maSp] = batchMap[maSp].loaiSanPham })
+            setLoaiSpMap(loaiMap)
+          })
+          .catch(() => {})
+      }
     } catch { message.error({ content: 'Không thể tải lịch đã hoàn thiện', key: 'ws-done-err', duration: 3 }) }
     finally { setLoading(false) }
   }, [congDoan, toNhom, filters])
@@ -3615,6 +3627,13 @@ function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
     {
       title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 80,
       render: v => v ? <span style={{ fontWeight: 600, color: '#595959' }}>{v}</span> : '—'
+    },
+    {
+      title: 'Loại SP', key: 'loaiSp', width: 110,
+      render: (_, r) => {
+        const loai = loaiSpMap[r.maSp]
+        return loai ? <Tag color="purple" style={{ marginRight: 0, fontSize: 11 }}>{loai}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>
+      }
     },
     {
       title: 'Tiến trình', dataIndex: 'tenTrinh', key: 'tenTrinh',
@@ -3730,6 +3749,7 @@ function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange }) {
   const [selectedIds, setSelectedIds] = useState([])
   const [bulkLoading, setBulkLoading] = useState(false)
   const [updatingTT, setUpdatingTT] = useState({})
+  const [loaiSpMap, setLoaiSpMap] = useState({})
 
   const fetchHidden = useCallback(async (page = 0, size = 1000) => {
     setLoading(true)
@@ -3737,9 +3757,20 @@ function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange }) {
       const { data: res } = await api.get('/work-schedule/hidden', {
         params: { source: 'SCHEDULE', congDoan, toNhom: toNhom || undefined, page, size }
       })
-      setData(res.content || [])
+      const rows = res.content || []
+      setData(rows)
       setPagination(p => ({ ...p, total: res.totalElements, current: page + 1, pageSize: size }))
       onCountChange?.(res.totalElements)
+      const codes = [...new Set(rows.map(r => r.maSp).filter(Boolean))]
+      if (codes.length > 0) {
+        api.get('/product-master/lookup-batch', { params: { codes } })
+          .then(({ data: batchMap }) => {
+            const loaiMap = {}
+            codes.forEach(maSp => { if (batchMap[maSp]?.loaiSanPham) loaiMap[maSp] = batchMap[maSp].loaiSanPham })
+            setLoaiSpMap(loaiMap)
+          })
+          .catch(() => {})
+      }
     } catch { message.error({ content: 'Không thể tải danh sách đã ẩn', key: 'ws-hidden-err', duration: 3 }) }
     finally { setLoading(false) }
   }, [congDoan, toNhom])
@@ -3804,6 +3835,13 @@ function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange }) {
     {
       title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 80,
       render: v => v ? <span style={{ fontWeight: 600, color: '#595959' }}>{v}</span> : '—'
+    },
+    {
+      title: 'Loại SP', key: 'loaiSp', width: 110,
+      render: (_, r) => {
+        const loai = loaiSpMap[r.maSp]
+        return loai ? <Tag color="purple" style={{ marginRight: 0, fontSize: 11 }}>{loai}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>
+      }
     },
     {
       title: 'Tiến trình', dataIndex: 'tenTrinh', key: 'tenTrinh',
