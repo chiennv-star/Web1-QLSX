@@ -244,6 +244,20 @@ function DonHangModal({ open, editItem, onClose, onSaved, existingMaDonHangs = [
 
   const onOk = async () => {
     const values = await form.validateFields()
+    // ── Kiểm tra Mã Bravo tồn tại trong Danh mục ───────────────────────────
+    if (lookupStatus === 'not_found') {
+      message.error(`Mã Bravo "${values.maBravo}" không tồn tại trong Danh mục Mã TP. Không thể thêm đơn hàng.`)
+      return
+    }
+    if (lookupStatus === 'loading') {
+      message.warning('Đang kiểm tra Mã Bravo, vui lòng đợi vài giây rồi thử lại.')
+      return
+    }
+    // Khi tạo mới: nếu chưa lookup thành công → chặn (maBravo chưa xác nhận)
+    if (!editItem && lookupStatus !== 'found') {
+      message.error('Vui lòng nhập Mã Bravo hợp lệ và đợi hệ thống xác nhận trước khi thêm.')
+      return
+    }
     // ── Kiểm tra trùng mã đơn hàng ──────────────────────────────────────────
     if (values.maDonHang && existingMaDonHangs.includes(values.maDonHang)) {
       message.error(`Mã đơn hàng "${values.maDonHang}" đã tồn tại! Không thể lưu.`)
