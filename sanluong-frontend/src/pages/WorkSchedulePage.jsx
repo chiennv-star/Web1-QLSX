@@ -890,7 +890,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     if (val === '' || val == null) return
     const parsed = parseInt(val, 10)
     if (isNaN(parsed)) return
-    // Đồng bộ state nếu override
+    // Đồng bộ state ngay nếu override
     if (overrideVal != null) setDaySlMap(prev => ({ ...prev, [ngayKey]: String(overrideVal) }))
     const rows = sessions.filter(s => (s.ngay || 'unknown') === ngayKey)
     const first = rows[0]
@@ -898,25 +898,12 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     setSavingDay(ngayKey)
 
     try {
-      const { data } = await api.put(`/work-schedule-session/${first.id}`, {
-        workScheduleId: schedule.id,
-        ngay: first.ngay || null,
-        nguoiThucHien: first.nguoiThucHien || null,
-        maNhanVien: first.maNhanVien || null,
-        nhomThucHien: first.nhomThucHien || null,
-        caSanXuat: first.caSanXuat || null,
-        thoiGianBatDau: first.thoiGianBatDau || null,
-        thoiGianKetThuc: first.thoiGianKetThuc || null,
-        congThucHien: first.congThucHien !== '' ? first.congThucHien : null,
-        soGioThucHien: first.soGioThucHien != null ? parseFloat(first.soGioThucHien) : null,
-        vaiTro: first.vaiTro || null,
-        ghiChu: first.ghiChu || null,
-        sanLuong: parsed,
-        nangSuat: first.nangSuat != null ? parseFloat(first.nangSuat) : null,
-        nangSuatTrungBinh: first.nangSuatTrungBinh != null ? parseFloat(first.nangSuatTrungBinh) : null,
-      })
-      setSessions(prev => prev.map(r => r.id === first.id ? normalizeSession(data) : r))
+      // Dùng PATCH /san-luong thay vì PUT để tránh ghi đè dữ liệu khác.
+      // Backend tự gọi syncAggregates → cập nhật slDg/slBbc1/slPl/... trên work-schedule.
+      await api.patch(`/work-schedule-session/${first.id}/san-luong`, { sanLuong: parsed })
       const effectiveVal = String(overrideVal ?? val)
+      setSessions(prev => prev.map(r => r.id === first.id ? { ...r, sanLuong: parsed } : r))
+      setDaySlMap(prev => ({ ...prev, [ngayKey]: effectiveVal }))
       const newTongSl = Object.values({ ...daySlMap, [ngayKey]: effectiveVal })
         .reduce((acc, v) => acc + (parseFloat(v) || 0), 0)
       syncSl(newTongSl)
