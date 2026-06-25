@@ -183,6 +183,10 @@ public class ProductMasterService {
         repository.deleteById(id);
     }
 
+    public java.util.List<String> findDistinctLoaiSanPham() {
+        return repository.findDistinctLoaiSanPham();
+    }
+
     public Map<String, Object> countNoBravo() {
         return Map.of("count", repository.countByMaBravoNullOrEmpty());
     }

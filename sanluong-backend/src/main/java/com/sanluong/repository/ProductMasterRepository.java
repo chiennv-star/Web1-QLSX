@@ -35,6 +35,9 @@ public interface ProductMasterRepository extends JpaRepository<ProductMaster, Lo
                                @Param("toNhomPcpl") String toNhomPcpl,
                                Pageable pageable);
 
+    @Query("SELECT DISTINCT p.loaiSanPham FROM ProductMaster p WHERE p.loaiSanPham IS NOT NULL AND p.loaiSanPham <> '' ORDER BY p.loaiSanPham")
+    List<String> findDistinctLoaiSanPham();
+
     @Query("SELECT COUNT(p) FROM ProductMaster p WHERE p.maBravo IS NULL OR p.maBravo = ''")
     long countByMaBravoNullOrEmpty();
 

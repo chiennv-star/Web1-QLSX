@@ -1173,6 +1173,7 @@ function ProductMasterTab() {
   const [filterLoaiSp, setFilterLoaiSp] = useState(null)
   const [filterMay,    setFilterMay]    = useState('')
   const [allData,      setAllData]      = useState(null) // loaded when local filters active
+  const [allLoaiSp,    setAllLoaiSp]    = useState([])  // tất cả loại SP từ DB
   const [modalOpen,   setModalOpen]   = useState(false)
   const [detailOpen,  setDetailOpen]  = useState(false)
   const [detailItem,  setDetailItem]  = useState(null)
@@ -1241,6 +1242,12 @@ function ProductMasterTab() {
   }, [filterLoaiSp, filterMay]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchData() }, [])
+
+  useEffect(() => {
+    api.get('/product-master/loai-san-pham-distinct')
+      .then(({ data: list }) => setAllLoaiSp(Array.isArray(list) ? list : []))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     const handler = () => fetchData(pagination.current - 1, pagination.pageSize, undefined, undefined, { silent: true })
@@ -1349,13 +1356,13 @@ function ProductMasterTab() {
       'Kem O/W', 'Kem W/O', 'Kem chống nắng',
       'Sơn sáp', 'Son môi', 'Sáp', 'Nến',
       'Bột', 'Phấn',
-      'Dầu gội', 'Sữa tắm', 'Sữa rửa mặt',
+      'Dầu gội', 'Sữa tắm', 'Sữa rửa mặt', 'Sữa tắm dầu gội',
       'Nước tẩy trang', 'Xịt khoáng', 'Nước súc miệng',
       'Chiết xuất', 'Tinh chất',
     ]
     const fromData = data.filter(r => r.loaiSanPham).map(r => r.loaiSanPham)
-    return [...new Set([...defaults, ...fromData])]
-  }, [data])
+    return [...new Set([...defaults, ...allLoaiSp, ...fromData])]
+  }, [data, allLoaiSp])
 
   const openEdit = (r) => {
     setEditItem(r)

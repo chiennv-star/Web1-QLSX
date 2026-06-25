@@ -145,6 +145,11 @@ public class ProductMasterController {
         return ResponseEntity.ok(service.resetSyncFields());
     }
 
+    @GetMapping("/loai-san-pham-distinct")
+    public ResponseEntity<List<String>> getDistinctLoaiSanPham() {
+        return ResponseEntity.ok(service.findDistinctLoaiSanPham());
+    }
+
     @GetMapping("/count-no-bravo")
     public ResponseEntity<Map<String, Object>> countNoBravo() {
         return ResponseEntity.ok(service.countNoBravo());
