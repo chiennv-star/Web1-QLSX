@@ -441,13 +441,14 @@ export default function KeHoachToPage() {
       setAssignsByTo(prev => {
         const updated = { ...prev }
 
-        // Pass 1: update existing assigns' caShifts
+        // Pass 1: rebuild existing assigns' caShifts from backend (source of truth)
         Object.keys(updated).forEach(toKey => {
           updated[toKey] = (updated[toKey] || []).map(assign => {
             if (!assign.wsId || !assign.ngayFull) return assign
             const group = grouped[`${assign.wsId}|${assign.ngayFull}`]
             if (!group?.length) return assign
-            const newCaShifts = { ...(assign.caShifts || {}) }
+            // Rebuild from backend — this removes people deleted from work-schedule
+            const newCaShifts = {}
             group.forEach(s => {
               const caKey = CA_FROM_SESSION[s.caSanXuat] || s.caSanXuat || 'Ca 1'
               if (!newCaShifts[caKey]) newCaShifts[caKey] = { mas: [], sessionIds: {} }
@@ -460,6 +461,15 @@ export default function KeHoachToPage() {
                   [s.maNhanVien]: { id: s.id, locked: s.sanLuong != null },
                 }
               }
+            })
+            // Keep local-only (unsaved, no sessionId) people from existing state
+            Object.entries(assign.caShifts || {}).forEach(([caKey, { mas = [], sessionIds = {} }]) => {
+              mas.forEach(ma => {
+                if (!sessionIds[ma]) {
+                  if (!newCaShifts[caKey]) newCaShifts[caKey] = { mas: [], sessionIds: {} }
+                  if (!newCaShifts[caKey].mas.includes(ma)) newCaShifts[caKey].mas.push(ma)
+                }
+              })
             })
             return { ...assign, caShifts: newCaShifts }
           })

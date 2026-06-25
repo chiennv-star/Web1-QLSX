@@ -141,7 +141,9 @@ public class WorkScheduleSessionService {
             recalculateEfficiency(maNv);
             // Xóa KH_TO session tương ứng khi xóa session gốc
             if (workScheduleId != null && maNv != null && ngay != null && ca != null) {
-                List<WorkScheduleSession> khToList = repository.findKhToByWsIdNgayMaNvCa(workScheduleId, ngay, maNv, ca);
+                // Normalize "Hành Chính" → "HC" để match với KH_TO
+                String caKhTo = "Hành Chính".equalsIgnoreCase(ca) ? "HC" : ca;
+                List<WorkScheduleSession> khToList = repository.findKhToByWsIdNgayMaNvCa(workScheduleId, ngay, maNv, caKhTo);
                 if (!khToList.isEmpty()) repository.deleteAll(khToList);
             }
         }
