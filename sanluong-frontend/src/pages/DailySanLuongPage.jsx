@@ -2666,7 +2666,7 @@ function PhanTichSanLuongTab() {
                 rowKey="key"
                 loading={loading}
                 pagination={false}
-                scroll={{ x: 960 }}
+                scroll={{ x: 1320 }}
                 bordered
                 components={{ header: { cell: props => <th {...props} style={{ ...props.style, background: '#00CC99', color: '#fff' }} /> } }}
                 columns={[
@@ -2704,6 +2704,21 @@ function PhanTichSanLuongTab() {
                     render: v => <span>{totalSl > 0 ? ((v / totalSl) * 100).toFixed(1) : 0}%</span>
                   },
                   {
+                    title: 'Công theo công đoạn',
+                    children: ANALYSIS_STAGES.map(s => ({
+                      title: <span style={{ color: s.color, fontWeight: 700 }}>{s.label}</span>,
+                      key: `cong_${s.key}`,
+                      align: 'right',
+                      width: 90,
+                      render: (_, r) => {
+                        const v = r.byStage[s.key]?.cong || 0
+                        return v > 0
+                          ? <span style={{ color: s.color, fontWeight: 600 }}>{fmtCong(v, 2)}</span>
+                          : <span style={{ color: '#d9d9d9', fontSize: 11 }}>—</span>
+                      },
+                    })),
+                  },
+                  {
                     title: 'Tổng công', dataIndex: 'cong', align: 'right', width: 100,
                     render: v => <span style={{ color: '#722ed1', fontWeight: 600 }}>{fmtCong(v, 2)}</span>
                   },
@@ -2712,6 +2727,9 @@ function PhanTichSanLuongTab() {
                   const totalCong = loaiData.reduce((s, r) => s + r.cong, 0)
                   const stageTotals = ANALYSIS_STAGES.map(s =>
                     loaiData.reduce((sum, r) => sum + (r.byStage[s.key]?.sl || 0), 0)
+                  )
+                  const stageCongTotals = ANALYSIS_STAGES.map(s =>
+                    loaiData.reduce((sum, r) => sum + (r.byStage[s.key]?.cong || 0), 0)
                   )
                   return (
                     <Table.Summary.Row style={{ background: '#f0fdfa', fontWeight: 700 }}>
@@ -2726,7 +2744,12 @@ function PhanTichSanLuongTab() {
                         <span style={{ color: '#0f766e' }}>{fmtSL(totalSl)}</span>
                       </Table.Summary.Cell>
                       <Table.Summary.Cell index={7} align="right">100%</Table.Summary.Cell>
-                      <Table.Summary.Cell index={8} align="right">
+                      {stageCongTotals.map((v, i) => (
+                        <Table.Summary.Cell key={`sc${i}`} index={8 + i} align="right">
+                          <span style={{ color: ANALYSIS_STAGES[i].color, fontWeight: 700 }}>{v > 0 ? fmtCong(v, 2) : '—'}</span>
+                        </Table.Summary.Cell>
+                      ))}
+                      <Table.Summary.Cell index={12} align="right">
                         <span style={{ color: '#722ed1' }}>{fmtCong(totalCong, 2)}</span>
                       </Table.Summary.Cell>
                     </Table.Summary.Row>
