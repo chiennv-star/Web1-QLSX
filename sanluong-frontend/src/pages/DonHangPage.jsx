@@ -101,10 +101,10 @@ function ImportExcelModal({ open, onClose, onDone }) {
           <Alert type="info" showIcon style={{ marginBottom: 14 }} message={
             <div style={{ fontSize: 12 }}>
               File Excel cần có dòng tiêu đề ở hàng 1. <b>Chỉ bắt buộc cột Mã Bravo</b>, các cột còn lại là tuỳ chọn:<br />
-              <span style={{ color: '#cf1322' }}>* </span><b>Mã Bravo</b> (bắt buộc) — tự động tra Mã SP và Tên SP từ danh mục<br />
+              <span style={{ color: '#cf1322' }}>* </span><b>Mã Bravo</b> (bắt buộc) — phải tồn tại trong danh mục Mã TP, tự động tra Mã SP và Tên SP<br />
               <b>Mã đơn hàng</b>, <b>Ngày nhận đơn</b> (dd/MM/yyyy), <b>Số lượng</b>,{' '}
               <b>Mã SP / Mã TP</b>, <b>Tên sản phẩm</b> (tuỳ chọn)<br />
-              Các đơn hàng có <b>Mã Bravo + Mã Đơn Hàng + Số Lượng đã tồn tại</b> sẽ bị bỏ qua.
+              Mã Bravo <b>chưa có trong danh mục</b> sẽ bị báo lỗi và bỏ qua. Các đơn hàng có <b>Mã Bravo + Mã Đơn Hàng + Số Lượng đã tồn tại</b> sẽ bị bỏ qua.
             </div>
           } />
           <Upload.Dragger {...uploadProps} style={{ borderColor: '#217346' }}>

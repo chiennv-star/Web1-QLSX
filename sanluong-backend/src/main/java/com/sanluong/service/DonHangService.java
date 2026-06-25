@@ -310,12 +310,22 @@ public class DonHangService {
                 else if (h.contains("soluong"))                             colMap.put("soLuong", i);
             }
 
+            int thuTu = Optional.ofNullable(repo.findMaxThuTu()).orElse(0);
+
             for (int rowIdx = 1; rowIdx <= sheet.getLastRowNum(); rowIdx++) {
                 Row row = sheet.getRow(rowIdx);
                 if (row == null) continue;
 
                 String maBravo = getCellStringVal(row, colMap.get("maBravo"));
                 if (maBravo == null || maBravo.isBlank()) continue;
+
+                // Chặn Mã Bravo không tồn tại trong danh mục Mã TP
+                Optional<ProductMaster> pm = productMasterService.findByMaBravo(maBravo);
+                if (pm.isEmpty()) {
+                    errors.add("Dòng " + (rowIdx + 1) + ": Mã Bravo \"" + maBravo + "\" không tồn tại trong danh mục Mã TP");
+                    skipped++;
+                    continue;
+                }
 
                 String maDonHang   = getCellStringVal(row, colMap.get("maDonHang"));
                 BigDecimal soLuong = parseCellNumeric(row, colMap.get("soLuong"));
@@ -328,16 +338,11 @@ public class DonHangService {
                 }
 
                 try {
-                    // Auto-lookup maSp + tenSanPham từ ProductMaster nếu Excel không có
+                    // Dùng kết quả lookup sẵn để điền maSp + tenSanPham nếu Excel không có
                     String maSp       = getCellStringVal(row, colMap.get("maSp"));
                     String tenSanPham = getCellStringVal(row, colMap.get("tenSanPham"));
-                    if ((maSp == null || maSp.isBlank()) || (tenSanPham == null || tenSanPham.isBlank())) {
-                        Optional<ProductMaster> pm = productMasterService.findByMaBravo(maBravo);
-                        if (pm.isPresent()) {
-                            if (maSp == null || maSp.isBlank())           maSp       = pm.get().getMaTp();
-                            if (tenSanPham == null || tenSanPham.isBlank()) tenSanPham = pm.get().getTienTrinh();
-                        }
-                    }
+                    if (maSp == null || maSp.isBlank())             maSp       = pm.get().getMaTp();
+                    if (tenSanPham == null || tenSanPham.isBlank()) tenSanPham = pm.get().getTienTrinh();
 
                     DonHang e = new DonHang();
                     e.setMaBravo(maBravo);
@@ -346,8 +351,7 @@ public class DonHangService {
                     e.setMaDonHang(maDonHang);
                     e.setNgayDatHang(parseCellDate(row, colMap.get("ngayDatHang")));
                     e.setSoLuongDatHang(soLuong);
-                    Integer max = repo.findMaxThuTu();
-                    e.setThuTu((max == null ? 0 : max) + 1);
+                    e.setThuTu(++thuTu);
                     e.setCreatedBy(username);
                     e.setUpdatedBy(username);
                     repo.save(e);
