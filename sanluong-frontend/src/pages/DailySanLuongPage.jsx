@@ -2371,6 +2371,13 @@ const QUICK_RANGES = [
 
 const LOAI_COLORS = ['#0284c7','#0891b2','#059669','#d97706','#7c3aed','#db2777','#dc2626','#65a30d','#0f766e','#9333ea','#c2410c','#0369a1']
 
+const ANALYSIS_STAGES = [
+  { key: 'PC',   label: 'PC',   color: '#1D4ED8', match: cd => cd === 'PCPL1' || cd === 'PCPL2' },
+  { key: 'PL',   label: 'PL',   color: '#0e7490', match: cd => cd === 'PL' },
+  { key: 'BBC1', label: 'BBC1', color: '#6d28d9', match: cd => cd === 'BBC1' },
+  { key: 'DG',   label: 'ĐG',   color: '#b45309', match: cd => cd === 'DG' },
+]
+
 function PhanTichSanLuongTab() {
   const [dateRange, setDateRange] = useState([dayjs(), dayjs()])
   const [stageFilter, setStageFilter] = useState('')
@@ -2443,16 +2450,25 @@ function PhanTichSanLuongTab() {
     }
   }, [raw, stageFilter, sortBy])
 
-  // Aggregate by loại SP
+  // Aggregate by loại SP + breakdown theo công đoạn
   const loaiData = useMemo(() => {
     const map = {}
     raw.forEach(r => {
       if (stageFilter && resolveCongDoan(r) !== stageFilter) return
       const loai = (r.maSp && loaiSpMap[r.maSp]) ? loaiSpMap[r.maSp] : '(Chưa phân loại)'
-      if (!map[loai]) map[loai] = { key: loai, sl: 0, cong: 0, products: [] }
-      map[loai].sl += Number(r.sanLuong || 0)
-      map[loai].cong += Number(r.congThucHien || 0)
+      if (!map[loai]) {
+        const byStage = {}
+        ANALYSIS_STAGES.forEach(s => { byStage[s.key] = { sl: 0, cong: 0 } })
+        map[loai] = { key: loai, sl: 0, cong: 0, products: [], byStage }
+      }
+      const sl = Number(r.sanLuong || 0)
+      const cong = Number(r.congThucHien || 0)
+      map[loai].sl += sl
+      map[loai].cong += cong
       map[loai].products.push(r)
+      const cd = resolveCongDoan(r)
+      const stg = ANALYSIS_STAGES.find(s => s.match(cd))
+      if (stg) { map[loai].byStage[stg.key].sl += sl; map[loai].byStage[stg.key].cong += cong }
     })
     return Object.values(map).sort((a, b) => b.sl - a.sl)
   }, [raw, stageFilter, loaiSpMap])
@@ -2649,9 +2665,11 @@ function PhanTichSanLuongTab() {
                 rowKey="key"
                 loading={loading}
                 pagination={false}
+                scroll={{ x: 960 }}
+                bordered
                 columns={[
                   {
-                    title: 'Loại SP', dataIndex: 'key', width: 200,
+                    title: 'Loại SP', dataIndex: 'key', width: 155, fixed: 'left',
                     render: (v, _, idx) => (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ width: 12, height: 12, borderRadius: 2, background: LOAI_COLORS[idx % LOAI_COLORS.length], display: 'inline-block', flexShrink: 0 }} />
@@ -2659,36 +2677,59 @@ function PhanTichSanLuongTab() {
                       </span>
                     )
                   },
+                  { title: 'Số SP', dataIndex: 'products', align: 'right', width: 65, render: v => v.length },
                   {
-                    title: 'Số sản phẩm', dataIndex: 'products', align: 'right', width: 120,
-                    render: v => v.length
+                    title: 'Sản lượng theo công đoạn',
+                    children: ANALYSIS_STAGES.map(s => ({
+                      title: <span style={{ color: s.color, fontWeight: 700 }}>{s.label}</span>,
+                      key: `sl_${s.key}`,
+                      align: 'right',
+                      width: 90,
+                      render: (_, r) => {
+                        const v = r.byStage[s.key]?.sl || 0
+                        return v > 0
+                          ? <span style={{ color: s.color, fontWeight: 600 }}>{fmtSL(v)}</span>
+                          : <span style={{ color: '#d9d9d9', fontSize: 11 }}>—</span>
+                      },
+                    })),
                   },
                   {
-                    title: 'Tổng sản lượng', dataIndex: 'sl', align: 'right',
+                    title: 'Tổng SL', dataIndex: 'sl', align: 'right', width: 105,
                     render: v => <span style={{ fontWeight: 700, color: '#0f766e' }}>{fmtSL(v)}</span>
                   },
                   {
-                    title: '% Sản lượng', dataIndex: 'sl', key: 'pct', align: 'right', width: 110,
+                    title: '% SL', dataIndex: 'sl', key: 'pct', align: 'right', width: 75,
                     render: v => <span>{totalSl > 0 ? ((v / totalSl) * 100).toFixed(1) : 0}%</span>
                   },
                   {
-                    title: 'Tổng công', dataIndex: 'cong', align: 'right', width: 110,
-                    render: v => <span style={{ color: '#722ed1' }}>{fmtCong(v, 2)}</span>
+                    title: 'Tổng công', dataIndex: 'cong', align: 'right', width: 100,
+                    render: v => <span style={{ color: '#722ed1', fontWeight: 600 }}>{fmtCong(v, 2)}</span>
                   },
                 ]}
-                summary={() => (
-                  <Table.Summary.Row style={{ background: '#f0fdfa', fontWeight: 700 }}>
-                    <Table.Summary.Cell index={0}>TỔNG CỘNG</Table.Summary.Cell>
-                    <Table.Summary.Cell index={1} align="right">{loaiData.reduce((s, r) => s + r.products.length, 0)}</Table.Summary.Cell>
-                    <Table.Summary.Cell index={2} align="right">
-                      <span style={{ color: '#0f766e' }}>{fmtSL(totalSl)}</span>
-                    </Table.Summary.Cell>
-                    <Table.Summary.Cell index={3} align="right">100%</Table.Summary.Cell>
-                    <Table.Summary.Cell index={4} align="right">
-                      <span style={{ color: '#722ed1' }}>{fmtCong(loaiData.reduce((s, r) => s + r.cong, 0), 2)}</span>
-                    </Table.Summary.Cell>
-                  </Table.Summary.Row>
-                )}
+                summary={() => {
+                  const totalCong = loaiData.reduce((s, r) => s + r.cong, 0)
+                  const stageTotals = ANALYSIS_STAGES.map(s =>
+                    loaiData.reduce((sum, r) => sum + (r.byStage[s.key]?.sl || 0), 0)
+                  )
+                  return (
+                    <Table.Summary.Row style={{ background: '#f0fdfa', fontWeight: 700 }}>
+                      <Table.Summary.Cell index={0}>TỔNG CỘNG</Table.Summary.Cell>
+                      <Table.Summary.Cell index={1} align="right">{loaiData.reduce((s, r) => s + r.products.length, 0)}</Table.Summary.Cell>
+                      {stageTotals.map((v, i) => (
+                        <Table.Summary.Cell key={i} index={2 + i} align="right">
+                          <span style={{ color: ANALYSIS_STAGES[i].color, fontWeight: 700 }}>{v > 0 ? fmtSL(v) : '—'}</span>
+                        </Table.Summary.Cell>
+                      ))}
+                      <Table.Summary.Cell index={6} align="right">
+                        <span style={{ color: '#0f766e' }}>{fmtSL(totalSl)}</span>
+                      </Table.Summary.Cell>
+                      <Table.Summary.Cell index={7} align="right">100%</Table.Summary.Cell>
+                      <Table.Summary.Cell index={8} align="right">
+                        <span style={{ color: '#722ed1' }}>{fmtCong(totalCong, 2)}</span>
+                      </Table.Summary.Cell>
+                    </Table.Summary.Row>
+                  )
+                }}
               />
             </>
           )}
