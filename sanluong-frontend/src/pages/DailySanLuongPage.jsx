@@ -2360,20 +2360,31 @@ function resolveCongDoan(r) {
   return cd
 }
 
+const QUICK_RANGES = [
+  { label: 'Hôm nay',    range: () => [dayjs(), dayjs()] },
+  { label: 'Tuần này',   range: () => [dayjs().startOf('week'), dayjs()] },
+  { label: 'Tuần trước', range: () => [dayjs().subtract(1,'week').startOf('week'), dayjs().subtract(1,'week').endOf('week')] },
+  { label: 'Tháng này',  range: () => [dayjs().startOf('month'), dayjs()] },
+  { label: 'Tháng trước',range: () => [dayjs().subtract(1,'month').startOf('month'), dayjs().subtract(1,'month').endOf('month')] },
+  { label: '3 tháng',    range: () => [dayjs().subtract(2,'month').startOf('month'), dayjs()] },
+]
+
 function PhanTichSanLuongTab() {
-  const [selectedDate, setSelectedDate] = useState(dayjs())
+  const [dateRange, setDateRange] = useState([dayjs(), dayjs()])
   const [stageFilter, setStageFilter] = useState('')
   const [loading, setLoading] = useState(false)
   const [raw, setRaw] = useState([])
   const [innerTab, setInnerTab] = useState('stage')
   const [sortBy, setSortBy] = useState('output-desc')
 
-  const fetchData = useCallback(async (date = selectedDate) => {
+  const fetchData = useCallback(async (range = dateRange) => {
     setLoading(true)
     try {
-      const d = date.format('YYYY-MM-DD')
       const { data: res } = await api.get('/work-schedule-session/daily-report', {
-        params: { fromDate: d, toDate: d }
+        params: {
+          fromDate: range[0].format('YYYY-MM-DD'),
+          toDate:   range[1].format('YYYY-MM-DD'),
+        }
       })
       setRaw(res.filter(r => r.status !== 'PENDING' && r.status !== 'IN_PROGRESS'))
     } catch {
@@ -2381,7 +2392,7 @@ function PhanTichSanLuongTab() {
     } finally {
       setLoading(false)
     }
-  }, [selectedDate])
+  }, [dateRange])
 
   useEffect(() => { fetchData() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -2430,22 +2441,22 @@ function PhanTichSanLuongTab() {
   return (
     <div style={{ padding: '12px 16px' }}>
       {/* Toolbar */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16,
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12,
         background: '#f0fdfa', border: '1px solid #99f6e4', borderRadius: 8, padding: '10px 16px' }}>
-        <span style={{ fontWeight: 700, color: '#0f766e' }}>📊 Phân tích theo ngày:</span>
-        <DatePicker
-          value={selectedDate}
-          onChange={v => v && setSelectedDate(v)}
+        <span style={{ fontWeight: 700, color: '#0f766e', whiteSpace: 'nowrap' }}>📊 Khoảng thời gian:</span>
+        <RangePicker
+          value={dateRange}
+          onChange={v => v && setDateRange(v)}
           format="DD/MM/YYYY"
           size="small"
           allowClear={false}
-          style={{ width: 130 }}
+          style={{ width: 230 }}
         />
         <Select
           size="small"
           value={stageFilter}
           onChange={setStageFilter}
-          style={{ width: 140 }}
+          style={{ width: 145 }}
           options={[
             { value: '', label: 'Tất cả công đoạn' },
             ...STAGES.map(s => ({ value: s.key, label: s.label })),
@@ -2453,10 +2464,20 @@ function PhanTichSanLuongTab() {
         />
         <Button size="small" type="primary" icon={<SearchOutlined />}
           style={{ background: '#0f766e', borderColor: '#0f766e' }}
-          onClick={() => fetchData(selectedDate)} loading={loading}>
+          onClick={() => fetchData(dateRange)} loading={loading}>
           Xem
         </Button>
-        <Button size="small" icon={<ReloadOutlined />} onClick={() => fetchData(selectedDate)} loading={loading} />
+        <Button size="small" icon={<ReloadOutlined />} onClick={() => fetchData(dateRange)} loading={loading} />
+      </div>
+      {/* Quick range buttons */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+        {QUICK_RANGES.map(q => (
+          <Button key={q.label} size="small"
+            style={{ fontSize: 12, borderRadius: 12, borderColor: '#99f6e4', color: '#0f766e', background: '#f0fdfa' }}
+            onClick={() => { const r = q.range(); setDateRange(r); fetchData(r) }}>
+            {q.label}
+          </Button>
+        ))}
       </div>
 
       {/* Stat cards */}
