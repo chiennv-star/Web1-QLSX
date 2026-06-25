@@ -650,6 +650,7 @@ export default function KeHoachToPage() {
               nguoiThucHien:  employees.find(e => e.maNhanVien === ma)?.hoVaTen || ma,
               nhomThucHien:   employees.find(e => e.maNhanVien === ma)?.toNhom || a.toNhom || null,
               caSanXuat:      caSession,
+              loaiSession:    'KH_TO',
             }).catch(err => { if (err.response?.status !== 409) throw err })
           )
         })
@@ -759,6 +760,7 @@ export default function KeHoachToPage() {
           nguoiThucHien:  emp.hoVaTen || emp.maNhanVien,
           nhomThucHien:   emp.toNhom  || assign.toNhom || null,
           caSanXuat:      caSession,
+          loaiSession:    'KH_TO',
         })
         setAssigns(prev => prev.map(a =>
           a.id === assignId
