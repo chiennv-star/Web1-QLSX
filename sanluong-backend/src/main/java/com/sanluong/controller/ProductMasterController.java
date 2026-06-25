@@ -46,6 +46,7 @@ public class ProductMasterController {
         body.put("mayMocBbc1",   p.getMayMocBbc1()   != null ? p.getMayMocBbc1()   : "");
         body.put("mayMocDg",     p.getMayMocDg()     != null ? p.getMayMocDg()     : "");
         body.put("toNhomPcpl",   p.getToNhomPcpl()   != null ? p.getToNhomPcpl()   : null);
+        body.put("loaiSanPham",  p.getLoaiSanPham()  != null ? p.getLoaiSanPham()  : null);
         return body;
     }
 

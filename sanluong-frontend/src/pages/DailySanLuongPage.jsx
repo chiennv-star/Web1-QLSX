@@ -632,6 +632,7 @@ function DailyDetailTab() {
   const [rejectingId, setRejectingId] = useState(null)
   const [actionLoading, setActionLoading] = useState({})
   const [nsTbMap, setNsTbMap] = useState({}) // maSp → slTrungBinh (năng suất trung bình)
+  const [loaiSpMap, setLoaiSpMap] = useState({}) // maSp → loaiSanPham
   const filterRef = useRef(null)
   const [filterH, setFilterH] = useState(0)
   useEffect(() => {
@@ -653,18 +654,21 @@ function DailyDetailTab() {
 
   useEffect(() => { localStorage.setItem('daily_congDoan', congDoan) }, [congDoan])
 
-  // Lấy slTrungBinh từ ProductMaster — 1 request batch thay vì N request riêng
+  // Lấy slTrungBinh và loaiSanPham từ ProductMaster — 1 request batch thay vì N request riêng
   const fetchNsTb = useCallback(async (rows) => {
     const uniqueMaSp = [...new Set(rows.filter(r => r.maSp).map(r => r.maSp))]
     if (!uniqueMaSp.length) return
     try {
       const { data: batchMap } = await api.get('/product-master/lookup-batch', { params: { codes: uniqueMaSp } })
-      const map = {}
+      const nsMap = {}, loaiMap = {}
       uniqueMaSp.forEach(maSp => {
         const ns = batchMap[maSp]?.slTrungBinh
-        if (ns != null) map[maSp] = Number(ns)
+        if (ns != null) nsMap[maSp] = Number(ns)
+        const loai = batchMap[maSp]?.loaiSanPham
+        if (loai) loaiMap[maSp] = loai
       })
-      setNsTbMap(map)
+      setNsTbMap(nsMap)
+      setLoaiSpMap(loaiMap)
     } catch {}
   }, [])
 
@@ -826,6 +830,13 @@ function DailyDetailTab() {
     {
       title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 90, align: 'center',
       render: v => v ? <Tag color="blue" style={{ marginRight: 0 }}>{v}</Tag> : <span style={{ color: '#bbb' }}>—</span>,
+    },
+    {
+      title: 'Loại SP', key: 'loaiSp', width: 120,
+      render: (_, r) => {
+        const loai = loaiSpMap[r.maSp]
+        return loai ? <Tag color="purple" style={{ marginRight: 0, fontSize: 11 }}>{loai}</Tag> : <span style={{ color: '#bbb' }}>—</span>
+      },
     },
     {
       title: 'Tiến Trình', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 260,

@@ -615,6 +615,7 @@ export default function LenhSanXuatTab() {
   const [detailOpen,   setDetailOpen]   = useState(false)
   const [detailRecord, setDetailRecord] = useState(null)
   const [tableH, setTableH] = useState(500)
+  const [loaiSpMap, setLoaiSpMap] = useState({}) // maSp → loaiSanPham
   const tableWrapRef = useRef(null)
   // useRef để lưu giá trị soLo — không gây re-render khi gõ, tránh input mất focus
   const soLoRef = useRef({})
@@ -673,6 +674,20 @@ export default function LenhSanXuatTab() {
   }, [fetchLenh, fetchPending, fetchMissingCount])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+
+  // Load loaiSanPham từ ProductMaster theo maSp
+  useEffect(() => {
+    const allRows = [...lenhData, ...pendingData]
+    const codes = [...new Set(allRows.filter(r => r.maSp).map(r => r.maSp))]
+    if (!codes.length) return
+    api.get('/product-master/lookup-batch', { params: { codes } })
+      .then(({ data: batchMap }) => {
+        const m = {}
+        codes.forEach(sp => { if (batchMap[sp]?.loaiSanPham) m[sp] = batchMap[sp].loaiSanPham })
+        setLoaiSpMap(m)
+      })
+      .catch(() => {})
+  }, [lenhData, pendingData])
 
   // ── Tab counts ─────────────────────────────────────────────────────────────
   const tabCounts = useMemo(() => {
@@ -869,6 +884,13 @@ export default function LenhSanXuatTab() {
     {
       title: 'MÃ SP', dataIndex: 'maSp', width: 76,
       render: (v) => v ? <Tag color="default" style={{ fontWeight: 600, fontSize: 11 }}>{v}</Tag> : '—',
+    },
+    {
+      title: 'LOẠI SP', key: 'loaiSp', width: 120,
+      render: (_, r) => {
+        const loai = loaiSpMap[r.maSp]
+        return loai ? <Tag color="purple" style={{ marginRight: 0, fontSize: 11 }}>{loai}</Tag> : <span style={{ color: '#d1d5db' }}>—</span>
+      },
     },
     {
       title: 'TÊN SẢN PHẨM', dataIndex: 'tenSanPham', width: 280,
