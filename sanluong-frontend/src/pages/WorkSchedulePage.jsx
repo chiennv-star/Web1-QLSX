@@ -3538,6 +3538,12 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   )
 }
 
+const parseSoLoNum = (soLo) => {
+  if (!soLo || soLo.length !== 6) return 0
+  const yy = soLo.slice(4, 6), mm = soLo.slice(2, 4), dd = soLo.slice(0, 2)
+  return parseInt(`${yy}${mm}${dd}`, 10)
+}
+
 // ── DoneTab ───────────────────────────────────────────────────────────────────
 function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
   const [data, setData] = useState([])
@@ -3724,13 +3730,28 @@ function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
       <SkeletonTable
         className="ws-table"
         columns={columns}
-        dataSource={data}
+        dataSource={[...data].sort((a, b) => {
+          const isMissing = r => {
+            const { sl, cong } = getSlCong(r)
+            const slV = Number(sl) || 0, congV = Number(cong) || 0
+            return (congV > 0 && slV === 0) || (slV > 0 && congV === 0)
+          }
+          const am = isMissing(a), bm = isMissing(b)
+          if (am !== bm) return am ? -1 : 1
+          return parseSoLoNum(b.soLo) - parseSoLoNum(a.soLo)
+        })}
         rowKey="id"
         loading={loading}
         size="small"
         scroll={{ x: 900 }}
         sticky={{ offsetHeader: 46 }}
         rowHoverable={false}
+        rowClassName={record => {
+          const { sl, cong } = getSlCong(record)
+          const slV = Number(sl) || 0, congV = Number(cong) || 0
+          if ((congV > 0 && slV === 0) || (slV > 0 && congV === 0)) return 'row-missing-sl'
+          return ''
+        }}
         onRow={r => ({
           onClick: () => onRowClick?.(r),
           style: { cursor: onRowClick ? 'pointer' : 'default' },
