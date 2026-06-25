@@ -2659,6 +2659,7 @@ function PhanTichSanLuongTab() {
                 </ResponsiveContainer>
               </div>
 
+              <div style={{ color: '#0000CC' }}>
               <Table
                 size="small"
                 dataSource={loaiData}
@@ -2667,6 +2668,7 @@ function PhanTichSanLuongTab() {
                 pagination={false}
                 scroll={{ x: 960 }}
                 bordered
+                components={{ header: { cell: props => <th {...props} style={{ ...props.style, background: '#00CC99', color: '#fff' }} /> } }}
                 columns={[
                   {
                     title: 'Loại SP', dataIndex: 'key', width: 155, fixed: 'left',
@@ -2731,6 +2733,7 @@ function PhanTichSanLuongTab() {
                   )
                 }}
               />
+              </div>
             </>
           )}
         </div>
