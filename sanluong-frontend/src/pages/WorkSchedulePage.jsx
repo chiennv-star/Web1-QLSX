@@ -216,6 +216,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const scrollDivRef = useRef(null)  // ref cho div overflowY:auto bên dưới
   const caChangedRef = useRef({}) // { rowKey: { ngay, maNhanVien, newCa } }
   const sessionsRef = useRef([]) // luôn trỏ tới sessions mới nhất, tránh stale closure trong onBlur
+  const pendingSlRef = useRef({}) // track giá trị đang gõ để tránh stale closure trong InputNumber onBlur
   const VAI_TRO_KEY = 'vaitro_options'
   const DEFAULT_VAI_TRO = ['Trưởng ca', 'Phụ máy']
   const [vaiTroOptions, setVaiTroOptions] = useState(() => {
@@ -260,6 +261,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     setBatchEditDays(new Set())
     setBatchSaving(new Set())
     setSavedSlKeys(new Set())
+    pendingSlRef.current = {}
     fetchSessions()
     api.get(`/product-master/lookup/${encodeURIComponent(schedule.maSp || '')}`)
       .then(r => {
@@ -913,6 +915,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
         ...prev,
         [ngayKey]: [...(prev[ngayKey] || []), { value: parsed, savedAt: new Date() }],
       }))
+      delete pendingSlRef.current[ngayKey]
       onRefresh?.()
       message.success('Đã lưu sản lượng')
     } catch (err) {
@@ -1324,9 +1327,19 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                   step={1}
                   formatter={v => v != null && v !== '' ? Number(v).toLocaleString('vi-VN') : ''}
                   parser={v => v ? v.replace(/[^\d]/g, '') : ''}
-                  onChange={v => setDaySlMap(prev => ({ ...prev, [ngayKey]: v != null ? String(v) : '' }))}
-                  onPressEnter={() => hasSavedRow && saveDaySl(ngayKey)}
-                  onBlur={() => { if (slVal !== '' && slVal != null && hasSavedRow) saveDaySl(ngayKey) }}
+                  onChange={v => {
+                    const str = v != null ? String(v) : ''
+                    pendingSlRef.current[ngayKey] = str
+                    setDaySlMap(prev => ({ ...prev, [ngayKey]: str }))
+                  }}
+                  onPressEnter={() => {
+                    const cur = pendingSlRef.current[ngayKey] ?? slVal
+                    if (cur !== '' && hasSavedRow) saveDaySl(ngayKey, cur || undefined)
+                  }}
+                  onBlur={() => {
+                    const cur = pendingSlRef.current[ngayKey] ?? slVal
+                    if (cur !== '' && cur != null && hasSavedRow) saveDaySl(ngayKey, cur || undefined)
+                  }}
                 />
                 <Button size="small" type="primary" loading={savingDay === ngayKey}
                   disabled={slVal === '' || slVal == null || !hasSavedRow}
