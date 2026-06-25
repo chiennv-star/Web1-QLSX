@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Select, Spin, message, DatePicker, Tooltip, Button, Tag, Popconfirm, Input, Dropdown } from 'antd'
-import { ReloadOutlined, TeamOutlined, ProjectOutlined, WarningOutlined, LeftOutlined, RightOutlined, SearchOutlined, SaveOutlined } from '@ant-design/icons'
+import { Select, Spin, message, DatePicker, Tooltip, Button, Popconfirm, Input, Dropdown } from 'antd'
+import { ReloadOutlined, TeamOutlined, ProjectOutlined, WarningOutlined, LeftOutlined, RightOutlined, SearchOutlined, SaveOutlined, PlusOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
 import api from '../api/axios'
@@ -9,19 +9,20 @@ import { useAuth } from '../context/AuthContext'
 dayjs.extend(isoWeek)
 
 const { Option } = Select
-const SHIFTS  = ['Ca 1', 'Ca 2', 'Hành Chính', 'Tùy chọn']
+const SHIFTS  = ['Ca 1', 'Ca 2', 'Ca 3', 'HC']
 const DOW     = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
 
 const CA_STYLE = {
-  'Ca 1':       { bg: '#fffbeb', border: '#fde68a' },
-  'Ca 2':       { bg: '#eff6ff', border: '#bfdbfe' },
-  'Hành Chính': { bg: '#f0fdf4', border: '#bbf7d0' },
-  'Tùy chọn':   { bg: '#faf5ff', border: '#ddd6fe' },
+  'Ca 1': { bg: '#fffbeb', border: '#fde68a', text: '#b45309' },
+  'Ca 2': { bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8' },
+  'Ca 3': { bg: '#fdf4ff', border: '#e9d5ff', text: '#7c3aed' },
+  'HC':   { bg: '#f0fdf4', border: '#bbf7d0', text: '#15803d' },
 }
-// Mapping ca kế hoạch ↔ ca session
-const CA_TO_SESSION   = { 'Ca 1': 'Ca 1', 'Ca 2': 'Ca 2', 'Hành Chính': 'HC', 'Tùy chọn': null }
-const CA_FROM_SESSION = { 'Ca 1': 'Ca 1', 'Ca 2': 'Ca 2', 'HC': 'Hành Chính' }
-const DEFAULT_GIO     = { 'Ca 1': 7, 'Ca 2': 7, 'HC': 8 }
+
+const CA_TO_SESSION   = { 'Ca 1': 'Ca 1', 'Ca 2': 'Ca 2', 'Ca 3': 'Ca 3', 'HC': 'HC' }
+// Backward compat: 'Hành Chính' từ dữ liệu cũ → 'HC'
+const CA_FROM_SESSION = { 'Ca 1': 'Ca 1', 'Ca 2': 'Ca 2', 'Ca 3': 'Ca 3', 'HC': 'HC', 'Hành Chính': 'HC' }
+
 const SS_TO        = 'kehoachto_selectedTo'
 const SS_WEEK      = 'kehoachto_weekStart'
 const SS_SOURCE    = 'kehoachto_planSource'
@@ -49,6 +50,18 @@ const TO_TABS = [
   { key: 'ĐG',       label: 'ĐG',       schedCongDoan: 'DG'    },
 ]
 
+// ── Migration: old format (ca/mas/sessionIds) → new format (caShifts) ────────
+function migrateAssign(a) {
+  if (a.caShifts) return a
+  const { ca, mas, sessionIds, caStart, caEnd, ...rest } = a
+  let shiftKey = ca || 'Ca 1'
+  if (shiftKey === 'Hành Chính') shiftKey = 'HC'
+  if (!SHIFTS.includes(shiftKey)) shiftKey = 'Ca 1'
+  return {
+    ...rest,
+    caShifts: { [shiftKey]: { mas: mas || [], sessionIds: sessionIds || {} } },
+  }
+}
 
 function initials(name = '') {
   const parts = name.trim().split(/\s+/)
@@ -58,226 +71,219 @@ function initials(name = '') {
 function fmtDay(d) { return dayjs(d).format('DD/MM') }
 function dowOf(d)  { return DOW[dayjs(d).day()] }
 
-// ── Assign Card ───────────────────────────────────────────────────────────────
-function AssignCard({ a, employees, dup, onDropPerson, onDragOver, onRemovePerson, onUpdate, onRemove, isFirst, isLast, onMoveUp, onMoveDown, onClone, onDragStartPersonMove, onSyncCa, onSyncNote }) {
-  const caStyle = CA_STYLE[a.ca] || CA_STYLE['Ca 1']
+// ── AssignCard ────────────────────────────────────────────────────────────────
+function AssignCard({
+  a, employees, dup,
+  onDragOver, onDropPerson, onRemovePerson, onUpdate, onRemove,
+  isFirst, isLast, onMoveUp, onMoveDown, onClone,
+  onDragStartPersonMove, onSyncNote, onAddShift, onRemoveShift,
+}) {
+  const existingShifts  = SHIFTS.filter(s => a.caShifts?.[s])
+  const availableShifts = SHIFTS.filter(s => !a.caShifts?.[s])
+
   return (
     <div style={{
-      border: `1px solid ${caStyle.border}`,
-      background: caStyle.bg,
+      border: '1px solid #e2e8f0',
+      background: '#fff',
       borderRadius: 10, padding: '9px 10px',
-      display: 'flex', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap', marginBottom: 7,
+      marginBottom: 7,
     }}>
-      {/* Info */}
-      <div style={{ flex: '1 1 150px', minWidth: 140 }}>
-        <div style={{ fontWeight: 700, fontSize: 13, color: '#1e293b', lineHeight: 1.3 }}>
-          {a.ten}
-        </div>
-        <div style={{ fontSize: 10.5, color: '#94a3b8', fontFamily: 'monospace', marginTop: 2, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-          {a.maSp && <span>{a.maSp}</span>}
-          {a.maDonHang && <span style={{ color: '#818cf8' }}>ĐH {a.maDonHang}</span>}
-          {a.soLo && (
-            <span style={{ background: '#ede9fe', color: '#6d28d9', borderRadius: 4, padding: '1px 5px', fontSize: 10 }}>
-              Lô {a.soLo}
-            </span>
-          )}
-          {a.coLo && (
-            <span style={{ color: '#475569' }}>SL {Number(a.coLo).toLocaleString('vi-VN')}</span>
-          )}
-          {a.salgSessionId && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-              <span style={{ color: '#059669', fontWeight: 700 }}>Salg</span>
-              <input
-                type="number"
-                value={a.salg ?? ''}
-                onChange={e => onUpdate(a.id, 'salg', e.target.value === '' ? null : Number(e.target.value))}
-                onClick={e => e.stopPropagation()}
-                placeholder="0"
-                style={{
-                  width: 72, fontSize: 11, border: '1px solid #6ee7b7',
-                  borderRadius: 4, padding: '1px 5px', color: '#065f46', outline: 'none',
-                  background: '#ecfdf5', fontFamily: 'monospace',
-                }}
-              />
-            </span>
-          )}
-        </div>
-        <div style={{ marginTop: 3, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-          {a.toNhom && (
-            <span style={{ fontSize: 10, fontWeight: 800, background: '#ccfbf1', color: '#0f766e', borderRadius: 4, padding: '1px 6px' }}>
-              {a.toNhom}
-            </span>
-          )}
-          {a.congDoan && (
-            <span style={{ fontSize: 10, fontWeight: 700, background: '#e0f2fe', color: '#0369a1', borderRadius: 4, padding: '1px 6px' }}>
-              {a.congDoan}
-            </span>
-          )}
-          {a.isUrgent && (
-            <span style={{ fontSize: 10, fontWeight: 700, background: '#fef2f2', color: '#dc2626', borderRadius: 4, padding: '1px 6px' }}>
-              ⚠ Gấp
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Shift */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
-        <Select
-          value={a.ca}
-          size="small"
-          style={{ width: 108 }}
-          onChange={v => { onUpdate(a.id, 'ca', v); onSyncCa(a.id, v) }}
-          popupMatchSelectWidth={false}
-        >
-          {SHIFTS.map(s => <Option key={s} value={s}>{s}</Option>)}
-        </Select>
-        {a.ca === 'Tùy chọn' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <input
-              type="time"
-              value={a.caStart || ''}
-              onChange={e => onUpdate(a.id, 'caStart', e.target.value)}
-              style={{
-                width: 48, fontSize: 11, border: '1px solid #ddd6fe',
-                borderRadius: 5, padding: '2px 4px', color: '#6d28d9',
-                outline: 'none', background: '#fff',
-              }}
-            />
-            <span style={{ fontSize: 10, color: '#94a3b8' }}>–</span>
-            <input
-              type="time"
-              value={a.caEnd || ''}
-              onChange={e => onUpdate(a.id, 'caEnd', e.target.value)}
-              style={{
-                width: 48, fontSize: 11, border: '1px solid #ddd6fe',
-                borderRadius: 5, padding: '2px 4px', color: '#6d28d9',
-                outline: 'none', background: '#fff',
-              }}
-            />
+      {/* ── Top row: info + note + controls ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
+        {/* Info */}
+        <div style={{ flex: '1 1 150px', minWidth: 140 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: '#1e293b', lineHeight: 1.3 }}>
+            {a.ten}
           </div>
-        )}
+          <div style={{ fontSize: 10.5, color: '#94a3b8', fontFamily: 'monospace', marginTop: 2, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+            {a.maSp && <span>{a.maSp}</span>}
+            {a.maDonHang && <span style={{ color: '#818cf8' }}>ĐH {a.maDonHang}</span>}
+            {a.soLo && (
+              <span style={{ background: '#ede9fe', color: '#6d28d9', borderRadius: 4, padding: '1px 5px', fontSize: 10 }}>
+                Lô {a.soLo}
+              </span>
+            )}
+            {a.coLo && (
+              <span style={{ color: '#475569' }}>SL {Number(a.coLo).toLocaleString('vi-VN')}</span>
+            )}
+            {a.salgSessionId && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                <span style={{ color: '#059669', fontWeight: 700 }}>Salg</span>
+                <input
+                  type="number"
+                  value={a.salg ?? ''}
+                  onChange={e => onUpdate(a.id, 'salg', e.target.value === '' ? null : Number(e.target.value))}
+                  onClick={e => e.stopPropagation()}
+                  placeholder="0"
+                  style={{
+                    width: 72, fontSize: 11, border: '1px solid #6ee7b7',
+                    borderRadius: 4, padding: '1px 5px', color: '#065f46', outline: 'none',
+                    background: '#ecfdf5', fontFamily: 'monospace',
+                  }}
+                />
+              </span>
+            )}
+          </div>
+          <div style={{ marginTop: 3, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            {a.toNhom && (
+              <span style={{ fontSize: 10, fontWeight: 800, background: '#ccfbf1', color: '#0f766e', borderRadius: 4, padding: '1px 6px' }}>
+                {a.toNhom}
+              </span>
+            )}
+            {a.congDoan && (
+              <span style={{ fontSize: 10, fontWeight: 700, background: '#e0f2fe', color: '#0369a1', borderRadius: 4, padding: '1px 6px' }}>
+                {a.congDoan}
+              </span>
+            )}
+            {a.isUrgent && (
+              <span style={{ fontSize: 10, fontWeight: 700, background: '#fef2f2', color: '#dc2626', borderRadius: 4, padding: '1px 6px' }}>
+                ⚠ Gấp
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Note */}
+        <input
+          value={a.note || ''}
+          placeholder="Ghi chú..."
+          onChange={e => onUpdate(a.id, 'note', e.target.value)}
+          onBlur={e => onSyncNote(a.id, e.target.value)}
+          style={{
+            flex: '1 1 110px', minWidth: 100,
+            border: '1px solid #e2e8f0', borderRadius: 8,
+            padding: '5px 8px', fontSize: 12, color: '#334155', outline: 'none',
+          }}
+        />
+
+        {/* Move + Clone + Delete */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+          <Tooltip title="Lên trên">
+            <button onClick={onMoveUp} disabled={isFirst}
+              style={{ border: 'none', background: 'transparent', cursor: isFirst ? 'default' : 'pointer', color: isFirst ? '#e2e8f0' : '#94a3b8', fontSize: 14, padding: '1px 4px', borderRadius: 4, lineHeight: 1 }}>↑</button>
+          </Tooltip>
+          <Tooltip title="Xuống dưới">
+            <button onClick={onMoveDown} disabled={isLast}
+              style={{ border: 'none', background: 'transparent', cursor: isLast ? 'default' : 'pointer', color: isLast ? '#e2e8f0' : '#94a3b8', fontSize: 14, padding: '1px 4px', borderRadius: 4, lineHeight: 1 }}>↓</button>
+          </Tooltip>
+          <Tooltip title="Nhân bản">
+            <span onClick={() => onClone(a.id)}
+              style={{ cursor: 'pointer', color: '#94a3b8', fontSize: 14, marginTop: 2, userSelect: 'none' }}>⧉</span>
+          </Tooltip>
+          <Popconfirm title="Xóa card này?" okText="Xóa" cancelText="Huỷ" okButtonProps={{ danger: true, size: 'small' }} onConfirm={() => onRemove(a.id)}>
+            <button style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#cbd5e1', fontSize: 15, marginTop: 2, padding: 0, lineHeight: 1 }}>🗑</button>
+          </Popconfirm>
+        </div>
       </div>
 
-      {/* People drop zone */}
-      <div
-        onDragOver={onDragOver}
-        onDrop={e => onDropPerson(e, a.id)}
-        onDragEnter={e => { e.preventDefault(); e.currentTarget.style.borderColor = '#6366f1' }}
-        onDragLeave={e => { e.currentTarget.style.borderColor = 'transparent' }}
-        style={{
-          display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center',
-          flex: '2 1 190px', minWidth: 170,
-          border: '2px dashed transparent', borderRadius: 8, padding: '2px 4px',
-          transition: 'border-color 0.15s',
-        }}
-      >
-        {(a.mas || []).map(ma => {
-          const emp        = employees.find(e => e.maNhanVien === ma)
-          const isConflict = dup.has(`${ma}|${a.ngay}|${a.ca}`)
+      {/* ── Ca sections ── */}
+      <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
+        {existingShifts.map(caKey => {
+          const shiftData = a.caShifts[caKey] || { mas: [], sessionIds: {} }
+          const cs = CA_STYLE[caKey] || CA_STYLE['Ca 1']
+          const isEmpty = (shiftData.mas || []).length === 0
           return (
-            <span
-              key={ma}
-              draggable
-              onDragStart={e => onDragStartPersonMove(e, ma, a.id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 4,
-                background: isConflict ? '#fef2f2' : '#eef2ff',
-                border: `1px solid ${isConflict ? '#fca5a5' : '#c7d2fe'}`,
-                color: isConflict ? '#b91c1c' : '#3730a3',
-                borderRadius: 999, padding: '2px 5px 2px 3px', fontSize: 11.5, fontWeight: 700,
-                cursor: 'grab',
-              }}
-            >
+            <div key={caKey} style={{
+              border: `1px solid ${cs.border}`,
+              background: cs.bg,
+              borderRadius: 8, padding: '5px 8px',
+              display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
+            }}>
+              {/* Ca badge */}
               <span style={{
-                width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
-                background: isConflict ? '#fecaca' : '#c7d2fe',
-                color: isConflict ? '#b91c1c' : '#4338ca',
-                fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                {initials(emp?.hoVaTen || ma)}
-              </span>
-              {emp?.hoVaTen || ma}
-              <Popconfirm
-                title={`Xóa "${emp?.hoVaTen || ma}" khỏi ca này?`}
-                okText="Xóa"
-                cancelText="Huỷ"
-                okButtonProps={{ danger: true, size: 'small' }}
-                onConfirm={e => { e?.stopPropagation(); onRemovePerson(a.id, ma) }}
+                fontSize: 10.5, fontWeight: 800,
+                background: cs.border, color: cs.text,
+                borderRadius: 6, padding: '2px 9px', flexShrink: 0,
+              }}>{caKey}</span>
+
+              {/* Drop zone */}
+              <div
+                onDragOver={onDragOver}
+                onDrop={e => onDropPerson(e, a.id, caKey)}
+                onDragEnter={e => { e.preventDefault(); e.currentTarget.style.borderColor = '#6366f1' }}
+                onDragLeave={e => { e.currentTarget.style.borderColor = 'transparent' }}
+                style={{
+                  display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center',
+                  flex: '2 1 180px', minWidth: 150,
+                  border: '2px dashed transparent', borderRadius: 8, padding: '2px 4px',
+                  transition: 'border-color 0.15s',
+                }}
               >
-                <span
-                  style={{
-                    cursor: 'pointer', marginLeft: 1, fontSize: 11,
-                    color: isConflict ? '#b91c1c' : '#6366f1',
-                    opacity: 0.7, lineHeight: 1,
-                    display: 'flex', alignItems: 'center',
-                  }}
-                  onMouseDown={e => e.stopPropagation()}
-                  onClick={e => e.stopPropagation()}
-                >✕</span>
-              </Popconfirm>
-            </span>
+                {(shiftData.mas || []).map(ma => {
+                  const emp        = employees.find(e => e.maNhanVien === ma)
+                  const isConflict = dup.has(`${ma}|${a.ngay}|${caKey}`)
+                  return (
+                    <span key={ma} draggable onDragStart={e => onDragStartPersonMove(e, ma, a.id, caKey)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 4,
+                        background: isConflict ? '#fef2f2' : '#eef2ff',
+                        border: `1px solid ${isConflict ? '#fca5a5' : '#c7d2fe'}`,
+                        color: isConflict ? '#b91c1c' : '#3730a3',
+                        borderRadius: 999, padding: '2px 5px 2px 3px', fontSize: 11.5, fontWeight: 700,
+                        cursor: 'grab',
+                      }}
+                    >
+                      <span style={{
+                        width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                        background: isConflict ? '#fecaca' : '#c7d2fe',
+                        color: isConflict ? '#b91c1c' : '#4338ca',
+                        fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {initials(emp?.hoVaTen || ma)}
+                      </span>
+                      {emp?.hoVaTen || ma}
+                      <Popconfirm
+                        title={`Xóa "${emp?.hoVaTen || ma}" khỏi ${caKey}?`}
+                        okText="Xóa" cancelText="Huỷ"
+                        okButtonProps={{ danger: true, size: 'small' }}
+                        onConfirm={e => { e?.stopPropagation(); onRemovePerson(a.id, ma, caKey) }}
+                      >
+                        <span
+                          style={{ cursor: 'pointer', marginLeft: 1, fontSize: 11, color: isConflict ? '#b91c1c' : '#6366f1', opacity: 0.7, lineHeight: 1, display: 'flex', alignItems: 'center' }}
+                          onMouseDown={e => e.stopPropagation()}
+                          onClick={e => e.stopPropagation()}
+                        >✕</span>
+                      </Popconfirm>
+                    </span>
+                  )
+                })}
+                <span style={{ border: '1.5px dashed #cbd5e1', borderRadius: 999, padding: '2px 8px', fontSize: 10.5, color: '#94a3b8', userSelect: 'none' }}>
+                  ⤵ kéo người
+                </span>
+              </div>
+
+              {/* Remove shift (only when empty) */}
+              {isEmpty && (
+                <Tooltip title={`Xóa ca ${caKey}`}>
+                  <button onClick={() => onRemoveShift(a.id, caKey)}
+                    style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#cbd5e1', fontSize: 13, padding: '0 2px', lineHeight: 1, flexShrink: 0 }}>✕</button>
+                </Tooltip>
+              )}
+            </div>
           )
         })}
-        <span style={{ border: '1.5px dashed #cbd5e1', borderRadius: 999, padding: '2px 8px', fontSize: 10.5, color: '#94a3b8', userSelect: 'none' }}>
-          ⤵ kéo người
-        </span>
-      </div>
 
-      {/* Note */}
-      <input
-        value={a.note || ''}
-        placeholder="Ghi chú..."
-        onChange={e => onUpdate(a.id, 'note', e.target.value)}
-        onBlur={e => onSyncNote(a.id, e.target.value)}
-        style={{
-          flex: '1 1 110px', minWidth: 100,
-          border: '1px solid #e2e8f0', borderRadius: 8,
-          padding: '5px 8px', fontSize: 12, color: '#334155', outline: 'none',
-        }}
-      />
-
-      {/* Move + Delete */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, flexShrink: 0 }}>
-        <Tooltip title="Lên trên">
-          <button
-            onClick={onMoveUp}
-            disabled={isFirst}
-            style={{
-              border: 'none', background: 'transparent',
-              cursor: isFirst ? 'default' : 'pointer',
-              color: isFirst ? '#e2e8f0' : '#94a3b8',
-              fontSize: 14, padding: '1px 4px', borderRadius: 4, lineHeight: 1,
-            }}
-          >↑</button>
-        </Tooltip>
-        <Tooltip title="Xuống dưới">
-          <button
-            onClick={onMoveDown}
-            disabled={isLast}
-            style={{
-              border: 'none', background: 'transparent',
-              cursor: isLast ? 'default' : 'pointer',
-              color: isLast ? '#e2e8f0' : '#94a3b8',
-              fontSize: 14, padding: '1px 4px', borderRadius: 4, lineHeight: 1,
-            }}
-          >↓</button>
-        </Tooltip>
-        <Tooltip title="Nhân bản hàng này">
-          <span
-            onClick={() => onClone(a.id)}
-            style={{ cursor: 'pointer', color: '#94a3b8', fontSize: 14, marginTop: 2, userSelect: 'none' }}
-          >⧉</span>
-        </Tooltip>
-        <Popconfirm
-          title="Xóa card này?"
-          okText="Xóa"
-          cancelText="Huỷ"
-          okButtonProps={{ danger: true, size: 'small' }}
-          onConfirm={() => onRemove(a.id)}
-        >
-          <button style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#cbd5e1', fontSize: 15, marginTop: 2, padding: 0, lineHeight: 1 }}>🗑</button>
-        </Popconfirm>
+        {/* Add shift */}
+        {availableShifts.length > 0 && (
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 2 }}>
+            {availableShifts.map(caKey => {
+              const cs = CA_STYLE[caKey] || CA_STYLE['Ca 1']
+              return (
+                <button key={caKey} onClick={() => onAddShift(a.id, caKey)}
+                  style={{
+                    border: `1.5px dashed ${cs.border}`,
+                    background: 'transparent', cursor: 'pointer',
+                    color: cs.text, borderRadius: 6,
+                    padding: '2px 10px', fontSize: 10.5, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', gap: 3,
+                  }}
+                >
+                  <PlusOutlined style={{ fontSize: 9 }} /> {caKey}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -287,7 +293,6 @@ function AssignCard({ a, employees, dup, onDropPerson, onDragOver, onRemovePerso
 export default function KeHoachToPage() {
   const { user } = useAuth()
 
-  // ── Visible tabs theo role ─────────────────────────────────────────────────
   const visibleTabs = (() => {
     const role = user?.role
     if (role === 'ADMIN_PCPL1') return TO_TABS.filter(t => ['PCPL1', 'PCPL3'].includes(t.key))
@@ -298,13 +303,11 @@ export default function KeHoachToPage() {
     return TO_TABS
   })()
 
-  // ── Persist: đọc từ sessionStorage khi mount ──────────────────────────────
   const [selectedTo, setSelectedToState] = useState(() => sessionStorage.getItem(SS_TO) || '')
   const [weekStart, setWeekStartState]   = useState(() => {
     const saved = sessionStorage.getItem(SS_WEEK)
     return saved ? dayjs(saved).startOf('isoWeek') : dayjs().startOf('isoWeek')
   })
-
   const [planSource, setPlanSourceState] = useState(
     () => sessionStorage.getItem(SS_SOURCE) || 'PLAN'
   )
@@ -316,39 +319,21 @@ export default function KeHoachToPage() {
     return saved ? dayjs(saved).startOf('month') : dayjs().startOf('month')
   })
 
-  function setSelectedTo(v) {
-    sessionStorage.setItem(SS_TO, v || '')
-    setSelectedToState(v)
-  }
-  function setWeekStart(v) {
-    sessionStorage.setItem(SS_WEEK, v.format('YYYY-MM-DD'))
-    setWeekStartState(v)
-  }
-  function setPlanSource(v) {
-    sessionStorage.setItem(SS_SOURCE, v)
-    setPlanSourceState(v)
-  }
-  function setTimeMode(v) {
-    sessionStorage.setItem(SS_TIME_MODE, v)
-    setTimeModeState(v)
-  }
-  function setMonthStart(v) {
-    sessionStorage.setItem(SS_MONTH, v.format('YYYY-MM-DD'))
-    setMonthStartState(v)
-  }
+  function setSelectedTo(v) { sessionStorage.setItem(SS_TO, v || ''); setSelectedToState(v) }
+  function setWeekStart(v)  { sessionStorage.setItem(SS_WEEK, v.format('YYYY-MM-DD')); setWeekStartState(v) }
+  function setPlanSource(v) { sessionStorage.setItem(SS_SOURCE, v); setPlanSourceState(v) }
+  function setTimeMode(v)   { sessionStorage.setItem(SS_TIME_MODE, v); setTimeModeState(v) }
+  function setMonthStart(v) { sessionStorage.setItem(SS_MONTH, v.format('YYYY-MM-DD')); setMonthStartState(v) }
 
   const days = Array.from({ length: 7 }, (_, i) => weekStart.add(i, 'day'))
 
-  // ── Data ───────────────────────────────────────────────────────────────────
-  const [plans, setPlans]         = useState([])   // source=PLAN work-schedule records
+  const [plans, setPlans]         = useState([])
   const [employees, setEmployees] = useState([])
   const [loading, setLoading]     = useState(false)
 
-  // ── Secondary filter ───────────────────────────────────────────────────────
   const [filterDay, setFilterDay]         = useState('')
   const [searchProduct, setSearchProduct] = useState('')
 
-  // ── Planning state — lưu riêng theo từng tổ, persist sang sessionStorage ──
   const uidRef = useRef((() => {
     try {
       const saved = sessionStorage.getItem(SS_ASSIGNS)
@@ -358,22 +343,21 @@ export default function KeHoachToPage() {
       return allIds.length > 0 ? Math.max(...allIds) + 1 : 1
     } catch { return 1 }
   })())
+
   const [assignsByTo, setAssignsByTo] = useState(() => {
     try {
       const saved = sessionStorage.getItem(SS_ASSIGNS)
       if (!saved) return {}
       const parsed = JSON.parse(saved)
-      // Normalize stale data: ensure every assign has a mas array
       Object.keys(parsed).forEach(key => {
         if (Array.isArray(parsed[key])) {
-          parsed[key] = parsed[key].map(a => ({ ...a, mas: Array.isArray(a.mas) ? a.mas : [] }))
+          parsed[key] = parsed[key].map(migrateAssign)
         }
       })
       return parsed
     } catch { return {} }
   })
 
-  // assigns / setAssigns luôn trỏ vào tổ đang chọn
   const assigns = (selectedTo ? assignsByTo[selectedTo] : null) || []
   function setAssigns(updater) {
     if (!selectedTo) return
@@ -384,22 +368,17 @@ export default function KeHoachToPage() {
     })
   }
 
-  // Persist assigns sang sessionStorage mỗi khi có thay đổi
   useEffect(() => {
     try { sessionStorage.setItem(SS_ASSIGNS, JSON.stringify(assignsByTo)) } catch {}
   }, [assignsByTo])
 
-  // ── UI ─────────────────────────────────────────────────────────────────────
   const [selectedDay, setSelectedDay] = useState(() => fmtDay(dayjs()))
   const [viewMode, setViewMode]       = useState('viec')
   const [detailSearch, setDetailSearch] = useState('')
   const [showAllDays, setShowAllDays]   = useState(false)
-  // Tổ hiển thị trong panel nhân viên — có thể khác tab chính
   const [empTo, setEmpTo] = useState(selectedTo)
-  // Khi đổi tab chính → reset empTo về tab mới
   useEffect(() => { setEmpTo(selectedTo) }, [selectedTo])
 
-  // ── Drag ───────────────────────────────────────────────────────────────────
   const dragKind    = useRef(null)
   const dragPayload = useRef(null)
 
@@ -436,138 +415,116 @@ export default function KeHoachToPage() {
     }
   }, [])
 
-  // Sau khi fetchPlans xong, fetch sessions để populate sessionIds và lock status vào assigns
   const fetchSessionsForWeek = useCallback(async (plansList) => {
     if (!plansList?.length) return
-    // date range chỉ dùng khi ở chế độ tuần
     const fromDate = timeMode === 'week' ? weekStart.format('YYYY-MM-DD') : null
     const toDate   = timeMode === 'week' ? weekStart.add(6, 'day').format('YYYY-MM-DD') : null
     try {
-      // Fetch sessions theo từng plan (batch)
       const wsIds = [...new Set(plansList.map(p => p.id))]
-      const sessionParams = (id) => ({ scheduleId: id, loaiSession: 'KH_TO' })
       const results = await Promise.allSettled(
-        wsIds.map(id => api.get('/work-schedule-session', { params: sessionParams(id) }))
+        wsIds.map(id => api.get('/work-schedule-session', { params: { scheduleId: id, loaiSession: 'KH_TO' } }))
       )
-      // Gom tất cả sessions; nếu có range thì lọc, không thì lấy hết
       const allSessions = results.flatMap(r =>
         r.status === 'fulfilled' ? (r.value.data || []) : []
       ).filter(s => !fromDate || (s.ngay >= fromDate && s.ngay <= toDate))
 
       if (!allSessions.length) return
 
-      // Update sessionIds vào assigns đang có
-      setAssignsByTo(prev => {
-        const updated = {}
-        Object.keys(prev).forEach(toKey => {
-          updated[toKey] = (prev[toKey] || []).map(assign => {
-            if (!assign.wsId || !assign.ngayFull) return assign
-            const caSession = CA_TO_SESSION[assign.ca]
-            const matching  = allSessions.filter(s =>
-              s.workScheduleId === assign.wsId &&
-              s.ngay === assign.ngayFull &&
-              (s.caSanXuat === caSession || !caSession)
-            )
-            if (!matching.length) return assign
-            const newSessionIds = { ...assign.sessionIds }
-            // Luôn overwrite từ backend để đảm bảo locked status mới nhất
-            matching.forEach(s => {
-              if (s.maNhanVien) {
-                newSessionIds[s.maNhanVien] = { id: s.id, locked: s.sanLuong != null }
-              }
-            })
-            // Cập nhật mas: giữ người không có session (chỉ kế hoạch), xóa người chuyển Ca
-            const sessionMas = new Set(matching.map(s => s.maNhanVien).filter(Boolean))
-            const allOnDay   = new Set(
-              allSessions
-                .filter(s => s.workScheduleId === assign.wsId && s.ngay === assign.ngayFull)
-                .map(s => s.maNhanVien).filter(Boolean)
-            )
-            const existingMas = new Set(assign.mas)
-            // Xóa người có session ngày này nhưng ở Ca khác (đã chuyển Ca)
-            existingMas.forEach(ma => {
-              if (allOnDay.has(ma) && !sessionMas.has(ma)) existingMas.delete(ma)
-            })
-            sessionMas.forEach(ma => existingMas.add(ma))
-            return { ...assign, mas: [...existingMas], sessionIds: newSessionIds }
-          })
-        })
-        return updated
+      // Group sessions by (wsId, ngay) — 1 card per product per day
+      const grouped = {}
+      allSessions.forEach(s => {
+        const key = `${s.workScheduleId}|${s.ngay}`
+        if (!grouped[key]) grouped[key] = []
+        grouped[key].push(s)
       })
 
-      // Rebuild assign cards từ sessions cho các ngày chưa có assign
       setAssignsByTo(prev => {
         const updated = { ...prev }
-        // Group sessions by (wsId, ngay, ca)
-        const grouped = {}
-        allSessions.forEach(s => {
-          const key = `${s.workScheduleId}|${s.ngay}|${s.caSanXuat}`
-          if (!grouped[key]) grouped[key] = []
-          grouped[key].push(s)
-        })
-        Object.values(grouped).forEach(group => {
-          const first   = group[0]
-          const plan    = plansList.find(p => p.id === first.workScheduleId)
-          if (!plan) return
-          const ngay    = dayjs(first.ngay).format('DD/MM')
-          const ca      = CA_FROM_SESSION[first.caSanXuat] || 'Ca 1'
-          // Map congDoan → tab key (e.g. 'PL' → 'PCPL3', 'CC' → 'Cân Chia')
-          const toKeyFromCd = TO_TABS.find(t => t.schedCongDoan === plan.congDoan)?.key
-          const toKey       = toKeyFromCd || plan.toNhom || ''
-          const existing = (updated[toKey] || []).find(a =>
-            a.wsId === first.workScheduleId && a.ngayFull === first.ngay && a.ca === ca
-          )
-          if (existing) return  // đã có → fetchSessionsForWeek đã update ở trên
-          const sessionIds = {}
-          group.forEach(s => {
-            if (s.maNhanVien) sessionIds[s.maNhanVien] = { id: s.id, locked: s.sanLuong != null }
+
+        // Pass 1: update existing assigns' caShifts
+        Object.keys(updated).forEach(toKey => {
+          updated[toKey] = (updated[toKey] || []).map(assign => {
+            if (!assign.wsId || !assign.ngayFull) return assign
+            const group = grouped[`${assign.wsId}|${assign.ngayFull}`]
+            if (!group?.length) return assign
+            const newCaShifts = { ...(assign.caShifts || {}) }
+            group.forEach(s => {
+              const caKey = CA_FROM_SESSION[s.caSanXuat] || s.caSanXuat || 'Ca 1'
+              if (!newCaShifts[caKey]) newCaShifts[caKey] = { mas: [], sessionIds: {} }
+              if (s.maNhanVien) {
+                if (!newCaShifts[caKey].mas.includes(s.maNhanVien)) {
+                  newCaShifts[caKey].mas = [...newCaShifts[caKey].mas, s.maNhanVien]
+                }
+                newCaShifts[caKey].sessionIds = {
+                  ...newCaShifts[caKey].sessionIds,
+                  [s.maNhanVien]: { id: s.id, locked: s.sanLuong != null },
+                }
+              }
+            })
+            return { ...assign, caShifts: newCaShifts }
           })
+        })
+
+        // Pass 2: create new assigns for groups not yet represented
+        Object.values(grouped).forEach(group => {
+          const first = group[0]
+          const plan  = plansList.find(p => p.id === first.workScheduleId)
+          if (!plan) return
+          const ngay     = dayjs(first.ngay).format('DD/MM')
+          const toKeyFromCd = TO_TABS.find(t => t.schedCongDoan === plan.congDoan)?.key
+          const toKey    = toKeyFromCd || plan.toNhom || ''
+          const existing = (updated[toKey] || []).find(a =>
+            a.wsId === first.workScheduleId && a.ngayFull === first.ngay
+          )
+          if (existing) return
+
+          const caShifts = {}
+          group.forEach(s => {
+            const caKey = CA_FROM_SESSION[s.caSanXuat] || s.caSanXuat || 'Ca 1'
+            if (!caShifts[caKey]) caShifts[caKey] = { mas: [], sessionIds: {} }
+            if (s.maNhanVien) {
+              if (!caShifts[caKey].mas.includes(s.maNhanVien)) caShifts[caKey].mas.push(s.maNhanVien)
+              caShifts[caKey].sessionIds[s.maNhanVien] = { id: s.id, locked: s.sanLuong != null }
+            }
+          })
+
           const newAssign = {
-            id:             uidRef.current++,
-            wsId:           plan.id,
-            ten:            plan.tenTrinh || plan.maBravo || plan.maSp || '(Không tên)',
-            maSp:           plan.maSp        || '',
-            maBravo:        plan.maBravo     || '',
-            maDonHang:      plan.maDonHang   || '',
-            soLo:           plan.soLo        || '',
-            coLo:           plan.coLo        || null,
-            salg:           group[0]?.sanLuong ?? null,
-            salgSessionId:  group[0]?.id ?? null,
-            toNhom:         plan.toNhom      || '',
-            congDoan:       plan.congDoan    || '',
-            isUrgent:       isUrgent(plan),
+            id:            uidRef.current++,
+            wsId:          plan.id,
+            ten:           plan.tenTrinh || plan.maBravo || plan.maSp || '(Không tên)',
+            maSp:          plan.maSp      || '',
+            maBravo:       plan.maBravo   || '',
+            maDonHang:     plan.maDonHang || '',
+            soLo:          plan.soLo      || '',
+            coLo:          plan.coLo      || null,
+            salg:          group[0]?.sanLuong ?? null,
+            salgSessionId: group[0]?.id ?? null,
+            toNhom:        plan.toNhom    || '',
+            congDoan:      plan.congDoan  || '',
+            isUrgent:      isUrgent(plan),
             ngay,
-            ngayFull:       first.ngay,
-            ca,
-            caStart:        '',
-            caEnd:          '',
-            mas:            group.map(s => s.maNhanVien).filter(Boolean),
-            sessionIds,
-            note:       '',
+            ngayFull:      first.ngay,
+            caShifts,
+            note:          '',
           }
           if (!updated[toKey]) updated[toKey] = []
           updated[toKey] = [...updated[toKey], newAssign]
         })
+
         return updated
       })
-    } catch {
-      // Silent — assigns vẫn hoạt động ở local state
-    }
+    } catch { /* silent */ }
   }, [weekStart, timeMode])
 
-  // Gọi tất cả khi mount hoặc tuần / nguồn thay đổi
   const fetchAll = useCallback(async () => {
     await Promise.all([fetchPlans(), fetchEmployees()])
   }, [fetchPlans, fetchEmployees])
 
   useEffect(() => {
-    fetchPlans().then(plansList => {
-      if (plansList) fetchSessionsForWeek(plansList)
-    })
+    fetchPlans().then(plansList => { if (plansList) fetchSessionsForWeek(plansList) })
   }, [fetchPlans, fetchSessionsForWeek])
   useEffect(() => { fetchEmployees() }, [fetchEmployees])
 
-  // Auto-select tab khi role chỉ được xem 1 tab
   useEffect(() => {
     if (visibleTabs.length === 1 && selectedTo !== visibleTabs[0].key) {
       setSelectedTo(visibleTabs[0].key)
@@ -585,11 +542,8 @@ export default function KeHoachToPage() {
     const onMove = e => {
       const d = resizeDrag.current
       if (!d) return
-      if (d.kind === 'col') {
-        setLeftW(Math.max(180, Math.min(560, d.initW + e.clientX - d.startX)))
-      } else {
-        setSplitY(Math.max(100, Math.min(580, d.initH + e.clientY - d.startY)))
-      }
+      if (d.kind === 'col') setLeftW(Math.max(180, Math.min(560, d.initW + e.clientX - d.startX)))
+      else setSplitY(Math.max(100, Math.min(580, d.initH + e.clientY - d.startY)))
     }
     const onUp = () => { resizeDrag.current = null }
     document.addEventListener('mousemove', onMove)
@@ -606,10 +560,8 @@ export default function KeHoachToPage() {
     return t.includes('GẤP') || t.includes('GAP')
   }
 
-  // Helper: lấy tab config của selectedTo
   const selectedTab = TO_TABS.find(t => t.key === selectedTo)
 
-  // Lọc plans: theo tổ (selectedTo), ngày (filterDay) và từ khóa tìm kiếm
   const filteredPlans = plans.filter(p => {
     if (searchProduct) {
       const q = searchProduct.toLowerCase()
@@ -621,14 +573,10 @@ export default function KeHoachToPage() {
     }
     if (selectedTo) {
       if (planSource === 'SCHEDULE') {
-        // Lịch SX: filter theo congDoan (WorkSchedulePage dùng cùng convention)
-        // PCPL3 tab có schedCongDoan='PL' (không phải 'PCPL3')
         if (p.congDoan !== selectedTab?.schedCongDoan) return false
-        // Với PCPL1/PCPL2: ẩn bản ghi đã gán tổ kia
         if (selectedTo === 'PCPL1' && p.toNhom === 'PCPL2') return false
         if (selectedTo === 'PCPL2' && p.toNhom === 'PCPL1') return false
       } else {
-        // Kế hoạch: Cân Chia dùng congDoan, còn lại dùng toNhom
         if (selectedTab?.congDoanKey) {
           if (p.congDoan !== selectedTab.congDoanKey) return false
         } else {
@@ -643,8 +591,6 @@ export default function KeHoachToPage() {
     return true
   })
 
-  // Nhân viên theo tổ panel nhân viên (có thể khác tab chính)
-  // Cân Chia → hiển thị tất cả nhân viên (CC không có team riêng)
   const displayEmps = empTo
     ? (() => {
         const tab = TO_TABS.find(t => t.key === empTo)
@@ -656,16 +602,20 @@ export default function KeHoachToPage() {
   // ── Conflict detection ─────────────────────────────────────────────────────
   function getConflictSet() {
     const seen = {}, dup = new Set()
-    assigns.forEach(a => (a.mas || []).forEach(m => {
-      const k = `${m}|${a.ngay}|${a.ca}`
-      if (seen[k]) dup.add(k); else seen[k] = true
-    }))
+    assigns.forEach(a => {
+      Object.entries(a.caShifts || {}).forEach(([caKey, shiftData]) => {
+        ;(shiftData.mas || []).forEach(m => {
+          const k = `${m}|${a.ngay}|${caKey}`
+          if (seen[k]) dup.add(k); else seen[k] = true
+        })
+      })
+    })
     return dup
   }
-  const dup          = getConflictSet()
+  const dup           = getConflictSet()
   const conflictCount = dup.size
 
-  // ── Save kế hoạch → cập nhật ngày thực hiện vào work_schedule ─────────────
+  // ── Save ──────────────────────────────────────────────────────────────────
   const [savingDay, setSavingDay] = useState(null)
 
   async function handleSaveDay(dayStr) {
@@ -673,32 +623,29 @@ export default function KeHoachToPage() {
     const toSave = assigns.filter(a => a.ngay === dayStr && a.wsId && a.ngayFull)
     if (toSave.length === 0) { message.info('Chưa có lịch nào để lưu'); return }
 
-    // 1. Lưu ngayThucHien cho mỗi wsId duy nhất
     const wsMap = {}
     toSave.forEach(a => { wsMap[a.wsId] = a.ngayFull })
 
-    // 2. Upsert session cho những người chưa có sessionId (drop thành công local nhưng API chưa phản hồi)
     const sessionUpsertCalls = []
     toSave.forEach(a => {
-      const caSession = CA_TO_SESSION[a.ca]
-      a.mas.forEach(ma => {
-        if (a.sessionIds?.[ma]?.id) return  // đã có session → bỏ qua
-        sessionUpsertCalls.push(
-          api.post('/work-schedule-session', {
-            workScheduleId: a.wsId,
-            ngay:           a.ngayFull,
-            maNhanVien:     ma,
-            nguoiThucHien:  employees.find(e => e.maNhanVien === ma)?.hoVaTen || ma,
-            nhomThucHien:   employees.find(e => e.maNhanVien === ma)?.toNhom || a.toNhom || null,
-            caSanXuat:      caSession,
-          }).catch(err => {
-            if (err.response?.status !== 409) throw err  // 409 = đã tồn tại, OK
-          })
-        )
+      Object.entries(a.caShifts || {}).forEach(([caKey, shiftData]) => {
+        const caSession = CA_TO_SESSION[caKey] || caKey
+        ;(shiftData.mas || []).forEach(ma => {
+          if (shiftData.sessionIds?.[ma]?.id) return
+          sessionUpsertCalls.push(
+            api.post('/work-schedule-session', {
+              workScheduleId: a.wsId,
+              ngay:           a.ngayFull,
+              maNhanVien:     ma,
+              nguoiThucHien:  employees.find(e => e.maNhanVien === ma)?.hoVaTen || ma,
+              nhomThucHien:   employees.find(e => e.maNhanVien === ma)?.toNhom || a.toNhom || null,
+              caSanXuat:      caSession,
+            }).catch(err => { if (err.response?.status !== 409) throw err })
+          )
+        })
       })
     })
 
-    // 3. Lưu sanLuong nếu có
     const salgCalls = []
     toSave.forEach(a => {
       if (a.salgSessionId && a.salg != null && a.salg !== '') {
@@ -737,9 +684,9 @@ export default function KeHoachToPage() {
     dragPayload.current = emp
     e.dataTransfer.effectAllowed = 'copy'
   }
-  function onDragStartPersonMove(e, ma, fromAssignId) {
+  function onDragStartPersonMove(e, ma, fromAssignId, fromCaKey) {
     dragKind.current    = 'personMove'
-    dragPayload.current = { ma, fromAssignId }
+    dragPayload.current = { ma, fromAssignId, fromCaKey }
     e.dataTransfer.effectAllowed = 'move'
   }
   function onDragOver(e) { e.preventDefault() }
@@ -752,50 +699,47 @@ export default function KeHoachToPage() {
   function onDropProduct(e, dayStr) {
     e.preventDefault()
     if (dragKind.current !== 'product') return
-    const p = dragPayload.current
+    const p    = dragPayload.current
     const ngay = dayStr || selectedDay
     setAssigns(prev => [...prev, {
       id:            uidRef.current++,
       wsId:          p.id,
       ten:           p.tenTrinh || p.maBravo || p.maSp || '(Chưa có tên)',
-      maSp:          p.maSp || '',
-      maBravo:       p.maBravo || '',
+      maSp:          p.maSp      || '',
+      maBravo:       p.maBravo   || '',
       maDonHang:     p.maDonHang || '',
-      soLo:          p.soLo || '',
-      coLo:          p.coLo || null,
+      soLo:          p.soLo      || '',
+      coLo:          p.coLo      || null,
       salg:          null,
       salgSessionId: null,
-      toNhom:        p.toNhom || '',
-      congDoan:      p.congDoan || '',
+      toNhom:        p.toNhom    || '',
+      congDoan:      p.congDoan  || '',
       isUrgent:      isUrgent(p),
       ngay,
       ngayFull:      getFullDate(ngay),
-      ca:            'Ca 1',
-      caStart:       '',
-      caEnd:         '',
-      mas:           [],
-      sessionIds:    {},
+      caShifts:      { 'Ca 1': { mas: [], sessionIds: {} } },
       note:          '',
     }])
   }
 
-  async function onDropPerson(e, assignId) {
+  async function onDropPerson(e, assignId, caKey) {
     e.preventDefault()
     if (dragKind.current === 'person') {
-      const emp = dragPayload.current
+      const emp    = dragPayload.current
       const assign = assigns.find(a => a.id === assignId)
       if (!assign) return
-      if (assign.mas.includes(emp.maNhanVien)) return
+      const existingMas = assign.caShifts?.[caKey]?.mas || []
+      if (existingMas.includes(emp.maNhanVien)) return
 
       // Optimistic UI
       setAssigns(prev => prev.map(a =>
-        a.id === assignId ? { ...a, mas: [...a.mas, emp.maNhanVien] } : a
+        a.id === assignId
+          ? { ...a, caShifts: { ...a.caShifts, [caKey]: { mas: [...(a.caShifts?.[caKey]?.mas || []), emp.maNhanVien], sessionIds: { ...(a.caShifts?.[caKey]?.sessionIds || {}) } } } }
+          : a
       ))
 
-      // Không có wsId hoặc ngayFull → chỉ lưu local
       if (!assign.wsId || !assign.ngayFull) return
-
-      const caSession = CA_TO_SESSION[assign.ca]
+      const caSession = CA_TO_SESSION[caKey] || caKey
 
       try {
         const { data } = await api.post('/work-schedule-session', {
@@ -808,86 +752,88 @@ export default function KeHoachToPage() {
         })
         setAssigns(prev => prev.map(a =>
           a.id === assignId
-            ? { ...a, sessionIds: { ...a.sessionIds, [emp.maNhanVien]: { id: data.id, locked: false } } }
+            ? { ...a, caShifts: { ...a.caShifts, [caKey]: { mas: [...(a.caShifts?.[caKey]?.mas || [])], sessionIds: { ...(a.caShifts?.[caKey]?.sessionIds || {}), [emp.maNhanVien]: { id: data.id, locked: false } } } } }
             : a
         ))
       } catch (err) {
         if (err.response?.status === 409) {
-          // Session đã tồn tại → fetch session hiện có để lấy ID và lock status
           try {
-            const { data: existingSessions } = await api.get('/work-schedule-session', {
-              params: { scheduleId: assign.wsId }
-            })
+            const { data: existingSessions } = await api.get('/work-schedule-session', { params: { scheduleId: assign.wsId } })
             const found = Array.isArray(existingSessions)
               ? existingSessions.find(s => s.maNhanVien === emp.maNhanVien && s.ngay === assign.ngayFull)
               : null
             if (found?.id) {
               setAssigns(prev => prev.map(a =>
                 a.id === assignId
-                  ? { ...a, sessionIds: { ...a.sessionIds, [emp.maNhanVien]: { id: found.id, locked: found.sanLuong != null && String(found.sanLuong).trim() !== '' } } }
+                  ? { ...a, caShifts: { ...a.caShifts, [caKey]: { mas: [...(a.caShifts?.[caKey]?.mas || [])], sessionIds: { ...(a.caShifts?.[caKey]?.sessionIds || {}), [emp.maNhanVien]: { id: found.id, locked: found.sanLuong != null && String(found.sanLuong).trim() !== '' } } } } }
                   : a
               ))
             }
-          } catch { /* không tìm được → vẫn giữ trong UI, locked=false */ }
+          } catch { /* giữ trong UI */ }
         } else {
           // Rollback
           setAssigns(prev => prev.map(a =>
-            a.id === assignId ? { ...a, mas: a.mas.filter(m => m !== emp.maNhanVien) } : a
+            a.id === assignId
+              ? { ...a, caShifts: { ...a.caShifts, [caKey]: { ...(a.caShifts?.[caKey] || {}), mas: (a.caShifts?.[caKey]?.mas || []).filter(m => m !== emp.maNhanVien) } } }
+              : a
           ))
           message.error('Không thể thêm người — thử lại')
         }
       }
     } else if (dragKind.current === 'personMove') {
-      // Di chuyển người giữa các card — chỉ local (session không đổi)
-      const { ma, fromAssignId } = dragPayload.current
-      if (fromAssignId === assignId) return
+      const { ma, fromAssignId, fromCaKey } = dragPayload.current
+      if (fromAssignId === assignId && fromCaKey === caKey) return
       setAssigns(prev => prev.map(a => {
-        if (a.id === fromAssignId) return { ...a, mas: a.mas.filter(m => m !== ma) }
-        if (a.id === assignId && !a.mas.includes(ma)) return { ...a, mas: [...a.mas, ma] }
+        if (a.id === fromAssignId) {
+          return { ...a, caShifts: { ...a.caShifts, [fromCaKey]: { ...(a.caShifts?.[fromCaKey] || {}), mas: (a.caShifts?.[fromCaKey]?.mas || []).filter(m => m !== ma) } } }
+        }
+        if (a.id === assignId) {
+          const existingMas = a.caShifts?.[caKey]?.mas || []
+          if (existingMas.includes(ma)) return a
+          return { ...a, caShifts: { ...a.caShifts, [caKey]: { ...(a.caShifts?.[caKey] || { mas: [], sessionIds: {} }), mas: [...existingMas, ma] } } }
+        }
         return a
       }))
     }
   }
 
-  async function removePerson(assignId, ma) {
-    const assign = assigns.find(a => a.id === assignId)
-    let sessionInfo = assign?.sessionIds?.[ma]
-    const caSession = CA_TO_SESSION[assign?.ca]
+  async function removePerson(assignId, ma, caKey) {
+    const assign     = assigns.find(a => a.id === assignId)
+    let sessionInfo  = assign?.caShifts?.[caKey]?.sessionIds?.[ma]
+    const caSession  = CA_TO_SESSION[caKey] || caKey
 
-    // Fallback 1: tìm session theo wsId của assign
     if (!sessionInfo?.id && assign?.wsId && assign?.ngayFull) {
       try {
         const { data: sessions } = await api.get('/work-schedule-session', {
           params: { scheduleId: assign.wsId, loaiSession: 'KH_TO' }
         })
         const found = (Array.isArray(sessions) ? sessions : []).find(s =>
-          s.maNhanVien === ma &&
-          s.ngay === assign.ngayFull &&
+          s.maNhanVien === ma && s.ngay === assign.ngayFull &&
           (!caSession || s.caSanXuat === caSession)
         )
         if (found?.id) sessionInfo = { id: found.id, locked: found.sanLuong != null }
-      } catch { /* không fetch được → thử fallback 2 */ }
+      } catch {}
     }
 
-    // Fallback 2: tìm theo maNhanVien (session có thể nằm ở wsId khác)
     if (!sessionInfo?.id && assign?.ngayFull) {
       try {
         const { data: empSessions } = await api.get('/work-schedule-session/by-employee', {
           params: { maNhanVien: ma }
         })
         const found = (Array.isArray(empSessions) ? empSessions : []).find(s =>
-          s.loaiSession === 'KH_TO' &&
-          s.ngay === assign.ngayFull &&
+          s.loaiSession === 'KH_TO' && s.ngay === assign.ngayFull &&
           (!caSession || s.caSanXuat === caSession) &&
           (!assign.maSp || !s.maSp || s.maSp === assign.maSp)
         )
         if (found?.id) sessionInfo = { id: found.id, locked: found.sanLuong != null }
-      } catch { /* không fetch được → tiếp tục xóa local */ }
+      } catch {}
     }
 
     if (!sessionInfo?.id) {
       setAssigns(prev => prev.map(a =>
-        a.id === assignId ? { ...a, mas: a.mas.filter(m => m !== ma) } : a
+        a.id === assignId
+          ? { ...a, caShifts: { ...a.caShifts, [caKey]: { ...(a.caShifts?.[caKey] || {}), mas: (a.caShifts?.[caKey]?.mas || []).filter(m => m !== ma) } } }
+          : a
       ))
       return
     }
@@ -896,15 +842,24 @@ export default function KeHoachToPage() {
       await api.delete(`/work-schedule-session/${sessionInfo.id}`)
       setAssigns(prev => prev.map(a => {
         if (a.id !== assignId) return a
-        const newSessionIds = { ...a.sessionIds }
+        const newSessionIds = { ...(a.caShifts?.[caKey]?.sessionIds || {}) }
         delete newSessionIds[ma]
-        return { ...a, mas: a.mas.filter(m => m !== ma), sessionIds: newSessionIds }
+        return {
+          ...a,
+          caShifts: {
+            ...a.caShifts,
+            [caKey]: {
+              ...(a.caShifts?.[caKey] || {}),
+              mas: (a.caShifts?.[caKey]?.mas || []).filter(m => m !== ma),
+              sessionIds: newSessionIds,
+            },
+          },
+        }
       }))
     } catch (err) {
       const status = err?.response?.status
-      const msg = err?.response?.data?.message || err?.response?.data || ''
+      const msg    = err?.response?.data?.message || err?.response?.data || ''
       message.error(`Xóa thất bại (${status || '?'}): ${msg || 'Thử lại'}`)
-      console.error('[removePerson] delete session', sessionInfo.id, err?.response)
     }
   }
 
@@ -912,9 +867,9 @@ export default function KeHoachToPage() {
     const assign = assigns.find(a => a.id === assignId)
     if (!assign) return
 
-    const sessionIdsToDelete = Object.values(assign.sessionIds || {})
-      .filter(s => s?.id)
-      .map(s => s.id)
+    const sessionIdsToDelete = Object.values(assign.caShifts || {}).flatMap(shiftData =>
+      Object.values(shiftData.sessionIds || {}).filter(s => s?.id).map(s => s.id)
+    )
 
     try {
       if (sessionIdsToDelete.length > 0) {
@@ -923,59 +878,51 @@ export default function KeHoachToPage() {
       setAssigns(prev => prev.filter(a => a.id !== assignId))
     } catch (err) {
       const status = err?.response?.status
-      const msg = err?.response?.data?.message || err?.response?.data || ''
+      const msg    = err?.response?.data?.message || err?.response?.data || ''
       message.error(`Xóa card thất bại (${status || '?'}): ${msg || 'Thử lại'}`)
-      console.error('[removeAssign] delete sessions', sessionIdsToDelete, err?.response)
     }
   }
+
   function updateAssign(assignId, key, val) {
+    setAssigns(prev => prev.map(a => a.id === assignId ? { ...a, [key]: val } : a))
+  }
+
+  function addShift(assignId, caKey) {
     setAssigns(prev => prev.map(a =>
-      a.id === assignId ? { ...a, [key]: val } : a
+      a.id === assignId
+        ? { ...a, caShifts: { ...a.caShifts, [caKey]: { mas: [], sessionIds: {} } } }
+        : a
     ))
   }
 
-  async function syncCaToSessions(assignId, newCa) {
-    const assign = assigns.find(a => a.id === assignId)
-    if (!assign?.wsId) return
-    const sessions = Object.entries(assign.sessionIds || {}).filter(([, s]) => s?.id)
-    if (!sessions.length) return
-
-    const caSession = newCa === 'Tùy chọn' ? 'TC' : (CA_TO_SESSION[newCa] ?? 'Ca 1')
-
-    const results = await Promise.allSettled(
-      sessions.map(([, s]) =>
-        api.patch(`/work-schedule-session/${s.id}/ca`, {
-          caSanXuat: caSession,
-        })
-      )
-    )
-
-    const failed = results.filter(r => r.status === 'rejected')
-    if (failed.length > 0) {
-      updateAssign(assignId, 'ca', assign.ca)
-      message.error(`Cập nhật ca thất bại (${failed.length}/${results.length} sessions) — thử lại`)
-    }
+  function removeShift(assignId, caKey) {
+    setAssigns(prev => prev.map(a => {
+      if (a.id !== assignId) return a
+      const { [caKey]: _removed, ...rest } = a.caShifts || {}
+      return { ...a, caShifts: rest }
+    }))
   }
 
   async function syncNoteToSessions(assignId, note) {
     const assign = assigns.find(a => a.id === assignId)
     if (!assign?.wsId) return
-    const sessions = Object.entries(assign.sessionIds || {}).filter(([, s]) => s?.id)
-    if (!sessions.length) return
+    const allSessionIds = Object.values(assign.caShifts || {}).flatMap(shiftData =>
+      Object.values(shiftData.sessionIds || {}).filter(s => s?.id).map(s => s.id)
+    )
+    if (!allSessionIds.length) return
     try {
-      await Promise.all(sessions.map(([, s]) =>
-        api.patch(`/work-schedule-session/${s.id}/ghi-chu`, { ghiChu: note || '' })
+      await Promise.all(allSessionIds.map(id =>
+        api.patch(`/work-schedule-session/${id}/ghi-chu`, { ghiChu: note || '' })
       ))
-    } catch { /* ghi chú không quan trọng, bỏ qua lỗi */ }
+    } catch {}
   }
 
-  // Di chuyển lên / xuống trong cùng một ngày
   function moveAssign(assignId, direction) {
     setAssigns(prev => {
       const dayStr = prev.find(a => a.id === assignId)?.ngay
       if (!dayStr) return prev
-      const dayIdx = prev.reduce((acc, a, i) => { if (a.ngay === dayStr) acc.push(i); return acc }, [])
-      const posInDay = dayIdx.findIndex(i => prev[i].id === assignId)
+      const dayIdx     = prev.reduce((acc, a, i) => { if (a.ngay === dayStr) acc.push(i); return acc }, [])
+      const posInDay   = dayIdx.findIndex(i => prev[i].id === assignId)
       if (direction === 'up'   && posInDay === 0)               return prev
       if (direction === 'down' && posInDay === dayIdx.length - 1) return prev
       const thisIdx = dayIdx[posInDay]
@@ -986,33 +933,44 @@ export default function KeHoachToPage() {
     })
   }
 
-  // Nhân bản một hàng trong cùng ngày
   function cloneAssign(assignId) {
     setAssigns(prev => {
       const idx = prev.findIndex(a => a.id === assignId)
       if (idx < 0) return prev
       const orig   = prev[idx]
-      const cloned = { ...orig, id: uidRef.current++, mas: [...orig.mas] }
-      const next   = [...prev]
+      const cloned = {
+        ...orig,
+        id:       uidRef.current++,
+        caShifts: Object.fromEntries(
+          Object.entries(orig.caShifts || {}).map(([k, v]) => [k, { mas: [...v.mas], sessionIds: {} }])
+        ),
+      }
+      const next = [...prev]
       next.splice(idx + 1, 0, cloned)
       return next
     })
   }
 
-  // Nhân bản một ngày → sang ngày kế tiếp trong tuần
   function cloneDay(dayStr) {
     const dayIdx = days.findIndex(d => fmtDay(d) === dayStr)
     if (dayIdx < 0 || dayIdx >= days.length - 1) {
       message.warning('Không thể nhân bản: đã là ngày cuối tuần.')
       return
     }
-    const nextDay     = fmtDay(days[dayIdx + 1])
-    const dayAssigns  = assigns.filter(a => a.ngay === dayStr)
+    const nextDay    = fmtDay(days[dayIdx + 1])
+    const dayAssigns = assigns.filter(a => a.ngay === dayStr)
     if (dayAssigns.length === 0) {
       message.info('Ngày này chưa có công việc nào để nhân bản.')
       return
     }
-    const cloned = dayAssigns.map(a => ({ ...a, id: uidRef.current++, ngay: nextDay, mas: [...a.mas] }))
+    const cloned = dayAssigns.map(a => ({
+      ...a,
+      id:       uidRef.current++,
+      ngay:     nextDay,
+      caShifts: Object.fromEntries(
+        Object.entries(a.caShifts || {}).map(([k, v]) => [k, { mas: [...v.mas], sessionIds: {} }])
+      ),
+    }))
     setAssigns(prev => [...prev, ...cloned])
     message.success(`Đã nhân bản ${cloned.length} việc → ${DOW[days[dayIdx + 1].day()]} ${nextDay}`)
   }
@@ -1039,37 +997,26 @@ export default function KeHoachToPage() {
   return (
     <div style={{ padding: '12px 20px', background: '#eef1f6', height: '100%', display: 'flex', flexDirection: 'column', gap: 10, overflow: 'hidden', boxSizing: 'border-box' }}>
 
-      {/* ── Hàng 1: Tab bộ phận + controls gộp chung ── */}
+      {/* ── Hàng 1: Tab bộ phận + controls ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
-
-        {/* Tab buttons bộ phận */}
         {visibleTabs.map(tab => {
           const isSel      = selectedTo === tab.key
           const tabAssigns = assignsByTo[tab.key] || []
           return (
-            <button
-              key={tab.key}
-              onClick={() => setSelectedTo(tab.key)}
-              style={{
-                border: `1.5px solid ${isSel ? '#4f46e5' : '#cbd5e1'}`,
-                background: isSel ? '#4f46e5' : '#fff',
-                color: isSel ? '#fff' : '#475569',
-                borderRadius: 9, padding: '5px 14px',
-                cursor: 'pointer', fontWeight: 700, fontSize: 12.5,
-                display: 'flex', alignItems: 'center', gap: 5,
-                boxShadow: isSel ? '0 2px 8px #4f46e533' : 'none',
-                transition: 'all 0.15s',
-              }}
-            >
+            <button key={tab.key} onClick={() => setSelectedTo(tab.key)} style={{
+              border: `1.5px solid ${isSel ? '#4f46e5' : '#cbd5e1'}`,
+              background: isSel ? '#4f46e5' : '#fff',
+              color: isSel ? '#fff' : '#475569',
+              borderRadius: 9, padding: '5px 14px',
+              cursor: 'pointer', fontWeight: 700, fontSize: 12.5,
+              display: 'flex', alignItems: 'center', gap: 5,
+              boxShadow: isSel ? '0 2px 8px #4f46e533' : 'none',
+              transition: 'all 0.15s',
+            }}>
               <TeamOutlined style={{ fontSize: 11 }} />
               {tab.label}
               {tabAssigns.length > 0 && (
-                <span style={{
-                  fontSize: 10, fontWeight: 800,
-                  background: isSel ? '#818cf8' : '#e2e8f0',
-                  color: isSel ? '#fff' : '#64748b',
-                  borderRadius: 999, padding: '1px 5px',
-                }}>
+                <span style={{ fontSize: 10, fontWeight: 800, background: isSel ? '#818cf8' : '#e2e8f0', color: isSel ? '#fff' : '#64748b', borderRadius: 999, padding: '1px 5px' }}>
                   {tabAssigns.length}
                 </span>
               )}
@@ -1077,10 +1024,8 @@ export default function KeHoachToPage() {
           )
         })}
 
-        {/* Divider dọc */}
         <div style={{ width: 1, height: 22, background: '#cbd5e1', flexShrink: 0 }} />
 
-        {/* Title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 800, color: '#1e293b', flexShrink: 0 }}>
           <ProjectOutlined style={{ color: '#6366f1', fontSize: 15 }} />
           <span style={{ fontSize: 14 }}>Kế Hoạch Tổ</span>
@@ -1091,7 +1036,6 @@ export default function KeHoachToPage() {
           )}
         </div>
 
-        {/* Time mode */}
         <div style={{ display: 'flex', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 7, overflow: 'hidden', flexShrink: 0 }}>
           {TIME_MODES.map(m => (
             <button key={m.key} onClick={() => setTimeMode(m.key)} style={{
@@ -1119,16 +1063,11 @@ export default function KeHoachToPage() {
         </Button>
 
         {conflictCount > 0 && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
-            background: '#fef2f2', border: '1px solid #fecaca',
-            color: '#b91c1c', borderRadius: 7, padding: '3px 9px', fontSize: 11.5, fontWeight: 600,
-          }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: 7, padding: '3px 9px', fontSize: 11.5, fontWeight: 600 }}>
             <WarningOutlined /> {conflictCount} xung đột
           </div>
         )}
 
-        {/* View toggle — đẩy sang phải */}
         <div style={{ marginLeft: 'auto', display: 'flex', background: '#fff', border: '1px solid #cbd5e1', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
           {['viec', 'nguoi'].map(v => (
             <button key={v} onClick={() => setViewMode(v)} style={{
@@ -1143,10 +1082,10 @@ export default function KeHoachToPage() {
         </div>
       </div>
 
-      {/* ── Main area: left panels + resize handle + right panel ── */}
+      {/* ── Main area ── */}
       <div style={{ display: 'flex', flex: 1, minHeight: 0, alignItems: 'stretch' }}>
 
-        {/* ── Left column: ① + ② stacked ── */}
+        {/* ── Left column ── */}
         <div style={{ width: leftW, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, gap: 0 }}>
 
           {/* ① Kế hoạch tổng */}
@@ -1170,7 +1109,7 @@ export default function KeHoachToPage() {
                   }}>{s.label}</button>
                 ))}
               </div>
-              <button onClick={() => setP1Open(v => !v)} title={p1Open ? 'Thu nhỏ' : 'Mở rộng'} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', fontSize: 14, padding: '0 2px', lineHeight: 1 }}>
+              <button onClick={() => setP1Open(v => !v)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', fontSize: 14, padding: '0 2px', lineHeight: 1 }}>
                 {p1Open ? '▴' : '▾'}
               </button>
             </div>
@@ -1191,8 +1130,7 @@ export default function KeHoachToPage() {
                     onChange={e => setSearchProduct(e.target.value)}
                     onSearch={v => setSearchProduct(v)}
                     placeholder="Tìm tên SP / mã SP / số lô..."
-                    allowClear
-                    size="small"
+                    allowClear size="small"
                   />
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 10px', display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -1210,12 +1148,11 @@ export default function KeHoachToPage() {
                       })()}
                     </div>
                   ) : filteredPlans.map(p => {
-                    const pDay = p.ngayThucHien ? dayjs(p.ngayThucHien) : null
+                    const pDay   = p.ngayThucHien ? dayjs(p.ngayThucHien) : null
                     const urgent = isUrgent(p)
                     const ctxItems = {
                       items: [{
-                        key: 'delete',
-                        danger: true,
+                        key: 'delete', danger: true,
                         label: (
                           <Popconfirm
                             title={`Xóa kế hoạch "${p.tenTrinh || p.maSp || p.id}"?`}
@@ -1257,17 +1194,15 @@ export default function KeHoachToPage() {
             )}
           </div>
 
-          {/* Drag handle dọc giữa ① và ② */}
+          {/* Drag handle dọc */}
           {p1Open && p2Open && (
-            <div
-              onMouseDown={e => { resizeDrag.current = { kind: 'row', startY: e.clientY, initH: splitY } }}
-              style={{ height: 10, flexShrink: 0, cursor: 'row-resize', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            >
+            <div onMouseDown={e => { resizeDrag.current = { kind: 'row', startY: e.clientY, initH: splitY } }}
+              style={{ height: 10, flexShrink: 0, cursor: 'row-resize', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div style={{ width: 36, height: 4, borderRadius: 2, background: '#d1d5db' }} />
             </div>
           )}
 
-          {/* ② Nhân viên trong tổ */}
+          {/* ② Nhân viên */}
           <div style={{
             background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
             display: 'flex', flexDirection: 'column',
@@ -1279,7 +1214,7 @@ export default function KeHoachToPage() {
                 ② Nhân viên trong tổ — kéo người
               </span>
               {p2Open && empTo && <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{displayEmps.length} người</span>}
-              <button onClick={() => setP2Open(v => !v)} title={p2Open ? 'Thu nhỏ' : 'Mở rộng'} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', fontSize: 14, padding: '0 2px', lineHeight: 1 }}>
+              <button onClick={() => setP2Open(v => !v)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', fontSize: 14, padding: '0 2px', lineHeight: 1 }}>
                 {p2Open ? '▴' : '▾'}
               </button>
             </div>
@@ -1327,15 +1262,13 @@ export default function KeHoachToPage() {
           </div>
         </div>
 
-        {/* Drag handle ngang giữa left và right */}
-        <div
-          onMouseDown={e => { resizeDrag.current = { kind: 'col', startX: e.clientX, initW: leftW } }}
-          style={{ width: 12, flexShrink: 0, cursor: 'col-resize', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
+        {/* Drag handle ngang */}
+        <div onMouseDown={e => { resizeDrag.current = { kind: 'col', startX: e.clientX, initW: leftW } }}
+          style={{ width: 12, flexShrink: 0, cursor: 'col-resize', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ width: 4, height: 48, borderRadius: 2, background: '#d1d5db' }} />
         </div>
 
-        {/* ── ③ Right column: Kế hoạch chi tiết ── */}
+        {/* ── ③ Right column ── */}
         <div style={{ flex: 1, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
           <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', color: '#64748b', padding: '5px 10px 3px', textTransform: 'uppercase', flexShrink: 0 }}>
             ③ Kế hoạch chi tiết — chọn ngày để xếp
@@ -1343,55 +1276,38 @@ export default function KeHoachToPage() {
 
           {viewMode === 'viec' ? (
             <>
-              {/* Month + Week picker + Search — 1 hàng gọn */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '0 10px 5px', flexShrink: 0 }}>
-                {/* Month nav */}
                 <Button size="small" icon={<LeftOutlined />}
                   onClick={() => { setShowAllDays(false); setWeekStart(weekStart.subtract(1, 'month').startOf('month').startOf('isoWeek')) }}
                   style={{ flexShrink: 0 }} />
-                <DatePicker
-                  picker="month"
-                  value={weekStart}
+                <DatePicker picker="month" value={weekStart}
                   onChange={v => v && (setShowAllDays(false), setWeekStart(v.startOf('month').startOf('isoWeek')))}
-                  size="small"
-                  format="MM/YYYY"
-                  allowClear={false}
-                  style={{ width: 84, flexShrink: 0 }}
-                />
+                  size="small" format="MM/YYYY" allowClear={false} style={{ width: 84, flexShrink: 0 }} />
                 <Button size="small" icon={<RightOutlined />}
                   onClick={() => { setShowAllDays(false); setWeekStart(weekStart.add(1, 'month').startOf('month').startOf('isoWeek')) }}
                   style={{ flexShrink: 0 }} />
 
                 <div style={{ width: 1, height: 16, background: '#e2e8f0', flexShrink: 0 }} />
 
-                {/* Week nav */}
                 <Button size="small" icon={<LeftOutlined />} onClick={() => { setShowAllDays(false); setWeekStart(weekStart.subtract(1, 'week').startOf('isoWeek')) }} style={{ flexShrink: 0 }} />
-                <DatePicker picker="week" value={weekStart} onChange={v => v && (setShowAllDays(false), setWeekStart(v.startOf('isoWeek')))} size="small" format={v => `T${v.isoWeek()} · ${v.format('MM/YY')}`} allowClear={false} style={{ width: 105, flexShrink: 0 }} />
+                <DatePicker picker="week" value={weekStart}
+                  onChange={v => v && (setShowAllDays(false), setWeekStart(v.startOf('isoWeek')))}
+                  size="small" format={v => `T${v.isoWeek()} · ${v.format('MM/YY')}`} allowClear={false} style={{ width: 105, flexShrink: 0 }} />
                 <Button size="small" icon={<RightOutlined />} onClick={() => { setShowAllDays(false); setWeekStart(weekStart.add(1, 'week').startOf('isoWeek')) }} style={{ flexShrink: 0 }} />
                 {!showAllDays && !weekStart.isSame(dayjs().startOf('isoWeek'), 'day') && (
                   <Button size="small" onClick={() => setWeekStart(dayjs().startOf('isoWeek'))} style={{ flexShrink: 0, fontSize: 10, padding: '0 6px' }}>Nay</Button>
                 )}
 
                 <div style={{ width: 1, height: 16, background: '#e2e8f0', flexShrink: 0 }} />
-
-                {/* Tất cả toggle */}
-                <Button
-                  size="small"
-                  type={showAllDays ? 'primary' : 'default'}
+                <Button size="small" type={showAllDays ? 'primary' : 'default'}
                   onClick={() => setShowAllDays(v => !v)}
-                  style={{ flexShrink: 0, fontSize: 11, padding: '0 8px' }}
-                >Tất cả</Button>
+                  style={{ flexShrink: 0, fontSize: 11, padding: '0 8px' }}>Tất cả</Button>
 
-                {/* Search */}
-                <Input
-                  size="small"
-                  placeholder="Tìm SP, mã, số lô..."
+                <Input size="small" placeholder="Tìm SP, mã, số lô..."
                   prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                  allowClear
-                  value={detailSearch}
+                  allowClear value={detailSearch}
                   onChange={e => setDetailSearch(e.target.value)}
-                  style={{ flex: 1, minWidth: 0 }}
-                />
+                  style={{ flex: 1, minWidth: 0 }} />
               </div>
 
               <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', padding: '0 10px 5px', flexShrink: 0 }}>
@@ -1431,7 +1347,7 @@ export default function KeHoachToPage() {
                     (a.soLo || '').toLowerCase().includes(q) ||
                     (a.maDonHang || '').toLowerCase().includes(q)
                   ))
-                  const isSel      = dayStr === selectedDay
+                  const isSel = dayStr === selectedDay
                   return (
                     <div key={dayStr} style={{ border: `1px solid ${isSel ? '#6366f1' : '#e2e8f0'}`, boxShadow: isSel ? '0 0 0 3px #c7d2fe' : 'none', background: '#fff', borderRadius: 12, padding: '10px 12px', margin: '10px 4px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 13, color: '#334155', marginBottom: 8 }}>
@@ -1445,19 +1361,16 @@ export default function KeHoachToPage() {
                           return (
                             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
                               {hasSaveable && (
-                                <Button
-                                  size="small"
-                                  type="primary"
-                                  icon={<SaveOutlined />}
+                                <Button size="small" type="primary" icon={<SaveOutlined />}
                                   loading={savingDay === dayStr}
                                   onClick={() => handleSaveDay(dayStr)}
-                                  style={{ background: '#16a34a', borderColor: '#16a34a', fontSize: 11, height: 26 }}
-                                >
+                                  style={{ background: '#16a34a', borderColor: '#16a34a', fontSize: 11, height: 26 }}>
                                   Lưu
                                 </Button>
                               )}
                               <Tooltip title={nd ? `Sao chép sang ${DOW[nd.day()]} ${fmtDay(nd)}` : 'Đã là ngày cuối tuần'}>
-                                <button onClick={() => cloneDay(dayStr)} disabled={!nd} style={{ border: '1px solid #e2e8f0', background: nd ? '#f8fafc' : '#f1f5f9', borderRadius: 7, padding: '3px 9px', fontSize: 11, fontWeight: 600, color: nd ? '#64748b' : '#cbd5e1', cursor: nd ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <button onClick={() => cloneDay(dayStr)} disabled={!nd}
+                                  style={{ border: '1px solid #e2e8f0', background: nd ? '#f8fafc' : '#f1f5f9', borderRadius: 7, padding: '3px 9px', fontSize: 11, fontWeight: 600, color: nd ? '#64748b' : '#cbd5e1', cursor: nd ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 4 }}>
                                   ⧉ Nhân bản
                                 </button>
                               </Tooltip>
@@ -1467,12 +1380,12 @@ export default function KeHoachToPage() {
                       </div>
                       {dayAssigns.map((a, idx) => (
                         <AssignCard key={a.id} a={a} employees={employees} dup={dup}
-                          onDropPerson={onDropPerson} onDragOver={onDragOver} onRemovePerson={removePerson}
-                          onUpdate={updateAssign} onRemove={removeAssign}
+                          onDragOver={onDragOver} onDropPerson={onDropPerson}
+                          onRemovePerson={removePerson} onUpdate={updateAssign} onRemove={removeAssign}
                           isFirst={idx === 0} isLast={idx === dayAssigns.length - 1}
                           onMoveUp={() => moveAssign(a.id, 'up')} onMoveDown={() => moveAssign(a.id, 'down')}
                           onClone={cloneAssign} onDragStartPersonMove={onDragStartPersonMove}
-                          onSyncCa={syncCaToSessions} onSyncNote={syncNoteToSessions} />
+                          onSyncNote={syncNoteToSessions} onAddShift={addShift} onRemoveShift={removeShift} />
                       ))}
                       <div
                         onDragOver={onDragOver} onDrop={e => onDropProduct(e, dayStr)}
@@ -1494,8 +1407,10 @@ export default function KeHoachToPage() {
               ) : displayEmps.length === 0 ? (
                 <div style={{ color: '#94a3b8', fontSize: 12, padding: 12 }}>Không có nhân viên trong tổ {selectedTo}.</div>
               ) : displayEmps.map(emp => {
-                const empAssigns = assigns.filter(a => a.mas.includes(emp.maNhanVien))
-                const isTN       = (emp.viTri || '').toLowerCase().includes('tổ trưởng') || (emp.viTri || '').toUpperCase() === 'TN'
+                const empAssigns = assigns.filter(a =>
+                  Object.values(a.caShifts || {}).some(shift => (shift.mas || []).includes(emp.maNhanVien))
+                )
+                const isTN = (emp.viTri || '').toLowerCase().includes('tổ trưởng') || (emp.viTri || '').toUpperCase() === 'TN'
                 return (
                   <div key={emp.maNhanVien} style={{ border: '1px solid #e2e8f0', borderRadius: 11, padding: '11px 13px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 13, marginBottom: 7 }}>
@@ -1511,12 +1426,23 @@ export default function KeHoachToPage() {
                       {empAssigns.length === 0 ? (
                         <li style={{ color: '#94a3b8', fontSize: 12 }}>Chưa được xếp việc nào</li>
                       ) : empAssigns.map(a => {
-                        const isConflict = dup.has(`${emp.maNhanVien}|${a.ngay}|${a.ca}`)
+                        const empShifts = Object.entries(a.caShifts || {})
+                          .filter(([, shift]) => (shift.mas || []).includes(emp.maNhanVien))
+                          .map(([caKey]) => caKey)
+                        const isConflict = empShifts.some(caKey => dup.has(`${emp.maNhanVien}|${a.ngay}|${caKey}`))
                         return (
                           <li key={a.id} style={{ fontSize: 12.5, color: '#334155', display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 10.5, fontWeight: 700, borderRadius: 5, padding: '2px 7px', background: (CA_STYLE[a.ca] || CA_STYLE['Ca 1']).bg, color: '#334155' }}>
-                              {a.ngay} {a.ca}{a.ca === 'Tùy chọn' && a.caStart && a.caEnd && ` ${a.caStart}–${a.caEnd}`}
+                            <span style={{ fontSize: 10.5, fontWeight: 700, borderRadius: 5, padding: '2px 7px', background: '#f1f5f9', color: '#334155' }}>
+                              {a.ngay}
                             </span>
+                            {empShifts.map(caKey => {
+                              const cs = CA_STYLE[caKey] || CA_STYLE['Ca 1']
+                              return (
+                                <span key={caKey} style={{ fontSize: 10, fontWeight: 700, borderRadius: 5, padding: '2px 7px', background: cs.bg, color: cs.text }}>
+                                  {caKey}
+                                </span>
+                              )
+                            })}
                             {a.ten}
                             {a.note && <span style={{ color: '#94a3b8', fontSize: 11.5 }}>· {a.note}</span>}
                             {isConflict && <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 11 }}>⚠ trùng</span>}

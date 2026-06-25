@@ -133,10 +133,17 @@ public class WorkScheduleSessionService {
         Long workScheduleId = existing != null ? existing.getWorkScheduleId() : null;
         String maNv = existing != null ? existing.getMaNhanVien() : null;
         String loai = existing != null ? existing.getLoaiSession() : null;
+        LocalDate ngay = existing != null ? existing.getNgay() : null;
+        String ca = existing != null ? existing.getCaSanXuat() : null;
         repository.deleteById(id);
         if (!"KH_TO".equals(loai)) {
             syncAggregates(workScheduleId);
             recalculateEfficiency(maNv);
+            // Xóa KH_TO session tương ứng khi xóa session gốc
+            if (workScheduleId != null && maNv != null && ngay != null && ca != null) {
+                List<WorkScheduleSession> khToList = repository.findKhToByWsIdNgayMaNvCa(workScheduleId, ngay, maNv, ca);
+                if (!khToList.isEmpty()) repository.deleteAll(khToList);
+            }
         }
     }
 

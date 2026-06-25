@@ -46,4 +46,11 @@ public interface WorkScheduleSessionRepository extends JpaRepository<WorkSchedul
 
     @Query("SELECT s FROM WorkScheduleSession s WHERE s.workScheduleId = :id AND s.loaiSession = 'KH_TO' ORDER BY s.ngay ASC, s.id ASC")
     List<WorkScheduleSession> findKhToByWorkScheduleId(@Param("id") Long workScheduleId);
+
+    @Query("SELECT s FROM WorkScheduleSession s WHERE s.workScheduleId = :wsId AND s.ngay = :ngay AND s.maNhanVien = :maNv AND s.caSanXuat = :ca AND s.loaiSession = 'KH_TO'")
+    List<WorkScheduleSession> findKhToByWsIdNgayMaNvCa(
+            @Param("wsId") Long workScheduleId,
+            @Param("ngay") LocalDate ngay,
+            @Param("maNv") String maNhanVien,
+            @Param("ca") String caSanXuat);
 }
