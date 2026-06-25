@@ -1105,7 +1105,7 @@ export default function DonHangPage() {
 
   useEffect(() => {
     if (activeTab === 'trend' || activeTab === 'analysis') {
-      loadProductMaster()
+      loadProductMaster({ force: true })
       loadEmployeeCounts()
     }
   }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
