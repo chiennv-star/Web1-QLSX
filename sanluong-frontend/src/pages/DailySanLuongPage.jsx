@@ -2369,11 +2369,14 @@ const QUICK_RANGES = [
   { label: '3 tháng',    range: () => [dayjs().subtract(2,'month').startOf('month'), dayjs()] },
 ]
 
+const LOAI_COLORS = ['#0284c7','#0891b2','#059669','#d97706','#7c3aed','#db2777','#dc2626','#65a30d','#0f766e','#9333ea','#c2410c','#0369a1']
+
 function PhanTichSanLuongTab() {
   const [dateRange, setDateRange] = useState([dayjs(), dayjs()])
   const [stageFilter, setStageFilter] = useState('')
   const [loading, setLoading] = useState(false)
   const [raw, setRaw] = useState([])
+  const [loaiSpMap, setLoaiSpMap] = useState({})
   const [innerTab, setInnerTab] = useState('stage')
   const [sortBy, setSortBy] = useState('output-desc')
 
@@ -2386,7 +2389,18 @@ function PhanTichSanLuongTab() {
           toDate:   range[1].format('YYYY-MM-DD'),
         }
       })
-      setRaw(res.filter(r => r.status !== 'PENDING' && r.status !== 'IN_PROGRESS'))
+      const rows = res.filter(r => r.status !== 'PENDING' && r.status !== 'IN_PROGRESS')
+      setRaw(rows)
+      const codes = [...new Set(rows.map(r => r.maSp).filter(Boolean))]
+      if (codes.length > 0) {
+        api.get('/product-master/lookup-batch', { params: { codes } })
+          .then(({ data: batchMap }) => {
+            const m = {}
+            codes.forEach(maSp => { if (batchMap[maSp]?.loaiSanPham) m[maSp] = batchMap[maSp].loaiSanPham })
+            setLoaiSpMap(m)
+          })
+          .catch(() => {})
+      }
     } catch {
       message.error('Không thể tải dữ liệu phân tích')
     } finally {
@@ -2428,6 +2442,20 @@ function PhanTichSanLuongTab() {
       default:            return [...rows].sort((a, b) => b.sl - a.sl)
     }
   }, [raw, stageFilter, sortBy])
+
+  // Aggregate by loại SP
+  const loaiData = useMemo(() => {
+    const map = {}
+    raw.forEach(r => {
+      if (stageFilter && resolveCongDoan(r) !== stageFilter) return
+      const loai = (r.maSp && loaiSpMap[r.maSp]) ? loaiSpMap[r.maSp] : '(Chưa phân loại)'
+      if (!map[loai]) map[loai] = { key: loai, sl: 0, cong: 0, products: [] }
+      map[loai].sl += Number(r.sanLuong || 0)
+      map[loai].cong += Number(r.congThucHien || 0)
+      map[loai].products.push(r)
+    })
+    return Object.values(map).sort((a, b) => b.sl - a.sl)
+  }, [raw, stageFilter, loaiSpMap])
 
   const totalSl = stageData.reduce((s, r) => s + r.sl, 0)
 
@@ -2495,6 +2523,7 @@ function PhanTichSanLuongTab() {
       <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid #e0e0e0', marginBottom: 16 }}>
         {[
           { key: 'stage', label: '📈 Theo Công đoạn' },
+          { key: 'loaisp', label: '🧪 Theo Loại SP' },
           { key: 'product', label: '📦 Theo Sản phẩm' },
         ].map(t => (
           <button key={t.key} onClick={() => setInnerTab(t.key)}
@@ -2577,6 +2606,86 @@ function PhanTichSanLuongTab() {
                     <Table.Summary.Cell index={3} align="right">100%</Table.Summary.Cell>
                     <Table.Summary.Cell index={4} align="right">
                       <span style={{ color: '#722ed1' }}>{fmtCong(stageData.reduce((s, r) => s + r.cong, 0), 2)}</span>
+                    </Table.Summary.Cell>
+                  </Table.Summary.Row>
+                )}
+              />
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Tab: theo loại SP */}
+      {innerTab === 'loaisp' && (
+        <div>
+          {loaiData.length === 0 && !loading ? (
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: '#999' }}>
+              <div style={{ fontSize: 40, marginBottom: 8 }}>📭</div>
+              <div>Không có dữ liệu cho khoảng thời gian đã chọn</div>
+            </div>
+          ) : (
+            <>
+              <div style={{ background: '#f8f9fa', borderRadius: 4, padding: 16, marginBottom: 16 }}>
+                <div style={{ fontWeight: 600, marginBottom: 12, color: '#333' }}>Sản lượng theo Loại SP</div>
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={loaiData} margin={{ top: 5, right: 20, left: 10, bottom: 40 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="key" tick={{ fontSize: 11, fontWeight: 600 }} angle={-15} textAnchor="end" interval={0} />
+                    <YAxis tickFormatter={v => v.toLocaleString('vi-VN')} tick={{ fontSize: 11 }} />
+                    <RcTooltip formatter={(v, n) => [v.toLocaleString('vi-VN'), n === 'sl' ? 'Sản lượng' : 'Công']} />
+                    <Bar dataKey="sl" name="sl" radius={[4, 4, 0, 0]}>
+                      {loaiData.map((entry, idx) => (
+                        <Cell key={entry.key} fill={LOAI_COLORS[idx % LOAI_COLORS.length]} />
+                      ))}
+                      <LabelList dataKey="sl" position="top" formatter={v => v > 0 ? v.toLocaleString('vi-VN') : ''} style={{ fontSize: 11, fill: '#444' }} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <Table
+                size="small"
+                dataSource={loaiData}
+                rowKey="key"
+                loading={loading}
+                pagination={false}
+                columns={[
+                  {
+                    title: 'Loại SP', dataIndex: 'key', width: 200,
+                    render: (v, _, idx) => (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ width: 12, height: 12, borderRadius: 2, background: LOAI_COLORS[idx % LOAI_COLORS.length], display: 'inline-block', flexShrink: 0 }} />
+                        <span style={{ fontWeight: 600 }}>{v}</span>
+                      </span>
+                    )
+                  },
+                  {
+                    title: 'Số sản phẩm', dataIndex: 'products', align: 'right', width: 120,
+                    render: v => v.length
+                  },
+                  {
+                    title: 'Tổng sản lượng', dataIndex: 'sl', align: 'right',
+                    render: v => <span style={{ fontWeight: 700, color: '#0f766e' }}>{fmtSL(v)}</span>
+                  },
+                  {
+                    title: '% Sản lượng', dataIndex: 'sl', key: 'pct', align: 'right', width: 110,
+                    render: v => <span>{totalSl > 0 ? ((v / totalSl) * 100).toFixed(1) : 0}%</span>
+                  },
+                  {
+                    title: 'Tổng công', dataIndex: 'cong', align: 'right', width: 110,
+                    render: v => <span style={{ color: '#722ed1' }}>{fmtCong(v, 2)}</span>
+                  },
+                ]}
+                summary={() => (
+                  <Table.Summary.Row style={{ background: '#f0fdfa', fontWeight: 700 }}>
+                    <Table.Summary.Cell index={0}>TỔNG CỘNG</Table.Summary.Cell>
+                    <Table.Summary.Cell index={1} align="right">{loaiData.reduce((s, r) => s + r.products.length, 0)}</Table.Summary.Cell>
+                    <Table.Summary.Cell index={2} align="right">
+                      <span style={{ color: '#0f766e' }}>{fmtSL(totalSl)}</span>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={3} align="right">100%</Table.Summary.Cell>
+                    <Table.Summary.Cell index={4} align="right">
+                      <span style={{ color: '#722ed1' }}>{fmtCong(loaiData.reduce((s, r) => s + r.cong, 0), 2)}</span>
                     </Table.Summary.Cell>
                   </Table.Summary.Row>
                 )}
