@@ -2340,6 +2340,304 @@ function ThongKeSanXuatTab() {
   )
 }
 
+// ─── Tab: Phân tích sản lượng tương tác ──────────────────────────────────────
+
+const STAGE_COLORS = {
+  PCPL1: '#1D4ED8', PCPL2: '#0369a1', PL: '#0e7490',
+  DG: '#b45309', BBC1: '#6d28d9', CC: '#9d174d',
+}
+
+function resolveCongDoan(r) {
+  let cd = (r.congDoan || '').toUpperCase()
+  if (cd === 'PC') {
+    const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
+    if (nhom === 'PCPL1') return 'PCPL1'
+    if (nhom === 'PCPL2') return 'PCPL2'
+    if (nhom === 'PCPL3' || nhom === 'PL') return 'PL'
+    return 'PCPL1'
+  }
+  if (cd === 'PCPL3') return 'PL'
+  return cd
+}
+
+function PhanTichSanLuongTab() {
+  const [selectedDate, setSelectedDate] = useState(dayjs())
+  const [stageFilter, setStageFilter] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [raw, setRaw] = useState([])
+  const [innerTab, setInnerTab] = useState('stage')
+  const [sortBy, setSortBy] = useState('output-desc')
+
+  const fetchData = useCallback(async (date = selectedDate) => {
+    setLoading(true)
+    try {
+      const d = date.format('YYYY-MM-DD')
+      const { data: res } = await api.get('/work-schedule-session/daily-report', {
+        params: { fromDate: d, toDate: d }
+      })
+      setRaw(res.filter(r => r.status !== 'PENDING' && r.status !== 'IN_PROGRESS'))
+    } catch {
+      message.error('Không thể tải dữ liệu phân tích')
+    } finally {
+      setLoading(false)
+    }
+  }, [selectedDate])
+
+  useEffect(() => { fetchData() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Aggregate by công đoạn
+  const stageData = useMemo(() => {
+    const map = {}
+    raw.forEach(r => {
+      const cd = resolveCongDoan(r)
+      if (!cd) return
+      if (stageFilter && cd !== stageFilter) return
+      if (!map[cd]) map[cd] = { key: cd, sl: 0, cong: 0, products: [] }
+      map[cd].sl += Number(r.sanLuong || 0)
+      map[cd].cong += Number(r.congThucHien || 0)
+      map[cd].products.push(r)
+    })
+    return Object.values(map).sort((a, b) => b.sl - a.sl)
+  }, [raw, stageFilter])
+
+  // All products flat
+  const productRows = useMemo(() => {
+    const rows = raw
+      .filter(r => !stageFilter || resolveCongDoan(r) === stageFilter)
+      .map(r => ({
+        ...r,
+        cd: resolveCongDoan(r),
+        sl: Number(r.sanLuong || 0),
+        cong: Number(r.congThucHien || 0),
+      }))
+    switch (sortBy) {
+      case 'output-asc':  return [...rows].sort((a, b) => a.sl - b.sl)
+      case 'name-asc':    return [...rows].sort((a, b) => (a.tenTrinh || '').localeCompare(b.tenTrinh || '', 'vi'))
+      case 'stage':       return [...rows].sort((a, b) => a.cd.localeCompare(b.cd))
+      default:            return [...rows].sort((a, b) => b.sl - a.sl)
+    }
+  }, [raw, stageFilter, sortBy])
+
+  const totalSl = stageData.reduce((s, r) => s + r.sl, 0)
+
+  const statCards = [
+    { label: 'Tổng sản lượng', value: fmtSL(totalSl) },
+    { label: 'Tổng sản phẩm', value: productRows.length },
+    { label: 'Công đoạn HĐ', value: stageData.length },
+    { label: 'Tổng công', value: fmtCong(stageData.reduce((s, r) => s + r.cong, 0), 2) },
+  ]
+
+  return (
+    <div style={{ padding: '12px 16px' }}>
+      {/* Toolbar */}
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16,
+        background: '#f0fdfa', border: '1px solid #99f6e4', borderRadius: 8, padding: '10px 16px' }}>
+        <span style={{ fontWeight: 700, color: '#0f766e' }}>📊 Phân tích theo ngày:</span>
+        <DatePicker
+          value={selectedDate}
+          onChange={v => v && setSelectedDate(v)}
+          format="DD/MM/YYYY"
+          size="small"
+          allowClear={false}
+          style={{ width: 130 }}
+        />
+        <Select
+          size="small"
+          value={stageFilter}
+          onChange={setStageFilter}
+          style={{ width: 140 }}
+          options={[
+            { value: '', label: 'Tất cả công đoạn' },
+            ...STAGES.map(s => ({ value: s.key, label: s.label })),
+          ]}
+        />
+        <Button size="small" type="primary" icon={<SearchOutlined />}
+          style={{ background: '#0f766e', borderColor: '#0f766e' }}
+          onClick={() => fetchData(selectedDate)} loading={loading}>
+          Xem
+        </Button>
+        <Button size="small" icon={<ReloadOutlined />} onClick={() => fetchData(selectedDate)} loading={loading} />
+      </div>
+
+      {/* Stat cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 16 }}>
+        {statCards.map(c => (
+          <div key={c.label} style={{ background: '#f8f9fa', borderLeft: '4px solid #20a39e',
+            padding: '12px 16px', borderRadius: 4 }}>
+            <div style={{ fontSize: 11, color: '#666', textTransform: 'uppercase', marginBottom: 4 }}>{c.label}</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: '#0f766e' }}>{c.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Inner tabs */}
+      <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid #e0e0e0', marginBottom: 16 }}>
+        {[
+          { key: 'stage', label: '📈 Theo Công đoạn' },
+          { key: 'product', label: '📦 Theo Sản phẩm' },
+        ].map(t => (
+          <button key={t.key} onClick={() => setInnerTab(t.key)}
+            style={{
+              padding: '10px 20px', background: 'transparent', border: 'none', cursor: 'pointer',
+              fontWeight: 600, fontSize: 13, color: innerTab === t.key ? '#0f766e' : '#666',
+              borderBottom: `3px solid ${innerTab === t.key ? '#0f766e' : 'transparent'}`,
+              position: 'relative', bottom: -2, transition: 'all 0.2s',
+            }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab: theo công đoạn */}
+      {innerTab === 'stage' && (
+        <div>
+          {stageData.length === 0 && !loading ? (
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: '#999' }}>
+              <div style={{ fontSize: 40, marginBottom: 8 }}>📭</div>
+              <div>Không có dữ liệu cho ngày đã chọn</div>
+            </div>
+          ) : (
+            <>
+              {/* Bar chart */}
+              <div style={{ background: '#f8f9fa', borderRadius: 4, padding: 16, marginBottom: 16 }}>
+                <div style={{ fontWeight: 600, marginBottom: 12, color: '#333' }}>Sản lượng theo Công đoạn</div>
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={stageData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="key" tick={{ fontSize: 12, fontWeight: 700 }} />
+                    <YAxis tickFormatter={v => v.toLocaleString('vi-VN')} tick={{ fontSize: 11 }} />
+                    <RcTooltip formatter={(v, n) => [v.toLocaleString('vi-VN'), n === 'sl' ? 'Sản lượng' : 'Công']} />
+                    <Bar dataKey="sl" name="sl" radius={[4, 4, 0, 0]}>
+                      {stageData.map(entry => (
+                        <Cell key={entry.key} fill={STAGE_COLORS[entry.key] || '#20a39e'} />
+                      ))}
+                      <LabelList dataKey="sl" position="top" formatter={v => v > 0 ? v.toLocaleString('vi-VN') : ''} style={{ fontSize: 11, fill: '#444' }} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Table by stage */}
+              <Table
+                size="small"
+                dataSource={stageData}
+                rowKey="key"
+                loading={loading}
+                pagination={false}
+                columns={[
+                  {
+                    title: 'Công đoạn', dataIndex: 'key', width: 100,
+                    render: v => <Tag color={CONG_DOAN_COLOR[v] || 'default'} style={{ fontWeight: 700 }}>{v}</Tag>
+                  },
+                  {
+                    title: 'Số sản phẩm', dataIndex: 'products', align: 'right', width: 110,
+                    render: v => v.length
+                  },
+                  {
+                    title: 'Tổng sản lượng', dataIndex: 'sl', align: 'right',
+                    render: v => <span style={{ fontWeight: 700, color: '#0f766e' }}>{fmtSL(v)}</span>
+                  },
+                  {
+                    title: '% Sản lượng', dataIndex: 'sl', key: 'pct', align: 'right', width: 110,
+                    render: v => <span>{totalSl > 0 ? ((v / totalSl) * 100).toFixed(1) : 0}%</span>
+                  },
+                  {
+                    title: 'Tổng công', dataIndex: 'cong', align: 'right', width: 110,
+                    render: v => <span style={{ color: '#722ed1' }}>{fmtCong(v, 2)}</span>
+                  },
+                ]}
+                summary={() => (
+                  <Table.Summary.Row style={{ background: '#f0fdfa', fontWeight: 700 }}>
+                    <Table.Summary.Cell index={0}>TỔNG CỘNG</Table.Summary.Cell>
+                    <Table.Summary.Cell index={1} align="right">{productRows.length}</Table.Summary.Cell>
+                    <Table.Summary.Cell index={2} align="right">
+                      <span style={{ color: '#0f766e' }}>{fmtSL(totalSl)}</span>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={3} align="right">100%</Table.Summary.Cell>
+                    <Table.Summary.Cell index={4} align="right">
+                      <span style={{ color: '#722ed1' }}>{fmtCong(stageData.reduce((s, r) => s + r.cong, 0), 2)}</span>
+                    </Table.Summary.Cell>
+                  </Table.Summary.Row>
+                )}
+              />
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Tab: theo sản phẩm */}
+      {innerTab === 'product' && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <span style={{ fontSize: 13, color: '#666' }}>Sắp xếp theo:</span>
+            <Select
+              size="small"
+              value={sortBy}
+              onChange={setSortBy}
+              style={{ width: 200 }}
+              options={[
+                { value: 'output-desc', label: 'Sản lượng (Cao → Thấp)' },
+                { value: 'output-asc',  label: 'Sản lượng (Thấp → Cao)' },
+                { value: 'name-asc',    label: 'Tên sản phẩm (A → Z)' },
+                { value: 'stage',       label: 'Công đoạn' },
+              ]}
+            />
+          </div>
+
+          {productRows.length === 0 && !loading ? (
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: '#999' }}>
+              <div style={{ fontSize: 40, marginBottom: 8 }}>📭</div>
+              <div>Không có dữ liệu</div>
+            </div>
+          ) : (
+            <Table
+              size="small"
+              dataSource={productRows}
+              rowKey={(r, i) => `${r.cd}-${r.soLo}-${i}`}
+              loading={loading}
+              pagination={{ pageSize: 50, showSizeChanger: false, showTotal: t => `${t} sản phẩm` }}
+              columns={[
+                {
+                  title: '#', key: 'idx', width: 45, align: 'center',
+                  render: (_, __, i) => <span style={{ color: '#999', fontSize: 11 }}>{i + 1}</span>
+                },
+                {
+                  title: 'CĐ', dataIndex: 'cd', width: 75,
+                  render: v => <Tag color={CONG_DOAN_COLOR[v] || 'default'} style={{ marginRight: 0, fontWeight: 700, fontSize: 11 }}>{v}</Tag>
+                },
+                {
+                  title: 'Mã SP', dataIndex: 'maSp', width: 75,
+                  render: v => v ? <span style={{ fontWeight: 600, color: '#595959', fontSize: 12 }}>{v}</span> : '—'
+                },
+                {
+                  title: 'Tên sản phẩm / Tiến trình', dataIndex: 'tenTrinh',
+                  render: v => <span style={{ wordBreak: 'break-word' }}>{v || '—'}</span>
+                },
+                {
+                  title: 'Số lô', dataIndex: 'soLo', width: 90,
+                  render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v || '—'}</span>
+                },
+                {
+                  title: 'Sản lượng', dataIndex: 'sl', width: 110, align: 'right',
+                  render: v => <span style={{ fontWeight: 700, color: '#0f766e' }}>{fmtSL(v)}</span>
+                },
+                {
+                  title: '% Tổng', key: 'pct', width: 80, align: 'right',
+                  render: (_, r) => <span style={{ fontSize: 12 }}>{totalSl > 0 ? ((r.sl / totalSl) * 100).toFixed(1) : 0}%</span>
+                },
+                {
+                  title: 'Công', dataIndex: 'cong', width: 90, align: 'right',
+                  render: v => <span style={{ color: '#722ed1', fontSize: 12 }}>{fmtCong(v, 2)}</span>
+                },
+              ]}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Page chính: wrapper Tabs ─────────────────────────────────────────────────
 
 export default function DailySanLuongPage() {
@@ -2418,6 +2716,16 @@ export default function DailySanLuongPage() {
         </span>
       ),
       children: <ThongKeSanXuatTab />,
+    },
+    {
+      key: 'phantich',
+      label: (
+        <span>
+          <FundOutlined style={{ marginRight: 5 }} />
+          Phân tích sản lượng
+        </span>
+      ),
+      children: <PhanTichSanLuongTab />,
     },
   ]
 
