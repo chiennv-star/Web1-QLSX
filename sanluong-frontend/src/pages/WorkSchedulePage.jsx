@@ -2548,6 +2548,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const [detailSchedule, setDetailSchedule] = useState(null)
   const [highlightId, setHighlightId] = useState(null)
   const [nsMap, setNsMap] = useState({})
+  const [loaiSpMap, setLoaiSpMap] = useState({})
   const [updatingTT, setUpdatingTT] = useState({})
   const [innerTab, setInnerTab] = useState(() => {
     try { return localStorage.getItem(LS_INNER_TAB) || 'list' } catch { return 'list' }
@@ -2650,12 +2651,15 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         api.get('/product-master/lookup-batch', { params: { codes: uniqueMaSp } })
           .then(({ data: batchMap }) => {
             const map = {}
+            const loaiMap = {}
             uniqueMaSp.forEach(maSp => {
               const entry = batchMap[maSp]
               const ns = entry?.[nsField] != null ? Number(entry[nsField]) : null
               if (ns != null && ns > 0) map[maSp] = ns
+              if (entry?.loaiSanPham) loaiMap[maSp] = entry.loaiSanPham
             })
             setNsMap(map)
+            setLoaiSpMap(loaiMap)
           })
           .catch(() => {})
       } else {
@@ -2874,6 +2878,13 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 80, fixed: 'left', align: 'center',
       ...colSearch('maSp'),
       render: v => v ? <span style={{ fontWeight: 600, color: '#000011', fontSize: 12 }}>{v}</span> : '—'
+    },
+    {
+      title: 'Loại SP', key: 'loaiSp', width: 110,
+      render: (_, r) => {
+        const loai = loaiSpMap[r.maSp]
+        return loai ? <Tag color="purple" style={{ marginRight: 0, fontSize: 11 }}>{loai}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>
+      },
     },
     {
       title: 'Tiến trình', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 210, fixed: 'left',
