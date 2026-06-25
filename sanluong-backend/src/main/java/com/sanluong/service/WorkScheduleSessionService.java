@@ -68,11 +68,27 @@ public class WorkScheduleSessionService {
         WorkScheduleSession s = new WorkScheduleSession();
         mapFromDto(s, dto);
         WorkScheduleSession saved = repository.save(s);
-        // KH_TO sessions không ảnh hưởng đến aggregates và hiệu quả Sản Lượng Tổ
         if (!"KH_TO".equals(saved.getLoaiSession())) {
             recalculateGroupNs(saved.getWorkScheduleId(), saved.getNgay());
             syncAggregates(saved.getWorkScheduleId());
             recalculateEfficiency(saved.getMaNhanVien());
+        } else {
+            // KH_TO: tạo regular session tương ứng để hiển thị trong work-schedule
+            List<WorkScheduleSession> existing = repository.findRegularByWsIdNgayMaNvCa(
+                    saved.getWorkScheduleId(), saved.getNgay(), saved.getMaNhanVien(), saved.getCaSanXuat());
+            if (existing.isEmpty()) {
+                WorkScheduleSession mirror = new WorkScheduleSession();
+                mirror.setWorkScheduleId(saved.getWorkScheduleId());
+                mirror.setNgay(saved.getNgay());
+                mirror.setMaNhanVien(saved.getMaNhanVien());
+                mirror.setNguoiThucHien(saved.getNguoiThucHien());
+                mirror.setNhomThucHien(saved.getNhomThucHien());
+                mirror.setCaSanXuat(saved.getCaSanXuat());
+                repository.save(mirror);
+                recalculateGroupNs(mirror.getWorkScheduleId(), mirror.getNgay());
+                syncAggregates(mirror.getWorkScheduleId());
+                recalculateEfficiency(mirror.getMaNhanVien());
+            }
         }
         return saved;
     }
@@ -141,10 +157,19 @@ public class WorkScheduleSessionService {
             recalculateEfficiency(maNv);
             // Xóa KH_TO session tương ứng khi xóa session gốc
             if (workScheduleId != null && maNv != null && ngay != null && ca != null) {
-                // Normalize "Hành Chính" → "HC" để match với KH_TO
                 String caKhTo = "Hành Chính".equalsIgnoreCase(ca) ? "HC" : ca;
                 List<WorkScheduleSession> khToList = repository.findKhToByWsIdNgayMaNvCa(workScheduleId, ngay, maNv, caKhTo);
                 if (!khToList.isEmpty()) repository.deleteAll(khToList);
+            }
+        } else {
+            // Xóa regular session tương ứng khi xóa KH_TO
+            if (workScheduleId != null && maNv != null && ngay != null && ca != null) {
+                List<WorkScheduleSession> mirrorList = repository.findRegularByWsIdNgayMaNvCa(workScheduleId, ngay, maNv, ca);
+                if (!mirrorList.isEmpty()) {
+                    repository.deleteAll(mirrorList);
+                    syncAggregates(workScheduleId);
+                    recalculateEfficiency(maNv);
+                }
             }
         }
     }
