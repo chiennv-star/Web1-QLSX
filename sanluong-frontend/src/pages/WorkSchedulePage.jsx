@@ -884,9 +884,14 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     } catch { message.error('Xóa ngày thất bại') }
   }
 
-  const saveDaySl = async (ngayKey) => {
-    const val = daySlMap[ngayKey]
-    if (val === '' || val === undefined) return
+  const saveDaySl = async (ngayKey, overrideVal) => {
+    // overrideVal: truyền trực tiếp từ e.target.value để tránh stale closure
+    const val = overrideVal != null ? String(overrideVal) : daySlMap[ngayKey]
+    if (val === '' || val == null) return
+    const parsed = parseInt(val, 10)
+    if (isNaN(parsed)) return
+    // Đồng bộ state nếu override
+    if (overrideVal != null) setDaySlMap(prev => ({ ...prev, [ngayKey]: String(overrideVal) }))
     const rows = sessions.filter(s => (s.ngay || 'unknown') === ngayKey)
     const first = rows[0]
     if (!first?.id) return
@@ -906,19 +911,20 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
         soGioThucHien: first.soGioThucHien != null ? parseFloat(first.soGioThucHien) : null,
         vaiTro: first.vaiTro || null,
         ghiChu: first.ghiChu || null,
-        sanLuong: parseInt(val, 10),
+        sanLuong: parsed,
         nangSuat: first.nangSuat != null ? parseFloat(first.nangSuat) : null,
         nangSuatTrungBinh: first.nangSuatTrungBinh != null ? parseFloat(first.nangSuatTrungBinh) : null,
       })
       setSessions(prev => prev.map(r => r.id === first.id ? normalizeSession(data) : r))
-      const newTongSl = Object.values({ ...daySlMap, [ngayKey]: val })
+      const effectiveVal = String(overrideVal ?? val)
+      const newTongSl = Object.values({ ...daySlMap, [ngayKey]: effectiveVal })
         .reduce((acc, v) => acc + (parseFloat(v) || 0), 0)
       syncSl(newTongSl)
       setSavedSlKeys(prev => new Set([...prev, ngayKey]))
       setSlEditOriginal(prev => { const n = { ...prev }; delete n[ngayKey]; return n })
       setSlHistory(prev => ({
         ...prev,
-        [ngayKey]: [...(prev[ngayKey] || []), { value: parseInt(val, 10), savedAt: new Date() }],
+        [ngayKey]: [...(prev[ngayKey] || []), { value: parsed, savedAt: new Date() }],
       }))
       onRefresh?.()
       message.success('Đã lưu sản lượng')
@@ -1049,14 +1055,23 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                 <span style={{ fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                   SL ngày&nbsp;
                   {canEditDetail
-                    ? <input
-                        type="number" min="0" step="1"
-                        style={{ width: 75, border: '1px solid #cbd5e1', borderRadius: 6, padding: '2px 5px', fontSize: 12.5, fontWeight: 700, textAlign: 'right', color: '#0f172a' }}
-                        value={slVal}
-                        onChange={e => setDaySlMap(prev => ({ ...prev, [k]: e.target.value }))}
-                        onBlur={() => { if (slVal !== '' && rows.some(r => r.id)) saveDaySl(k) }}
-                        onKeyDown={e => { if (e.key === 'Enter' && rows.some(r => r.id)) saveDaySl(k) }}
-                      />
+                    ? savedSlKeys.has(k) && slVal !== ''
+                      ? <>
+                          <b style={{ color: '#7c3aed', fontFamily: 'monospace', fontSize: 12.5 }}>{Number(slVal).toLocaleString('vi-VN')}</b>
+                          <button
+                            style={{ border: '1px solid #d3adf7', borderRadius: 4, background: '#f9f0ff', color: '#722ed1', fontSize: 11, padding: '1px 6px', cursor: 'pointer', fontWeight: 600, lineHeight: '18px' }}
+                            onClick={() => setSavedSlKeys(prev => { const n = new Set(prev); n.delete(k); return n })}>
+                            Đổi
+                          </button>
+                        </>
+                      : <input
+                          type="number" min="0" step="1"
+                          style={{ width: 75, border: '1px solid #cbd5e1', borderRadius: 6, padding: '2px 5px', fontSize: 12.5, fontWeight: 700, textAlign: 'right', color: '#0f172a' }}
+                          value={slVal}
+                          onChange={e => setDaySlMap(prev => ({ ...prev, [k]: e.target.value }))}
+                          onBlur={e => { if (e.target.value !== '' && rows.some(r => r.id)) saveDaySl(k, e.target.value) }}
+                          onKeyDown={e => { if (e.key === 'Enter' && rows.some(r => r.id)) { e.preventDefault(); saveDaySl(k, e.target.value) } }}
+                        />
                     : <b style={{ color: '#7c3aed' }}>{slVal !== '' ? Number(slVal).toLocaleString('vi-VN') : '—'}</b>
                   }
                 </span>
@@ -1302,7 +1317,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                       setSlEditOriginal(prev => ({ ...prev, [ngayKey]: slVal }))
                       setSavedSlKeys(prev => { const next = new Set(prev); next.delete(ngayKey); return next })
                     }}>
-                    Sửa
+                    Đổi sản lượng
                   </Button>
                 )}
               </Space>
@@ -1316,14 +1331,15 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                 <InputNumber
                   size="small"
                   style={{ width: 110 }}
-                  placeholder="Nhập SL mới..."
+                  placeholder="Nhập SL..."
                   value={slVal !== '' && slVal != null ? Number(slVal) : undefined}
                   min={0}
                   step={1}
                   formatter={v => v != null && v !== '' ? Number(v).toLocaleString('vi-VN') : ''}
                   parser={v => v ? v.replace(/[^\d]/g, '') : ''}
                   onChange={v => setDaySlMap(prev => ({ ...prev, [ngayKey]: v != null ? String(v) : '' }))}
-                  onPressEnter={() => saveDaySl(ngayKey)}
+                  onPressEnter={() => hasSavedRow && saveDaySl(ngayKey)}
+                  onBlur={() => { if (slVal !== '' && slVal != null && hasSavedRow) saveDaySl(ngayKey) }}
                 />
                 <Button size="small" type="primary" loading={savingDay === ngayKey}
                   disabled={slVal === '' || slVal == null || !hasSavedRow}
