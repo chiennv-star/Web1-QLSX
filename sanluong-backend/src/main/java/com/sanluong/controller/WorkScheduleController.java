@@ -58,7 +58,7 @@ public class WorkScheduleController {
     // ADMIN_KH: chỉ được ghi source=PLAN; không được ghi SCHEDULE
     // NHAN_VIEN*: tất cả trừ CC (hoặc chỉ đúng công đoạn của mình)
     // ADMIN_PC: được PCPL1, PCPL2, CC (và PC cũ cho tương thích PLAN records)
-    // ADMIN_PCPL1: được PCPL1 (và PC cũ)
+    // ADMIN_PCPL1: được PCPL1, PL (và PC cũ)
     // ADMIN_PCPL2: được PCPL2, CC (và PC cũ)
     // ADMIN_PCPL3: được PL
     private void checkStagePermission(Authentication auth, String congDoan, String source) {
@@ -77,7 +77,7 @@ public class WorkScheduleController {
             if ("ROLE_NHAN_VIEN_BBC1".equals(role) && "BBC1".equals(congDoan)) return;
             if ("ROLE_NHAN_VIEN_DG".equals(role) && "DG".equals(congDoan)) return;
             if ("ROLE_ADMIN_PC".equals(role) && ("PC".equals(congDoan) || "PCPL1".equals(congDoan) || "PCPL2".equals(congDoan) || "CC".equals(congDoan))) return;
-            if ("ROLE_ADMIN_PCPL1".equals(role) && ("PC".equals(congDoan) || "PCPL1".equals(congDoan))) return;
+            if ("ROLE_ADMIN_PCPL1".equals(role) && ("PC".equals(congDoan) || "PCPL1".equals(congDoan) || "PL".equals(congDoan))) return;
             if ("ROLE_ADMIN_PCPL2".equals(role) && ("PC".equals(congDoan) || "PCPL2".equals(congDoan) || "CC".equals(congDoan))) return;
             if ("ROLE_ADMIN_PCPL3".equals(role) && "PL".equals(congDoan)) return;
             if (congDoan != null && ("ROLE_ADMIN_" + congDoan).equals(role)) return;
@@ -104,6 +104,12 @@ public class WorkScheduleController {
         boolean unrestricted = auth.getAuthorities().stream()
                 .anyMatch(a -> UNRESTRICTED_ROLES.contains(a.getAuthority()));
         if (unrestricted) return requestedCongDoan;
+        // ADMIN_PCPL1 được phép xem cả PCPL1 và PL
+        boolean isAdminPcpl1 = auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN_PCPL1".equals(a.getAuthority()));
+        if (isAdminPcpl1) {
+            return "PL".equals(requestedCongDoan) ? "PL" : "PCPL1";
+        }
         for (var a : auth.getAuthorities()) {
             String mapped = STAGE_ADMIN_MAP.get(a.getAuthority());
             if (mapped != null) return mapped; // bỏ qua filter client, dùng quyền server
