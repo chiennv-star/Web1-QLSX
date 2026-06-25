@@ -3750,6 +3750,11 @@ function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
           const { sl, cong } = getSlCong(record)
           const slV = Number(sl) || 0, congV = Number(cong) || 0
           if ((congV > 0 && slV === 0) || (slV > 0 && congV === 0)) return 'row-missing-sl'
+          const coLoV = Number(record.coLo) || 0
+          if (coLoV > 0 && slV > 0) {
+            if (slV > coLoV)           return 'row-sl-over'
+            if (slV < coLoV * 0.95)    return 'row-sl-under'
+          }
           return ''
         }}
         onRow={r => ({
@@ -4289,6 +4294,8 @@ export default function WorkSchedulePage() {
         .ant-table-tbody > tr.row-ns-low > td { background: #fffaf9 !important; }
         .ant-table-tbody > tr.row-sl-exceed > td { background: #fdfaff !important; }
         .ant-table-tbody > tr.row-missing-sl > td { background: #fff8e6 !important; }
+        .ant-table-tbody > tr.row-sl-under > td { background: #fff1f0 !important; }
+        .ant-table-tbody > tr.row-sl-over > td  { background: #e6f4ff !important; }
         /* ERP table headers */
         .ws-table .ant-table-thead > tr > th {
           background: #006666 !important;
