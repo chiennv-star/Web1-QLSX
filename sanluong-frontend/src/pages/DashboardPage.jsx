@@ -9,8 +9,9 @@ import {
   DeleteOutlined, FileExcelOutlined, ReloadOutlined,
   WarningOutlined, BarChartOutlined, DownOutlined, CalendarOutlined,
   EyeInvisibleOutlined, EyeOutlined, BellOutlined, ExclamationCircleOutlined,
-  AccountBookOutlined,
+  AccountBookOutlined, UploadOutlined, DownloadOutlined,
 } from '@ant-design/icons'
+import { Upload } from 'antd'
 import InboxPanel from '../components/InboxPanel'
 import dayjs from 'dayjs'
 
@@ -987,6 +988,7 @@ export default function DashboardPage() {
   const headerOffset = toolbarH + tabBarH
   const [statsOpen, setStatsOpen] = useState(false)
   const [inboxOpen, setInboxOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [inboxCount, setInboxCount] = useState(0)
   const [activeTab, setActiveTab] = useState('list')
   const [ctxMenu, setCtxMenu] = useState({ visible: false, x: 0, y: 0, record: null })
@@ -1807,6 +1809,13 @@ export default function DashboardPage() {
                 Thêm mới
               </Button>
             )}
+            {canEditProduction() && (
+              <Button size="small" icon={<UploadOutlined />}
+                onClick={() => setImportOpen(true)}
+                style={{ borderColor: '#a78bfa', color: '#a78bfa', background: 'transparent', fontWeight: 600 }}>
+                Import
+              </Button>
+            )}
             <Button size="small" icon={<FileExcelOutlined />}
               onClick={handleExport}
               style={{ borderColor: '#86efac', color: '#86efac', background: 'transparent', fontWeight: 600 }}>
@@ -2078,6 +2087,123 @@ export default function DashboardPage() {
           onCountChange={setInboxCount}
         />
       )}
+
+      <ImportSanLuongModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onSuccess={() => { setImportOpen(false); fetchData(0, pagination.pageSize) }}
+      />
     </div>
+  )
+}
+
+// ── Import Modal ──────────────────────────────────────────────────────────────
+function ImportSanLuongModal({ open, onClose, onSuccess }) {
+  const [fileList, setFileList] = useState([])
+  const [uploading, setUploading] = useState(false)
+  const [result, setResult] = useState(null)
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await api.get('/production/template', { responseType: 'blob' })
+      const url = URL.createObjectURL(res.data)
+      const a = document.createElement('a'); a.href = url
+      a.download = 'mau_import_sanluong.xlsx'; a.click()
+      URL.revokeObjectURL(url)
+    } catch { message.error('Tải file mẫu thất bại') }
+  }
+
+  const handleUpload = async () => {
+    if (!fileList.length) { message.warning('Vui lòng chọn file Excel'); return }
+    setUploading(true); setResult(null)
+    const fd = new FormData()
+    fd.append('file', fileList[0].originFileObj)
+    try {
+      const { data } = await api.post('/production/import', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      setResult(data)
+      if (data.created > 0) {
+        message.success(`Import thành công: tạo ${data.created} bản ghi${data.skipped ? `, bỏ qua ${data.skipped} trùng` : ''}`)
+        onSuccess?.()
+      } else {
+        message.info(`Không có bản ghi nào được tạo (${data.skipped} bị bỏ qua, ${data.errors?.length} lỗi)`)
+      }
+    } catch (e) {
+      message.error(e?.response?.data?.message || 'Import thất bại')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleClose = () => {
+    setFileList([]); setResult(null); onClose()
+  }
+
+  return (
+    <Modal
+      open={open}
+      onCancel={handleClose}
+      title={<span style={{ fontWeight: 700 }}>Import Sản lượng từ Excel</span>}
+      footer={null}
+      width={520}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ padding: '10px 14px', background: '#f0f9ff', borderRadius: 6, border: '1px solid #bae6fd', fontSize: 13 }}>
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>Hướng dẫn:</div>
+          <ul style={{ margin: 0, paddingLeft: 18, color: '#374151' }}>
+            <li>Tải file mẫu, điền dữ liệu vào sheet <b>SanLuong</b></li>
+            <li>Cột <b style={{ color: '#1e4570' }}>Mã Bravo</b> và <b style={{ color: '#1e4570' }}>Mã TP</b> là bắt buộc</li>
+            <li>Bản ghi trùng (Mã Bravo + LSX + Mã ĐH) sẽ bị bỏ qua</li>
+          </ul>
+        </div>
+
+        <Button
+          icon={<DownloadOutlined />}
+          onClick={handleDownloadTemplate}
+          style={{ borderColor: '#16a34a', color: '#16a34a', width: '100%' }}
+        >
+          Tải file mẫu (mau_import_sanluong.xlsx)
+        </Button>
+
+        <Upload
+          accept=".xlsx,.xls"
+          maxCount={1}
+          fileList={fileList}
+          beforeUpload={() => false}
+          onChange={({ fileList: fl }) => setFileList(fl)}
+        >
+          <Button icon={<UploadOutlined />} style={{ width: '100%' }}>
+            Chọn file Excel
+          </Button>
+        </Upload>
+
+        {fileList.length > 0 && (
+          <Button
+            type="primary"
+            loading={uploading}
+            onClick={handleUpload}
+            style={{ background: '#7c3aed', borderColor: '#7c3aed' }}
+          >
+            {uploading ? 'Đang import...' : 'Bắt đầu Import'}
+          </Button>
+        )}
+
+        {result && (
+          <div style={{ padding: '10px 14px', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 13 }}>
+            <div style={{ display: 'flex', gap: 20, marginBottom: result.errors?.length ? 8 : 0 }}>
+              <span>✅ Tạo mới: <b style={{ color: '#16a34a' }}>{result.created}</b></span>
+              <span>⏭ Bỏ qua (trùng): <b style={{ color: '#d97706' }}>{result.skipped}</b></span>
+              {result.errors?.length > 0 && <span>❌ Lỗi: <b style={{ color: '#dc2626' }}>{result.errors.length}</b></span>}
+            </div>
+            {result.errors?.length > 0 && (
+              <div style={{ maxHeight: 120, overflowY: 'auto', fontSize: 12, color: '#dc2626' }}>
+                {result.errors.map((e, i) => <div key={i}>{e}</div>)}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </Modal>
   )
 }

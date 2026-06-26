@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -165,6 +166,24 @@ public class ProductionController {
     @GetMapping("/wip-bbc1")
     public ResponseEntity<List<ProductionRecord>> getWipBbc1() {
         return ResponseEntity.ok(productionService.getWipBbc1());
+    }
+
+    @GetMapping("/template")
+    public ResponseEntity<byte[]> downloadTemplate() throws java.io.IOException {
+        byte[] data = productionService.generateImportTemplate();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=mau_import_sanluong.xlsx")
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(data);
+    }
+
+    @PostMapping("/import")
+    public ResponseEntity<Map<String, Object>> importExcel(
+            @RequestParam("file") MultipartFile file,
+            Authentication auth) throws java.io.IOException {
+        Map<String, Object> result = productionService.importFromExcel(file, auth.getName());
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/export")

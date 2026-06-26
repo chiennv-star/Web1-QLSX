@@ -10,8 +10,10 @@ import com.sanluong.repository.ProductionRecordRepository;
 import com.sanluong.repository.ProductMasterRepository;
 import com.sanluong.repository.WorkScheduleRepository;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.ss.util.CellRangeAddressList;
+import org.apache.poi.xssf.usermodel.*;
 import org.springframework.data.domain.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
@@ -522,6 +524,192 @@ public class ProductionService {
             wb.write(bos);
             return bos.toByteArray();
         }
+    }
+
+    // ── Import Excel ──────────────────────────────────────────────────────────
+
+    public byte[] generateImportTemplate() throws IOException {
+        try (XSSFWorkbook wb = new XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            XSSFCellStyle reqStyle = wb.createCellStyle();
+            reqStyle.setFillForegroundColor(new XSSFColor(new byte[]{(byte)30,(byte)69,(byte)112}, null));
+            reqStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            reqStyle.setBorderBottom(BorderStyle.THIN);
+            reqStyle.setAlignment(HorizontalAlignment.CENTER);
+            reqStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+            XSSFFont reqFont = wb.createFont();
+            reqFont.setColor(new XSSFColor(new byte[]{(byte)255,(byte)255,(byte)255}, null));
+            reqFont.setBold(true); reqFont.setFontHeightInPoints((short)11);
+            reqStyle.setFont(reqFont);
+
+            XSSFCellStyle optStyle = wb.createCellStyle();
+            optStyle.cloneStyleFrom(reqStyle);
+            optStyle.setFillForegroundColor(new XSSFColor(new byte[]{(byte)68,(byte)114,(byte)196}, null));
+
+            XSSFCellStyle dataStyle = wb.createCellStyle();
+            dataStyle.setBorderBottom(BorderStyle.THIN); dataStyle.setBorderLeft(BorderStyle.THIN);
+            dataStyle.setBorderRight(BorderStyle.THIN);
+            dataStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+
+            XSSFSheet sheet = wb.createSheet("SanLuong");
+            String[] headers = {
+                "Mã Bravo (*)", "Mã TP (*)", "Tiến Trình / Tên SP",
+                "LSX / Số Lô", "Số Lượng KH", "Mã Đơn Hàng",
+                "PC Trạng thái", "PL Trạng thái", "ĐG Trạng thái", "BBC1 Trạng thái"
+            };
+            boolean[] required = {true, true, false, false, false, false, false, false, false, false};
+            int[] widths = {16, 12, 40, 16, 14, 16, 16, 16, 16, 16};
+
+            Row hRow = sheet.createRow(0);
+            hRow.setHeightInPoints(22);
+            for (int c = 0; c < headers.length; c++) {
+                Cell cell = hRow.createCell(c);
+                cell.setCellValue(headers[c]);
+                cell.setCellStyle(required[c] ? reqStyle : optStyle);
+                sheet.setColumnWidth(c, widths[c] * 256);
+            }
+
+            String[][] samples = {
+                {"10101205", "TP205", "Son Lụa Diễm 104", "2506001", "2000", "206150626", "doing", "doing", "", ""},
+                {"10202287", "TP287", "Xịt khoáng hoa hồng Mineral Rose", "2506002", "5000", "287070626", "done",  "doing", "doing", "doing"},
+                {"10108272", "TP272", "Son dưỡng nhiên 202",              "2506003", "1500", "",           "doing", "",     "",     ""},
+            };
+            for (int r = 0; r < samples.length; r++) {
+                Row row = sheet.createRow(r + 1);
+                row.setHeightInPoints(18);
+                for (int c = 0; c < samples[r].length; c++) {
+                    Cell cell = row.createCell(c);
+                    cell.setCellValue(samples[r][c]);
+                    cell.setCellStyle(dataStyle);
+                }
+            }
+
+            String[] ttOptions = {"doing", "done", ""};
+            DataValidationHelper dvH = sheet.getDataValidationHelper();
+            for (int col : new int[]{6, 7, 8, 9}) {
+                DataValidationConstraint c = dvH.createExplicitListConstraint(ttOptions);
+                DataValidation dv = dvH.createValidation(c, new CellRangeAddressList(1, 500, col, col));
+                dv.setShowErrorBox(false);
+                sheet.addValidationData(dv);
+            }
+
+            // Hướng dẫn sheet
+            XSSFSheet guide = wb.createSheet("Hướng Dẫn");
+            String[] notes = {
+                "HƯỚNG DẪN IMPORT SẢN LƯỢNG",
+                "",
+                "Cột bắt buộc (màu xanh đậm):",
+                "  - Mã Bravo (*): mã bravo của sản phẩm",
+                "  - Mã TP (*): mã thành phẩm (Song An)",
+                "",
+                "Cột tùy chọn (màu xanh nhạt):",
+                "  - Tiến Trình / Tên SP: tên sản phẩm/tiến trình",
+                "  - LSX / Số Lô: số lô sản xuất",
+                "  - Số Lượng KH: số lượng kế hoạch (số nguyên)",
+                "  - Mã Đơn Hàng: mã đơn hàng liên quan",
+                "  - PC/PL/ĐG/BBC1 Trạng thái: 'doing' hoặc 'done'",
+                "",
+                "Lưu ý:",
+                "  - Bản ghi trùng (Mã Bravo + LSX + Mã Đơn Hàng) sẽ bị bỏ qua",
+                "  - Dòng thiếu Mã Bravo hoặc Mã TP sẽ bị bỏ qua",
+                "  - Không xóa dòng header (dòng 1)",
+            };
+            for (int i = 0; i < notes.length; i++) {
+                Row row = guide.createRow(i);
+                row.createCell(0).setCellValue(notes[i]);
+            }
+            guide.setColumnWidth(0, 70 * 256);
+
+            wb.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    public Map<String, Object> importFromExcel(MultipartFile file, String username) throws IOException {
+        int created = 0, skipped = 0;
+        List<String> errors = new ArrayList<>();
+
+        try (Workbook wb = WorkbookFactory.create(file.getInputStream())) {
+            Sheet sheet = wb.getSheetAt(0);
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+
+                String maBravo = cellStr(row, 0);
+                String maTp    = cellStr(row, 1);
+                if (maBravo.isBlank() && maTp.isBlank()) continue; // dòng trống
+                if (maBravo.isBlank() || maTp.isBlank()) {
+                    errors.add("Dòng " + (i + 1) + ": thiếu Mã Bravo hoặc Mã TP");
+                    continue;
+                }
+
+                String tienTrinh  = cellStr(row, 2);
+                String lsx        = cellStr(row, 3);
+                String soLuongStr = cellStr(row, 4);
+                String maDonHang  = cellStr(row, 5);
+                String pcTT       = normTT(cellStr(row, 6));
+                String plTT       = normTT(cellStr(row, 7));
+                String dgTT       = normTT(cellStr(row, 8));
+                String bbc1TT     = normTT(cellStr(row, 9));
+
+                if (existsByKey(maBravo, lsx, maDonHang.isBlank() ? null : maDonHang)) {
+                    skipped++;
+                    continue;
+                }
+
+                ProductionRecordDto dto = new ProductionRecordDto();
+                dto.setMaBravo(maBravo);
+                dto.setMaTp(maTp);
+                dto.setTienTrinh(tienTrinh.isBlank() ? null : tienTrinh);
+                dto.setLsx(lsx.isBlank() ? null : lsx);
+                dto.setMaDonHang(maDonHang.isBlank() ? null : maDonHang);
+                if (!soLuongStr.isBlank()) {
+                    try { dto.setSoLuong((int) Double.parseDouble(soLuongStr)); }
+                    catch (NumberFormatException ignored) {}
+                }
+                dto.setPcTrangThai(pcTT);
+                dto.setPlTrangThai(plTT);
+                dto.setDgTrangThai(dgTT);
+                dto.setBbc1TrangThai(bbc1TT);
+
+                try {
+                    create(dto, username);
+                    created++;
+                } catch (Exception e) {
+                    errors.add("Dòng " + (i + 1) + ": " + e.getMessage());
+                }
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("created", created);
+        result.put("skipped", skipped);
+        result.put("errors", errors);
+        return result;
+    }
+
+    private String cellStr(Row row, int col) {
+        Cell cell = row.getCell(col, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+        if (cell == null) return "";
+        return switch (cell.getCellType()) {
+            case STRING  -> cell.getStringCellValue().trim();
+            case NUMERIC -> {
+                double d = cell.getNumericCellValue();
+                yield d == Math.floor(d) ? String.valueOf((long) d) : String.valueOf(d);
+            }
+            case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
+            default -> "";
+        };
+    }
+
+    private String normTT(String v) {
+        if (v == null) return null;
+        return switch (v.toLowerCase().trim()) {
+            case "doing" -> "doing";
+            case "done"  -> "done";
+            default      -> null;
+        };
     }
 
     private ProductionRecord mapToEntity(ProductionRecordDto dto) {
