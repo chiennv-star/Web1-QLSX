@@ -3427,11 +3427,18 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
               .filter(r => r.tinhTrang !== 'done')
               .sort((a, b) => {
                 const slF = SL_FIELD_MAP[congDoan], cF = CONG_FIELD_MAP[congDoan]
-                const aM = cF && slF && (Number(a[cF])||0) > 0 && (Number(a[slF])||0) === 0
-                const bM = cF && slF && (Number(b[cF])||0) > 0 && (Number(b[slF])||0) === 0
-                if (aM && !bM) return -1
-                if (!aM && bM) return 1
-                return 0
+                const getPriority = r => {
+                  const sl   = slF ? Number(r[slF]) || 0 : 0
+                  const cong = cF  ? Number(r[cF])  || 0 : 0
+                  const coLo = Number(r.coLo) || 0
+                  if (cong > 0 && sl === 0) return 0
+                  if (r.saiLech) return 1
+                  if (sl > 0 && coLo > 0 && sl > coLo) return 2
+                  const avg = nsMap[r.maSp]
+                  if (avg != null && avg > 0 && cong > 0 && sl / cong < avg) return 3
+                  return 10
+                }
+                return getPriority(a) - getPriority(b)
               })}
             rowKey="id"
             loading={loading}
@@ -3734,13 +3741,17 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
         className="ws-table"
         columns={columns}
         dataSource={[...data].sort((a, b) => {
-          const isMissing = r => {
+          const getPriority = r => {
             const { sl, cong } = getSlCong(r)
             const slV = Number(sl) || 0, congV = Number(cong) || 0
-            return (congV > 0 && slV === 0) || (slV > 0 && congV === 0)
+            const coLoV = Number(r.coLo) || 0
+            if ((congV > 0 && slV === 0) || (slV > 0 && congV === 0)) return 0
+            if (coLoV > 0 && slV > 0 && slV < coLoV * 0.95) return 1
+            if (coLoV > 0 && slV > coLoV) return 2
+            return 10
           }
-          const am = isMissing(a), bm = isMissing(b)
-          if (am !== bm) return am ? -1 : 1
+          const pa = getPriority(a), pb = getPriority(b)
+          if (pa !== pb) return pa - pb
           return parseSoLoNum(b.soLo) - parseSoLoNum(a.soLo)
         })}
         rowKey="id"
@@ -3953,7 +3964,19 @@ function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange, headerOffset = 8
           onChange: keys => setSelectedIds(keys),
         }}
         columns={columns}
-        dataSource={data}
+        dataSource={[...data].sort((a, b) => {
+          const slF = SL_FIELD_MAP[congDoan], cF = CONG_FIELD_MAP[congDoan]
+          const getPriority = r => {
+            const sl   = slF ? Number(r[slF]) || 0 : 0
+            const cong = cF  ? Number(r[cF])  || 0 : 0
+            const coLo = Number(r.coLo) || 0
+            if (cong > 0 && sl === 0) return 0
+            if (r.saiLech) return 1
+            if (sl > 0 && coLo > 0 && sl > coLo) return 2
+            return 10
+          }
+          return getPriority(a) - getPriority(b)
+        })}
         rowKey="id"
         loading={loading}
         size="small"
