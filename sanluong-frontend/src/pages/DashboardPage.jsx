@@ -652,8 +652,8 @@ function SanLuongKeToanTab({ data = [], loading = false, pagination = {}, onPagi
         size="small"
         style={{ padding: '0 12px' }}
         items={[
-          { key: 'doing', label: <span>⚙️ Đang thực hiện <Badge count={data.length} showZero style={{ background: '#1d4ed8', fontSize: 10 }} /></span> },
-          { key: 'done',  label: <span>✅ Đã hoàn thành <Badge count={doneData.length} showZero style={{ background: '#16a34a', fontSize: 10 }} /></span> },
+          { key: 'doing', label: <span>⚙️ Đang thực hiện <Badge count={pagination.total || data.length} showZero style={{ background: '#1d4ed8', fontSize: 10 }} /></span> },
+          { key: 'done',  label: <span>✅ Đã hoàn thành <Badge count={donePagination.total || doneData.length} showZero style={{ background: '#16a34a', fontSize: 10 }} /></span> },
         ]}
       />
 
@@ -920,8 +920,8 @@ function HieuSuatTab({ data = [], loading = false, pagination = {}, onPagination
         size="small"
         style={{ padding: '0 12px' }}
         items={[
-          { key: 'doing', label: <span>⚙️ Đang thực hiện <Badge count={data.length} showZero style={{ background: '#1d4ed8', fontSize: 10 }} /></span> },
-          { key: 'done',  label: <span>✅ Đã hoàn thành <Badge count={doneData.length} showZero style={{ background: '#16a34a', fontSize: 10 }} /></span> },
+          { key: 'doing', label: <span>⚙️ Đang thực hiện <Badge count={pagination.total || data.length} showZero style={{ background: '#1d4ed8', fontSize: 10 }} /></span> },
+          { key: 'done',  label: <span>✅ Đã hoàn thành <Badge count={donePagination.total || doneData.length} showZero style={{ background: '#16a34a', fontSize: 10 }} /></span> },
         ]}
       />
 
@@ -1133,7 +1133,7 @@ export default function DashboardPage() {
     }
   }, [filters, fetchHangLoi])
 
-  const fetchDoneData = useCallback(async (page = 0, size = 20, f = filters, { silent = false } = {}) => {
+  const fetchDoneData = useCallback(async (page = 0, size = 1000, f = filters, { silent = false } = {}) => {
     if (!silent) setDoneLoading(true)
     try {
       const params = { page, size, ...f, hoanThanh: true }
