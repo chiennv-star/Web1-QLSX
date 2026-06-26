@@ -231,7 +231,19 @@ function AssignCard({
                       }}>
                         {initials(emp?.hoVaTen || ma)}
                       </span>
-                      {emp?.hoVaTen || ma}
+                      <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+                        <span>{emp?.hoVaTen || ma}</span>
+                        {(shiftData.sessionIds?.[ma]?.vaiTro || shiftData.sessionIds?.[ma]?.congThucHien != null) && (
+                          <span style={{ fontSize: 9, color: isConflict ? '#b91c1c' : '#6366f1', opacity: 0.8, whiteSpace: 'nowrap' }}>
+                            {shiftData.sessionIds[ma].vaiTro && <span>{shiftData.sessionIds[ma].vaiTro}</span>}
+                            {shiftData.sessionIds[ma].congThucHien != null && (
+                              <span style={{ marginLeft: shiftData.sessionIds[ma].vaiTro ? 4 : 0, color: '#059669', fontWeight: 700 }}>
+                                {shiftData.sessionIds[ma].congThucHien}c
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </span>
                       <Popconfirm
                         title={`Xóa "${emp?.hoVaTen || ma}" khỏi ${caKey}?`}
                         okText="Xóa" cancelText="Huỷ"
@@ -421,8 +433,11 @@ export default function KeHoachToPage() {
     const toDate   = timeMode === 'week' ? weekStart.add(6, 'day').format('YYYY-MM-DD') : null
     try {
       const wsIds = [...new Set(plansList.map(p => p.id))]
+      const sessionParams = planSource === 'SCHEDULE'
+        ? (id) => ({ scheduleId: id })
+        : (id) => ({ scheduleId: id, loaiSession: 'KH_TO' })
       const results = await Promise.allSettled(
-        wsIds.map(id => api.get('/work-schedule-session', { params: { scheduleId: id, loaiSession: 'KH_TO' } }))
+        wsIds.map(id => api.get('/work-schedule-session', { params: sessionParams(id) }))
       )
       const allSessions = results.flatMap(r =>
         r.status === 'fulfilled' ? (r.value.data || []) : []
@@ -458,7 +473,12 @@ export default function KeHoachToPage() {
                 }
                 newCaShifts[caKey].sessionIds = {
                   ...newCaShifts[caKey].sessionIds,
-                  [s.maNhanVien]: { id: s.id, locked: s.sanLuong != null },
+                  [s.maNhanVien]: {
+                    id: s.id, locked: s.sanLuong != null,
+                    vaiTro: s.vaiTro || null,
+                    congThucHien: s.congThucHien ?? null,
+                    soGioThucHien: s.soGioThucHien ?? null,
+                  },
                 }
               }
             })
@@ -494,7 +514,12 @@ export default function KeHoachToPage() {
             if (!caShifts[caKey]) caShifts[caKey] = { mas: [], sessionIds: {} }
             if (s.maNhanVien) {
               if (!caShifts[caKey].mas.includes(s.maNhanVien)) caShifts[caKey].mas.push(s.maNhanVien)
-              caShifts[caKey].sessionIds[s.maNhanVien] = { id: s.id, locked: s.sanLuong != null }
+              caShifts[caKey].sessionIds[s.maNhanVien] = {
+                id: s.id, locked: s.sanLuong != null,
+                vaiTro: s.vaiTro || null,
+                congThucHien: s.congThucHien ?? null,
+                soGioThucHien: s.soGioThucHien ?? null,
+              }
             }
           })
 
@@ -524,7 +549,7 @@ export default function KeHoachToPage() {
         return updated
       })
     } catch { /* silent */ }
-  }, [weekStart, timeMode])
+  }, [weekStart, timeMode, planSource])
 
   const fetchAll = useCallback(async () => {
     const [plansList] = await Promise.all([fetchPlans(), fetchEmployees()])
