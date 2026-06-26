@@ -2,7 +2,7 @@
 import { useLocation } from 'react-router-dom'
 import {
   Table, Button, Space, Typography, message, Select, DatePicker,
-  Tooltip, Modal, Input, Badge, Tag, Tabs, Popconfirm
+  Tooltip, Modal, Input, Badge, Tag, Tabs, Popconfirm, Popover
 } from 'antd'
 import SkeletonTable from '../components/SkeletonTable'
 import {
@@ -1297,26 +1297,95 @@ function DayDetailModal({ open, date, rows, onClose }) {
         {STAGES.map(s => {
           const d = kpi[s.key]
           if (!d.soPhien) return null
-          return (
-            <div key={s.key} style={{
-              background: s.bg, border: `1.5px solid ${s.border}`,
-              borderRadius: 8, padding: '5px 14px', minWidth: 130,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                <Tag style={{ margin: 0, fontWeight: 700, fontSize: 11, background: s.slColor, color: '#fff', border: 'none' }}>{s.label}</Tag>
-                <span style={{ fontSize: 10, color: '#888' }}>{d.soPhien} phiên</span>
-              </div>
-              <div style={{ display: 'flex', gap: 12 }}>
-                <div>
-                  <div style={{ fontSize: 9, color: '#999', fontWeight: 600 }}>SẢN LƯỢNG</div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: s.slColor, lineHeight: 1.2 }}>{fmtSL(d.sl)}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 9, color: '#999', fontWeight: 600 }}>CÔNG TH</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: s.congColor, lineHeight: 1.2 }}>{fmtCong(d.cong, 2)}</div>
-                </div>
-              </div>
+          const stageRows = rows.filter(r => {
+            let cd = r.congDoan?.toUpperCase()
+            if (cd === 'PC') {
+              const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
+              if (nhom === 'PCPL1') cd = 'PCPL1'
+              else if (nhom === 'PCPL2') cd = 'PCPL2'
+              else if (nhom === 'PCPL3' || nhom === 'PL') cd = 'PL'
+              else cd = 'PCPL1'
+            }
+            if (cd === 'PCPL3') cd = 'PL'
+            return cd === s.key
+          })
+          const miniCols = [
+            { title: 'Mã SP', dataIndex: 'maSp', width: 75, align: 'center',
+              render: v => <Tag color="blue" style={{ marginRight: 0, fontSize: 11 }}>{v || '—'}</Tag> },
+            { title: 'Tên SP / Tiến trình', dataIndex: 'tenTrinh', ellipsis: true,
+              render: v => <span style={{ fontSize: 11 }}>{v || '—'}</span> },
+            { title: 'Số lô', dataIndex: 'soLo', width: 72, align: 'center',
+              render: v => <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{v || '—'}</span> },
+            { title: 'Ca', dataIndex: 'caSanXuat', width: 58, align: 'center',
+              render: v => v ? <Tag color="orange" style={{ marginRight: 0, fontSize: 10 }}>{v}</Tag> : '—' },
+            { title: 'Người TH', key: 'nguoi', width: 120, ellipsis: true,
+              render: (_, r) => { const t = r.nguoiThucHienList || r.nguoiThucHien; return <Tooltip title={t}><span style={{ fontSize: 11 }}>{t || '—'}</span></Tooltip> } },
+            { title: 'Công', dataIndex: 'congThucHien', width: 68, align: 'center',
+              render: v => <span style={{ color: '#1d4ed8', fontWeight: 600, fontFamily: 'monospace', fontSize: 11 }}>{v != null ? fmtCong(v) : '—'}</span> },
+            { title: 'SL', dataIndex: 'sanLuong', width: 75, align: 'center',
+              render: v => <span style={{ color: s.slColor, fontWeight: 700, fontSize: 12 }}>{v != null ? fmtSL(Number(v)) : '—'}</span> },
+          ]
+          const popContent = (
+            <div style={{ width: 640 }}>
+              <Table
+                size="small"
+                columns={miniCols}
+                dataSource={stageRows}
+                rowKey={r => r.sessionId || r.requestId || Math.random()}
+                pagination={false}
+                scroll={{ y: 280 }}
+                style={{ fontSize: 11 }}
+                summary={() => (
+                  <Table.Summary fixed="bottom">
+                    <Table.Summary.Row>
+                      <Table.Summary.Cell colSpan={5} align="right">
+                        <strong style={{ fontSize: 11, color: '#555' }}>Tổng ({stageRows.length} phiên)</strong>
+                      </Table.Summary.Cell>
+                      <Table.Summary.Cell align="center">
+                        <strong style={{ color: '#1d4ed8', fontFamily: 'monospace' }}>{fmtCong(d.cong, 2)}</strong>
+                      </Table.Summary.Cell>
+                      <Table.Summary.Cell align="center">
+                        <strong style={{ color: s.slColor }}>{fmtSL(d.sl)}</strong>
+                      </Table.Summary.Cell>
+                    </Table.Summary.Row>
+                  </Table.Summary>
+                )}
+              />
             </div>
+          )
+          return (
+            <Popover
+              key={s.key}
+              content={popContent}
+              title={<span style={{ fontWeight: 700, color: s.slColor }}>Chi tiết {s.label} — {stageRows.length} phiên</span>}
+              trigger="click"
+              placement="bottomLeft"
+              overlayStyle={{ maxWidth: 680 }}
+            >
+              <div style={{
+                background: s.bg, border: `1.5px solid ${s.border}`,
+                borderRadius: 8, padding: '5px 14px', minWidth: 130,
+                cursor: 'pointer', transition: 'box-shadow 0.15s',
+              }}
+                onMouseEnter={e => e.currentTarget.style.boxShadow = `0 0 0 2px ${s.slColor}55`}
+                onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                  <Tag style={{ margin: 0, fontWeight: 700, fontSize: 11, background: s.slColor, color: '#fff', border: 'none' }}>{s.label}</Tag>
+                  <span style={{ fontSize: 10, color: '#888' }}>{d.soPhien} phiên</span>
+                </div>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 9, color: '#999', fontWeight: 600 }}>SẢN LƯỢNG</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: s.slColor, lineHeight: 1.2 }}>{fmtSL(d.sl)}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9, color: '#999', fontWeight: 600 }}>CÔNG TH</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: s.congColor, lineHeight: 1.2 }}>{fmtCong(d.cong, 2)}</div>
+                  </div>
+                </div>
+              </div>
+            </Popover>
           )
         })}
         <div style={{
