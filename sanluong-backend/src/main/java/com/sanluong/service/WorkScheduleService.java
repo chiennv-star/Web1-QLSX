@@ -447,6 +447,9 @@ public class WorkScheduleService {
                     saved.getMaSp(), resolveTenTrinh(saved.getMaSp(), saved.getTenTrinh()), saved.getSoLo(), saved.getCoLo(),
                     saved.getNgayThucHien(), saved.getToNhom(), username);
         }
+        if ("SCHEDULE".equals(saved.getSource()) && saved.getNgayThucHien() != null) {
+            ensureKhToSlot(saved.getId(), saved.getNgayThucHien());
+        }
         syncToProduction(saved);
         eventPublisher.publishKhoachUpdated();
         return saved;
@@ -468,6 +471,9 @@ public class WorkScheduleService {
                     saved.getMaSp(), resolveTenTrinh(saved.getMaSp(), saved.getTenTrinh()), saved.getSoLo(), saved.getCoLo(),
                     saved.getNgayThucHien(), saved.getToNhom(), saved.getCongDoan(), username,
                     oldNgay, oldToNhom);
+        }
+        if ("SCHEDULE".equals(saved.getSource()) && saved.getNgayThucHien() != null) {
+            ensureKhToSlot(saved.getId(), saved.getNgayThucHien());
         }
         syncToProduction(saved);
         // PCPL1/PCPL2: khi toNhom thay đổi → tự ẩn record PCPL đối diện
@@ -870,6 +876,18 @@ public class WorkScheduleService {
     }
 
     private boolean isEmpty(String s) { return s == null || s.isBlank(); }
+
+    // Tạo KH_TO placeholder session cho WorkSchedule nếu chưa có — giúp KeHoachToPage hiển thị card tự động
+    private void ensureKhToSlot(Long wsId, LocalDate ngay) {
+        if (wsId == null || ngay == null) return;
+        if (sessionRepository.existsKhToByWsIdAndNgay(wsId, ngay)) return;
+        WorkScheduleSession slot = new WorkScheduleSession();
+        slot.setWorkScheduleId(wsId);
+        slot.setNgay(ngay);
+        slot.setLoaiSession("KH_TO");
+        slot.setCaSanXuat("Ca 1");
+        sessionRepository.save(slot);
+    }
 
     private String resolveTenTrinh(String maSp, String tenTrinh) {
         if (tenTrinh != null && !tenTrinh.isBlank()) return tenTrinh;

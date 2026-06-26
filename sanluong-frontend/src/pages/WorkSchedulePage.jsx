@@ -2557,8 +2557,9 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         }
       }
     } catch {}
-    return { dateRange: null, maSp: '', tenTrinh: '', soLo: '', tinhTrang: '' }
+    return { dateRange: null, maSp: '', tenTrinh: '', soLo: '', tinhTrang: '', maBravo: '' }
   })
+  const [searchTick, setSearchTick] = useState(0)
   const [modalOpen, setModalOpen] = useState(false)
   const [editItem, setEditItem] = useState(null)
   const [headerOffset, setHeaderOffset] = useState(46)
@@ -2848,7 +2849,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   }
 
   useEffect(() => {
-    if (controlsRef.current) setHeaderOffset(46 + 38 + controlsRef.current.offsetHeight + 2)
+    if (controlsRef.current) setHeaderOffset(46 + controlsRef.current.offsetHeight + 2)
   })
 
   useEffect(() => {
@@ -2867,6 +2868,27 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   }, [innerTab])
 
   const onSaved = () => { fetchData(0); parentOnSaved?.() }
+
+  const handleReset = () => {
+    const reset = { dateRange: null, maSp: '', tenTrinh: '', soLo: '', tinhTrang: '', maBravo: '' }
+    setFilters(reset)
+    try { localStorage.removeItem(LS_FILTERS) } catch {}
+    fetchData(0, 20, reset)
+  }
+
+  const handleSearch = () => {
+    if (innerTab === 'list') fetchData(0)
+    else setSearchTick(t => t + 1)
+  }
+
+  const handleQuickDate = (unit) => {
+    const s = dayjs().startOf(unit), e = dayjs().endOf(unit)
+    setFilters(f => ({ ...f, dateRange: [s, e] }))
+    setTimeout(() => {
+      if (innerTab === 'list') fetchData(0)
+      else setSearchTick(t => t + 1)
+    }, 0)
+  }
 
   const columns = [
     {
@@ -3225,197 +3247,177 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
 
   return (
     <>
-      {/* ── Inner sub-tab bar (sticky ở top=46) ── */}
-      <div className="ws-inner-tabs" style={{
-        position: 'sticky', top: 46, zIndex: 10,
-        background: '#fff', borderBottom: '1px solid #e2e8f0',
-        display: 'flex', alignItems: 'center', gap: 0,
-        paddingLeft: 12,
-      }}>
-        {[
-          { key: 'list', label: 'Danh sách', color: '#1677ff' },
-          {
-            key: 'done',
-            color: '#15803d',
-            label: (
-              <span>
-                <CheckCircleOutlined style={{ marginRight: 5, color: doneCount > 0 ? '#15803d' : undefined }} />
-                Lịch đã hoàn thiện
-                {doneCount > 0 && (
-                  <Badge count={doneCount} size="small" color="#15803d" style={{ marginLeft: 5 }} />
-                )}
-              </span>
-            )
-          },
-          {
-            key: 'hidden',
-            color: '#722ed1',
-            label: (
-              <span>
-                <EyeInvisibleOutlined style={{ marginRight: 5, color: hiddenCount > 0 ? '#722ed1' : undefined }} />
-                Đã ẩn
-                {hiddenCount > 0 && (
-                  <Badge count={hiddenCount} size="small" color="#722ed1" style={{ marginLeft: 5 }} />
-                )}
-              </span>
-            )
-          }
-        ].map(tab => (
-          <div
-            key={tab.key}
-            onClick={() => setInnerTab(tab.key)}
-            style={{
-              padding: '7px 18px',
-              cursor: 'pointer',
-              fontWeight: innerTab === tab.key ? 700 : 400,
-              fontSize: 13,
-              color: innerTab === tab.key ? tab.color : '#595959',
-              borderBottom: innerTab === tab.key
-                ? `2px solid ${tab.color}`
-                : '2px solid transparent',
-              marginBottom: -1,
-              userSelect: 'none',
-              transition: 'color 0.15s',
-            }}
-          >
-            {tab.label}
-          </div>
-        ))}
+      {/* ── Inner sub-tab bar + shared filter (sticky ở top=46) ── */}
+      <div ref={controlsRef} style={{ position: 'sticky', top: 46, zIndex: 10, background: '#fff' }}>
+        {/* Tab row */}
+        <div className="ws-inner-tabs" style={{
+          borderBottom: '1px solid #e2e8f0',
+          display: 'flex', alignItems: 'center', gap: 0, paddingLeft: 12,
+        }}>
+          {[
+            { key: 'list', label: 'Danh sách', color: '#1677ff' },
+            {
+              key: 'done',
+              color: '#15803d',
+              label: (
+                <span>
+                  <CheckCircleOutlined style={{ marginRight: 5, color: doneCount > 0 ? '#15803d' : undefined }} />
+                  Lịch đã hoàn thiện
+                  {doneCount > 0 && (
+                    <Badge count={doneCount} size="small" color="#15803d" style={{ marginLeft: 5 }} />
+                  )}
+                </span>
+              )
+            },
+            {
+              key: 'hidden',
+              color: '#722ed1',
+              label: (
+                <span>
+                  <EyeInvisibleOutlined style={{ marginRight: 5, color: hiddenCount > 0 ? '#722ed1' : undefined }} />
+                  Đã ẩn
+                  {hiddenCount > 0 && (
+                    <Badge count={hiddenCount} size="small" color="#722ed1" style={{ marginLeft: 5 }} />
+                  )}
+                </span>
+              )
+            }
+          ].map(tab => (
+            <div
+              key={tab.key}
+              onClick={() => setInnerTab(tab.key)}
+              style={{
+                padding: '7px 18px',
+                cursor: 'pointer',
+                fontWeight: innerTab === tab.key ? 700 : 400,
+                fontSize: 13,
+                color: innerTab === tab.key ? tab.color : '#595959',
+                borderBottom: innerTab === tab.key
+                  ? `2px solid ${tab.color}`
+                  : '2px solid transparent',
+                marginBottom: -1,
+                userSelect: 'none',
+                transition: 'color 0.15s',
+              }}
+            >
+              {tab.label}
+            </div>
+          ))}
+          {/* Thêm mới — chỉ hiện ở tab Danh sách */}
+          {innerTab === 'list' && canEditStage(congDoan) && (
+            <div style={{ marginLeft: 'auto', paddingRight: 8 }}>
+              <Button size="small" type="primary" icon={<PlusOutlined />}
+                onClick={() => { setEditItem(null); setModalOpen(true) }}>
+                Thêm mới
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Shared filter row */}
+        <div className="ws-filter-bar" style={{
+          background: '#f0f4ff', borderBottom: '2px solid #c5cef5',
+          padding: '5px 12px', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap'
+        }}>
+          <Space.Compact size="small">
+            <Button size="small" onClick={() => handleQuickDate('week')}>Tuần</Button>
+            <Button size="small" onClick={() => handleQuickDate('month')}>Tháng</Button>
+            <Button size="small" onClick={() => handleQuickDate('year')}>Năm</Button>
+          </Space.Compact>
+          <RangePicker size="small" style={{ width: 224 }} format="DD/MM/YYYY"
+            placeholder={['Từ ngày', 'Đến ngày']}
+            value={filters.dateRange}
+            onChange={v => setFilters(f => ({ ...f, dateRange: v }))} />
+          <Input size="small" style={{ width: 96 }} placeholder="Mã SP" value={filters.maSp} allowClear
+            onChange={e => setFilters(f => ({ ...f, maSp: e.target.value }))}
+            onPressEnter={handleSearch} />
+          <Input size="small" style={{ width: 148 }} placeholder="Tiến trình" value={filters.tenTrinh} allowClear
+            onChange={e => setFilters(f => ({ ...f, tenTrinh: e.target.value }))}
+            onPressEnter={handleSearch} />
+          <Input size="small" style={{ width: 110 }} placeholder="Lô sản xuất" value={filters.soLo} allowClear
+            onChange={e => setFilters(f => ({ ...f, soLo: e.target.value }))}
+            onPressEnter={handleSearch} />
+          {innerTab !== 'done' && (
+            <Select size="small" style={{ width: 110 }} placeholder="Tình trạng" allowClear
+              value={filters.tinhTrang || undefined}
+              onChange={v => setFilters(f => ({ ...f, tinhTrang: v || '' }))}>
+              <Option value="done">Done</Option>
+              <Option value="doing">Doing</Option>
+            </Select>
+          )}
+          {innerTab === 'done' && (
+            <Input size="small" style={{ width: 100 }} placeholder="Mã Bravo" value={filters.maBravo} allowClear
+              onChange={e => setFilters(f => ({ ...f, maBravo: e.target.value }))}
+              onPressEnter={handleSearch} />
+          )}
+          <Button size="small" type="primary" icon={<SearchOutlined />} onClick={handleSearch}>Tìm</Button>
+          <Button size="small" icon={<ReloadOutlined />} onClick={handleReset} />
+          {/* Bulk actions — chỉ hiện ở tab Danh sách */}
+          {innerTab === 'list' && canEditStage(congDoan) && selectedRowKeys.length > 0 && (
+            <Popconfirm
+              title={`Ẩn ${selectedRowKeys.length} bản ghi đã chọn?`}
+              okText="Ẩn" cancelText="Hủy"
+              okButtonProps={{ loading: bulkHiding }}
+              onConfirm={handleBulkHideSelected}
+            >
+              <Button size="small" icon={<EyeInvisibleOutlined />} loading={bulkHiding}
+                style={{ fontWeight: 700, color: '#595959' }}>
+                Ẩn đã chọn ({selectedRowKeys.length})
+              </Button>
+            </Popconfirm>
+          )}
+          {innerTab === 'list' && canEditStage(congDoan) && selectedRowKeys.length > 0 && (
+            <Space.Compact size="small">
+              <Select
+                size="small"
+                placeholder="Gán Tổ/nhóm…"
+                allowClear
+                value={bulkNhomVal}
+                onChange={v => setBulkNhomVal(v ?? null)}
+                style={{ width: 120 }}
+                options={[
+                  { label: 'PCPL1', value: 'PCPL1' },
+                  { label: 'PCPL2', value: 'PCPL2' },
+                  { label: 'PCPL3', value: 'PCPL3' },
+                  { label: 'BBC1',  value: 'BBC1'  },
+                  { label: 'ĐG',    value: 'ĐG'    },
+                  { label: 'PL',    value: 'PL'    },
+                  { label: '(Xóa nhóm)', value: '' },
+                ]}
+              />
+              <Popconfirm
+                title={`Gán Tổ/Nhóm TH = "${bulkNhomVal || '(trống)'}" cho ${selectedRowKeys.length} bản ghi?`}
+                okText="Gán" cancelText="Hủy"
+                disabled={bulkNhomVal === undefined}
+                onConfirm={handleBulkSetNhom}
+              >
+                <Button size="small" type="primary" loading={bulkNhomSaving}
+                  disabled={bulkNhomVal === undefined}
+                  style={{ fontWeight: 700 }}>
+                  Gán ({selectedRowKeys.length})
+                </Button>
+              </Popconfirm>
+            </Space.Compact>
+          )}
+          {innerTab === 'list' && canEditStage(congDoan) && selectedRowKeys.length > 0 && canDeleteSchedule() && (
+            <Popconfirm
+              title={`Xóa ${selectedRowKeys.length} bản ghi đã chọn?`}
+              okText="Xóa" cancelText="Hủy"
+              okButtonProps={{ danger: true, loading: bulkDeleting }}
+              onConfirm={handleBulkDeleteSelected}
+            >
+              <Button size="small" danger icon={<DeleteOutlined />} loading={bulkDeleting}
+                style={{ fontWeight: 700 }}>
+                Xóa đã chọn ({selectedRowKeys.length})
+              </Button>
+            </Popconfirm>
+          )}
+        </div>
       </div>
 
       {/* ── Tab: Danh sách ── */}
       {innerTab === 'list' && (
         <>
-          {(() => {
-            const activeFilterCount = [
-              filters.dateRange, filters.maSp, filters.tenTrinh, filters.soLo, filters.tinhTrang
-            ].filter(Boolean).length
-            const handleReset = () => {
-              const reset = { dateRange: null, maSp: '', tenTrinh: '', soLo: '', tinhTrang: '' }
-              setFilters(reset)
-              try { localStorage.removeItem(LS_FILTERS) } catch {}
-              fetchData(0, 20, reset)
-            }
-            return (
-              <div ref={controlsRef} className="ws-filter-bar" style={{
-                position: 'sticky', top: 84, zIndex: 9,
-                background: '#f0f4ff', borderBottom: '2px solid #c5cef5',
-                padding: '6px 12px', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap'
-              }}>
-                {/* Mobile-only toggle row */}
-                <div className="ws-mobile-action-row">
-                  <Button size="small"
-                    type={activeFilterCount > 0 ? 'primary' : 'default'}
-                    icon={<FilterOutlined />}
-                    onClick={() => setFilterPanelOpen(v => !v)}
-                  >
-                    Bộ lọc{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-                  </Button>
-                  <div style={{ flex: 1 }} />
-                  {canEditStage(congDoan) && (
-                    <Button size="small" type="primary" icon={<PlusOutlined />}
-                      onClick={() => { setEditItem(null); setModalOpen(true) }} />
-                  )}
-                  <Button size="small" type="primary" icon={<SearchOutlined />} onClick={() => fetchData(0)} />
-                  <Button size="small" icon={<ReloadOutlined />} onClick={handleReset} />
-                </div>
-
-                {/* Filter inputs — desktop: always; mobile: collapsible */}
-                <div className={`ws-filter-inputs${filterPanelOpen ? ' ws-filter-inputs-open' : ''}`}>
-                  <RangePicker size="small" style={{ width: 224 }} format="DD/MM/YYYY"
-                    placeholder={['Từ ngày', 'Đến ngày']}
-                    value={filters.dateRange}
-                    onChange={v => setFilters(f => ({ ...f, dateRange: v }))} />
-                  <Input size="small" style={{ width: 96 }} placeholder="Mã SP" value={filters.maSp} allowClear
-                    onChange={e => setFilters(f => ({ ...f, maSp: e.target.value }))}
-                    onPressEnter={() => fetchData(0)} />
-                  <Input size="small" style={{ width: 148 }} placeholder="Tiến trình" value={filters.tenTrinh} allowClear
-                    onChange={e => setFilters(f => ({ ...f, tenTrinh: e.target.value }))}
-                    onPressEnter={() => fetchData(0)} />
-                  <Input size="small" style={{ width: 110 }} placeholder="Lô sản xuất" value={filters.soLo} allowClear
-                    onChange={e => setFilters(f => ({ ...f, soLo: e.target.value }))}
-                    onPressEnter={() => fetchData(0)} />
-                  <Select size="small" style={{ width: 110 }} placeholder="Tình trạng" allowClear
-                    value={filters.tinhTrang || undefined}
-                    onChange={v => setFilters(f => ({ ...f, tinhTrang: v || '' }))}>
-                    <Option value="done">Done</Option>
-                    <Option value="doing">Doing</Option>
-                  </Select>
-                  {/* Desktop-only: action buttons inline */}
-                  <span className="ws-desktop-actions">
-                    <Button size="small" type="primary" icon={<SearchOutlined />} onClick={() => fetchData(0)}>Tìm</Button>
-                    <Button size="small" icon={<ReloadOutlined />} onClick={handleReset} />
-                    {canEditStage(congDoan) && selectedRowKeys.length > 0 && (
-                      <Popconfirm
-                        title={`Ẩn ${selectedRowKeys.length} bản ghi đã chọn?`}
-                        okText="Ẩn" cancelText="Hủy"
-                        okButtonProps={{ loading: bulkHiding }}
-                        onConfirm={handleBulkHideSelected}
-                      >
-                        <Button size="small" icon={<EyeInvisibleOutlined />} loading={bulkHiding}
-                          style={{ fontWeight: 700, color: '#595959' }}>
-                          Ẩn đã chọn ({selectedRowKeys.length})
-                        </Button>
-                      </Popconfirm>
-                    )}
-                    {canEditStage(congDoan) && selectedRowKeys.length > 0 && (
-                      <Space.Compact size="small">
-                        <Select
-                          size="small"
-                          placeholder="Gán Tổ/nhóm…"
-                          allowClear
-                          value={bulkNhomVal}
-                          onChange={v => setBulkNhomVal(v ?? null)}
-                          style={{ width: 120 }}
-                          options={[
-                            { label: 'PCPL1', value: 'PCPL1' },
-                            { label: 'PCPL2', value: 'PCPL2' },
-                            { label: 'PCPL3', value: 'PCPL3' },
-                            { label: 'BBC1',  value: 'BBC1'  },
-                            { label: 'ĐG',    value: 'ĐG'    },
-                            { label: 'PL',    value: 'PL'    },
-                            { label: '(Xóa nhóm)', value: '' },
-                          ]}
-                        />
-                        <Popconfirm
-                          title={`Gán Tổ/Nhóm TH = "${bulkNhomVal || '(trống)'}" cho ${selectedRowKeys.length} bản ghi?`}
-                          okText="Gán" cancelText="Hủy"
-                          disabled={bulkNhomVal === undefined}
-                          onConfirm={handleBulkSetNhom}
-                        >
-                          <Button size="small" type="primary" loading={bulkNhomSaving}
-                            disabled={bulkNhomVal === undefined}
-                            style={{ fontWeight: 700 }}>
-                            Gán ({selectedRowKeys.length})
-                          </Button>
-                        </Popconfirm>
-                      </Space.Compact>
-                    )}
-                    {canEditStage(congDoan) && selectedRowKeys.length > 0 && canDeleteSchedule() && (
-                      <Popconfirm
-                        title={`Xóa ${selectedRowKeys.length} bản ghi đã chọn?`}
-                        okText="Xóa" cancelText="Hủy"
-                        okButtonProps={{ danger: true, loading: bulkDeleting }}
-                        onConfirm={handleBulkDeleteSelected}
-                      >
-                        <Button size="small" danger icon={<DeleteOutlined />} loading={bulkDeleting}
-                          style={{ fontWeight: 700 }}>
-                          Xóa đã chọn ({selectedRowKeys.length})
-                        </Button>
-                      </Popconfirm>
-                    )}
-                    {canEditStage(congDoan) && (
-                      <Button size="small" type="primary" icon={<PlusOutlined />}
-                        onClick={() => { setEditItem(null); setModalOpen(true) }}>
-                        Thêm mới
-                      </Button>
-                    )}
-                  </span>
-                </div>
-              </div>
-            )
-          })()}
-
           {/* ── Desktop table ── */}
           <div className="ws-desktop-view">
           <SkeletonTable
@@ -3518,6 +3520,9 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         <DoneTab
           congDoan={congDoan}
           toNhom={forcedNhom}
+          filters={filters}
+          searchTick={searchTick}
+          headerOffset={headerOffset}
           onUndone={() => fetchData(0)}
           onCountChange={setDoneCount}
           onRowClick={r => openDetailDrawer(r)}
@@ -3529,6 +3534,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         <HiddenTab
           congDoan={congDoan}
           toNhom={forcedNhom}
+          headerOffset={headerOffset}
           onUnhide={() => fetchData(0)}
           onCountChange={setHiddenCount}
         />
@@ -3563,14 +3569,16 @@ const parseSoLoNum = (soLo) => {
 }
 
 // ── DoneTab ───────────────────────────────────────────────────────────────────
-function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
+function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onUndone, onCountChange, onRowClick }) {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 1000, total: 0 })
-  const [filters, setFilters] = useState({ dateRange: null, maSp: '', soLo: '', tenTrinh: '', maBravo: '' })
   const [loaiSpMap, setLoaiSpMap] = useState({})
+  const filtersRef = useRef(filters)
+  useEffect(() => { filtersRef.current = filters }, [filters])
 
-  const fetchDone = useCallback(async (page = 0, size = 1000, f = filters) => {
+  const fetchDone = useCallback(async (page = 0, size = 1000) => {
+    const f = filtersRef.current
     setLoading(true)
     try {
       const { data: res } = await api.get('/work-schedule', {
@@ -3602,9 +3610,10 @@ function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
       }
     } catch { message.error({ content: 'Không thể tải lịch đã hoàn thiện', key: 'ws-done-err', duration: 3 }) }
     finally { setLoading(false) }
-  }, [congDoan, toNhom, filters])
+  }, [congDoan, toNhom])
 
   useEffect(() => { fetchDone(0) }, [fetchDone])
+  useEffect(() => { if (searchTick > 0) fetchDone(0) }, [searchTick, fetchDone])
 
   const handleUndone = async (id) => {
     try {
@@ -3708,39 +3717,15 @@ function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
 
   return (
     <div style={{ padding: '8px 0' }}>
-      {/* Toolbar */}
       <div style={{
-        position: 'sticky', top: 84, zIndex: 9,
-        background: '#f0fdf4', borderBottom: '2px solid #86efac',
-        padding: '7px 12px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap'
+        position: 'sticky', top: headerOffset, zIndex: 9,
+        background: '#f0fdf4', borderBottom: '1px solid #86efac',
+        padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 8
       }}>
-        <CheckCircleOutlined style={{ color: '#15803d', fontSize: 15 }} />
+        <CheckCircleOutlined style={{ color: '#15803d', fontSize: 14 }} />
         <span style={{ fontSize: 13, color: '#15803d', fontWeight: 600 }}>
           Lịch đã hoàn thiện — Tổng: {pagination.total}
         </span>
-        <RangePicker size="small" style={{ width: 210 }} format="DD/MM/YYYY"
-          placeholder={['Từ ngày', 'Đến ngày']}
-          value={filters.dateRange}
-          onChange={v => setFilters(f => ({ ...f, dateRange: v }))} />
-        <Input size="small" style={{ width: 90 }} placeholder="Mã SP" allowClear
-          value={filters.maSp}
-          onChange={e => setFilters(f => ({ ...f, maSp: e.target.value }))}
-          onPressEnter={() => fetchDone(0)} />
-        <Input size="small" style={{ width: 100 }} placeholder="Số lô" allowClear
-          value={filters.soLo}
-          onChange={e => setFilters(f => ({ ...f, soLo: e.target.value }))}
-          onPressEnter={() => fetchDone(0)} />
-        <Input size="small" style={{ width: 160 }} placeholder="Tên sản phẩm" allowClear
-          value={filters.tenTrinh}
-          onChange={e => setFilters(f => ({ ...f, tenTrinh: e.target.value }))}
-          onPressEnter={() => fetchDone(0)} />
-        <Input size="small" style={{ width: 110 }} placeholder="Mã Bravo" allowClear
-          value={filters.maBravo}
-          onChange={e => setFilters(f => ({ ...f, maBravo: e.target.value }))}
-          onPressEnter={() => fetchDone(0)} />
-        <Button size="small" type="primary" icon={<SearchOutlined />}
-          style={{ background: '#15803d', borderColor: '#15803d' }}
-          onClick={() => fetchDone(0)}>Tìm</Button>
         <Button size="small" icon={<ReloadOutlined />} onClick={() => fetchDone(0)} loading={loading}
           style={{ marginLeft: 'auto' }} />
       </div>
@@ -3762,7 +3747,7 @@ function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
         loading={loading}
         size="small"
         scroll={{ x: 900 }}
-        sticky={{ offsetHeader: 46 }}
+        sticky={{ offsetHeader: headerOffset }}
         rowHoverable={false}
         rowClassName={record => {
           const { sl, cong } = getSlCong(record)
@@ -3786,7 +3771,7 @@ function DoneTab({ congDoan, toNhom, onUndone, onCountChange, onRowClick }) {
 }
 
 // ── HiddenTab ─────────────────────────────────────────────────────────────────
-function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange }) {
+function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange, headerOffset = 84 }) {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 1000, total: 0 })
@@ -3973,7 +3958,7 @@ function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange }) {
         loading={loading}
         size="small"
         scroll={{ x: 900 }}
-        sticky={{ offsetHeader: 46 }}
+        sticky={{ offsetHeader: headerOffset }}
         rowHoverable={false}
         pagination={false}
       />
@@ -4239,6 +4224,20 @@ export default function WorkSchedulePage() {
               </Typography.Text>
             </Space>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Space.Compact size="small">
+                <Button size="small" onClick={() => {
+                  const s = dayjs().startOf('week'); const e = dayjs().endOf('week')
+                  setDevFilters(f => ({ ...f, dateRange: [s, e] })); setTimeout(() => fetchDeviations(0), 0)
+                }}>Tuần</Button>
+                <Button size="small" onClick={() => {
+                  const s = dayjs().startOf('month'); const e = dayjs().endOf('month')
+                  setDevFilters(f => ({ ...f, dateRange: [s, e] })); setTimeout(() => fetchDeviations(0), 0)
+                }}>Tháng</Button>
+                <Button size="small" onClick={() => {
+                  const s = dayjs().startOf('year'); const e = dayjs().endOf('year')
+                  setDevFilters(f => ({ ...f, dateRange: [s, e] })); setTimeout(() => fetchDeviations(0), 0)
+                }}>Năm</Button>
+              </Space.Compact>
               <RangePicker size="small" style={{ width: 224 }} format="DD/MM/YYYY"
                 placeholder={['Từ ngày', 'Đến ngày']}
                 value={devFilters.dateRange}

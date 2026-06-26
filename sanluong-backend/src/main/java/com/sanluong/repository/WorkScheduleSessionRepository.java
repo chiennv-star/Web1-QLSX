@@ -60,4 +60,7 @@ public interface WorkScheduleSessionRepository extends JpaRepository<WorkSchedul
             @Param("ngay") LocalDate ngay,
             @Param("maNv") String maNhanVien,
             @Param("ca") String caSanXuat);
+
+    @Query("SELECT COUNT(s) > 0 FROM WorkScheduleSession s WHERE s.workScheduleId = :wsId AND s.ngay = :ngay AND s.loaiSession = 'KH_TO'")
+    boolean existsKhToByWsIdAndNgay(@Param("wsId") Long wsId, @Param("ngay") LocalDate ngay);
 }
