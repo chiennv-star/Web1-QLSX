@@ -284,11 +284,12 @@ public class WorkScheduleService {
                 }
                 // PCPL1/PCPL2: chỉ set "doing" cho đúng group; nếu không biết group thì cả hai đều doing
                 // BBC1/PL/DG: luôn doing khi phát lệnh
+                // Chỉ set "doing" nếu chưa có tinhTrang — không override "done" đã có
                 boolean shouldDoing = isPhatLenh && !"CC".equals(stage);
                 if (shouldDoing && ("PCPL1".equals(stage) || "PCPL2".equals(stage)) && finalPcplNhom != null) {
                     shouldDoing = stage.equals(finalPcplNhom);
                 }
-                if (shouldDoing && !"doing".equals(w.getTinhTrang())) {
+                if (shouldDoing && isEmpty(w.getTinhTrang())) {
                     w.setTinhTrang("doing"); changed = true;
                 }
                 if (changed) repository.save(w);
