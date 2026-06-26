@@ -185,6 +185,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const [saving, setSaving] = useState(null)
   const [maNvErrorKeys, setMaNvErrorKeys] = useState(new Set()) // keys có lỗi maNhanVien
   const [editingKeys, setEditingKeys] = useState(new Set())
+  const [dirtyRowKeys, setDirtyRowKeys] = useState(new Set())
   const [batchEditDays, setBatchEditDays] = useState(new Set())
   const [batchSaving, setBatchSaving] = useState(new Set())
   const [savedSlKeys, setSavedSlKeys] = useState(new Set())
@@ -193,6 +194,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const [contextMenu, setContextMenu] = useState(null)
   const [syncKhLoadingDays, setSyncKhLoadingDays] = useState(new Set())
   const [syncToKhLoading, setSyncToKhLoading] = useState(false)
+  const [khToExists, setKhToExists] = useState(false)
 
   const [renamingDay, setRenamingDay] = useState(null)   // ngayKey đang đổi ngày
   const [renameDayVal, setRenameDayVal] = useState('')   // giá trị ngày mới
@@ -262,6 +264,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     setBatchEditDays(new Set())
     setBatchSaving(new Set())
     setSavedSlKeys(new Set())
+    setKhToExists(false)
     pendingSlRef.current = {}
     fetchSessions()
     api.get(`/product-master/lookup/${encodeURIComponent(schedule.maSp || '')}`)
@@ -361,9 +364,13 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const fetchSessions = async () => {
     setLoading(true)
     try {
-      const { data } = await api.get('/work-schedule-session', { params: { scheduleId: schedule.id } })
+      const [{ data }, khToResp] = await Promise.all([
+        api.get('/work-schedule-session', { params: { scheduleId: schedule.id } }),
+        api.get('/work-schedule-session', { params: { scheduleId: schedule.id, loaiSession: 'KH_TO' } }).catch(() => ({ data: [] })),
+      ])
       const normalized = data.map(normalizeSession)
       setSessions(normalized)
+      setKhToExists((khToResp.data || []).length > 0)
       const slMap = {}
       normalized.forEach(s => {
         const key = s.ngay || 'unknown'
@@ -498,6 +505,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       (s.id ? s.id === identifier : s._tempId === identifier)
         ? { ...s, [field]: value } : s
     ))
+    setDirtyRowKeys(prev => new Set([...prev, identifier]))
   }
 
   const updateLocals = (identifier, fields) => {
@@ -505,6 +513,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       (s.id ? s.id === identifier : s._tempId === identifier)
         ? { ...s, ...fields } : s
     ))
+    setDirtyRowKeys(prev => new Set([...prev, identifier]))
   }
 
   const syncCong = async (updatedSessions) => {
@@ -669,6 +678,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       const { data } = await api.post('/work-schedule-session/sync-schedule-to-kh-to', null, {
         params: { scheduleId: schedule.id },
       })
+      setKhToExists(true)
       if (data.created === 0) message.info('Tất cả người thực hiện đã có trong Kế Hoạch Tổ')
       else message.success(`Đã đẩy ${data.created} người thực hiện lên Kế Hoạch Tổ`)
     } catch {
@@ -757,6 +767,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       }
       if (updatedSessions) syncCong(updatedSessions)
       setEditingKeys(prev => { const next = new Set(prev); next.delete(key); return next })
+      setDirtyRowKeys(prev => { const n = new Set(prev); n.delete(key); return n })
       onRefresh?.()
       message.success('Đã lưu')
       // Đồng bộ KH_TO nếu Ca vừa đổi
@@ -830,6 +841,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       message.warning('Một số dòng lưu thất bại hoặc thiếu Mã NV')
     } else {
       setBatchEditDays(prev => { const n = new Set(prev); n.delete(ngayKey); return n })
+      const dayRowKeys = rows.map(s => s.id || s._tempId)
+      setDirtyRowKeys(prev => { const n = new Set(prev); dayRowKeys.forEach(k => n.delete(k)); return n })
       message.success('Đã lưu tất cả')
     }
     // Đồng bộ KH_TO cho các row có Ca thay đổi
@@ -1262,15 +1275,21 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                               <datalist id={`vaitro-list-${rowKey}`}>{vaiTroOptions.map(v => <option key={v} value={v} />)}</datalist>
                             </td>
                             <td style={{ ...cellStyle, width: 90, textAlign: 'center', whiteSpace: 'nowrap' }}>
-                              <Button size="small" type="primary" icon={<CheckOutlined />}
-                                loading={isSavingRow}
-                                onClick={() => {
-                                  const latest = sessionsRef.current.find(r => r.id ? r.id === rowKey : r._tempId === rowKey)
-                                  if (latest) saveRow(latest)
-                                }}
-                                style={{ fontSize: 11, marginRight: 4, padding: '0 6px' }}>
-                                Cập nhật
-                              </Button>
+                              {(() => {
+                                const isDirtyRow = dirtyRowKeys.has(rowKey) || !s.id
+                                return (
+                                  <Button size="small" icon={<CheckOutlined />}
+                                    loading={isSavingRow}
+                                    onClick={() => {
+                                      const latest = sessionsRef.current.find(r => r.id ? r.id === rowKey : r._tempId === rowKey)
+                                      if (latest) saveRow(latest)
+                                    }}
+                                    style={{ fontSize: 11, marginRight: 4, padding: '0 6px', color: '#fff', border: '1px solid',
+                                      ...(isDirtyRow ? { background: '#f97316', borderColor: '#ea580c', boxShadow: '0 0 0 2px #fed7aa' } : { background: '#52c41a', borderColor: '#389e0d' }) }}>
+                                    Cập nhật
+                                  </Button>
+                                )
+                              })()}
                               <Button size="small" type="text" danger icon={<DeleteOutlined />}
                                 onClick={() => deleteRow(s)} style={{ padding: '0 4px', color: '#cbd5e1', fontSize: 15 }} />
                             </td>
@@ -1616,15 +1635,21 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                         onChange={e => updateLocal(key, 'ghiChu', e.target.value)} />
                     </td>
                     <td style={{ ...cellStyle, width: 90, textAlign: 'center', whiteSpace: 'nowrap' }}>
-                      <Button size="small" type="primary" icon={<CheckOutlined />}
-                        loading={isSaving}
-                        onClick={() => {
-                          const latest = sessionsRef.current.find(r => r.id ? r.id === key : r._tempId === key)
-                          if (latest) saveRow(latest)
-                        }}
-                        style={{ fontSize: 11, marginRight: 4, padding: '0 6px' }}>
-                        Cập nhật
-                      </Button>
+                      {(() => {
+                        const isDirtyRow = dirtyRowKeys.has(key) || !s.id
+                        return (
+                          <Button size="small" icon={<CheckOutlined />}
+                            loading={isSaving}
+                            onClick={() => {
+                              const latest = sessionsRef.current.find(r => r.id ? r.id === key : r._tempId === key)
+                              if (latest) saveRow(latest)
+                            }}
+                            style={{ fontSize: 11, marginRight: 4, padding: '0 6px', color: '#fff', border: '1px solid',
+                              ...(isDirtyRow ? { background: '#f97316', borderColor: '#ea580c', boxShadow: '0 0 0 2px #fed7aa' } : { background: '#52c41a', borderColor: '#389e0d' }) }}>
+                            Cập nhật
+                          </Button>
+                        )
+                      })()}
                       <Button size="small" type="text" danger icon={<DeleteOutlined />}
                         onClick={() => deleteRow(s)} style={{ padding: '0 4px', color: '#cbd5e1', fontSize: 15 }} />
                     </td>
@@ -1702,16 +1727,17 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
 
   const handleDrawerClose = () => {
     const hasUnsavedRows = sessions.some(s => !s.id && s._tempId)
-    if (isDirty || hasUnsavedRows) {
+    const hasDirtyRows   = dirtyRowKeys.size > 0
+    if (isDirty || hasUnsavedRows || hasDirtyRows) {
       Modal.confirm({
         title: 'Có thay đổi chưa lưu',
         content: isDirty
           ? 'Bạn chưa nhấn "Cập nhật". Thoát sẽ mất các thay đổi vừa nhập.'
-          : 'Có dòng nhân viên chưa được lưu. Thoát sẽ mất dữ liệu.',
+          : 'Có dòng nhân viên đã chỉnh sửa nhưng chưa nhấn "Cập nhật". Thoát sẽ mất dữ liệu.',
         okText: 'Thoát không lưu',
         okType: 'danger',
         cancelText: 'Quay lại',
-        onOk: () => { setIsDirty(false); onClose() },
+        onOk: () => { setIsDirty(false); setDirtyRowKeys(new Set()); onClose() },
       })
     } else {
       onClose()
@@ -1815,13 +1841,16 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
         ) : (
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
             {sessions.some(s => s.id) && (
-              <Tooltip title="Đẩy toàn bộ người thực hiện trong Sản Lượng Tổ lên Kế Hoạch Tổ">
+              <Tooltip title={khToExists ? 'Đã đẩy lên Kế Hoạch Tổ — nhấn để đồng bộ lại' : '⚠ Chưa đẩy lên Kế Hoạch Tổ — nhấn để đẩy ngay'}>
                 <Button
                   size="small" icon={<SyncOutlined />}
                   loading={syncToKhLoading}
                   onClick={handleSyncScheduleToKhTo}
-                  style={{ fontSize: 12, background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.5)', color: '#fff', borderRadius: 6 }}>
-                  Đẩy lên KH Tổ
+                  style={{ fontSize: 12, borderRadius: 6, fontWeight: 600, color: '#fff', border: '1px solid',
+                    ...(khToExists
+                      ? { background: '#52c41a', borderColor: '#389e0d' }
+                      : { background: '#f97316', borderColor: '#ea580c', boxShadow: '0 0 0 2px #fed7aa' }) }}>
+                  {khToExists ? '✓ KH Tổ' : '⚠ Đẩy KH Tổ'}
                 </Button>
               </Tooltip>
             )}

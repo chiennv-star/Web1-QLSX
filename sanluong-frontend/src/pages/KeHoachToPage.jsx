@@ -77,6 +77,7 @@ function AssignCard({
   onDragOver, onDropPerson, onRemovePerson, onUpdate, onRemove,
   isFirst, isLast, onMoveUp, onMoveDown, onClone,
   onDragStartPersonMove, onSyncNote, onAddShift, onRemoveShift,
+  readOnly,
 }) {
   const existingShifts  = SHIFTS.filter(s => a.caShifts?.[s])
   const availableShifts = SHIFTS.filter(s => !a.caShifts?.[s])
@@ -146,34 +147,39 @@ function AssignCard({
         {/* Note */}
         <input
           value={a.note || ''}
-          placeholder="Ghi chú..."
-          onChange={e => onUpdate(a.id, 'note', e.target.value)}
-          onBlur={e => onSyncNote(a.id, e.target.value)}
+          placeholder={readOnly ? '' : 'Ghi chú...'}
+          readOnly={readOnly}
+          onChange={readOnly ? undefined : e => onUpdate(a.id, 'note', e.target.value)}
+          onBlur={readOnly ? undefined : e => onSyncNote(a.id, e.target.value)}
           style={{
             flex: '1 1 110px', minWidth: 100,
-            border: '1px solid #e2e8f0', borderRadius: 8,
+            border: readOnly ? '1px solid transparent' : '1px solid #e2e8f0', borderRadius: 8,
             padding: '5px 8px', fontSize: 12, color: '#334155', outline: 'none',
+            cursor: readOnly ? 'default' : undefined,
+            background: readOnly ? 'transparent' : undefined,
           }}
         />
 
         {/* Move + Clone + Delete */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, flexShrink: 0 }}>
-          <Tooltip title="Lên trên">
-            <button onClick={onMoveUp} disabled={isFirst}
-              style={{ border: 'none', background: 'transparent', cursor: isFirst ? 'default' : 'pointer', color: isFirst ? '#e2e8f0' : '#94a3b8', fontSize: 14, padding: '1px 4px', borderRadius: 4, lineHeight: 1 }}>↑</button>
-          </Tooltip>
-          <Tooltip title="Xuống dưới">
-            <button onClick={onMoveDown} disabled={isLast}
-              style={{ border: 'none', background: 'transparent', cursor: isLast ? 'default' : 'pointer', color: isLast ? '#e2e8f0' : '#94a3b8', fontSize: 14, padding: '1px 4px', borderRadius: 4, lineHeight: 1 }}>↓</button>
-          </Tooltip>
-          <Tooltip title="Nhân bản">
-            <span onClick={() => onClone(a.id)}
-              style={{ cursor: 'pointer', color: '#94a3b8', fontSize: 14, marginTop: 2, userSelect: 'none' }}>⧉</span>
-          </Tooltip>
-          <Popconfirm title="Xóa card này?" okText="Xóa" cancelText="Huỷ" okButtonProps={{ danger: true, size: 'small' }} onConfirm={() => onRemove(a.id)}>
-            <button style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#cbd5e1', fontSize: 15, marginTop: 2, padding: 0, lineHeight: 1 }}>🗑</button>
-          </Popconfirm>
-        </div>
+        {!readOnly && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+            <Tooltip title="Lên trên">
+              <button onClick={onMoveUp} disabled={isFirst}
+                style={{ border: 'none', background: 'transparent', cursor: isFirst ? 'default' : 'pointer', color: isFirst ? '#e2e8f0' : '#94a3b8', fontSize: 14, padding: '1px 4px', borderRadius: 4, lineHeight: 1 }}>↑</button>
+            </Tooltip>
+            <Tooltip title="Xuống dưới">
+              <button onClick={onMoveDown} disabled={isLast}
+                style={{ border: 'none', background: 'transparent', cursor: isLast ? 'default' : 'pointer', color: isLast ? '#e2e8f0' : '#94a3b8', fontSize: 14, padding: '1px 4px', borderRadius: 4, lineHeight: 1 }}>↓</button>
+            </Tooltip>
+            <Tooltip title="Nhân bản">
+              <span onClick={() => onClone(a.id)}
+                style={{ cursor: 'pointer', color: '#94a3b8', fontSize: 14, marginTop: 2, userSelect: 'none' }}>⧉</span>
+            </Tooltip>
+            <Popconfirm title="Xóa card này?" okText="Xóa" cancelText="Huỷ" okButtonProps={{ danger: true, size: 'small' }} onConfirm={() => onRemove(a.id)}>
+              <button style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#cbd5e1', fontSize: 15, marginTop: 2, padding: 0, lineHeight: 1 }}>🗑</button>
+            </Popconfirm>
+          </div>
+        )}
       </div>
 
       {/* ── Ca sections ── */}
@@ -198,10 +204,10 @@ function AssignCard({
 
               {/* Drop zone */}
               <div
-                onDragOver={onDragOver}
-                onDrop={e => onDropPerson(e, a.id, caKey)}
-                onDragEnter={e => { e.preventDefault(); e.currentTarget.style.borderColor = '#6366f1' }}
-                onDragLeave={e => { e.currentTarget.style.borderColor = 'transparent' }}
+                onDragOver={readOnly ? undefined : onDragOver}
+                onDrop={readOnly ? undefined : e => onDropPerson(e, a.id, caKey)}
+                onDragEnter={readOnly ? undefined : e => { e.preventDefault(); e.currentTarget.style.borderColor = '#6366f1' }}
+                onDragLeave={readOnly ? undefined : e => { e.currentTarget.style.borderColor = 'transparent' }}
                 style={{
                   display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center',
                   flex: '2 1 180px', minWidth: 150,
@@ -213,14 +219,14 @@ function AssignCard({
                   const emp        = employees.find(e => e.maNhanVien === ma)
                   const isConflict = dup.has(`${ma}|${a.ngay}|${caKey}`)
                   return (
-                    <span key={ma} draggable onDragStart={e => onDragStartPersonMove(e, ma, a.id, caKey)}
+                    <span key={ma} draggable={!readOnly} onDragStart={readOnly ? undefined : e => onDragStartPersonMove(e, ma, a.id, caKey)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 4,
                         background: isConflict ? '#fef2f2' : '#eef2ff',
                         border: `1px solid ${isConflict ? '#fca5a5' : '#c7d2fe'}`,
                         color: isConflict ? '#b91c1c' : '#3730a3',
                         borderRadius: 999, padding: '2px 5px 2px 3px', fontSize: 11.5, fontWeight: 700,
-                        cursor: 'grab',
+                        cursor: readOnly ? 'default' : 'grab',
                       }}
                     >
                       <span style={{
@@ -244,28 +250,32 @@ function AssignCard({
                           </span>
                         )}
                       </span>
-                      <Popconfirm
-                        title={`Xóa "${emp?.hoVaTen || ma}" khỏi ${caKey}?`}
-                        okText="Xóa" cancelText="Huỷ"
-                        okButtonProps={{ danger: true, size: 'small' }}
-                        onConfirm={e => { e?.stopPropagation(); onRemovePerson(a.id, ma, caKey) }}
-                      >
-                        <span
-                          style={{ cursor: 'pointer', marginLeft: 1, fontSize: 11, color: isConflict ? '#b91c1c' : '#6366f1', opacity: 0.7, lineHeight: 1, display: 'flex', alignItems: 'center' }}
-                          onMouseDown={e => e.stopPropagation()}
-                          onClick={e => e.stopPropagation()}
-                        >✕</span>
-                      </Popconfirm>
+                      {!readOnly && (
+                        <Popconfirm
+                          title={`Xóa "${emp?.hoVaTen || ma}" khỏi ${caKey}?`}
+                          okText="Xóa" cancelText="Huỷ"
+                          okButtonProps={{ danger: true, size: 'small' }}
+                          onConfirm={e => { e?.stopPropagation(); onRemovePerson(a.id, ma, caKey) }}
+                        >
+                          <span
+                            style={{ cursor: 'pointer', marginLeft: 1, fontSize: 11, color: isConflict ? '#b91c1c' : '#6366f1', opacity: 0.7, lineHeight: 1, display: 'flex', alignItems: 'center' }}
+                            onMouseDown={e => e.stopPropagation()}
+                            onClick={e => e.stopPropagation()}
+                          >✕</span>
+                        </Popconfirm>
+                      )}
                     </span>
                   )
                 })}
-                <span style={{ border: '1.5px dashed #cbd5e1', borderRadius: 999, padding: '2px 8px', fontSize: 10.5, color: '#94a3b8', userSelect: 'none' }}>
-                  ⤵ kéo người
-                </span>
+                {!readOnly && (
+                  <span style={{ border: '1.5px dashed #cbd5e1', borderRadius: 999, padding: '2px 8px', fontSize: 10.5, color: '#94a3b8', userSelect: 'none' }}>
+                    ⤵ kéo người
+                  </span>
+                )}
               </div>
 
-              {/* Remove shift (only when empty) */}
-              {isEmpty && (
+              {/* Remove shift (only when empty and editing) */}
+              {!readOnly && isEmpty && (
                 <Tooltip title={`Xóa ca ${caKey}`}>
                   <button onClick={() => onRemoveShift(a.id, caKey)}
                     style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#cbd5e1', fontSize: 13, padding: '0 2px', lineHeight: 1, flexShrink: 0 }}>✕</button>
@@ -276,7 +286,7 @@ function AssignCard({
         })}
 
         {/* Add shift */}
-        {availableShifts.length > 0 && (
+        {!readOnly && availableShifts.length > 0 && (
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 2 }}>
             {availableShifts.map(caKey => {
               const cs = CA_STYLE[caKey] || CA_STYLE['Ca 1']
@@ -388,6 +398,7 @@ export default function KeHoachToPage() {
   const [viewMode, setViewMode]       = useState('viec')
   const [detailSearch, setDetailSearch] = useState('')
   const [showAllDays, setShowAllDays]   = useState(false)
+  const [editingDays, setEditingDays]   = useState(new Set())
   const [empTo, setEmpTo] = useState(selectedTo)
   useEffect(() => { setEmpTo(selectedTo) }, [selectedTo])
 
@@ -398,7 +409,8 @@ export default function KeHoachToPage() {
   const fetchPlans = useCallback(async () => {
     setLoading(true)
     try {
-      const params = { page: 0, size: 2000, source: 'SCHEDULE', isPlanned: planSource === 'PLAN' }
+      const params = { page: 0, size: 2000, source: 'SCHEDULE' }
+      if (planSource === 'SCHEDULE') params.isPlanned = false
       if (timeMode === 'week') {
         params.fromDate = weekStart.format('YYYY-MM-DD')
         params.toDate   = weekStart.add(6, 'day').format('YYYY-MM-DD')
@@ -1396,43 +1408,65 @@ export default function KeHoachToPage() {
                           const ni = days.findIndex(d2 => fmtDay(d2) === dayStr)
                           const nd = ni >= 0 && ni < days.length - 1 ? days[ni + 1] : null
                           const hasSaveable = dayAssigns.some(a => a.wsId && a.ngayFull)
+                          const isEditing   = editingDays.has(dayStr)
+                          const enterEdit   = () => setEditingDays(prev => new Set([...prev, dayStr]))
+                          const exitEdit    = () => setEditingDays(prev => { const n = new Set(prev); n.delete(dayStr); return n })
                           return (
                             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
-                              {hasSaveable && (
-                                <Button size="small" type="primary" icon={<SaveOutlined />}
-                                  loading={savingDay === dayStr}
-                                  onClick={() => handleSaveDay(dayStr)}
-                                  style={{ background: '#16a34a', borderColor: '#16a34a', fontSize: 11, height: 26 }}>
-                                  Lưu
+                              {isEditing ? (
+                                <>
+                                  {hasSaveable && (
+                                    <Button size="small" type="primary" icon={<SaveOutlined />}
+                                      loading={savingDay === dayStr}
+                                      onClick={async () => { await handleSaveDay(dayStr); exitEdit() }}
+                                      style={{ background: '#16a34a', borderColor: '#16a34a', fontSize: 11, height: 26 }}>
+                                      Lưu
+                                    </Button>
+                                  )}
+                                  <Button size="small" onClick={exitEdit}
+                                    style={{ fontSize: 11, height: 26 }}>
+                                    Huỷ
+                                  </Button>
+                                  <Tooltip title={nd ? `Sao chép sang ${DOW[nd.day()]} ${fmtDay(nd)}` : 'Đã là ngày cuối tuần'}>
+                                    <button onClick={() => cloneDay(dayStr)} disabled={!nd}
+                                      style={{ border: '1px solid #e2e8f0', background: nd ? '#f8fafc' : '#f1f5f9', borderRadius: 7, padding: '3px 9px', fontSize: 11, fontWeight: 600, color: nd ? '#64748b' : '#cbd5e1', cursor: nd ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                      ⧉ Nhân bản
+                                    </button>
+                                  </Tooltip>
+                                </>
+                              ) : (
+                                <Button size="small" onClick={enterEdit}
+                                  style={{ fontSize: 11, height: 26 }}>
+                                  ✏ Cập nhật
                                 </Button>
                               )}
-                              <Tooltip title={nd ? `Sao chép sang ${DOW[nd.day()]} ${fmtDay(nd)}` : 'Đã là ngày cuối tuần'}>
-                                <button onClick={() => cloneDay(dayStr)} disabled={!nd}
-                                  style={{ border: '1px solid #e2e8f0', background: nd ? '#f8fafc' : '#f1f5f9', borderRadius: 7, padding: '3px 9px', fontSize: 11, fontWeight: 600, color: nd ? '#64748b' : '#cbd5e1', cursor: nd ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                  ⧉ Nhân bản
-                                </button>
-                              </Tooltip>
                             </div>
                           )
                         })()}
                       </div>
-                      {dayAssigns.map((a, idx) => (
-                        <AssignCard key={a.id} a={a} employees={employees} dup={dup}
-                          onDragOver={onDragOver} onDropPerson={onDropPerson}
-                          onRemovePerson={removePerson} onUpdate={updateAssign} onRemove={removeAssign}
-                          isFirst={idx === 0} isLast={idx === dayAssigns.length - 1}
-                          onMoveUp={() => moveAssign(a.id, 'up')} onMoveDown={() => moveAssign(a.id, 'down')}
-                          onClone={cloneAssign} onDragStartPersonMove={onDragStartPersonMove}
-                          onSyncNote={syncNoteToSessions} onAddShift={addShift} onRemoveShift={removeShift} />
-                      ))}
-                      <div
-                        onDragOver={onDragOver} onDrop={e => onDropProduct(e, dayStr)}
-                        onDragEnter={e => { e.preventDefault(); e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.background = '#eef2ff'; e.currentTarget.style.color = '#4f46e5' }}
-                        onDragLeave={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = ''; e.currentTarget.style.color = '#94a3b8' }}
-                        style={{ border: '2px dashed #cbd5e1', borderRadius: 10, padding: '8px', textAlign: 'center', fontSize: 11.5, color: '#94a3b8', marginTop: 4, transition: 'all 0.15s' }}
-                      >
-                        + kéo sản phẩm vào ngày này
-                      </div>
+                      {dayAssigns.map((a, idx) => {
+                        const isEditing = editingDays.has(dayStr)
+                        return (
+                          <AssignCard key={a.id} a={a} employees={employees} dup={dup}
+                            onDragOver={onDragOver} onDropPerson={onDropPerson}
+                            onRemovePerson={removePerson} onUpdate={updateAssign} onRemove={removeAssign}
+                            isFirst={idx === 0} isLast={idx === dayAssigns.length - 1}
+                            onMoveUp={() => moveAssign(a.id, 'up')} onMoveDown={() => moveAssign(a.id, 'down')}
+                            onClone={cloneAssign} onDragStartPersonMove={onDragStartPersonMove}
+                            onSyncNote={syncNoteToSessions} onAddShift={addShift} onRemoveShift={removeShift}
+                            readOnly={!isEditing} />
+                        )
+                      })}
+                      {editingDays.has(dayStr) && (
+                        <div
+                          onDragOver={onDragOver} onDrop={e => onDropProduct(e, dayStr)}
+                          onDragEnter={e => { e.preventDefault(); e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.background = '#eef2ff'; e.currentTarget.style.color = '#4f46e5' }}
+                          onDragLeave={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = ''; e.currentTarget.style.color = '#94a3b8' }}
+                          style={{ border: '2px dashed #cbd5e1', borderRadius: 10, padding: '8px', textAlign: 'center', fontSize: 11.5, color: '#94a3b8', marginTop: 4, transition: 'all 0.15s' }}
+                        >
+                          + kéo sản phẩm vào ngày này
+                        </div>
+                      )}
                     </div>
                   )
                 })}
