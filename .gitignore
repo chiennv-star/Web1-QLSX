@@ -26,3 +26,9 @@ Thumbs.db
 application-local.properties
 application-prod.properties
 sanluong-backend/src/main/resources/application.properties
+
+# ── Claude CLI ────────────────────────────────────────────────────
+.claude/
+
+# ── Temp / Analysis files ─────────────────────────────────────────
+*.html
