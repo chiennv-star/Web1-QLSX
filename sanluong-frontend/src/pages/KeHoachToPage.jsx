@@ -527,8 +527,9 @@ export default function KeHoachToPage() {
   }, [weekStart, timeMode])
 
   const fetchAll = useCallback(async () => {
-    await Promise.all([fetchPlans(), fetchEmployees()])
-  }, [fetchPlans, fetchEmployees])
+    const [plansList] = await Promise.all([fetchPlans(), fetchEmployees()])
+    if (plansList) fetchSessionsForWeek(plansList)
+  }, [fetchPlans, fetchEmployees, fetchSessionsForWeek])
 
   useEffect(() => {
     fetchPlans().then(plansList => { if (plansList) fetchSessionsForWeek(plansList) })
