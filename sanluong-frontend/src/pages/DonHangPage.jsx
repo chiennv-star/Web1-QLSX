@@ -1498,6 +1498,15 @@ export default function DonHangPage() {
       }}>
         <RangePicker size="small" format="DD/MM/YYYY" placeholder={['Từ ngày ĐH', 'Đến ngày ĐH']}
           value={dateRange} onChange={v => setDateRange(v || [null, null])} style={{ width: 230 }} />
+        <Button.Group size="small">
+          {[['T', 'week'], ['M', 'month'], ['N', 'year']].map(([label, unit]) => (
+            <Button key={unit}
+              type={dateRange[0] && dateRange[1] && dateRange[0].isSame(dayjs().startOf(unit), 'day') && dateRange[1].isSame(dayjs().endOf(unit), 'day') ? 'primary' : 'default'}
+              onClick={() => setDateRange([dayjs().startOf(unit), dayjs().endOf(unit)])}>
+              {label}
+            </Button>
+          ))}
+        </Button.Group>
 
         <Input size="small" allowClear style={{ width: 160 }}
           placeholder="Mã SP / Bravo / Tên SP"
