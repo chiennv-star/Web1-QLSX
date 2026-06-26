@@ -547,33 +547,76 @@ public class ProductionService {
             optStyle.cloneStyleFrom(reqStyle);
             optStyle.setFillForegroundColor(new XSSFColor(new byte[]{(byte)68,(byte)114,(byte)196}, null));
 
+            // Nhóm Sản lượng — nền xanh lá nhạt
+            XSSFCellStyle slStyle = wb.createCellStyle();
+            slStyle.cloneStyleFrom(reqStyle);
+            slStyle.setFillForegroundColor(new XSSFColor(new byte[]{(byte)0,(byte)97,(byte)0}, null));
+
+            // Nhóm Chi phí công — nền cam
+            XSSFCellStyle cpStyle = wb.createCellStyle();
+            cpStyle.cloneStyleFrom(reqStyle);
+            cpStyle.setFillForegroundColor(new XSSFColor(new byte[]{(byte)120,(byte)60,(byte)0}, null));
+
+            // Nhóm Hiệu suất / QA — nền tím
+            XSSFCellStyle hsStyle = wb.createCellStyle();
+            hsStyle.cloneStyleFrom(reqStyle);
+            hsStyle.setFillForegroundColor(new XSSFColor(new byte[]{(byte)60,(byte)0,(byte)120}, null));
+
             XSSFCellStyle dataStyle = wb.createCellStyle();
             dataStyle.setBorderBottom(BorderStyle.THIN); dataStyle.setBorderLeft(BorderStyle.THIN);
             dataStyle.setBorderRight(BorderStyle.THIN);
             dataStyle.setVerticalAlignment(VerticalAlignment.CENTER);
 
             XSSFSheet sheet = wb.createSheet("SanLuong");
+
+            // col 0-9: thông tin cơ bản + trạng thái
+            // col 10-16: sản lượng từng công đoạn
+            // col 17-21: chi phí công
+            // col 22-25: hiệu suất / QA / ghi chú
             String[] headers = {
                 "Mã Bravo (*)", "Mã TP (*)", "Tiến Trình / Tên SP",
                 "LSX / Số Lô", "Số Lượng KH", "Mã Đơn Hàng",
-                "PC Trạng thái", "PL Trạng thái", "ĐG Trạng thái", "BBC1 Trạng thái"
+                "PC Trạng thái", "PL Trạng thái", "ĐG Trạng thái", "BBC1 Trạng thái",
+                // Sản lượng
+                "SL PC", "BBC1 Ngày phối", "SL PL (PC→PL)", "SL ĐG",
+                "SL BBC1", "SP Trung gian", "TP Nhập kho",
+                // Chi phí công
+                "Công BBC1", "Công PC", "Công PL", "Công ĐG", "Công CC",
+                // Hiệu suất & QA
+                "TEM ĐB", "SL Trung bình", "QA Lấy mẫu", "Mô tả", "Ghi chú hiệu suất"
             };
-            boolean[] required = {true, true, false, false, false, false, false, false, false, false};
-            int[] widths = {16, 12, 40, 16, 14, 16, 16, 16, 16, 16};
+            // style index per column
+            XSSFCellStyle[] colStyles = {
+                reqStyle, reqStyle, optStyle, optStyle, optStyle, optStyle,
+                optStyle, optStyle, optStyle, optStyle,
+                slStyle, slStyle, slStyle, slStyle, slStyle, slStyle, slStyle,
+                cpStyle, cpStyle, cpStyle, cpStyle, cpStyle,
+                hsStyle, hsStyle, hsStyle, hsStyle, hsStyle
+            };
+            int[] widths = {
+                16, 12, 40, 16, 14, 16, 16, 16, 16, 16,
+                12, 14, 15, 12, 12, 14, 14,
+                12, 12, 12, 12, 12,
+                12, 14, 14, 30, 30
+            };
 
             Row hRow = sheet.createRow(0);
             hRow.setHeightInPoints(22);
             for (int c = 0; c < headers.length; c++) {
                 Cell cell = hRow.createCell(c);
                 cell.setCellValue(headers[c]);
-                cell.setCellStyle(required[c] ? reqStyle : optStyle);
+                cell.setCellStyle(colStyles[c]);
                 sheet.setColumnWidth(c, widths[c] * 256);
             }
 
+            // 3 dòng mẫu — chỉ điền các cột cơ bản
             String[][] samples = {
-                {"10101205", "TP205", "Son Lụa Diễm 104", "2506001", "2000", "206150626", "doing", "doing", "", ""},
-                {"10202287", "TP287", "Xịt khoáng hoa hồng Mineral Rose", "2506002", "5000", "287070626", "done",  "doing", "doing", "doing"},
-                {"10108272", "TP272", "Son dưỡng nhiên 202",              "2506003", "1500", "",           "doing", "",     "",     ""},
+                {"10101205","TP205","Son Lụa Diễm 104","2506001","2000","206150626","doing","doing","","",
+                 "","","","","","","","","","","","","","","","",""},
+                {"10202287","TP287","Xịt khoáng hoa hồng Mineral Rose","2506002","5000","287070626","done","doing","doing","doing",
+                 "","","","","","","","","","","","","","","","",""},
+                {"10108272","TP272","Son dưỡng nhiên 202","2506003","1500","","doing","","","",
+                 "","","","","","","","","","","","","","","","",""},
             };
             for (int r = 0; r < samples.length; r++) {
                 Row row = sheet.createRow(r + 1);
@@ -585,6 +628,7 @@ public class ProductionService {
                 }
             }
 
+            // Dropdown doing/done cho các cột trạng thái (6-9)
             String[] ttOptions = {"doing", "done", ""};
             DataValidationHelper dvH = sheet.getDataValidationHelper();
             for (int col : new int[]{6, 7, 8, 9}) {
@@ -599,27 +643,41 @@ public class ProductionService {
             String[] notes = {
                 "HƯỚNG DẪN IMPORT SẢN LƯỢNG",
                 "",
-                "Cột bắt buộc (màu xanh đậm):",
+                "Cột bắt buộc (nền xanh đậm) — cột A, B:",
                 "  - Mã Bravo (*): mã bravo của sản phẩm",
-                "  - Mã TP (*): mã thành phẩm (Song An)",
+                "  - Mã TP (*):    mã thành phẩm (Song An)",
                 "",
-                "Cột tùy chọn (màu xanh nhạt):",
-                "  - Tiến Trình / Tên SP: tên sản phẩm/tiến trình",
-                "  - LSX / Số Lô: số lô sản xuất",
-                "  - Số Lượng KH: số lượng kế hoạch (số nguyên)",
-                "  - Mã Đơn Hàng: mã đơn hàng liên quan",
+                "Thông tin cơ bản (nền xanh nhạt) — cột C÷J:",
+                "  - Tiến Trình / Tên SP",
+                "  - LSX / Số Lô",
+                "  - Số Lượng KH: số nguyên",
+                "  - Mã Đơn Hàng",
                 "  - PC/PL/ĐG/BBC1 Trạng thái: 'doing' hoặc 'done'",
+                "",
+                "Sản lượng công đoạn (nền xanh lá) — cột K÷Q:",
+                "  - SL PC, BBC1 Ngày phối, SL PL, SL ĐG, SL BBC1: số nguyên",
+                "  - SP Trung gian, TP Nhập kho: số nguyên",
+                "",
+                "Chi phí công (nền cam) — cột R÷V:",
+                "  - Công BBC1, Công PC, Công PL, Công ĐG, Công CC: số thực (vd: 1.25)",
+                "",
+                "Hiệu suất & QA (nền tím) — cột W÷AA:",
+                "  - TEM ĐB: số thực",
+                "  - SL Trung bình: số thực",
+                "  - QA Lấy mẫu: số nguyên",
+                "  - Mô tả, Ghi chú hiệu suất: văn bản",
                 "",
                 "Lưu ý:",
                 "  - Bản ghi trùng (Mã Bravo + LSX + Mã Đơn Hàng) sẽ bị bỏ qua",
                 "  - Dòng thiếu Mã Bravo hoặc Mã TP sẽ bị bỏ qua",
+                "  - Các cột tự tính (Tổng BTP, Dở dang ĐG, Σ Cộng, SP/Công) KHÔNG cần nhập",
                 "  - Không xóa dòng header (dòng 1)",
             };
             for (int i = 0; i < notes.length; i++) {
                 Row row = guide.createRow(i);
                 row.createCell(0).setCellValue(notes[i]);
             }
-            guide.setColumnWidth(0, 70 * 256);
+            guide.setColumnWidth(0, 80 * 256);
 
             wb.write(out);
             return out.toByteArray();
@@ -638,12 +696,13 @@ public class ProductionService {
 
                 String maBravo = cellStr(row, 0);
                 String maTp    = cellStr(row, 1);
-                if (maBravo.isBlank() && maTp.isBlank()) continue; // dòng trống
+                if (maBravo.isBlank() && maTp.isBlank()) continue;
                 if (maBravo.isBlank() || maTp.isBlank()) {
                     errors.add("Dòng " + (i + 1) + ": thiếu Mã Bravo hoặc Mã TP");
                     continue;
                 }
 
+                // Cột 2-9: thông tin cơ bản + trạng thái
                 String tienTrinh  = cellStr(row, 2);
                 String lsx        = cellStr(row, 3);
                 String soLuongStr = cellStr(row, 4);
@@ -652,6 +711,29 @@ public class ProductionService {
                 String plTT       = normTT(cellStr(row, 7));
                 String dgTT       = normTT(cellStr(row, 8));
                 String bbc1TT     = normTT(cellStr(row, 9));
+
+                // Cột 10-16: sản lượng công đoạn
+                String slPc         = cellStr(row, 10);
+                String bbc1_1       = cellStr(row, 11);
+                String pcPl         = cellStr(row, 12);
+                String dg2          = cellStr(row, 13);
+                String bbc1_2       = cellStr(row, 14);
+                String spTrungGian  = cellStr(row, 15);
+                String tpNhapKho    = cellStr(row, 16);
+
+                // Cột 17-21: chi phí công
+                String congBbc1  = cellStr(row, 17);
+                String congPc    = cellStr(row, 18);
+                String congPl    = cellStr(row, 19);
+                String congDg    = cellStr(row, 20);
+                String congCc    = cellStr(row, 21);
+
+                // Cột 22-26: hiệu suất & QA
+                String temDb          = cellStr(row, 22);
+                String slTrungBinh    = cellStr(row, 23);
+                String qaLayMau       = cellStr(row, 24);
+                String moTa           = cellStr(row, 25);
+                String ghiChuHieuSuat = cellStr(row, 26);
 
                 if (existsByKey(maBravo, lsx, maDonHang.isBlank() ? null : maDonHang)) {
                     skipped++;
@@ -664,14 +746,30 @@ public class ProductionService {
                 dto.setTienTrinh(tienTrinh.isBlank() ? null : tienTrinh);
                 dto.setLsx(lsx.isBlank() ? null : lsx);
                 dto.setMaDonHang(maDonHang.isBlank() ? null : maDonHang);
-                if (!soLuongStr.isBlank()) {
-                    try { dto.setSoLuong((int) Double.parseDouble(soLuongStr)); }
-                    catch (NumberFormatException ignored) {}
-                }
                 dto.setPcTrangThai(pcTT);
                 dto.setPlTrangThai(plTT);
                 dto.setDgTrangThai(dgTT);
                 dto.setBbc1TrangThai(bbc1TT);
+
+                parseIntCell(soLuongStr,   dto::setSoLuong);
+                parseIntCell(spTrungGian,  dto::setSpTrungGian);
+                parseIntCell(tpNhapKho,    dto::setTpNhapKho);
+                parseIntCell(qaLayMau,     dto::setQaLayMau);
+                parseBdCell(congBbc1,      dto::setBbc1_3);
+                parseBdCell(congPc,        dto::setPcChiPhi);
+                parseBdCell(congPl,        dto::setPlChiPhi);
+                parseBdCell(congDg,        dto::setDgChiPhi);
+                parseBdCell(congCc,        dto::setCcChiPhi);
+                parseBdCell(temDb,         dto::setTemDb);
+                parseBdCell(slTrungBinh,   dto::setSlTrungBinh);
+
+                if (!slPc.isBlank())   dto.setSlPc(slPc);
+                if (!bbc1_1.isBlank()) dto.setBbc1_1(bbc1_1);
+                if (!pcPl.isBlank())   dto.setPcPl(pcPl);
+                if (!dg2.isBlank())    dto.setDg2(dg2);
+                if (!bbc1_2.isBlank()) dto.setBbc1_2(bbc1_2);
+                if (!moTa.isBlank())           dto.setMoTa(moTa);
+                if (!ghiChuHieuSuat.isBlank()) dto.setGhiChuHieuSuat(ghiChuHieuSuat);
 
                 try {
                     create(dto, username);
@@ -687,6 +785,16 @@ public class ProductionService {
         result.put("skipped", skipped);
         result.put("errors", errors);
         return result;
+    }
+
+    private void parseIntCell(String val, java.util.function.Consumer<Integer> setter) {
+        if (val == null || val.isBlank()) return;
+        try { setter.accept((int) Double.parseDouble(val)); } catch (NumberFormatException ignored) {}
+    }
+
+    private void parseBdCell(String val, java.util.function.Consumer<BigDecimal> setter) {
+        if (val == null || val.isBlank()) return;
+        try { setter.accept(new BigDecimal(val)); } catch (NumberFormatException ignored) {}
     }
 
     private String cellStr(Row row, int col) {
