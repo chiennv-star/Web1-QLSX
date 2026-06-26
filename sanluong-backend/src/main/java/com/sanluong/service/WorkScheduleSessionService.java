@@ -790,4 +790,56 @@ public class WorkScheduleSessionService {
         }
         s.setNangSuatTrungBinh(nsTb);
     }
+
+    /**
+     * Sync toàn bộ SCHEDULE sessions → tạo KH_TO tương ứng (nếu chưa tồn tại).
+     * Dùng repo.save() trực tiếp để tránh vòng lặp mirror trong service.create().
+     *
+     * Dedup key: (workScheduleId, ngay, maNhanVien, caSanXuat)
+     *
+     * @return số KH_TO sessions được tạo mới
+     */
+    @Transactional
+    public int syncScheduleToKhTo(Long workScheduleId) {
+        List<WorkScheduleSession> scheduleSessions =
+                repository.findByWorkScheduleIdOrderByNgayAscIdAsc(workScheduleId);
+        if (scheduleSessions.isEmpty()) return 0;
+
+        List<WorkScheduleSession> existingKhTo =
+                repository.findKhToByWorkScheduleId(workScheduleId);
+
+        Set<String> existingKeys = existingKhTo.stream()
+                .map(k -> k.getNgay() + "|"
+                        + Objects.toString(k.getMaNhanVien(), "")
+                        + "|" + Objects.toString(k.getCaSanXuat(), ""))
+                .collect(Collectors.toSet());
+
+        int created = 0;
+        for (WorkScheduleSession src : scheduleSessions) {
+            String key = src.getNgay() + "|"
+                    + Objects.toString(src.getMaNhanVien(), "")
+                    + "|" + Objects.toString(src.getCaSanXuat(), "");
+            if (existingKeys.contains(key)) continue;
+
+            WorkScheduleSession khTo = new WorkScheduleSession();
+            khTo.setWorkScheduleId(src.getWorkScheduleId());
+            khTo.setNgay(src.getNgay());
+            khTo.setNhomThucHien(src.getNhomThucHien());
+            khTo.setMaNhanVien(src.getMaNhanVien());
+            khTo.setNguoiThucHien(src.getNguoiThucHien());
+            khTo.setCaSanXuat(src.getCaSanXuat());
+            khTo.setThoiGianBatDau(src.getThoiGianBatDau());
+            khTo.setThoiGianKetThuc(src.getThoiGianKetThuc());
+            khTo.setSoGioThucHien(src.getSoGioThucHien());
+            khTo.setCongThucHien(src.getCongThucHien());
+            khTo.setSanLuong(src.getSanLuong());
+            khTo.setVaiTro(src.getVaiTro());
+            khTo.setLoaiSession("KH_TO");
+            repository.save(khTo);
+
+            existingKeys.add(key);
+            created++;
+        }
+        return created;
+    }
 }

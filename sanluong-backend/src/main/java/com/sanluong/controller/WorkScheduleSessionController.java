@@ -159,6 +159,14 @@ public class WorkScheduleSessionController {
         return ResponseEntity.ok(result);
     }
 
+    @PostMapping("/sync-schedule-to-kh-to")
+    public ResponseEntity<Map<String, Integer>> syncScheduleToKhTo(@RequestParam Long scheduleId) {
+        int created = service.syncScheduleToKhTo(scheduleId);
+        Map<String, Integer> result = new HashMap<>();
+        result.put("created", created);
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/daily-report")
     public ResponseEntity<List<DailyProductionDto>> getDailyReport(
             @RequestParam(required = false) String fromDate,

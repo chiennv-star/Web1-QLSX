@@ -192,6 +192,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const [slHistory, setSlHistory] = useState({})
   const [contextMenu, setContextMenu] = useState(null)
   const [syncKhLoadingDays, setSyncKhLoadingDays] = useState(new Set())
+  const [syncToKhLoading, setSyncToKhLoading] = useState(false)
 
   const [renamingDay, setRenamingDay] = useState(null)   // ngayKey đang đổi ngày
   const [renameDayVal, setRenameDayVal] = useState('')   // giá trị ngày mới
@@ -657,6 +658,23 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       message.error('Đồng bộ ca thất bại')
     } finally {
       setSyncKhLoadingDays(prev => { const n = new Set(prev); n.delete(ngayKey); return n })
+    }
+  }
+
+  // Đẩy toàn bộ SCHEDULE sessions → tạo KH_TO tương ứng (nếu chưa tồn tại)
+  const handleSyncScheduleToKhTo = async () => {
+    if (!schedule?.id) return
+    setSyncToKhLoading(true)
+    try {
+      const { data } = await api.post('/work-schedule-session/sync-schedule-to-kh-to', null, {
+        params: { scheduleId: schedule.id },
+      })
+      if (data.created === 0) message.info('Tất cả người thực hiện đã có trong Kế Hoạch Tổ')
+      else message.success(`Đã đẩy ${data.created} người thực hiện lên Kế Hoạch Tổ`)
+    } catch {
+      message.error('Đồng bộ thất bại')
+    } finally {
+      setSyncToKhLoading(false)
     }
   }
 
@@ -1773,18 +1791,33 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
               Cập nhật
             </Button>
           </div>
-        ) : canEditDetail ? (
-          <Button onClick={async () => {
-            if (tongSanLuong > 0 || sessions.length > 0) {
-              await syncSl(tongSanLuong)
-              await syncCong(sessions)
-            }
-            setIsInfoEditing(true)
-          }}
-            style={{ flexShrink: 0, background: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.6)', fontWeight: 700, height: 36, minWidth: 130, fontSize: 12, borderRadius: 6, color: '#fff' }}>
-            Cập nhật
-          </Button>
-        ) : null}
+        ) : (
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            {sessions.some(s => s.id) && (
+              <Tooltip title="Đẩy toàn bộ người thực hiện trong Sản Lượng Tổ lên Kế Hoạch Tổ">
+                <Button
+                  size="small" icon={<SyncOutlined />}
+                  loading={syncToKhLoading}
+                  onClick={handleSyncScheduleToKhTo}
+                  style={{ fontSize: 12, background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.5)', color: '#fff', borderRadius: 6 }}>
+                  Đẩy lên KH Tổ
+                </Button>
+              </Tooltip>
+            )}
+            {canEditDetail && (
+              <Button onClick={async () => {
+                if (tongSanLuong > 0 || sessions.length > 0) {
+                  await syncSl(tongSanLuong)
+                  await syncCong(sessions)
+                }
+                setIsInfoEditing(true)
+              }}
+                style={{ flexShrink: 0, background: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.6)', fontWeight: 700, height: 36, minWidth: 130, fontSize: 12, borderRadius: 6, color: '#fff' }}>
+                Cập nhật
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── [2] ERP Info form — giới hạn chiều cao, cuộn nội bộ nếu quá dài ── */}
