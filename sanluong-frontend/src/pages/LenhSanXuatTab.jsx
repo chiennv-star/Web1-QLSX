@@ -9,7 +9,7 @@ import {
   PlusOutlined, SyncOutlined, SearchOutlined,
   ReloadOutlined, EditOutlined, CheckOutlined, FileAddOutlined,
   DeleteOutlined, ThunderboltOutlined, CloseOutlined,
-  SaveOutlined, FileTextOutlined,
+  SaveOutlined, FileTextOutlined, SwapOutlined, HistoryOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import api from '../api/axios'
@@ -58,6 +58,158 @@ function SoLoInputCell({ workScheduleId, valRef, onPressEnter }) {
       onPressEnter={onPressEnter}
       style={{ width: 100, fontFamily: 'monospace', fontSize: 12 }}
     />
+  )
+}
+
+// ── Đổi lô Modal ─────────────────────────────────────────────────────────────
+function DoiLoModal({ open, record, onClose, onSaved }) {
+  const [soLoMoi,  setSoLoMoi]  = useState('')
+  const [lyDo,     setLyDo]     = useState('')
+  const [preview,  setPreview]  = useState(null)
+  const [loading,  setLoading]  = useState(false)
+  const [saving,   setSaving]   = useState(false)
+
+  useEffect(() => {
+    if (!open || !record?.id) return
+    setSoLoMoi(''); setLyDo(''); setPreview(null)
+    setLoading(true)
+    api.get(`/lenh-san-xuat/${record.id}/doi-lo/preview`)
+      .then(({ data }) => setPreview(data))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [open, record])
+
+  const handleSubmit = async () => {
+    const lo = soLoMoi.trim()
+    if (!lo) { message.warning('Vui lòng nhập số lô mới'); return }
+    if (lo === record?.soLo) { message.warning('Số lô mới phải khác số lô hiện tại'); return }
+    setSaving(true)
+    try {
+      await api.post(`/lenh-san-xuat/${record.id}/doi-lo`, { soLoMoi: lo, lyDo: lyDo.trim() || null })
+      message.success(`Đã đổi lô: ${record.soLo} → ${lo}`)
+      onSaved()
+      onClose()
+    } catch (err) {
+      message.error(err?.response?.data?.message || 'Đổi lô thất bại')
+    } finally { setSaving(false) }
+  }
+
+  if (!record) return null
+  return (
+    <Modal
+      open={open} onCancel={onClose} title={null} destroyOnHidden
+      width={480}
+      footer={
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <Button onClick={onClose}>Hủy</Button>
+          <Button type="primary" loading={saving} onClick={handleSubmit}
+            icon={<SwapOutlined />} danger>
+            Xác nhận đổi lô
+          </Button>
+        </div>
+      }
+    >
+      <div style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', padding: '12px 16px', margin: '-20px -24px 16px', borderRadius: '8px 8px 0 0' }}>
+        <div style={{ color: '#fff', fontWeight: 800, fontSize: 14 }}>Đổi Số Lô</div>
+        <div style={{ color: '#c4b5fd', fontSize: 11, marginTop: 2 }}>
+          {record.tenSanPham} · {record.maSp}
+          {record.maDonHang && <span> · ĐH {record.maDonHang}</span>}
+        </div>
+      </div>
+
+      {/* Lô hiện tại */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <div style={{ flex: 1, background: '#f1f5f9', borderRadius: 8, padding: '8px 12px' }}>
+          <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>Lô hiện tại</div>
+          <div style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 15, color: '#7c3aed' }}>{record.soLo || '—'}</div>
+        </div>
+        <SwapOutlined style={{ color: '#94a3b8', fontSize: 18 }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Số lô mới <span style={{ color: '#ef4444' }}>*</span></div>
+          <Input
+            value={soLoMoi} onChange={e => setSoLoMoi(e.target.value)}
+            placeholder="Nhập số lô mới..."
+            autoFocus
+            style={{ fontFamily: 'monospace', fontWeight: 700, color: '#7c3aed', borderColor: '#7c3aed' }}
+            onPressEnter={handleSubmit}
+          />
+        </div>
+      </div>
+
+      {/* Lý do */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Lý do (tuỳ chọn)</div>
+        <Input.TextArea value={lyDo} onChange={e => setLyDo(e.target.value)}
+          placeholder="VD: nhầm lô, đổi lô theo yêu cầu Bravo..."
+          rows={2} style={{ resize: 'none' }} />
+      </div>
+
+      {/* Preview */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '8px 0' }}><SyncOutlined spin /> Đang kiểm tra...</div>
+      ) : preview && (
+        <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8, padding: '10px 14px', fontSize: 12 }}>
+          <div style={{ fontWeight: 700, color: '#92400e', marginBottom: 6 }}>⚠ Sẽ cập nhật đồng thời:</div>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <span>📅 <b>{preview.soKhoanLich}</b> khoản Lịch SX</span>
+            <span>📊 <b>{preview.soKhoanSanLuong}</b> khoản Sản Lượng</span>
+          </div>
+        </div>
+      )}
+    </Modal>
+  )
+}
+
+// ── Lịch sử đổi lô Modal ──────────────────────────────────────────────────────
+function LichSuDoiLoModal({ open, record, onClose }) {
+  const [history, setHistory] = useState([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open || !record?.id) return
+    setLoading(true)
+    api.get(`/lenh-san-xuat/${record.id}/lich-su-doi-lo`)
+      .then(({ data }) => setHistory(Array.isArray(data) ? data : []))
+      .catch(() => setHistory([]))
+      .finally(() => setLoading(false))
+  }, [open, record])
+
+  if (!record) return null
+  return (
+    <Modal open={open} onCancel={onClose} title={null} footer={<Button onClick={onClose}>Đóng</Button>}
+      destroyOnHidden width={520}>
+      <div style={{ background: 'linear-gradient(135deg,#1e3a5f,#1d4ed8)', padding: '12px 16px', margin: '-20px -24px 16px', borderRadius: '8px 8px 0 0' }}>
+        <div style={{ color: '#fff', fontWeight: 800, fontSize: 14 }}>Lịch sử đổi lô</div>
+        <div style={{ color: '#93c5fd', fontSize: 11, marginTop: 2 }}>
+          {record.tenSanPham} · {record.maSp}
+          {record.soLo && <span> · Lô hiện tại: <b style={{ color: '#bfdbfe' }}>{record.soLo}</b></span>}
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 24 }}><SyncOutlined spin /> Đang tải...</div>
+      ) : history.length === 0 ? (
+        <div style={{ color: '#94a3b8', textAlign: 'center', padding: 24 }}>Chưa có lịch sử đổi lô</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {history.map((h, i) => (
+            <div key={h.id || i} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 14px', background: i === 0 ? '#faf5ff' : '#f8fafc' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#9ca3af', textDecoration: 'line-through' }}>{h.soLoCu || '—'}</span>
+                <SwapOutlined style={{ color: '#7c3aed', fontSize: 12 }} />
+                <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 800, color: '#7c3aed' }}>{h.soLoMoi}</span>
+                {i === 0 && <span style={{ fontSize: 10, background: '#ede9fe', color: '#6d28d9', borderRadius: 4, padding: '1px 6px', marginLeft: 4 }}>Mới nhất</span>}
+              </div>
+              <div style={{ fontSize: 11, color: '#64748b', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                {h.lyDo && <span>📝 {h.lyDo}</span>}
+                {h.changedBy && <span>👤 {h.changedBy}</span>}
+                {h.changedAt && <span>🕐 {dayjs(h.changedAt).format('DD/MM/YYYY HH:mm')}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Modal>
   )
 }
 
@@ -614,6 +766,10 @@ export default function LenhSanXuatTab() {
   const [bulkLoading,  setBulkLoading]  = useState(null) // 'banhanh' | 'lichsx' | 'delete'
   const [detailOpen,   setDetailOpen]   = useState(false)
   const [detailRecord, setDetailRecord] = useState(null)
+  const [doiLoOpen,    setDoiLoOpen]    = useState(false)
+  const [doiLoRecord,  setDoiLoRecord]  = useState(null)
+  const [lichSuOpen,   setLichSuOpen]   = useState(false)
+  const [lichSuRecord, setLichSuRecord] = useState(null)
   const [tableH, setTableH] = useState(500)
   const [loaiSpMap, setLoaiSpMap] = useState({}) // maSp → loaiSanPham
   const tableWrapRef = useRef(null)
@@ -904,7 +1060,7 @@ export default function LenhSanXuatTab() {
       ),
     },
     {
-      title: 'SỐ LÔ', dataIndex: 'soLo', width: 110,
+      title: 'SỐ LÔ', dataIndex: 'soLo', width: 120,
       render: (v, r) => {
         if (r.isFromKhoach) {
           return (
@@ -916,9 +1072,18 @@ export default function LenhSanXuatTab() {
             />
           )
         }
-        return v
-          ? <span style={{ fontFamily: 'monospace', color: '#7c3aed', fontWeight: 700, fontSize: 12 }}>{v}</span>
-          : <span style={{ color: '#d1d5db' }}>—</span>
+        if (!v) return <span style={{ color: '#d1d5db' }}>—</span>
+        return (
+          <div style={{ fontFamily: 'monospace', lineHeight: 1.4 }}>
+            {r.soLoCu && (
+              <div style={{ fontSize: 10, color: '#9ca3af', display: 'flex', alignItems: 'center', gap: 3 }}>
+                <del>{r.soLoCu}</del>
+                <span>→</span>
+              </div>
+            )}
+            <span style={{ color: '#7c3aed', fontWeight: 700, fontSize: 12 }}>{v}</span>
+          </div>
+        )
       },
     },
     {
@@ -959,7 +1124,7 @@ export default function LenhSanXuatTab() {
         : <span style={{ color: '#d1d5db' }}>—</span>,
     },
     {
-      title: '', key: 'act', width: 108, align: 'center', fixed: 'right',
+      title: '', key: 'act', width: 152, align: 'center', fixed: 'right',
       render: (_, r) => {
         if (r.isFromKhoach) {
           return (
@@ -973,15 +1138,34 @@ export default function LenhSanXuatTab() {
             </Button>
           )
         }
-        return r.daBanHanh ? (
-          <Button
-            size="small" icon={<EditOutlined />}
-            onClick={() => { setEditItem(r); setModalOpen(true) }}
-            style={{ fontSize: 11 }}
-          >
-            Cập nhật
-          </Button>
-        ) : (
+        if (r.daBanHanh) {
+          return (
+            <div style={{ display: 'flex', gap: 4, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Button
+                size="small" icon={<SwapOutlined />}
+                onClick={() => { setDoiLoRecord(r); setDoiLoOpen(true) }}
+                style={{ fontSize: 10, borderColor: '#7c3aed', color: '#7c3aed', padding: '0 6px' }}
+              >
+                Đổi lô
+              </Button>
+              <Button
+                size="small" icon={<EditOutlined />}
+                onClick={() => { setEditItem(r); setModalOpen(true) }}
+                style={{ fontSize: 10, padding: '0 6px' }}
+              >
+                Cập nhật
+              </Button>
+              <Tooltip title={r.soLoCu ? 'Xem lịch sử đổi lô' : 'Chưa có lịch sử đổi lô'}>
+                <Button
+                  size="small" type="text" icon={<HistoryOutlined />}
+                  onClick={() => { setLichSuRecord(r); setLichSuOpen(true) }}
+                  style={{ color: r.soLoCu ? '#7c3aed' : '#cbd5e1', padding: '0 4px' }}
+                />
+              </Tooltip>
+            </div>
+          )
+        }
+        return (
           <Button
             size="small" type="primary" icon={<CheckOutlined />}
             loading={actionId === r.id}
@@ -1201,6 +1385,19 @@ export default function LenhSanXuatTab() {
         }}
       />
       </div>
+
+      <DoiLoModal
+        open={doiLoOpen}
+        record={doiLoRecord}
+        onClose={() => setDoiLoOpen(false)}
+        onSaved={fetchAll}
+      />
+
+      <LichSuDoiLoModal
+        open={lichSuOpen}
+        record={lichSuRecord}
+        onClose={() => setLichSuOpen(false)}
+      />
 
       <LenhDetailModal
         open={detailOpen}

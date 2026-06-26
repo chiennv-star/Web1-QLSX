@@ -33,6 +33,7 @@ public class LenhSanXuatDto {
     private String createdBy;
     private String updatedBy;
     private Boolean hasKhoach;
+    private String soLoCu; // lô trước khi đổi gần nhất (từ lenh_lo_history)
 
     // ── Getters & Setters ──────────────────────────────────────────────────────
     public Long getId() { return id; }
@@ -89,4 +90,6 @@ public class LenhSanXuatDto {
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
     public Boolean getHasKhoach() { return hasKhoach; }
     public void setHasKhoach(Boolean hasKhoach) { this.hasKhoach = hasKhoach; }
+    public String getSoLoCu() { return soLoCu; }
+    public void setSoLoCu(String soLoCu) { this.soLoCu = soLoCu; }
 }

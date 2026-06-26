@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Propagation;
 
 import com.sanluong.entity.WorkSchedule;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -135,7 +136,19 @@ public class LenhSanXuatService {
     public List<LenhSanXuatDto> findAll(String tinhTrang, String toThucHien,
                                         java.time.LocalDate fromDate, java.time.LocalDate toDate) {
         List<LenhSanXuat> list = repo.findFiltered(tinhTrang, toThucHien, fromDate, toDate);
-        return list.stream().map(this::toDto).collect(Collectors.toList());
+        // Build map: lenhId → soLoCu from latest history entry
+        List<Long> ids = list.stream().map(LenhSanXuat::getId).collect(Collectors.toList());
+        Map<Long, String> soLoCuMap = new HashMap<>();
+        if (!ids.isEmpty()) {
+            historyRepo.findByLenhIdInOrderByChangedAtDesc(ids).forEach(h -> {
+                soLoCuMap.putIfAbsent(h.getLenhId(), h.getSoLoCu());
+            });
+        }
+        return list.stream().map(e -> {
+            LenhSanXuatDto dto = toDto(e);
+            if (soLoCuMap.containsKey(e.getId())) dto.setSoLoCu(soLoCuMap.get(e.getId()));
+            return dto;
+        }).collect(Collectors.toList());
     }
 
     @Transactional

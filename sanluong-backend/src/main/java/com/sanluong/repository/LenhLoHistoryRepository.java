@@ -12,6 +12,9 @@ import java.util.List;
 public interface LenhLoHistoryRepository extends JpaRepository<LenhLoHistory, Long> {
     List<LenhLoHistory> findByLenhIdOrderByChangedAtDesc(Long lenhId);
 
+    @Query("SELECT h FROM LenhLoHistory h WHERE h.lenhId IN :lenhIds ORDER BY h.changedAt DESC")
+    List<LenhLoHistory> findByLenhIdInOrderByChangedAtDesc(@Param("lenhIds") List<Long> lenhIds);
+
     @Query("""
         SELECT h FROM LenhLoHistory h
         WHERE h.lenhId IN (
