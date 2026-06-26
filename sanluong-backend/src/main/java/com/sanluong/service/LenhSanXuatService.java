@@ -361,20 +361,11 @@ public class LenhSanXuatService {
                 .collect(Collectors.toList());
         int count = 0;
         for (LenhSanXuat lenh : all) {
-            boolean changed = false;
             if (!productionRepo.existsByMaBravoAndLsxAndMaDonHang(
                     lenh.getMaBravo(), lenh.getSoLo(), lenh.getMaDonHang())) {
                 autoCreateSanLuong(lenh, username);
                 count++;
-                changed = true;
             }
-            // Mark daBanHanh for all lệnh that are linked to Sản lượng
-            if (!Boolean.TRUE.equals(lenh.getDaBanHanh())) {
-                lenh.setDaBanHanh(true);
-                lenh.setUpdatedBy(username);
-                changed = true;
-            }
-            if (changed) repo.save(lenh);
         }
         return count;
     }
