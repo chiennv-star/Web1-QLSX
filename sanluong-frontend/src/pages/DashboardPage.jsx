@@ -541,7 +541,10 @@ function TienDoTab({ filtersRef, searchTick, headerOffset = 120 }) {
 }
 
 // ── SanLuongKeToanTab ──────────────────────────────────────────────────────────
-function SanLuongKeToanTab({ data = [], loading = false, pagination = {}, onPaginationChange, headerOffset = 120 }) {
+function SanLuongKeToanTab({ data = [], loading = false, pagination = {}, onPaginationChange,
+  doneData = [], doneLoading = false, donePagination = {}, onDonePaginationChange,
+  headerOffset = 120 }) {
+  const [subTab, setSubTab] = useState('doing')
 
   const fmtCong = v => v != null ? Number(v).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—'
   const fmtN = v => (v != null && v !== '') ? Number(v).toLocaleString('vi-VN') : '—'
@@ -625,6 +628,11 @@ function SanLuongKeToanTab({ data = [], loading = false, pagination = {}, onPagi
       } },
   ]
 
+  const activeData       = subTab === 'done' ? doneData       : data
+  const activeLoading    = subTab === 'done' ? doneLoading    : loading
+  const activePagination = subTab === 'done' ? donePagination : pagination
+  const activeOnChange   = subTab === 'done' ? onDonePaginationChange : onPaginationChange
+
   return (
     <div>
       <style>{`
@@ -638,22 +646,33 @@ function SanLuongKeToanTab({ data = [], loading = false, pagination = {}, onPagi
         .ketoan-table .ant-table-tbody > tr:hover .ant-table-cell-fix-right { background: #e0f2fe !important; }
       `}</style>
 
+      <Tabs
+        activeKey={subTab}
+        onChange={setSubTab}
+        size="small"
+        style={{ padding: '0 12px' }}
+        items={[
+          { key: 'doing', label: <span>⚙️ Đang thực hiện <Badge count={data.length} showZero style={{ background: '#1d4ed8', fontSize: 10 }} /></span> },
+          { key: 'done',  label: <span>✅ Đã hoàn thành <Badge count={doneData.length} showZero style={{ background: '#16a34a', fontSize: 10 }} /></span> },
+        ]}
+      />
+
       <Table
         className="ketoan-table"
         columns={columns}
-        dataSource={data}
+        dataSource={activeData}
         rowKey="id"
-        loading={loading}
+        loading={activeLoading}
         size="small"
         scroll={{ x: 1900 }}
         sticky={{ offsetHeader: headerOffset }}
         pagination={{
-          ...pagination,
+          ...activePagination,
           size: 'small',
           showSizeChanger: true,
           pageSizeOptions: ['20', '50', '100'],
           showTotal: t => `Tổng ${t} bản ghi`,
-          onChange: onPaginationChange,
+          onChange: activeOnChange,
         }}
       />
     </div>
@@ -661,9 +680,12 @@ function SanLuongKeToanTab({ data = [], loading = false, pagination = {}, onPagi
 }
 
 // ── Hiệu suất tab ────────────────────────────────────────────────────────────
-function HieuSuatTab({ data = [], loading = false, pagination = {}, onPaginationChange, headerOffset = 120 }) {
+function HieuSuatTab({ data = [], loading = false, pagination = {}, onPaginationChange,
+  doneData = [], doneLoading = false, donePagination = {}, onDonePaginationChange,
+  headerOffset = 120 }) {
   const { isAdmin, isAdminKH, user } = useAuth()
   const canEditNote = () => ['ADMIN', 'ADMIN_KH', 'ADMIN_PL', 'ADMIN_DG'].includes(user?.role)
+  const [subTab, setSubTab] = useState('doing')
   const [sortField, setSortField] = useState('hs_pl')
   const [sortOrder, setSortOrder] = useState('descend')
   const [editingNote, setEditingNote] = useState({}) // { [id]: string }
@@ -725,7 +747,12 @@ function HieuSuatTab({ data = [], loading = false, pagination = {}, onPagination
     )
   }
 
-  const enriched = data.map(r => ({ ...r, ...calcHs(r) }))
+  const activeData       = subTab === 'done' ? doneData       : data
+  const activeLoading    = subTab === 'done' ? doneLoading    : loading
+  const activePagination = subTab === 'done' ? donePagination : pagination
+  const activeOnChange   = subTab === 'done' ? onDonePaginationChange : onPaginationChange
+
+  const enriched = activeData.map(r => ({ ...r, ...calcHs(r) }))
 
   // Thống kê phân bố
   const stats = (field) => {
@@ -886,6 +913,18 @@ function HieuSuatTab({ data = [], loading = false, pagination = {}, onPagination
         .hs-table .ant-table-tbody > tr:hover > td { background: #f8fafc !important; }
       `}</style>
 
+      {/* Sub-tab selector */}
+      <Tabs
+        activeKey={subTab}
+        onChange={key => { setSubTab(key); setSortField('hs_pl'); setSortOrder('descend') }}
+        size="small"
+        style={{ padding: '0 12px' }}
+        items={[
+          { key: 'doing', label: <span>⚙️ Đang thực hiện <Badge count={data.length} showZero style={{ background: '#1d4ed8', fontSize: 10 }} /></span> },
+          { key: 'done',  label: <span>✅ Đã hoàn thành <Badge count={doneData.length} showZero style={{ background: '#16a34a', fontSize: 10 }} /></span> },
+        ]}
+      />
+
       {/* Summary banner */}
       <div style={{ display: 'flex', gap: 10, padding: '10px 12px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
         <StatBand label="Hiệu suất PL" s={stPl} color="#15803d" />
@@ -902,7 +941,7 @@ function HieuSuatTab({ data = [], loading = false, pagination = {}, onPagination
         columns={columns}
         dataSource={enriched}
         rowKey="id"
-        loading={loading}
+        loading={activeLoading}
         size="small"
         scroll={{ x: 900 }}
         sticky={{ offsetHeader: headerOffset }}
@@ -918,13 +957,13 @@ function HieuSuatTab({ data = [], loading = false, pagination = {}, onPagination
           }
         }}
         pagination={{
-          ...pagination,
+          ...activePagination,
           size: 'small',
           showSizeChanger: true,
           pageSizeOptions: ['100', '500', '1000'],
           showTotal: t => `Tổng ${t} bản ghi`,
           style: { margin: '8px 0 0' },
-          onChange: onPaginationChange,
+          onChange: activeOnChange,
         }}
       />
     </div>
@@ -1994,6 +2033,14 @@ export default function DashboardPage() {
                 paginationRef.current = { current: page, pageSize }
                 fetchData(page - 1, pageSize)
               }}
+              doneData={doneData}
+              doneLoading={doneLoading}
+              donePagination={donePagination}
+              onDonePaginationChange={(page, pageSize) => {
+                setDonePagination(p => ({ ...p, current: page, pageSize }))
+                donePaginationRef.current = { current: page, pageSize }
+                fetchDoneData(page - 1, pageSize)
+              }}
               headerOffset={headerOffset}
             />,
           },
@@ -2008,6 +2055,14 @@ export default function DashboardPage() {
                 setHsPagination(p => ({ ...p, current: page, pageSize }))
                 hsPaginationRef.current = { current: page, pageSize }
                 fetchHsData(page - 1, pageSize)
+              }}
+              doneData={doneData}
+              doneLoading={doneLoading}
+              donePagination={donePagination}
+              onDonePaginationChange={(page, pageSize) => {
+                setDonePagination(p => ({ ...p, current: page, pageSize }))
+                donePaginationRef.current = { current: page, pageSize }
+                fetchDoneData(page - 1, pageSize)
               }}
               headerOffset={headerOffset}
             />,
