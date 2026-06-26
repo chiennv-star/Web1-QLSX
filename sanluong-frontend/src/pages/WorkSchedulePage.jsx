@@ -1187,13 +1187,6 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                         return (
                           <tr key={rowKey}
                             className={!s.id ? 'ws-row-new' : ''}
-                            onBlur={e => {
-                              if (!e.currentTarget.contains(e.relatedTarget)) {
-                                // Dùng sessionsRef để lấy state mới nhất, tránh stale closure React 18
-                                const latest = sessionsRef.current.find(r => r.id ? r.id === rowKey : r._tempId === rowKey)
-                                if (latest?.nguoiThucHien && latest?.maNhanVien) saveRow(latest)
-                              }
-                            }}
                             onContextMenu={canEditDetail ? e => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, s, ngayKey: k }) } : undefined}>
                             <td style={{ ...cellStyle, minWidth: 150 }}>
                               <select style={{ ...inputStyle, cursor: 'pointer' }} value={s.nguoiThucHien}
@@ -1268,9 +1261,18 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                                 value={s.vaiTro} placeholder="Chọn hoặc nhập..." onChange={e => updateLocal(rowKey, 'vaiTro', e.target.value)} />
                               <datalist id={`vaitro-list-${rowKey}`}>{vaiTroOptions.map(v => <option key={v} value={v} />)}</datalist>
                             </td>
-                            <td style={{ ...cellStyle, width: 36, textAlign: 'center' }}>
+                            <td style={{ ...cellStyle, width: 90, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                              <Button size="small" type="primary" icon={<CheckOutlined />}
+                                loading={isSavingRow}
+                                onClick={() => {
+                                  const latest = sessionsRef.current.find(r => r.id ? r.id === rowKey : r._tempId === rowKey)
+                                  if (latest) saveRow(latest)
+                                }}
+                                style={{ fontSize: 11, marginRight: 4, padding: '0 6px' }}>
+                                Cập nhật
+                              </Button>
                               <Button size="small" type="text" danger icon={<DeleteOutlined />}
-                                loading={isSavingRow} onClick={() => deleteRow(s)} style={{ padding: '0 4px', color: '#cbd5e1', fontSize: 15 }} />
+                                onClick={() => deleteRow(s)} style={{ padding: '0 4px', color: '#cbd5e1', fontSize: 15 }} />
                             </td>
                           </tr>
                         )
@@ -1430,7 +1432,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
               <tr>
                 {['Người Thực hiện', 'Mã NV', 'Nhóm/tổ', 'Ca SX', 'Thời gian thực hiện', 'Công thực hiện',
                   <span key="vaitro-hdr">Vai Trò{canEditDetail && <SettingOutlined onClick={() => setVaiTroModalOpen(true)} style={{ marginLeft: 5, cursor: 'pointer', color: '#1677ff', fontSize: 11 }} title="Quản lý danh sách vai trò" />}</span>,
-                  'Ghi Chú'].map((h, i) => (
+                  'Ghi Chú', ''].map((h, i) => (
                   <th key={i} style={subHeadStyle}>{h}</th>
                 ))}
               </tr>
@@ -1467,6 +1469,12 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                         : <span style={{ color: '#bbb' }}>—</span>}
                     </td>
                     <td style={{ ...cellStyle, minWidth: 150 }}>{s.ghiChu || <span style={{ color: '#bbb' }}>—</span>}</td>
+                    <td style={{ ...cellStyle, width: 60, textAlign: 'center' }}>
+                      {canEditDetail && (
+                        <Button size="small" icon={<EditOutlined />} onClick={startEdit}
+                          style={{ fontSize: 11, color: '#1677ff', borderColor: '#91caff' }} />
+                      )}
+                    </td>
                   </tr>
                 )
                 return (
@@ -1606,6 +1614,19 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                     <td style={{ ...cellStyle, minWidth: 150 }}>
                       <input style={inputStyle} value={s.ghiChu}
                         onChange={e => updateLocal(key, 'ghiChu', e.target.value)} />
+                    </td>
+                    <td style={{ ...cellStyle, width: 90, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <Button size="small" type="primary" icon={<CheckOutlined />}
+                        loading={isSaving}
+                        onClick={() => {
+                          const latest = sessionsRef.current.find(r => r.id ? r.id === key : r._tempId === key)
+                          if (latest) saveRow(latest)
+                        }}
+                        style={{ fontSize: 11, marginRight: 4, padding: '0 6px' }}>
+                        Cập nhật
+                      </Button>
+                      <Button size="small" type="text" danger icon={<DeleteOutlined />}
+                        onClick={() => deleteRow(s)} style={{ padding: '0 4px', color: '#cbd5e1', fontSize: 15 }} />
                     </td>
                   </tr>
                 )
