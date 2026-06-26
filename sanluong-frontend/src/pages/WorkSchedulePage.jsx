@@ -894,8 +894,10 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     if (isNaN(parsed)) return
     // Đồng bộ state ngay nếu override
     if (overrideVal != null) setDaySlMap(prev => ({ ...prev, [ngayKey]: String(overrideVal) }))
-    const rows = sessions.filter(s => (s.ngay || 'unknown') === ngayKey)
-    const first = rows[0]
+    // Dùng sessionsRef.current để tránh stale closure — luôn trỏ tới sessions mới nhất
+    const currentSessions = sessionsRef.current
+    const rows = currentSessions.filter(s => (s.ngay || 'unknown') === ngayKey)
+    const first = rows.find(r => r.id) // tìm session đầu tiên có id (bỏ qua pending rows)
     if (!first?.id) return
     setSavingDay(ngayKey)
 
