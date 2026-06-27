@@ -1222,7 +1222,7 @@ export default function DashboardPage() {
   }, [pmMap])
 
   useEffect(() => {
-    if (activeTab === 'tong_hop') loadPmMap()
+    if (activeTab === 'tong_hop' || activeTab === 'phan_tich') loadPmMap()
   }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePmSaved = useCallback((updated) => {
@@ -2151,7 +2151,7 @@ export default function DashboardPage() {
           ...(isAdmin() ? [{
             key: 'phan_tich',
             label: <Space size={4}><BarChartOutlined style={{ color: '#b45309' }} /><span style={{ color: '#b45309', fontWeight: 600 }}>Phân Tích SL</span></Space>,
-            children: <PhanTichSanLuongTab />,
+            children: <PhanTichSanLuongTab pmMap={pmMap} />,
           }] : []),
         ]}
       />
@@ -2866,10 +2866,12 @@ function ImportSanLuongModal({ open, onClose, onSuccess }) {
 // ── Phân Tích Sản Lượng Tab ───────────────────────────────────────────────────
 const PIE_COLORS = ['#7b1fa2','#f57c00','#00695c','#1976d2','#c2185b','#0097a7','#d32f2f','#7cb342','#6a1b9a','#004d7f','#d84315','#558b2f','#00796b','#4a148c','#b71c1c']
 
-function PhanTichSanLuongTab() {
+function PhanTichSanLuongTab({ pmMap = {} }) {
   const [allData, setAllData] = useState([])
   const [loaded, setLoaded] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [filterMode, setFilterMode] = useState('all')
+  const [customRange, setCustomRange] = useState(null)
 
   useEffect(() => {
     if (loaded) return
@@ -2887,18 +2889,44 @@ function PhanTichSanLuongTab() {
   const fmtN    = v => Number(v || 0).toLocaleString('vi-VN')
   const hc = (extra = {}) => () => ({ style: { background: '#006666', color: '#fff', fontWeight: 700, fontSize: 11, padding: '8px 10px', whiteSpace: 'nowrap', ...extra } })
 
+  const lsxToDate = lsx => {
+    if (!lsx || lsx.length < 6) return null
+    const dd = lsx.slice(0, 2), mm = lsx.slice(2, 4), yy = lsx.slice(4, 6)
+    if (!/^\d{2}$/.test(dd) || !/^\d{2}$/.test(mm) || !/^\d{2}$/.test(yy)) return null
+    return dayjs(`20${yy}-${mm}-${dd}`)
+  }
+
+  // ── Filtered data based on time range ──
+  const filteredData = React.useMemo(() => {
+    if (filterMode === 'all') return allData
+    let from, to = dayjs()
+    if (filterMode === '1m') from = dayjs().startOf('month')
+    else if (filterMode === '3m') from = dayjs().subtract(3, 'month')
+    else if (filterMode === '6m') from = dayjs().subtract(6, 'month')
+    else if (filterMode === 'year') from = dayjs().startOf('year')
+    else if (filterMode === 'custom' && customRange?.[0] && customRange?.[1]) {
+      from = customRange[0].startOf('day')
+      to = customRange[1].endOf('day')
+    } else return allData
+    return allData.filter(r => {
+      const d = lsxToDate(r.lsx)
+      if (!d) return false
+      return !d.isBefore(from) && !d.isAfter(to)
+    })
+  }, [allData, filterMode, customRange])
+
   // ── Summary ──
   const summary = React.useMemo(() => ({
-    totalRecords: allData.length,
-    totalSL: allData.reduce((s, r) => s + numTP(r), 0),
-    uniqueTP: new Set(allData.map(r => r.maTp).filter(Boolean)).size,
-    uniqueLoai: new Set(allData.map(r => r.loaiSanPham).filter(Boolean)).size,
-  }), [allData])
+    totalRecords: filteredData.length,
+    totalSL: filteredData.reduce((s, r) => s + numTP(r), 0),
+    uniqueTP: new Set(filteredData.map(r => r.maTp).filter(Boolean)).size,
+    uniqueLoai: new Set(filteredData.map(r => r.loaiSanPham).filter(Boolean)).size,
+  }), [filteredData])
 
   // ── Monthly ──
   const monthRows = React.useMemo(() => {
     const map = {}
-    allData.forEach(r => {
+    filteredData.forEach(r => {
       if (!r.lsx || r.lsx.length < 6) return
       const mm = r.lsx.slice(2, 4), yy = r.lsx.slice(4, 6)
       if (!/^\d{2}$/.test(mm) || !/^\d{2}$/.test(yy)) return
@@ -2912,7 +2940,7 @@ function PhanTichSanLuongTab() {
     return Object.values(map)
       .sort((a, b) => a._yy !== b._yy ? a._yy - b._yy : a._mm - b._mm)
       .map(r => ({ ...r, tong: r.pl + r.dg + r.bbc1, tb: r.count > 0 ? Math.round((r.pl + r.dg + r.bbc1) / r.count) : 0 }))
-  }, [allData])
+  }, [filteredData])
 
   const monthTotal = React.useMemo(() => {
     const c = monthRows.reduce((s, r) => s + r.count, 0)
@@ -2926,8 +2954,8 @@ function PhanTichSanLuongTab() {
   // ── Product types ──
   const productRows = React.useMemo(() => {
     const map = {}
-    const totalSL = allData.reduce((s, r) => s + numTP(r), 0)
-    allData.forEach(r => {
+    const totalSL = filteredData.reduce((s, r) => s + numTP(r), 0)
+    filteredData.forEach(r => {
       const loai = r.loaiSanPham || '(Chưa phân loại)'
       if (!map[loai]) map[loai] = { loai, tpSet: new Set(), pl: 0, dg: 0, bbc1: 0 }
       if (r.maTp) map[loai].tpSet.add(r.maTp)
@@ -2941,31 +2969,40 @@ function PhanTichSanLuongTab() {
     }).sort((a, b) => b.tong - a.tong)
     const tot = rows.reduce((s, r) => ({ pl: s.pl + r.pl, dg: s.dg + r.dg, bbc1: s.bbc1 + r.bbc1, soTp: s.soTp + r.soTp }), { pl: 0, dg: 0, bbc1: 0, soTp: 0 })
     return [...rows, { loai: 'TỔNG CỘNG', soTp: tot.soTp, pl: tot.pl, dg: tot.dg, bbc1: tot.bbc1, tong: tot.pl + tot.dg + tot.bbc1, pct: '100', tb: 0, _total: true }]
-  }, [allData])
+  }, [filteredData])
 
-  // ── Machines ──
+  // ── Machines — grouped by actual machine names from pmMap ──
   const machineRows = React.useMemo(() => {
-    const m = { PL: { pl: 0, cnt: 0, max: 0 }, ĐG: { dg: 0, cnt: 0, max: 0 }, BBC1: { bbc1: 0, cnt: 0, max: 0 } }
-    allData.forEach(r => {
-      const pl = numPL(r), dg = numDG(r), bbc1 = numBBC1(r)
-      if (pl   > 0) { m.PL.pl   += pl;   m.PL.cnt++;   if (pl   > m.PL.max)   m.PL.max   = pl }
-      if (dg   > 0) { m.ĐG.dg   += dg;   m.ĐG.cnt++;   if (dg   > m.ĐG.max)   m.ĐG.max   = dg }
-      if (bbc1 > 0) { m.BBC1.bbc1 += bbc1; m.BBC1.cnt++; if (bbc1 > m.BBC1.max) m.BBC1.max = bbc1 }
+    const map = {}
+    const addMachine = (machineName, val, stage) => {
+      if (!map[machineName]) map[machineName] = { name: machineName, total: 0, count: 0, max: 0, stages: new Set() }
+      map[machineName].total += val
+      map[machineName].count++
+      if (val > map[machineName].max) map[machineName].max = val
+      map[machineName].stages.add(stage)
+    }
+    filteredData.forEach(r => {
+      const pm = pmMap[r.maBravo] || {}
+      const plV = numPL(r)
+      if (plV > 0) addMachine(pm.mayMocPl || '(Chưa xác định)', plV, 'PL')
+      const dgV = numDG(r)
+      if (dgV > 0) addMachine(pm.mayMocDg || '(Chưa xác định)', dgV, 'ĐG')
+      const bbc1V = numBBC1(r)
+      if (bbc1V > 0) addMachine(pm.mayMocBbc1 || '(Chưa xác định)', bbc1V, 'BBC1')
     })
-    const totAll = m.PL.pl + m.ĐG.dg + m.BBC1.bbc1
-    const rows = ['PL','ĐG','BBC1'].map(k => {
-      const total = k === 'PL' ? m[k].pl : k === 'ĐG' ? m[k].dg : m[k].bbc1
-      return { name: k, total, count: m[k].cnt, avg: m[k].cnt > 0 ? Math.round(total / m[k].cnt) : 0, max: m[k].max, pct: totAll > 0 ? (total / totAll * 100).toFixed(1) : '0.0' }
-    })
-    const totRow = { name: 'TỔNG', total: totAll, count: rows.reduce((s, r) => s + r.count, 0), avg: 0, max: 0, pct: '100.0', _total: true }
+    const totAll = Object.values(map).reduce((s, m) => s + m.total, 0)
+    const rows = Object.values(map)
+      .map(m => ({ ...m, avg: m.count > 0 ? Math.round(m.total / m.count) : 0, pct: totAll > 0 ? (m.total / totAll * 100).toFixed(1) : '0.0', stages: [...m.stages].join('/') }))
+      .sort((a, b) => b.total - a.total)
+    const totRow = { name: 'TỔNG', total: totAll, count: rows.reduce((s, r) => s + r.count, 0), avg: 0, max: 0, pct: '100.0', stages: '', _total: true }
     totRow.avg = totRow.count > 0 ? Math.round(totAll / totRow.count) : 0
     return [...rows, totRow]
-  }, [allData])
+  }, [filteredData, pmMap])
 
   // ── Top 15 ──
   const top15Rows = React.useMemo(() => {
     const map = {}
-    allData.forEach(r => {
+    filteredData.forEach(r => {
       const key = `${r.maTp || ''}|${r.lsx || ''}`
       if (!map[key]) map[key] = { maTp: r.maTp, tienTrinh: r.tienTrinh, loaiSanPham: r.loaiSanPham, lsx: r.lsx, pl: 0, dg: 0, bbc1: 0 }
       map[key].pl   += numPL(r)
@@ -2979,7 +3016,7 @@ function PhanTichSanLuongTab() {
     })() }))
       .sort((a, b) => b.tong - a.tong)
       .slice(0, 15)
-  }, [allData])
+  }, [filteredData])
 
   const totalRowStyle = { background: '#e8f5f5', fontWeight: 700 }
   const onRow = r => r._total ? { style: totalRowStyle } : {}
@@ -2987,7 +3024,7 @@ function PhanTichSanLuongTab() {
   // Chart data
   const chartMonthData = monthRows.map(r => ({ name: r.thang, PL: r.pl, ĐG: r.dg, BBC1: r.bbc1 }))
   const chartPieData   = productRows.filter(r => !r._total).slice(0, 10).map(r => ({ name: r.loai, value: r.tong }))
-  const chartBarData   = machineRows.filter(r => !r._total).map(r => ({ name: r.name, 'Tổng SL': r.total, 'SL TB/BG': r.avg }))
+  const chartBarData   = machineRows.filter(r => !r._total).slice(0, 12).map(r => ({ name: r.name, 'Tổng SL': r.total }))
 
   const CARD_COLORS = ['#006666','#7b1fa2','#0891b2','#b45309']
   const summaryCards = [
@@ -2995,6 +3032,14 @@ function PhanTichSanLuongTab() {
     { label: 'Tổng Sản Lượng', value: summary.totalSL, unit: 'đơn vị' },
     { label: 'Loại Sản Phẩm', value: summary.uniqueLoai, unit: 'loại' },
     { label: 'Sản Phẩm Khác Nhau', value: summary.uniqueTP, unit: 'mã TP' },
+  ]
+
+  const PRESETS = [
+    { key: 'all', label: 'Tất cả' },
+    { key: 'year', label: 'Năm nay' },
+    { key: '6m', label: '6 tháng' },
+    { key: '3m', label: '3 tháng' },
+    { key: '1m', label: 'Tháng này' },
   ]
 
   const subItems = [
@@ -3067,24 +3112,23 @@ function PhanTichSanLuongTab() {
       children: (
         <div>
           <Table size="small" bordered columns={[
-            { title: 'Máy Móc', dataIndex: 'name', key: 'name', width: 100, onHeaderCell: hc({ textAlign: 'left' }), render: (v, r) => r._total ? <b>{v}</b> : <Tag color={v==='PL'?'purple':v==='ĐG'?'orange':'cyan'}>{v}</Tag> },
+            { title: 'Tên Máy Móc', dataIndex: 'name', key: 'name', ellipsis: true, onHeaderCell: hc({ textAlign: 'left' }), render: (v, r) => r._total ? <b>{v}</b> : <span style={{ color: '#006666', fontWeight: 500 }}>{v}</span> },
+            { title: 'Công Đoạn', dataIndex: 'stages', key: 'stages', width: 110, align: 'center', onHeaderCell: hc(), render: v => v ? v.split('/').map(s => <Tag key={s} color={s==='PL'?'purple':s==='ĐG'?'orange':'cyan'} style={{ margin: '1px', fontSize: 11 }}>{s}</Tag>) : '—' },
             { title: 'Tổng SL', dataIndex: 'total', key: 'total', width: 140, align: 'right', onHeaderCell: hc(), render: v => <b>{fmtN(v)}</b> },
-            { title: 'Số BG', dataIndex: 'count', key: 'count', width: 90, align: 'right', onHeaderCell: hc(), render: fmtN },
+            { title: 'Số BG', dataIndex: 'count', key: 'count', width: 80, align: 'right', onHeaderCell: hc(), render: fmtN },
             { title: 'SL TB/BG', dataIndex: 'avg', key: 'avg', width: 110, align: 'right', onHeaderCell: hc(), render: fmtN },
             { title: 'SL Max', dataIndex: 'max', key: 'max', width: 110, align: 'right', onHeaderCell: hc(), render: (v, r) => r._total ? '—' : fmtN(v) },
             { title: '% Tổng', dataIndex: 'pct', key: 'pct', width: 80, align: 'right', onHeaderCell: hc(), render: v => `${v}%` },
           ]} dataSource={machineRows} rowKey="name" pagination={false} onRow={onRow} style={{ marginBottom: 16 }} />
           <div style={{ background: '#fff', padding: 16, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,.08)' }}>
-            <div style={{ textAlign: 'center', fontWeight: 600, color: '#006666', marginBottom: 8 }}>Sản Lượng Thực Tế Theo Máy Móc</div>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartBarData} margin={{ top: 8, right: 20, left: 10, bottom: 8 }}>
+            <div style={{ textAlign: 'center', fontWeight: 600, color: '#006666', marginBottom: 8 }}>Sản Lượng Theo Máy Móc (Top 12)</div>
+            <ResponsiveContainer width="100%" height={Math.max(300, chartBarData.length * 44 + 60)}>
+              <BarChart data={chartBarData} layout="vertical" margin={{ top: 8, right: 80, left: 8, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={v => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : `${(v/1000).toFixed(0)}K`} />
+                <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : `${(v/1000).toFixed(0)}K`} />
+                <YAxis type="category" dataKey="name" width={170} tick={{ fontSize: 10 }} />
                 <RechartTooltip formatter={v => Number(v).toLocaleString('vi-VN')} />
-                <Legend />
-                <Bar dataKey="Tổng SL" fill="#006666" />
-                <Bar dataKey="SL TB/BG" fill="#7b1fa2" />
+                <Bar dataKey="Tổng SL" fill="#006666" label={{ position: 'right', fontSize: 10, formatter: v => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : `${(v/1000).toFixed(0)}K` }} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -3113,14 +3157,16 @@ function PhanTichSanLuongTab() {
       label: 'Tổng Hợp',
       children: (
         <div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
-            {machineRows.filter(r => !r._total).map(m => (
-              <div key={m.name} style={{ background: '#fff', borderRadius: 8, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,.08)', borderLeft: `4px solid ${m.name==='PL'?'#7b1fa2':m.name==='ĐG'?'#f57c00':'#00695c'}` }}>
-                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 12, color: m.name==='PL'?'#7b1fa2':m.name==='ĐG'?'#f57c00':'#00695c' }}>
-                  {m.name === 'PL' ? 'Filling (PL)' : m.name === 'ĐG' ? 'Grinding (ĐG)' : 'Blending (BBC1)'}
+          <div style={{ fontWeight: 600, color: '#006666', marginBottom: 12 }}>Top Máy Móc Theo Sản Lượng</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 20 }}>
+            {machineRows.filter(r => !r._total).slice(0, 6).map((m, i) => (
+              <div key={m.name} style={{ background: '#fff', borderRadius: 8, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,.08)', borderLeft: `4px solid ${PIE_COLORS[i % PIE_COLORS.length]}` }}>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4, color: PIE_COLORS[i % PIE_COLORS.length], lineHeight: 1.4 }}>{m.name}</div>
+                <div style={{ fontSize: 11, marginBottom: 10 }}>
+                  {m.stages ? m.stages.split('/').map(s => <Tag key={s} color={s==='PL'?'purple':s==='ĐG'?'orange':'cyan'} style={{ margin: '1px 2px 1px 0', fontSize: 10 }}>{s}</Tag>) : null}
                 </div>
                 {[['Tổng SL', fmtN(m.total)], ['Số BG', fmtN(m.count)], ['SL TB/BG', fmtN(m.avg)], ['% Tổng', `${m.pct}%`]].map(([l, v]) => (
-                  <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0f0f0', fontSize: 13 }}>
+                  <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid #f0f0f0', fontSize: 13 }}>
                     <span style={{ color: '#666' }}>{l}</span>
                     <span style={{ fontWeight: 600, color: '#20a0a0' }}>{v}</span>
                   </div>
@@ -3151,6 +3197,30 @@ function PhanTichSanLuongTab() {
   return (
     <div style={{ padding: '8px 12px' }}>
       <Spin spinning={loading}>
+        {/* Time range filter toolbar */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap', padding: '10px 14px', background: '#f0fafa', borderRadius: 8, border: '1px solid #b2dfdb' }}>
+          <span style={{ fontSize: 12, color: '#006666', fontWeight: 700, marginRight: 2 }}>Thời gian:</span>
+          {PRESETS.map(p => (
+            <Button key={p.key} size="small"
+              type={filterMode === p.key ? 'primary' : 'default'}
+              style={filterMode === p.key ? { background: '#006666', borderColor: '#006666' } : {}}
+              onClick={() => { setFilterMode(p.key); setCustomRange(null) }}
+            >{p.label}</Button>
+          ))}
+          <RangePicker
+            size="small"
+            format="DD/MM/YYYY"
+            value={customRange}
+            onChange={r => { if (r) { setCustomRange(r); setFilterMode('custom') } else { setCustomRange(null); setFilterMode('all') } }}
+            placeholder={['Từ ngày', 'Đến ngày']}
+          />
+          {filterMode !== 'all' && (
+            <span style={{ fontSize: 12, color: '#6b7280', marginLeft: 4 }}>
+              <b style={{ color: '#006666' }}>{filteredData.length.toLocaleString('vi-VN')}</b> / {allData.length.toLocaleString('vi-VN')} bản ghi
+            </span>
+          )}
+        </div>
+        {/* Summary cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
           {summaryCards.map((c, i) => (
             <div key={c.label} style={{ background: `linear-gradient(135deg, ${CARD_COLORS[i]}, ${CARD_COLORS[i]}cc)`, color: '#fff', padding: '16px 20px', borderRadius: 8, textAlign: 'center' }}>
