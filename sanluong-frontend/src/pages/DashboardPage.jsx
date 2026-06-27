@@ -2682,13 +2682,13 @@ function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84, onPmSaved }
   const rows = React.useMemo(() => {
     const map = {}
     const ensureKey = (key, maBravo, maTp, tenTrinh) => {
-      if (!map[key]) map[key] = { key, maBravo: maBravo || '', maTp: maTp || '', tenTrinh: tenTrinh || '', soLo: 0, coLoMax: 0, dangSx: 0 }
+      if (!map[key]) map[key] = { key, maBravo: maBravo || '', maTp: maTp || '', tenTrinh: tenTrinh || '', lsxSet: new Set(), coLoMax: 0, dangSx: 0 }
     }
-    // 1. Từ LSX đang active
+    // 1. Từ LSX đang active — đếm unique LSX (mỗi mã LSX = 1 lô)
     ;(data || []).forEach(r => {
       const key = r.maBravo || r.maTp || '(trống)'
       ensureKey(key, r.maBravo, r.maTp, r.tenTrinh)
-      map[key].soLo++
+      if (r.lsx) map[key].lsxSet.add(r.lsx)
       const cl = Number(r.coLo) || 0
       if (cl > map[key].coLoMax) map[key].coLoMax = cl
       if (r.tinhTrang === 'doing') map[key].dangSx++
@@ -2705,25 +2705,31 @@ function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84, onPmSaved }
       if (!key) return
       ensureKey(key, pm.maBravo, pm.maTp, pm.tienTrinh)
     })
-    return Object.values(map).sort((a, b) => b.dangSx - a.dangSx || b.soLo - a.soLo)
+    return Object.values(map)
+      .map(r => ({ ...r, soLo: r.lsxSet.size }))
+      .sort((a, b) => b.dangSx - a.dangSx || b.soLo - a.soLo)
   }, [data, thAll, pmMap])
 
   // Gom nhóm TH theo maBravo (ưu tiên) hoặc maTp
-  // coLoTb = TB soLuong (SL KH) của các lô cùng maBravo
+  // soLo = số LSX duy nhất, coLoTb = TB soLuong (SL KH) của các lô
   const thMapByBravo = React.useMemo(() => {
     const map = {}
     const addKey = (key, r) => {
       if (!key) return
-      if (!map[key]) map[key] = { soLo: 0, totalSl: 0, records: [] }
-      map[key].soLo++
-      map[key].totalSl += Number(r.soLuong) || 0
+      if (!map[key]) map[key] = { lsxSet: new Set(), totalSl: 0, totalCount: 0, records: [] }
+      if (r.lsx) map[key].lsxSet.add(r.lsx)
+      const sl = Number(r.soLuong) || 0
+      if (sl > 0) { map[key].totalSl += sl; map[key].totalCount++ }
       map[key].records.push(r)
     }
     thAll.forEach(r => {
       if (r.maBravo) addKey(r.maBravo, r)
       else addKey(r.maTp, r)
     })
-    Object.values(map).forEach(v => { v.coLoTb = v.soLo > 0 ? Math.round(v.totalSl / v.soLo) : 0 })
+    Object.values(map).forEach(v => {
+      v.soLo = v.lsxSet.size
+      v.coLoTb = v.totalCount > 0 ? Math.round(v.totalSl / v.totalCount) : 0
+    })
     return map
   }, [thAll])
 
