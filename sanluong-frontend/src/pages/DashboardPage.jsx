@@ -2999,6 +2999,46 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
     return [...rows, totRow]
   }, [filteredData, pmMap])
 
+  // ── Monthly by loaiSanPham ──
+  const monthByLoai = React.useMemo(() => {
+    const map = {}
+    const loais = new Set()
+    filteredData.forEach(r => {
+      if (!r.lsx || r.lsx.length < 6) return
+      const mm = r.lsx.slice(2, 4), yy = r.lsx.slice(4, 6)
+      if (!/^\d{2}$/.test(mm) || !/^\d{2}$/.test(yy)) return
+      const thang = `${mm}/20${yy}`
+      const loai = r.loaiSanPham || '(Chua phan loai)'
+      loais.add(loai)
+      if (!map[thang]) map[thang] = { thang, _mm: Number(mm), _yy: Number(yy) }
+      map[thang][loai] = (map[thang][loai] || 0) + numTP(r)
+    })
+    const rows = Object.values(map).sort((a, b) => a._yy !== b._yy ? a._yy - b._yy : a._mm - b._mm)
+    return { rows, loais: [...loais].sort() }
+  }, [filteredData])
+
+  // ── Monthly by PL machine (pha che) ──
+  const monthByMachinePl = React.useMemo(() => {
+    const map = {}
+    const machines = new Set()
+    filteredData.forEach(r => {
+      if (!r.lsx || r.lsx.length < 6) return
+      const mm = r.lsx.slice(2, 4), yy = r.lsx.slice(4, 6)
+      if (!/^\d{2}$/.test(mm) || !/^\d{2}$/.test(yy)) return
+      const thang = `${mm}/20${yy}`
+      const pm = pmMap[r.maBravo] || {}
+      const plV = numPL(r)
+      if (plV > 0) {
+        const mName = pm.mayMocPl || '(Chua xac dinh)'
+        machines.add(mName)
+        if (!map[thang]) map[thang] = { thang, _mm: Number(mm), _yy: Number(yy) }
+        map[thang][mName] = (map[thang][mName] || 0) + plV
+      }
+    })
+    const rows = Object.values(map).sort((a, b) => a._yy !== b._yy ? a._yy - b._yy : a._mm - b._mm)
+    return { rows, machines: [...machines].sort() }
+  }, [filteredData, pmMap])
+
   // ── Top 15 ──
   const top15Rows = React.useMemo(() => {
     const map = {}
@@ -3103,6 +3143,21 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
               </ResponsiveContainer>
             </div>
           </div>
+          <div style={{ background: '#fff', padding: 16, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,.08)', marginTop: 16 }}>
+            <div style={{ textAlign: 'center', fontWeight: 600, color: '#006666', marginBottom: 8 }}>Xu Hướng SL Hàng Tháng Theo Loại Sản Phẩm</div>
+            <ResponsiveContainer width="100%" height={340}>
+              <LineChart data={monthByLoai.rows} margin={{ top: 8, right: 20, left: 10, bottom: 60 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="thang" angle={-45} textAnchor="end" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={v => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}K` : v} />
+                <RechartTooltip formatter={(v, n) => [Number(v).toLocaleString('vi-VN'), n]} />
+                <Legend wrapperStyle={{ paddingTop: 8 }} />
+                {monthByLoai.loais.map((loai, i) => (
+                  <Line key={loai} type="monotone" dataKey={loai} stroke={PIE_COLORS[i % PIE_COLORS.length]} dot={false} strokeWidth={2} />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       ),
     },
@@ -3132,6 +3187,23 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
               </BarChart>
             </ResponsiveContainer>
           </div>
+          {monthByMachinePl.machines.length > 0 && (
+            <div style={{ background: '#fff', padding: 16, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,.08)', marginTop: 16 }}>
+              <div style={{ textAlign: 'center', fontWeight: 600, color: '#006666', marginBottom: 8 }}>Xu Hướng SL Thiết Bị Pha Chế Hàng Tháng</div>
+              <ResponsiveContainer width="100%" height={340}>
+                <LineChart data={monthByMachinePl.rows} margin={{ top: 8, right: 20, left: 10, bottom: 60 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="thang" angle={-45} textAnchor="end" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={v => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}K` : v} />
+                  <RechartTooltip formatter={(v, n) => [Number(v).toLocaleString('vi-VN'), n]} />
+                  <Legend wrapperStyle={{ paddingTop: 8 }} />
+                  {monthByMachinePl.machines.map((m, i) => (
+                    <Line key={m} type="monotone" dataKey={m} stroke={PIE_COLORS[i % PIE_COLORS.length]} dot={false} strokeWidth={2} />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       ),
     },
