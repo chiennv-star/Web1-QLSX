@@ -2708,20 +2708,27 @@ function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84, onPmSaved }
     return Object.values(map).sort((a, b) => b.dangSx - a.dangSx || b.soLo - a.soLo)
   }, [data, thAll, pmMap])
 
-  // Gom nhóm TH theo maBravo → soLo (đếm lô) + coLoTb (TB soLuong)
+  // Gom nhóm TH theo maBravo (ưu tiên) hoặc maTp
+  // coLoTb = TB soLuong (SL KH) của các lô cùng maBravo
   const thMapByBravo = React.useMemo(() => {
     const map = {}
-    thAll.forEach(r => {
-      const key = r.maBravo || r.maTp || ''
+    const addKey = (key, r) => {
       if (!key) return
       if (!map[key]) map[key] = { soLo: 0, totalSl: 0, records: [] }
       map[key].soLo++
       map[key].totalSl += Number(r.soLuong) || 0
       map[key].records.push(r)
+    }
+    thAll.forEach(r => {
+      if (r.maBravo) addKey(r.maBravo, r)
+      else addKey(r.maTp, r)
     })
     Object.values(map).forEach(v => { v.coLoTb = v.soLo > 0 ? Math.round(v.totalSl / v.soLo) : 0 })
     return map
   }, [thAll])
+
+  // Helper: tra cứu thMapByBravo theo maBravo rồi fallback maTp
+  const thLookup = (r) => thMapByBravo[r.maBravo] || thMapByBravo[r.maTp] || null
 
   const columns = [
     {
@@ -2768,24 +2775,19 @@ function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84, onPmSaved }
       render: v => v > 0 ? <Tag color="processing" style={{ marginRight: 0 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
     {
-      title: 'Cỡ Lô', dataIndex: 'coLoMax', key: 'coLoMax', width: 90, align: 'right',
-      sorter: (a, b) => a.coLoMax - b.coLoMax,
-      render: v => <span style={{ fontWeight: 600, color: '#374151' }}>{fmtNum(v || null)}</span>,
-    },
-    {
-      title: 'Số lô (TH)', key: 'soLoTh', width: 90, align: 'center',
-      sorter: (a, b) => (thMapByBravo[a.maBravo]?.soLo || 0) - (thMapByBravo[b.maBravo]?.soLo || 0),
+      title: 'Cỡ Lô (SL KH)', key: 'coLoTh', width: 115, align: 'right',
+      sorter: (a, b) => (thLookup(a)?.coLoTb || 0) - (thLookup(b)?.coLoTb || 0),
       render: (_, r) => {
-        const v = thMapByBravo[r.maBravo]?.soLo
-        return v ? <span style={{ fontWeight: 700, color: '#065f46' }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+        const v = thLookup(r)?.coLoTb
+        return v ? <span style={{ fontWeight: 600, color: '#374151' }}>{fmtNum(v)}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
       },
     },
     {
-      title: 'Cỡ lô TB (TH)', key: 'coLoTh', width: 115, align: 'right',
-      sorter: (a, b) => (thMapByBravo[a.maBravo]?.coLoTb || 0) - (thMapByBravo[b.maBravo]?.coLoTb || 0),
+      title: 'Số lô (TH)', key: 'soLoTh', width: 90, align: 'center',
+      sorter: (a, b) => (thLookup(a)?.soLo || 0) - (thLookup(b)?.soLo || 0),
       render: (_, r) => {
-        const v = thMapByBravo[r.maBravo]?.coLoTb
-        return v ? <span style={{ fontWeight: 600, color: '#065f46' }}>{fmtNum(v)}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+        const v = thLookup(r)?.soLo
+        return v ? <span style={{ fontWeight: 700, color: '#065f46' }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
       },
     },
     {
@@ -3041,7 +3043,7 @@ function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84, onPmSaved }
           <Tag color="green" style={{ marginLeft: 8 }}>{drawerThLos.length} lô</Tag>
           {drawerThLos.length > 0 && (
             <span style={{ fontSize: 12, color: '#065f46', marginLeft: 8 }}>
-              TB: <b>{fmtNum(thMapByBravo[drawer?.maBravo]?.coLoTb)}</b> SP/lô
+              TB: <b>{fmtNum(thLookup(drawer || {})?.coLoTb)}</b> SP/lô
             </span>
           )}
         </Divider>
