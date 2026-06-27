@@ -3789,8 +3789,30 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
       }
     },
     {
+      title: 'Năng suất', key: 'nangSuat', width: 95, align: 'right',
+      render: (_, r) => {
+        const { sl, cong } = getSlCong(r)
+        const slV = Number(sl), congV = Number(cong)
+        if (slV > 0 && congV > 0) {
+          return <span style={{ color: '#d46b08', fontWeight: 600 }}>{Math.round(slV / congV).toLocaleString('vi-VN')}</span>
+        }
+        return <span style={{ color: '#d9d9d9' }}>—</span>
+      }
+    },
+    {
       title: 'Ngày hoàn thiện', dataIndex: 'updatedAt', key: 'updatedAt', width: 120, align: 'center',
       render: v => v ? <span style={{ fontSize: 12, color: '#15803d' }}>{dayjs(v).format('DD/MM/YYYY')}</span> : '—'
+    },
+    {
+      title: 'Kết quả', key: 'ketQua', width: 110, align: 'center',
+      render: (_, r) => {
+        const { sl } = getSlCong(r)
+        const slV = Number(sl) || 0
+        const coLoV = Number(r.coLo) || 0
+        if (slV === 0 || coLoV === 0) return <span style={{ color: '#d9d9d9' }}>—</span>
+        if (slV >= coLoV * 0.95) return <Tag color="success" style={{ marginRight: 0 }}>Đạt</Tag>
+        return <Tag color="error" style={{ marginRight: 0 }}>Không đạt</Tag>
+      }
     },
     {
       title: 'Thao tác', key: 'action', width: 115, fixed: 'right', align: 'center',
@@ -3840,7 +3862,7 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
         rowKey="id"
         loading={loading}
         size="small"
-        scroll={{ x: 900 }}
+        scroll={{ x: 1150 }}
         sticky={{ offsetHeader: headerOffset }}
         rowHoverable={false}
         rowClassName={record => {
