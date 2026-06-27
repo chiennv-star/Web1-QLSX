@@ -2999,11 +2999,11 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
     return [...rows, totRow]
   }, [filteredData, pmMap])
 
-  // ── Monthly by loaiSanPham ──
-  const monthByLoai = React.useMemo(() => {
+  // ── Monthly by loaiSanPham, split by to PCPL ──
+  const makeMonthByLoai = (data) => {
     const map = {}
     const loais = new Set()
-    filteredData.forEach(r => {
+    data.forEach(r => {
       if (!r.lsx || r.lsx.length < 6) return
       const mm = r.lsx.slice(2, 4), yy = r.lsx.slice(4, 6)
       if (!/^\d{2}$/.test(mm) || !/^\d{2}$/.test(yy)) return
@@ -3011,11 +3011,17 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
       const loai = r.loaiSanPham || '(Chua phan loai)'
       loais.add(loai)
       if (!map[thang]) map[thang] = { thang, _mm: Number(mm), _yy: Number(yy) }
-      map[thang][loai] = (map[thang][loai] || 0) + numTP(r)
+      map[thang][loai] = (map[thang][loai] || 0) + numPL(r)
     })
     const rows = Object.values(map).sort((a, b) => a._yy !== b._yy ? a._yy - b._yy : a._mm - b._mm)
     return { rows, loais: [...loais].sort() }
-  }, [filteredData])
+  }
+  const monthByLoaiPCPL1 = React.useMemo(() =>
+    makeMonthByLoai(filteredData.filter(r => (r.toThucHien || '').toUpperCase() === 'PCPL1'))
+  , [filteredData])
+  const monthByLoaiPCPL2 = React.useMemo(() =>
+    makeMonthByLoai(filteredData.filter(r => (r.toThucHien || '').toUpperCase() === 'PCPL2'))
+  , [filteredData])
 
   // ── Monthly by PL machine (pha che) ──
   const monthByMachinePl = React.useMemo(() => {
@@ -3143,21 +3149,29 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
               </ResponsiveContainer>
             </div>
           </div>
-          <div style={{ background: '#fff', padding: 16, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,.08)', marginTop: 16 }}>
-            <div style={{ textAlign: 'center', fontWeight: 600, color: '#006666', marginBottom: 8 }}>Xu Hướng SL Hàng Tháng Theo Loại Sản Phẩm</div>
-            <ResponsiveContainer width="100%" height={340}>
-              <LineChart data={monthByLoai.rows} margin={{ top: 8, right: 20, left: 10, bottom: 60 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="thang" angle={-45} textAnchor="end" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={v => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}K` : v} />
-                <RechartTooltip formatter={(v, n) => [Number(v).toLocaleString('vi-VN'), n]} />
-                <Legend wrapperStyle={{ paddingTop: 8 }} />
-                {monthByLoai.loais.map((loai, i) => (
-                  <Line key={loai} type="monotone" dataKey={loai} stroke={PIE_COLORS[i % PIE_COLORS.length]} dot={false} strokeWidth={2} />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          {[{ label: 'Tổ PCPL1', data: monthByLoaiPCPL1 }, { label: 'Tổ PCPL2', data: monthByLoaiPCPL2 }].map(({ label, data }) => (
+            <div key={label} style={{ background: '#fff', padding: 16, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,.08)', marginTop: 16 }}>
+              <div style={{ textAlign: 'center', fontWeight: 600, color: '#006666', marginBottom: 8 }}>
+                Xu Hướng SL Hàng Tháng Theo Loại Sản Phẩm — <span style={{ color: '#7b1fa2' }}>{label}</span>
+              </div>
+              {data.rows.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#aaa', padding: '24px 0' }}>Không có dữ liệu</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={320}>
+                  <LineChart data={data.rows} margin={{ top: 8, right: 20, left: 10, bottom: 60 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="thang" angle={-45} textAnchor="end" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={v => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}K` : v} />
+                    <RechartTooltip formatter={(v, n) => [Number(v).toLocaleString('vi-VN'), n]} />
+                    <Legend wrapperStyle={{ paddingTop: 8 }} />
+                    {data.loais.map((loai, i) => (
+                      <Line key={loai} type="monotone" dataKey={loai} stroke={PIE_COLORS[i % PIE_COLORS.length]} dot={false} strokeWidth={2} />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          ))}
         </div>
       ),
     },
