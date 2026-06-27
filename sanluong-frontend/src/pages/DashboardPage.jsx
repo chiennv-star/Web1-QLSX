@@ -2388,6 +2388,7 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange
         rowSelection={rowSelection}
         loading={loading}
         size="small"
+        virtual
         scroll={{ x: 2000, y: 'calc(100vh - 310px)' }}
         bordered
         pagination={{
@@ -2677,20 +2678,35 @@ function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84, onPmSaved }
   }
 
   // Gom nhóm theo maBravo → mỗi maBravo 1 hàng
+  // Nguồn: union của data (LSX active) + thAll (lịch sử) + pmMap (danh mục SP)
   const rows = React.useMemo(() => {
     const map = {}
+    const ensureKey = (key, maBravo, maTp, tenTrinh) => {
+      if (!map[key]) map[key] = { key, maBravo: maBravo || '', maTp: maTp || '', tenTrinh: tenTrinh || '', soLo: 0, coLoMax: 0, dangSx: 0 }
+    }
+    // 1. Từ LSX đang active
     ;(data || []).forEach(r => {
       const key = r.maBravo || r.maTp || '(trống)'
-      if (!map[key]) {
-        map[key] = { key, maBravo: r.maBravo || '', maTp: r.maTp || '', tenTrinh: r.tenTrinh || '', soLo: 0, coLoMax: 0, dangSx: 0 }
-      }
+      ensureKey(key, r.maBravo, r.maTp, r.tenTrinh)
       map[key].soLo++
       const cl = Number(r.coLo) || 0
       if (cl > map[key].coLoMax) map[key].coLoMax = cl
       if (r.tinhTrang === 'doing') map[key].dangSx++
     })
+    // 2. Từ Tổng hợp SL (lịch sử) — bổ sung SP chưa có trong active
+    ;(thAll || []).forEach(r => {
+      const key = r.maBravo || r.maTp || ''
+      if (!key) return
+      ensureKey(key, r.maBravo, r.maTp, r.tienTrinh || r.tenTrinh)
+    })
+    // 3. Từ pmMap (danh mục SP) — bổ sung SP chưa có ở trên
+    Object.values(pmMap || {}).forEach(pm => {
+      const key = pm.maBravo || pm.maTp || ''
+      if (!key) return
+      ensureKey(key, pm.maBravo, pm.maTp, pm.tienTrinh)
+    })
     return Object.values(map).sort((a, b) => b.dangSx - a.dangSx || b.soLo - a.soLo)
-  }, [data])
+  }, [data, thAll, pmMap])
 
   // Gom nhóm TH theo maBravo → soLo (đếm lô) + coLoTb (TB soLuong)
   const thMapByBravo = React.useMemo(() => {
