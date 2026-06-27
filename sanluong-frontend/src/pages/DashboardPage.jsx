@@ -2882,11 +2882,15 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
       .finally(() => setLoading(false))
   }, [loaded])
 
-  const numPC   = r => Number(r.slPc)    || 0
-  const numPL   = r => Number(r.pcPl)   || 0
-  const numDG   = r => Number(r.dg2)    || 0
-  const numBBC1 = r => Number(r.bbc1_2) || 0
-  const numTP   = r => numPL(r) + numDG(r) + numBBC1(r)
+  const numPC      = r => Number(r.slPc)      || 0
+  const numPL      = r => Number(r.pcPl)     || 0
+  const numDG      = r => Number(r.dg2)      || 0
+  const numBBC1    = r => Number(r.bbc1_2)   || 0
+  const numTP      = r => numPL(r) + numDG(r) + numBBC1(r)
+  const numCongPC  = r => Number(r.pcChiPhi) || 0
+  const numCongPL  = r => Number(r.plChiPhi) || 0
+  const numCongDG  = r => Number(r.dgChiPhi) || 0
+  const numCongBBC1= r => Number(r.bbc1_3)   || 0
   const fmtN    = v => Number(v || 0).toLocaleString('vi-VN')
   const hc = (extra = {}) => () => ({ style: { background: '#006666', color: '#fff', fontWeight: 700, fontSize: 11, padding: '8px 10px', whiteSpace: 'nowrap', ...extra } })
 
@@ -3080,6 +3084,36 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
     })
   }, [filteredData, pmMap])
 
+  // ── Machine pivot — Cong thuc hien ──
+  const machineTimeDataCong = React.useMemo(() => {
+    const STAGES_CONG = [
+      { key: 'PC_c',   label: 'PC — Công Pha Chế',    getMachine: r => (pmMap[r.maBravo] || {}).mayMocPc,   getVal: numCongPC,   color: '#1565c0' },
+      { key: 'PL_c',   label: 'PL — Công Chiết',      getMachine: r => (pmMap[r.maBravo] || {}).mayMocPl,   getVal: numCongPL,   color: '#7b1fa2' },
+      { key: 'BBC1_c', label: 'BBC1 — Công BBC',       getMachine: r => (pmMap[r.maBravo] || {}).mayMocBbc1, getVal: numCongBBC1, color: '#00695c' },
+      { key: 'DG_c',   label: 'ĐG — Công Đóng Gói',   getMachine: r => (pmMap[r.maBravo] || {}).mayMocDg,   getVal: numCongDG,   color: '#e65100' },
+    ]
+    return STAGES_CONG.map(({ key, label, getMachine, getVal, color }) => {
+      const monthMap = {}
+      const machineSet = new Set()
+      filteredData.forEach(r => {
+        if (!r.lsx || r.lsx.length < 6) return
+        const mm = r.lsx.slice(2, 4), yy = r.lsx.slice(4, 6)
+        if (!/^\d{2}$/.test(mm) || !/^\d{2}$/.test(yy)) return
+        const val = getVal(r)
+        if (!val) return
+        const thang = `${mm}/20${yy}`
+        const mName = getMachine(r) || '(Chua xac dinh)'
+        machineSet.add(mName)
+        if (!monthMap[thang]) monthMap[thang] = { thang, _mm: Number(mm), _yy: Number(yy) }
+        monthMap[thang][mName] = (monthMap[thang][mName] || 0) + val
+      })
+      const machines = [...machineSet].sort()
+      const rows = Object.values(monthMap)
+        .sort((a, b) => a._yy !== b._yy ? a._yy - b._yy : a._mm - b._mm)
+      return { key, label, color, machines, rows }
+    })
+  }, [filteredData, pmMap])
+
   // ── Top 15 ──
   const top15Rows = React.useMemo(() => {
     const map = {}
@@ -3255,7 +3289,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
           )}
           <div style={{ marginTop: 24 }}>
             <div style={{ fontWeight: 700, fontSize: 15, color: '#006666', marginBottom: 16, paddingBottom: 8, borderBottom: '2px solid #b2dfdb' }}>
-              Phân Tích Theo Thời Gian — Từng Công Đoạn
+              Phân Tích Theo Thời Gian — Sản Lượng Từng Công Đoạn
             </div>
             {machineTimeData.map((stage, si) => (
               <div key={stage.key} style={{ marginBottom: 32 }}>
@@ -3273,6 +3307,37 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
                         <XAxis dataKey="thang" angle={-45} textAnchor="end" tick={{ fontSize: 11 }} />
                         <YAxis tick={{ fontSize: 11 }} tickFormatter={v => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}K` : v} />
                         <RechartTooltip formatter={(v, n) => [Number(v).toLocaleString('vi-VN'), n]} />
+                        <Legend wrapperStyle={{ paddingTop: 8 }} />
+                        {stage.machines.map((m, i) => (
+                          <Line key={m} type="monotone" dataKey={m} stroke={PIE_COLORS[(si * 3 + i) % PIE_COLORS.length]} dot={false} strokeWidth={2} />
+                        ))}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 32 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: '#b45309', marginBottom: 16, paddingBottom: 8, borderBottom: '2px solid #fde68a' }}>
+              Phân Tích Theo Thời Gian — Tổng Công Thực Hiện Từng Công Đoạn
+            </div>
+            {machineTimeDataCong.map((stage, si) => (
+              <div key={stage.key} style={{ marginBottom: 32 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <div style={{ width: 6, height: 22, borderRadius: 3, background: stage.color }} />
+                  <span style={{ fontWeight: 700, fontSize: 14, color: stage.color }}>{stage.label}</span>
+                </div>
+                {stage.machines.length === 0 ? (
+                  <div style={{ color: '#aaa', fontSize: 13, paddingLeft: 14 }}>Chưa có dữ liệu</div>
+                ) : (
+                  <div style={{ background: '#fff', padding: '16px 16px 8px', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,.07)', border: `1px solid ${stage.color}22` }}>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={stage.rows} margin={{ top: 8, right: 24, left: 10, bottom: 60 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="thang" angle={-45} textAnchor="end" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(1)}K` : Number(v).toFixed(1)} />
+                        <RechartTooltip formatter={(v, n) => [Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 2 }), n]} />
                         <Legend wrapperStyle={{ paddingTop: 8 }} />
                         {stage.machines.map((m, i) => (
                           <Line key={m} type="monotone" dataKey={m} stroke={PIE_COLORS[(si * 3 + i) % PIE_COLORS.length]} dot={false} strokeWidth={2} />
