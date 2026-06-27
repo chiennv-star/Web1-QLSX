@@ -16,6 +16,11 @@ import { Upload } from 'antd'
 import InboxPanel from '../components/InboxPanel'
 import dayjs from 'dayjs'
 import * as XLSX from 'xlsx'
+import {
+  ResponsiveContainer, LineChart, Line, BarChart, Bar,
+  PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid,
+  Tooltip as RechartTooltip, Legend,
+} from 'recharts'
 
 const { RangePicker } = DatePicker
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -2143,6 +2148,11 @@ export default function DashboardPage() {
               onDeleteSuccess={() => fetchThData(0, thPaginationRef.current.pageSize, thFilters)}
             />,
           }] : []),
+          ...(isAdmin() ? [{
+            key: 'phan_tich',
+            label: <Space size={4}><BarChartOutlined style={{ color: '#b45309' }} /><span style={{ color: '#b45309', fontWeight: 600 }}>Phân Tích SL</span></Space>,
+            children: <PhanTichSanLuongTab />,
+          }] : []),
         ]}
       />
       </div>
@@ -2850,5 +2860,308 @@ function ImportSanLuongModal({ open, onClose, onSuccess }) {
         )}
       </div>
     </Modal>
+  )
+}
+
+// ── Phân Tích Sản Lượng Tab ───────────────────────────────────────────────────
+const PIE_COLORS = ['#7b1fa2','#f57c00','#00695c','#1976d2','#c2185b','#0097a7','#d32f2f','#7cb342','#6a1b9a','#004d7f','#d84315','#558b2f','#00796b','#4a148c','#b71c1c']
+
+function PhanTichSanLuongTab() {
+  const [allData, setAllData] = useState([])
+  const [loaded, setLoaded] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (loaded) return
+    setLoading(true)
+    api.get('/san-luong-tong-hop', { params: { page: 0, size: 9999 } })
+      .then(({ data: res }) => { setAllData(res.content || []); setLoaded(true) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [loaded])
+
+  const numPL   = r => Number(r.pcPl)   || 0
+  const numDG   = r => Number(r.dg2)    || 0
+  const numBBC1 = r => Number(r.bbc1_2) || 0
+  const numTP   = r => numPL(r) + numDG(r) + numBBC1(r)
+  const fmtN    = v => Number(v || 0).toLocaleString('vi-VN')
+  const hc = (extra = {}) => () => ({ style: { background: '#006666', color: '#fff', fontWeight: 700, fontSize: 11, padding: '8px 10px', whiteSpace: 'nowrap', ...extra } })
+
+  // ── Summary ──
+  const summary = React.useMemo(() => ({
+    totalRecords: allData.length,
+    totalSL: allData.reduce((s, r) => s + numTP(r), 0),
+    uniqueTP: new Set(allData.map(r => r.maTp).filter(Boolean)).size,
+    uniqueLoai: new Set(allData.map(r => r.loaiSanPham).filter(Boolean)).size,
+  }), [allData])
+
+  // ── Monthly ──
+  const monthRows = React.useMemo(() => {
+    const map = {}
+    allData.forEach(r => {
+      if (!r.lsx || r.lsx.length < 6) return
+      const mm = r.lsx.slice(2, 4), yy = r.lsx.slice(4, 6)
+      if (!/^\d{2}$/.test(mm) || !/^\d{2}$/.test(yy)) return
+      const key = `${mm}/20${yy}`
+      if (!map[key]) map[key] = { thang: key, _mm: Number(mm), _yy: Number(yy), count: 0, pl: 0, dg: 0, bbc1: 0 }
+      map[key].count++
+      map[key].pl   += numPL(r)
+      map[key].dg   += numDG(r)
+      map[key].bbc1 += numBBC1(r)
+    })
+    return Object.values(map)
+      .sort((a, b) => a._yy !== b._yy ? a._yy - b._yy : a._mm - b._mm)
+      .map(r => ({ ...r, tong: r.pl + r.dg + r.bbc1, tb: r.count > 0 ? Math.round((r.pl + r.dg + r.bbc1) / r.count) : 0 }))
+  }, [allData])
+
+  const monthTotal = React.useMemo(() => {
+    const c = monthRows.reduce((s, r) => s + r.count, 0)
+    const pl = monthRows.reduce((s, r) => s + r.pl, 0)
+    const dg = monthRows.reduce((s, r) => s + r.dg, 0)
+    const bbc1 = monthRows.reduce((s, r) => s + r.bbc1, 0)
+    const tong = pl + dg + bbc1
+    return { thang: 'TỔNG', count: c, pl, dg, bbc1, tong, tb: c > 0 ? Math.round(tong / c) : 0, _total: true }
+  }, [monthRows])
+
+  // ── Product types ──
+  const productRows = React.useMemo(() => {
+    const map = {}
+    const totalSL = allData.reduce((s, r) => s + numTP(r), 0)
+    allData.forEach(r => {
+      const loai = r.loaiSanPham || '(Chưa phân loại)'
+      if (!map[loai]) map[loai] = { loai, tpSet: new Set(), pl: 0, dg: 0, bbc1: 0 }
+      if (r.maTp) map[loai].tpSet.add(r.maTp)
+      map[loai].pl   += numPL(r)
+      map[loai].dg   += numDG(r)
+      map[loai].bbc1 += numBBC1(r)
+    })
+    const rows = Object.values(map).map(r => {
+      const tong = r.pl + r.dg + r.bbc1
+      return { ...r, soTp: r.tpSet.size, tong, pct: totalSL > 0 ? (tong / totalSL * 100).toFixed(1) : '0.0', tb: r.tpSet.size > 0 ? Math.round(tong / r.tpSet.size) : 0 }
+    }).sort((a, b) => b.tong - a.tong)
+    const tot = rows.reduce((s, r) => ({ pl: s.pl + r.pl, dg: s.dg + r.dg, bbc1: s.bbc1 + r.bbc1, soTp: s.soTp + r.soTp }), { pl: 0, dg: 0, bbc1: 0, soTp: 0 })
+    return [...rows, { loai: 'TỔNG CỘNG', soTp: tot.soTp, pl: tot.pl, dg: tot.dg, bbc1: tot.bbc1, tong: tot.pl + tot.dg + tot.bbc1, pct: '100', tb: 0, _total: true }]
+  }, [allData])
+
+  // ── Machines ──
+  const machineRows = React.useMemo(() => {
+    const m = { PL: { pl: 0, cnt: 0, max: 0 }, ĐG: { dg: 0, cnt: 0, max: 0 }, BBC1: { bbc1: 0, cnt: 0, max: 0 } }
+    allData.forEach(r => {
+      const pl = numPL(r), dg = numDG(r), bbc1 = numBBC1(r)
+      if (pl   > 0) { m.PL.pl   += pl;   m.PL.cnt++;   if (pl   > m.PL.max)   m.PL.max   = pl }
+      if (dg   > 0) { m.ĐG.dg   += dg;   m.ĐG.cnt++;   if (dg   > m.ĐG.max)   m.ĐG.max   = dg }
+      if (bbc1 > 0) { m.BBC1.bbc1 += bbc1; m.BBC1.cnt++; if (bbc1 > m.BBC1.max) m.BBC1.max = bbc1 }
+    })
+    const totAll = m.PL.pl + m.ĐG.dg + m.BBC1.bbc1
+    const rows = ['PL','ĐG','BBC1'].map(k => {
+      const total = k === 'PL' ? m[k].pl : k === 'ĐG' ? m[k].dg : m[k].bbc1
+      return { name: k, total, count: m[k].cnt, avg: m[k].cnt > 0 ? Math.round(total / m[k].cnt) : 0, max: m[k].max, pct: totAll > 0 ? (total / totAll * 100).toFixed(1) : '0.0' }
+    })
+    const totRow = { name: 'TỔNG', total: totAll, count: rows.reduce((s, r) => s + r.count, 0), avg: 0, max: 0, pct: '100.0', _total: true }
+    totRow.avg = totRow.count > 0 ? Math.round(totAll / totRow.count) : 0
+    return [...rows, totRow]
+  }, [allData])
+
+  // ── Top 15 ──
+  const top15Rows = React.useMemo(() => {
+    const map = {}
+    allData.forEach(r => {
+      const key = `${r.maTp || ''}|${r.lsx || ''}`
+      if (!map[key]) map[key] = { maTp: r.maTp, tienTrinh: r.tienTrinh, loaiSanPham: r.loaiSanPham, lsx: r.lsx, pl: 0, dg: 0, bbc1: 0 }
+      map[key].pl   += numPL(r)
+      map[key].dg   += numDG(r)
+      map[key].bbc1 += numBBC1(r)
+    })
+    return Object.values(map).map(r => ({ ...r, tong: r.pl + r.dg + r.bbc1, thang: (() => {
+      if (!r.lsx || r.lsx.length < 6) return ''
+      const mm = r.lsx.slice(2, 4), yy = r.lsx.slice(4, 6)
+      return /^\d{2}$/.test(mm) && /^\d{2}$/.test(yy) ? `${mm}/20${yy}` : ''
+    })() }))
+      .sort((a, b) => b.tong - a.tong)
+      .slice(0, 15)
+  }, [allData])
+
+  const totalRowStyle = { background: '#e8f5f5', fontWeight: 700 }
+  const onRow = r => r._total ? { style: totalRowStyle } : {}
+
+  // Chart data
+  const chartMonthData = monthRows.map(r => ({ name: r.thang, PL: r.pl, ĐG: r.dg, BBC1: r.bbc1 }))
+  const chartPieData   = productRows.filter(r => !r._total).slice(0, 10).map(r => ({ name: r.loai, value: r.tong }))
+  const chartBarData   = machineRows.filter(r => !r._total).map(r => ({ name: r.name, 'Tổng SL': r.total, 'SL TB/BG': r.avg }))
+
+  const CARD_COLORS = ['#006666','#7b1fa2','#0891b2','#b45309']
+  const summaryCards = [
+    { label: 'Tổng Bản Ghi', value: summary.totalRecords, unit: 'sản phẩm/LSX' },
+    { label: 'Tổng Sản Lượng', value: summary.totalSL, unit: 'đơn vị' },
+    { label: 'Loại Sản Phẩm', value: summary.uniqueLoai, unit: 'loại' },
+    { label: 'Sản Phẩm Khác Nhau', value: summary.uniqueTP, unit: 'mã TP' },
+  ]
+
+  const subItems = [
+    {
+      key: 'thoi_gian',
+      label: 'Theo Thời Gian',
+      children: (
+        <div>
+          <Table size="small" bordered columns={[
+            { title: 'Tháng/Năm', dataIndex: 'thang', key: 'thang', width: 100, onHeaderCell: hc({ textAlign: 'left' }), render: (v, r) => r._total ? <b>{v}</b> : v },
+            { title: 'Số Bản Ghi', dataIndex: 'count', key: 'count', width: 100, align: 'right', onHeaderCell: hc(), render: fmtN },
+            { title: 'PL', dataIndex: 'pl', key: 'pl', width: 120, align: 'right', onHeaderCell: hc(), render: (v, r) => r._total ? <b style={{ color: '#7b1fa2' }}>{fmtN(v)}</b> : <span style={{ color: '#7b1fa2' }}>{fmtN(v)}</span> },
+            { title: 'ĐG', dataIndex: 'dg', key: 'dg', width: 120, align: 'right', onHeaderCell: hc(), render: (v, r) => r._total ? <b style={{ color: '#f57c00' }}>{fmtN(v)}</b> : <span style={{ color: '#f57c00' }}>{fmtN(v)}</span> },
+            { title: 'BBC1', dataIndex: 'bbc1', key: 'bbc1', width: 120, align: 'right', onHeaderCell: hc(), render: (v, r) => r._total ? <b style={{ color: '#00695c' }}>{fmtN(v)}</b> : <span style={{ color: '#00695c' }}>{fmtN(v)}</span> },
+            { title: 'Tổng SL', dataIndex: 'tong', key: 'tong', width: 130, align: 'right', onHeaderCell: hc(), render: v => <b>{fmtN(v)}</b> },
+            { title: 'SL TB/BG', dataIndex: 'tb', key: 'tb', width: 100, align: 'right', onHeaderCell: hc(), render: fmtN },
+          ]} dataSource={[...monthRows, monthTotal]} rowKey="thang" pagination={false} onRow={onRow} style={{ marginBottom: 16 }} />
+          <div style={{ background: '#fff', padding: 16, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,.08)' }}>
+            <div style={{ textAlign: 'center', fontWeight: 600, color: '#006666', marginBottom: 8 }}>Xu Hướng Sản Lượng Hàng Tháng (PL / ĐG / BBC1)</div>
+            <ResponsiveContainer width="100%" height={320}>
+              <LineChart data={chartMonthData} margin={{ top: 8, right: 20, left: 10, bottom: 60 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" angle={-45} textAnchor="end" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={v => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}K` : v} />
+                <RechartTooltip formatter={(v, n) => [Number(v).toLocaleString('vi-VN'), n]} />
+                <Legend />
+                <Line type="monotone" dataKey="PL"   stroke="#7b1fa2" dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="ĐG"   stroke="#f57c00" dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="BBC1"  stroke="#00695c" dot={false} strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'san_pham',
+      label: 'Theo Sản Phẩm',
+      children: (
+        <div>
+          <Table size="small" bordered columns={[
+            { title: 'Loại Sản Phẩm', dataIndex: 'loai', key: 'loai', onHeaderCell: hc({ textAlign: 'left' }), render: (v, r) => r._total ? <b>{v}</b> : v },
+            { title: 'Số TP', dataIndex: 'soTp', key: 'soTp', width: 80, align: 'right', onHeaderCell: hc(), render: fmtN },
+            { title: 'PL', dataIndex: 'pl', key: 'pl', width: 120, align: 'right', onHeaderCell: hc(), render: v => <span style={{ color: '#7b1fa2' }}>{fmtN(v)}</span> },
+            { title: 'ĐG', dataIndex: 'dg', key: 'dg', width: 120, align: 'right', onHeaderCell: hc(), render: v => <span style={{ color: '#f57c00' }}>{fmtN(v)}</span> },
+            { title: 'BBC1', dataIndex: 'bbc1', key: 'bbc1', width: 120, align: 'right', onHeaderCell: hc(), render: v => <span style={{ color: '#00695c' }}>{fmtN(v)}</span> },
+            { title: 'Tổng SL', dataIndex: 'tong', key: 'tong', width: 130, align: 'right', onHeaderCell: hc(), render: v => <b>{fmtN(v)}</b> },
+            { title: '% Tổng', dataIndex: 'pct', key: 'pct', width: 80, align: 'right', onHeaderCell: hc(), render: v => `${v}%` },
+            { title: 'SL TB/TP', dataIndex: 'tb', key: 'tb', width: 100, align: 'right', onHeaderCell: hc(), render: (v, r) => r._total ? '—' : fmtN(v) },
+          ]} dataSource={productRows} rowKey="loai" pagination={false} onRow={onRow} style={{ marginBottom: 16 }} />
+          <div style={{ background: '#fff', padding: 16, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,.08)', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ width: '100%' }}>
+              <div style={{ textAlign: 'center', fontWeight: 600, color: '#006666', marginBottom: 8 }}>Phân Bố Sản Lượng Theo Loại Sản Phẩm</div>
+              <ResponsiveContainer width="100%" height={360}>
+                <PieChart>
+                  <Pie data={chartPieData} cx="50%" cy="50%" outerRadius={140} dataKey="value" label={({ name, percent }) => `${name} ${(percent*100).toFixed(1)}%`} labelLine>
+                    {chartPieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                  </Pie>
+                  <RechartTooltip formatter={v => Number(v).toLocaleString('vi-VN')} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'may_moc',
+      label: 'Theo Máy Móc',
+      children: (
+        <div>
+          <Table size="small" bordered columns={[
+            { title: 'Máy Móc', dataIndex: 'name', key: 'name', width: 100, onHeaderCell: hc({ textAlign: 'left' }), render: (v, r) => r._total ? <b>{v}</b> : <Tag color={v==='PL'?'purple':v==='ĐG'?'orange':'cyan'}>{v}</Tag> },
+            { title: 'Tổng SL', dataIndex: 'total', key: 'total', width: 140, align: 'right', onHeaderCell: hc(), render: v => <b>{fmtN(v)}</b> },
+            { title: 'Số BG', dataIndex: 'count', key: 'count', width: 90, align: 'right', onHeaderCell: hc(), render: fmtN },
+            { title: 'SL TB/BG', dataIndex: 'avg', key: 'avg', width: 110, align: 'right', onHeaderCell: hc(), render: fmtN },
+            { title: 'SL Max', dataIndex: 'max', key: 'max', width: 110, align: 'right', onHeaderCell: hc(), render: (v, r) => r._total ? '—' : fmtN(v) },
+            { title: '% Tổng', dataIndex: 'pct', key: 'pct', width: 80, align: 'right', onHeaderCell: hc(), render: v => `${v}%` },
+          ]} dataSource={machineRows} rowKey="name" pagination={false} onRow={onRow} style={{ marginBottom: 16 }} />
+          <div style={{ background: '#fff', padding: 16, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,.08)' }}>
+            <div style={{ textAlign: 'center', fontWeight: 600, color: '#006666', marginBottom: 8 }}>Sản Lượng Thực Tế Theo Máy Móc</div>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartBarData} margin={{ top: 8, right: 20, left: 10, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={v => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : `${(v/1000).toFixed(0)}K`} />
+                <RechartTooltip formatter={v => Number(v).toLocaleString('vi-VN')} />
+                <Legend />
+                <Bar dataKey="Tổng SL" fill="#006666" />
+                <Bar dataKey="SL TB/BG" fill="#7b1fa2" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'top15',
+      label: 'Top 15 SP',
+      children: (
+        <Table size="small" bordered columns={[
+          { title: 'STT', key: 'stt', width: 48, align: 'center', onHeaderCell: hc(), render: (_, __, i) => <b>{i + 1}</b> },
+          { title: 'Mã TP', dataIndex: 'maTp', key: 'maTp', width: 90, onHeaderCell: hc(), render: v => <Tag color="pink" style={{ fontSize: 11, margin: 0 }}>{v}</Tag> },
+          { title: 'Tên Sản Phẩm', dataIndex: 'tienTrinh', key: 'tienTrinh', ellipsis: true, onHeaderCell: hc({ textAlign: 'left' }) },
+          { title: 'Loại SP', dataIndex: 'loaiSanPham', key: 'loaiSanPham', width: 120, onHeaderCell: hc(), render: v => v ? <Tag color="geekblue" style={{ fontSize: 11, margin: 0 }}>{v}</Tag> : '—' },
+          { title: 'Tháng', dataIndex: 'thang', key: 'thang', width: 90, align: 'center', onHeaderCell: hc() },
+          { title: 'PL', dataIndex: 'pl', key: 'pl', width: 100, align: 'right', onHeaderCell: hc(), render: v => <span style={{ color: '#7b1fa2' }}>{fmtN(v)}</span> },
+          { title: 'ĐG', dataIndex: 'dg', key: 'dg', width: 100, align: 'right', onHeaderCell: hc(), render: v => <span style={{ color: '#f57c00' }}>{fmtN(v)}</span> },
+          { title: 'BBC1', dataIndex: 'bbc1', key: 'bbc1', width: 100, align: 'right', onHeaderCell: hc(), render: v => <span style={{ color: '#00695c' }}>{fmtN(v)}</span> },
+          { title: 'Tổng SL', dataIndex: 'tong', key: 'tong', width: 120, align: 'right', onHeaderCell: hc(), render: v => <b style={{ color: '#0f766e' }}>{fmtN(v)}</b> },
+        ]} dataSource={top15Rows} rowKey={(_, i) => i} pagination={false} />
+      ),
+    },
+    {
+      key: 'tong_hop_pt',
+      label: 'Tổng Hợp',
+      children: (
+        <div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
+            {machineRows.filter(r => !r._total).map(m => (
+              <div key={m.name} style={{ background: '#fff', borderRadius: 8, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,.08)', borderLeft: `4px solid ${m.name==='PL'?'#7b1fa2':m.name==='ĐG'?'#f57c00':'#00695c'}` }}>
+                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 12, color: m.name==='PL'?'#7b1fa2':m.name==='ĐG'?'#f57c00':'#00695c' }}>
+                  {m.name === 'PL' ? 'Filling (PL)' : m.name === 'ĐG' ? 'Grinding (ĐG)' : 'Blending (BBC1)'}
+                </div>
+                {[['Tổng SL', fmtN(m.total)], ['Số BG', fmtN(m.count)], ['SL TB/BG', fmtN(m.avg)], ['% Tổng', `${m.pct}%`]].map(([l, v]) => (
+                  <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0f0f0', fontSize: 13 }}>
+                    <span style={{ color: '#666' }}>{l}</span>
+                    <span style={{ fontWeight: 600, color: '#20a0a0' }}>{v}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+          <div style={{ background: '#fff', padding: 16, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,.08)', marginBottom: 20 }}>
+            <div style={{ fontWeight: 600, color: '#006666', marginBottom: 12 }}>Top 5 Loại Sản Phẩm</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+              {productRows.filter(r => !r._total).slice(0, 5).map((p, i) => (
+                <div key={p.loai} style={{ background: '#f8fffe', borderRadius: 8, padding: 14, border: '1px solid #e0f2f1' }}>
+                  <div style={{ fontWeight: 700, color: '#006666', marginBottom: 8 }}>{i + 1}. {p.loai}</div>
+                  {[['Số TP', fmtN(p.soTp)], ['SL PL', fmtN(p.pl)], ['SL ĐG', fmtN(p.dg)], ['SL BBC1', fmtN(p.bbc1)], ['Tổng SL', fmtN(p.tong)]].map(([l, v]) => (
+                    <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '3px 0', borderBottom: '1px solid #e0f2f1' }}>
+                      <span style={{ color: '#666' }}>{l}</span><span style={{ fontWeight: 600, color: '#0f766e' }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+  ]
+
+  return (
+    <div style={{ padding: '8px 12px' }}>
+      <Spin spinning={loading}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+          {summaryCards.map((c, i) => (
+            <div key={c.label} style={{ background: `linear-gradient(135deg, ${CARD_COLORS[i]}, ${CARD_COLORS[i]}cc)`, color: '#fff', padding: '16px 20px', borderRadius: 8, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.9, textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 8 }}>{c.label}</div>
+              <div style={{ fontSize: 26, fontWeight: 'bold' }}>{fmtN(c.value)}</div>
+              <div style={{ fontSize: 11, opacity: 0.8, marginTop: 4 }}>{c.unit}</div>
+            </div>
+          ))}
+        </div>
+        <Tabs size="small" items={subItems} />
+      </Spin>
+    </div>
   )
 }
