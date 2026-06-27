@@ -3086,16 +3086,10 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
 
   // ── Machine pivot — Cong thuc hien ──
   const machineTimeDataCong = React.useMemo(() => {
-    const STAGES_CONG = [
-      { key: 'PC_c',   label: 'PC — Công Pha Chế',    getMachine: r => (pmMap[r.maBravo] || {}).mayMocPc,   getVal: numCongPC,   color: '#1565c0' },
-      { key: 'PL_c',   label: 'PL — Công Chiết',      getMachine: r => (pmMap[r.maBravo] || {}).mayMocPl,   getVal: numCongPL,   color: '#7b1fa2' },
-      { key: 'BBC1_c', label: 'BBC1 — Công BBC',       getMachine: r => (pmMap[r.maBravo] || {}).mayMocBbc1, getVal: numCongBBC1, color: '#00695c' },
-      { key: 'DG_c',   label: 'ĐG — Công Đóng Gói',   getMachine: r => (pmMap[r.maBravo] || {}).mayMocDg,   getVal: numCongDG,   color: '#e65100' },
-    ]
-    return STAGES_CONG.map(({ key, label, getMachine, getVal, color }) => {
+    const buildStage = (data, getMachine, getVal) => {
       const monthMap = {}
       const machineSet = new Set()
-      filteredData.forEach(r => {
+      data.forEach(r => {
         if (!r.lsx || r.lsx.length < 6) return
         const mm = r.lsx.slice(2, 4), yy = r.lsx.slice(4, 6)
         if (!/^\d{2}$/.test(mm) || !/^\d{2}$/.test(yy)) return
@@ -3107,11 +3101,24 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
         if (!monthMap[thang]) monthMap[thang] = { thang, _mm: Number(mm), _yy: Number(yy) }
         monthMap[thang][mName] = (monthMap[thang][mName] || 0) + val
       })
-      const machines = [...machineSet].sort()
-      const rows = Object.values(monthMap)
-        .sort((a, b) => a._yy !== b._yy ? a._yy - b._yy : a._mm - b._mm)
-      return { key, label, color, machines, rows }
-    })
+      return {
+        machines: [...machineSet].sort(),
+        rows: Object.values(monthMap).sort((a, b) => a._yy !== b._yy ? a._yy - b._yy : a._mm - b._mm),
+      }
+    }
+    const pcpl1 = filteredData.filter(r => (r.toThucHien || '').toUpperCase() === 'PCPL1')
+    const pcpl2 = filteredData.filter(r => (r.toThucHien || '').toUpperCase() === 'PCPL2')
+    const getMachinePC  = r => (pmMap[r.maBravo] || {}).mayMocPc
+    const getMachinePL  = r => (pmMap[r.maBravo] || {}).mayMocPl
+    const getMachineBBC = r => (pmMap[r.maBravo] || {}).mayMocBbc1
+    const getMachineDG  = r => (pmMap[r.maBravo] || {}).mayMocDg
+    return [
+      { key: 'PC_pcpl1', label: 'PC — Công Pha Chế (Tổ PCPL1)', color: '#1565c0', ...buildStage(pcpl1, getMachinePC,  numCongPC)   },
+      { key: 'PC_pcpl2', label: 'PC — Công Pha Chế (Tổ PCPL2)', color: '#0891b2', ...buildStage(pcpl2, getMachinePC,  numCongPC)   },
+      { key: 'PL_c',     label: 'PL — Công Chiết',              color: '#7b1fa2', ...buildStage(filteredData, getMachinePL,  numCongPL)   },
+      { key: 'BBC1_c',   label: 'BBC1 — Công BBC',              color: '#00695c', ...buildStage(filteredData, getMachineBBC, numCongBBC1) },
+      { key: 'DG_c',     label: 'ĐG — Công Đóng Gói',          color: '#e65100', ...buildStage(filteredData, getMachineDG,  numCongDG)   },
+    ]
   }, [filteredData, pmMap])
 
   // ── Top 15 ──
