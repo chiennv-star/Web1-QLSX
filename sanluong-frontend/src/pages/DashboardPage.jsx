@@ -1216,7 +1216,7 @@ export default function DashboardPage() {
   }, [pmMap])
 
   useEffect(() => {
-    if (activeTab === 'phan_bo') loadPmMap()
+    if (activeTab === 'phan_bo' || activeTab === 'tong_hop') loadPmMap()
   }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePmSaved = useCallback((updated) => {
