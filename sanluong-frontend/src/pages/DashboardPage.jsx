@@ -2157,64 +2157,70 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange
     }
   }
 
+  const ttRender = v => {
+    if (!v) return <span style={{ color: '#d9d9d9' }}>—</span>
+    return <Tag color={v === 'done' ? 'success' : 'processing'} style={{ fontSize: 11, padding: '0 5px', margin: 0 }}>{v}</Tag>
+  }
+  const cpRender = v => v != null ? <span style={{ color: '#c41d7f' }}>{Number(v).toFixed(2)}</span> : '—'
+  const qaRender = v => v != null ? <span style={{ color: '#0891b2' }}>{v}</span> : '—'
+
   const cols = [
-    { title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 110, fixed: 'left', render: v => <b>{v}</b> },
-    { title: 'Mã TP',    dataIndex: 'maTp',    key: 'maTp',    width: 90,  fixed: 'left' },
-    { title: 'Tên SP',   dataIndex: 'tienTrinh', key: 'tienTrinh', width: 200, ellipsis: true },
-    { title: 'LSX',      dataIndex: 'lsx',     key: 'lsx',     width: 100 },
-    { title: 'SL KH',    dataIndex: 'soLuong', key: 'soLuong', width: 80, align: 'center', render: v => v ?? '—' },
-    { title: 'Mã ĐH',   dataIndex: 'maDonHang', key: 'maDonHang', width: 120, ellipsis: true },
+    { title: 'Mã Bravo', dataIndex: 'maBravo',   key: 'maBravo',   width: 110, fixed: 'left', render: v => <b>{v}</b> },
+    { title: 'Mã TP',    dataIndex: 'maTp',       key: 'maTp',      width: 90,  fixed: 'left' },
+    { title: 'Tên SP',   dataIndex: 'tienTrinh',  key: 'tienTrinh', width: 200, ellipsis: true },
+    { title: 'LSX',      dataIndex: 'lsx',        key: 'lsx',       width: 100 },
+    { title: 'SL KH',   dataIndex: 'soLuong',    key: 'soLuong',   width: 76, align: 'center', render: v => v ?? '—' },
+    { title: 'Mã ĐH',   dataIndex: 'maDonHang',  key: 'maDonHang', width: 120, ellipsis: true },
     {
       title: 'Trạng thái',
-      key: 'tt',
-      width: 180,
-      render: (_, r) => (
-        <Space size={4} wrap>
-          {[['PC', r.pcTrangThai], ['PL', r.plTrangThai], ['ĐG', r.dgTrangThai], ['BBC1', r.bbc1TrangThai]].map(([label, tt]) =>
-            tt ? <Tag key={label} color={tt === 'done' ? 'success' : 'processing'} style={{ fontSize: 11, padding: '0 4px' }}>{label}</Tag> : null
-          )}
-        </Space>
-      )
+      key: 'tt_group',
+      children: [
+        { title: 'PC',   dataIndex: 'pcTrangThai',   key: 'tt_pc',   width: 72, align: 'center', render: ttRender },
+        { title: 'PL',   dataIndex: 'plTrangThai',   key: 'tt_pl',   width: 72, align: 'center', render: ttRender },
+        { title: 'ĐG',   dataIndex: 'dgTrangThai',   key: 'tt_dg',   width: 72, align: 'center', render: ttRender },
+        { title: 'BBC1', dataIndex: 'bbc1TrangThai', key: 'tt_bbc1', width: 72, align: 'center', render: ttRender },
+      ]
     },
     {
       title: 'Sản lượng',
       key: 'sl_group',
       children: [
-        { title: 'SL PC',    dataIndex: 'slPc',       key: 'slPc',    width: 76, align: 'center', render: v => v ?? '—' },
-        { title: 'BBC1 Phối',dataIndex: 'bbc1_1',     key: 'bbc1_1',  width: 90, align: 'center', render: v => v ?? '—' },
-        { title: 'SL PL',    dataIndex: 'pcPl',       key: 'pcPl',    width: 76, align: 'center', render: v => v ?? '—' },
-        { title: 'SL ĐG',    dataIndex: 'dg2',        key: 'dg2',     width: 76, align: 'center', render: v => v ?? '—' },
-        { title: 'SL BBC1',  dataIndex: 'bbc1_2',     key: 'bbc1_2',  width: 80, align: 'center', render: v => v ?? '—' },
-        { title: 'SP TG',    dataIndex: 'spTrungGian', key: 'spTG',   width: 76, align: 'center', render: v => v ?? '—' },
-        { title: 'TP NKho',  dataIndex: 'tpNhapKho',  key: 'tpNK',   width: 80, align: 'center', render: v => v ?? '—' },
+        { title: 'SL PC',     dataIndex: 'slPc',        key: 'slPc',  width: 76, align: 'center', render: v => v ?? '—' },
+        { title: 'BBC1 Phối', dataIndex: 'bbc1_1',      key: 'bbc11', width: 90, align: 'center', render: v => v ?? '—' },
+        { title: 'SL PL',     dataIndex: 'pcPl',        key: 'pcPl',  width: 76, align: 'center', render: v => v ?? '—' },
+        { title: 'SL ĐG',     dataIndex: 'dg2',         key: 'dg2',   width: 76, align: 'center', render: v => v ?? '—' },
+        { title: 'SL BBC1',   dataIndex: 'bbc1_2',      key: 'bbc12', width: 80, align: 'center', render: v => v ?? '—' },
+        { title: 'SP TG',     dataIndex: 'spTrungGian', key: 'spTG',  width: 76, align: 'center', render: v => v ?? '—' },
+        { title: 'TP NKho',   dataIndex: 'tpNhapKho',   key: 'tpNK',  width: 80, align: 'center', render: v => v ?? '—' },
       ]
     },
     {
       title: 'Chi phí công',
       key: 'cp_group',
       children: [
-        { title: 'BBC1', dataIndex: 'bbc1_3',   key: 'cp_bbc1', width: 70, align: 'center', render: v => v != null ? <span style={{ color: '#c41d7f' }}>{Number(v).toFixed(2)}</span> : '—' },
-        { title: 'PC',   dataIndex: 'pcChiPhi', key: 'cp_pc',   width: 70, align: 'center', render: v => v != null ? <span style={{ color: '#c41d7f' }}>{Number(v).toFixed(2)}</span> : '—' },
-        { title: 'PL',   dataIndex: 'plChiPhi', key: 'cp_pl',   width: 70, align: 'center', render: v => v != null ? <span style={{ color: '#c41d7f' }}>{Number(v).toFixed(2)}</span> : '—' },
-        { title: 'ĐG',   dataIndex: 'dgChiPhi', key: 'cp_dg',   width: 70, align: 'center', render: v => v != null ? <span style={{ color: '#c41d7f' }}>{Number(v).toFixed(2)}</span> : '—' },
-        { title: 'CC',   dataIndex: 'ccChiPhi', key: 'cp_cc',   width: 70, align: 'center', render: v => v != null ? <span style={{ color: '#c41d7f' }}>{Number(v).toFixed(2)}</span> : '—' },
-        { title: 'GNNL', dataIndex: 'temDb',    key: 'cp_gnnl', width: 70, align: 'center', render: v => v != null ? <span style={{ color: '#c41d7f' }}>{Number(v).toFixed(2)}</span> : '—' },
+        { title: 'BBC1', dataIndex: 'bbc1_3',   key: 'cp_bbc1', width: 68, align: 'center', render: cpRender },
+        { title: 'PC',   dataIndex: 'pcChiPhi', key: 'cp_pc',   width: 68, align: 'center', render: cpRender },
+        { title: 'PL',   dataIndex: 'plChiPhi', key: 'cp_pl',   width: 68, align: 'center', render: cpRender },
+        { title: 'ĐG',   dataIndex: 'dgChiPhi', key: 'cp_dg',   width: 68, align: 'center', render: cpRender },
+        { title: 'CC',   dataIndex: 'ccChiPhi', key: 'cp_cc',   width: 68, align: 'center', render: cpRender },
+        { title: 'GNNL', dataIndex: 'temDb',    key: 'cp_gnnl', width: 68, align: 'center', render: cpRender },
       ]
     },
     {
       title: 'QA Lấy mẫu',
       key: 'qa_group',
       children: [
-        { title: 'PL',   dataIndex: 'plQaLayMau', key: 'qa_pl', width: 70, align: 'center', render: v => v != null ? <span style={{ color: '#0891b2' }}>{v}</span> : '—' },
-        { title: 'ĐG',   dataIndex: 'dgQaLayMau', key: 'qa_dg', width: 70, align: 'center', render: v => v != null ? <span style={{ color: '#0891b2' }}>{v}</span> : '—' },
+        { title: 'PL', dataIndex: 'plQaLayMau', key: 'qa_pl', width: 68, align: 'center', render: qaRender },
+        { title: 'ĐG', dataIndex: 'dgQaLayMau', key: 'qa_dg', width: 68, align: 'center', render: qaRender },
       ]
     },
-    { title: 'SL TB',  dataIndex: 'slTrungBinh', key: 'slTB', width: 80, align: 'center', render: v => v ?? '—' },
-    { title: 'Ghi chú', dataIndex: 'moTa', key: 'moTa', width: 160, ellipsis: true },
+    { title: 'SL TB',      dataIndex: 'slTrungBinh',   key: 'slTB',   width: 76, align: 'center', render: v => v ?? '—' },
+    { title: 'Mô tả',      dataIndex: 'moTa',           key: 'moTa',   width: 150, ellipsis: true, render: v => v || '—' },
+    { title: 'Ghi chú HS', dataIndex: 'ghiChuHieuSuat', key: 'ghiChu', width: 160, ellipsis: true, render: v => v || '—' },
     {
       title: '',
       key: 'actions',
-      width: 60,
+      width: 56,
       fixed: 'right',
       render: (_, r) => (
         <Popconfirm title="Xóa bản ghi này?" onConfirm={() => handleDelete(r.id)} okText="Xóa" cancelText="Hủy">
