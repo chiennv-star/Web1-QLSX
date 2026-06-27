@@ -2132,6 +2132,7 @@ export default function DashboardPage() {
               loading={thLoading}
               pagination={thPagination}
               filters={thFilters}
+              pmMap={pmMap}
               onFilterChange={f => setThFilters(prev => ({ ...prev, ...f }))}
               onSearch={() => fetchThData(0, thPaginationRef.current.pageSize, thFilters)}
               onPaginationChange={(page, pageSize) => {
@@ -2178,7 +2179,7 @@ export default function DashboardPage() {
 }
 
 // ── Tổng hợp Sản lượng Tab ────────────────────────────────────────────────────
-function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange, onSearch, onPaginationChange, onDeleteSuccess }) {
+function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, onFilterChange, onSearch, onPaginationChange, onDeleteSuccess }) {
   const [delLoading, setDelLoading] = useState(false)
   const [selectedRowKeys, setSelectedRowKeys] = useState([])
   const [bulkDelLoading, setBulkDelLoading] = useState(false)
@@ -2227,6 +2228,8 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange
     columnWidth: 40,
     fixed: true,
   }
+
+  const fmtNS = v => v != null && v !== '' ? Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 0 }) : '—'
 
   const ttRender = v => {
     if (!v) return <span style={{ color: '#d9d9d9' }}>—</span>
@@ -2306,6 +2309,40 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange
     { title: 'SL TB',      dataIndex: 'slTrungBinh',   key: 'slTB',   width: 76, align: 'center', onHeaderCell: hc(), render: v => v ?? '—' },
     { title: 'Mô tả',      dataIndex: 'moTa',           key: 'moTa',   width: 150, ellipsis: true, onHeaderCell: hc({ textAlign: 'left' }), render: v => v || '—' },
     { title: 'Ghi chú HS', dataIndex: 'ghiChuHieuSuat', key: 'ghiChu', width: 160, ellipsis: true, onHeaderCell: hc({ textAlign: 'left' }), render: v => v || '—' },
+    {
+      title: 'Năng suất TB',
+      key: 'ns_group',
+      onHeaderCell: hc(),
+      children: [
+        {
+          title: 'NS TB (ĐG)', key: 'ns_tb', width: 100, align: 'right', onHeaderCell: hc(),
+          render: (_, r) => { const v = pmMap[r.maBravo]?.slTrungBinh; return v ? <span style={{ color: '#7c3aed', fontWeight: 600 }}>{fmtNS(v)}</span> : <span style={{ color: '#d9d9d9' }}>—</span> },
+        },
+        {
+          title: 'NS PC', key: 'ns_pc', width: 90, align: 'right', onHeaderCell: hc(),
+          render: (_, r) => { const v = pmMap[r.maBravo]?.nangSuatPc; return v ? <span style={{ color: '#1d4ed8', fontWeight: 600 }}>{fmtNS(v)}</span> : <span style={{ color: '#d9d9d9' }}>—</span> },
+        },
+        {
+          title: 'NS PL', key: 'ns_pl', width: 90, align: 'right', onHeaderCell: hc(),
+          render: (_, r) => { const v = pmMap[r.maBravo]?.nangSuatPl; return v ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{fmtNS(v)}</span> : <span style={{ color: '#d9d9d9' }}>—</span> },
+        },
+        {
+          title: 'NS BBC1', key: 'ns_bbc1', width: 90, align: 'right', onHeaderCell: hc(),
+          render: (_, r) => { const v = pmMap[r.maBravo]?.nangSuatBbc1; return v ? <span style={{ color: '#6d28d9', fontWeight: 600 }}>{fmtNS(v)}</span> : <span style={{ color: '#d9d9d9' }}>—</span> },
+        },
+      ],
+    },
+    {
+      title: 'Máy Móc',
+      key: 'mm_group',
+      onHeaderCell: hc(),
+      children: [
+        { title: 'PC',   key: 'mm_pc',   width: 160, ellipsis: true, onHeaderCell: hc({ textAlign: 'left' }), render: (_, r) => pmMap[r.maBravo]?.mayMocPc   || <span style={{ color: '#d9d9d9' }}>—</span> },
+        { title: 'PL',   key: 'mm_pl',   width: 160, ellipsis: true, onHeaderCell: hc({ textAlign: 'left' }), render: (_, r) => pmMap[r.maBravo]?.mayMocPl   || <span style={{ color: '#d9d9d9' }}>—</span> },
+        { title: 'BBC1', key: 'mm_bbc1', width: 160, ellipsis: true, onHeaderCell: hc({ textAlign: 'left' }), render: (_, r) => pmMap[r.maBravo]?.mayMocBbc1 || <span style={{ color: '#d9d9d9' }}>—</span> },
+        { title: 'ĐG',   key: 'mm_dg',   width: 160, ellipsis: true, onHeaderCell: hc({ textAlign: 'left' }), render: (_, r) => pmMap[r.maBravo]?.mayMocDg   || <span style={{ color: '#d9d9d9' }}>—</span> },
+      ],
+    },
     {
       title: '',
       key: 'actions',
@@ -2389,7 +2426,7 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange
         loading={loading}
         size="small"
         virtual
-        scroll={{ x: 2000, y: 'calc(100vh - 310px)' }}
+        scroll={{ x: 3800, y: 'calc(100vh - 310px)' }}
         bordered
         pagination={{
           ...pagination,
