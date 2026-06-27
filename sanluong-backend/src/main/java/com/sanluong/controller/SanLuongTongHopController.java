@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -35,6 +36,12 @@ public class SanLuongTongHopController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/bulk")
+    public ResponseEntity<Map<String, Object>> deleteBulk(@RequestBody List<Long> ids) {
+        int deleted = service.deleteBulk(ids);
+        return ResponseEntity.ok(Map.of("deleted", deleted));
     }
 
     @GetMapping("/template")

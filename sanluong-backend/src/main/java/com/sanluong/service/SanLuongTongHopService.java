@@ -33,6 +33,12 @@ public class SanLuongTongHopService {
         repo.findById(id).ifPresent(repo::delete);
     }
 
+    public int deleteBulk(java.util.List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return 0;
+        repo.deleteAllById(ids);
+        return ids.size();
+    }
+
     // ── Template Excel ────────────────────────────────────────────────────────
 
     public byte[] generateTemplate() throws IOException {

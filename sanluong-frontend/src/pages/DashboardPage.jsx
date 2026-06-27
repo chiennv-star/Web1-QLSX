@@ -2143,18 +2143,43 @@ export default function DashboardPage() {
 // ── Tổng hợp Sản lượng Tab ────────────────────────────────────────────────────
 function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange, onSearch, onPaginationChange, onDeleteSuccess }) {
   const [delLoading, setDelLoading] = useState(false)
+  const [selectedRowKeys, setSelectedRowKeys] = useState([])
+  const [bulkDelLoading, setBulkDelLoading] = useState(false)
 
   const handleDelete = async (id) => {
     setDelLoading(true)
     try {
       await api.delete(`/san-luong-tong-hop/${id}`)
       message.success('Đã xóa bản ghi')
+      setSelectedRowKeys(prev => prev.filter(k => k !== id))
       onDeleteSuccess?.()
     } catch {
       message.error('Xóa thất bại')
     } finally {
       setDelLoading(false)
     }
+  }
+
+  const handleBulkDelete = async () => {
+    if (!selectedRowKeys.length) return
+    setBulkDelLoading(true)
+    try {
+      await api.delete('/san-luong-tong-hop/bulk', { data: selectedRowKeys })
+      message.success(`Đã xóa ${selectedRowKeys.length} bản ghi`)
+      setSelectedRowKeys([])
+      onDeleteSuccess?.()
+    } catch {
+      message.error('Xóa thất bại')
+    } finally {
+      setBulkDelLoading(false)
+    }
+  }
+
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: keys => setSelectedRowKeys(keys),
+    columnWidth: 40,
+    fixed: true,
   }
 
   const ttRender = v => {
@@ -2267,11 +2292,23 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange
           allowClear
         />
         <Button size="small" icon={<SearchOutlined />} type="primary" onClick={onSearch}>Tìm</Button>
+        {selectedRowKeys.length > 0 && (
+          <Popconfirm
+            title={`Xóa ${selectedRowKeys.length} bản ghi đã chọn?`}
+            onConfirm={handleBulkDelete}
+            okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }}
+          >
+            <Button size="small" danger icon={<DeleteOutlined />} loading={bulkDelLoading}>
+              Xóa {selectedRowKeys.length} bản ghi
+            </Button>
+          </Popconfirm>
+        )}
       </Space>
       <Table
         columns={cols}
         dataSource={data}
         rowKey="id"
+        rowSelection={rowSelection}
         loading={loading}
         size="small"
         scroll={{ x: 2000 }}
