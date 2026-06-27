@@ -34,6 +34,13 @@ public class SanLuongTongHopController {
         return ResponseEntity.ok(service.search(maBravo, maTp, lsx, loaiSanPham, toThucHien, page, size));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<SanLuongTongHop> update(
+            @PathVariable Long id,
+            @RequestBody SanLuongTongHop body) {
+        return ResponseEntity.ok(service.update(id, body));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);

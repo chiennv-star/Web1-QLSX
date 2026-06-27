@@ -2184,6 +2184,45 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
   const [selectedRowKeys, setSelectedRowKeys] = useState([])
   const [bulkDelLoading, setBulkDelLoading] = useState(false)
   const [detailRecord, setDetailRecord] = useState(null)
+  const [editMode, setEditMode] = useState(false)
+  const [editVals, setEditVals] = useState({})
+  const [saving, setSaving] = useState(false)
+
+  const openDetail = (record) => { setDetailRecord(record); setEditMode(false); setEditVals({}) }
+  const closeDetail = () => { setDetailRecord(null); setEditMode(false); setEditVals({}) }
+  const startEdit = () => {
+    const r = detailRecord
+    setEditVals({
+      soLuong: r.soLuong, pcTrangThai: r.pcTrangThai, plTrangThai: r.plTrangThai,
+      dgTrangThai: r.dgTrangThai, bbc1TrangThai: r.bbc1TrangThai,
+      slPc: r.slPc, pcPl: r.pcPl, dg2: r.dg2, bbc1_2: r.bbc1_2,
+      spTrungGian: r.spTrungGian, tpNhapKho: r.tpNhapKho, slTrungBinh: r.slTrungBinh,
+      bbc1_3: r.bbc1_3, pcChiPhi: r.pcChiPhi, plChiPhi: r.plChiPhi,
+      dgChiPhi: r.dgChiPhi, ccChiPhi: r.ccChiPhi, temDb: r.temDb,
+      plQaLayMau: r.plQaLayMau, dgQaLayMau: r.dgQaLayMau,
+      moTa: r.moTa, ghiChuHieuSuat: r.ghiChuHieuSuat,
+    })
+    setEditMode(true)
+  }
+  const ev = (field, val) => setEditVals(prev => ({ ...prev, [field]: val }))
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const { data: updated } = await api.put(`/san-luong-tong-hop/${detailRecord.id}`, editVals)
+      message.success('Cập nhật thành công')
+      setDetailRecord({ ...detailRecord, ...updated })
+      setEditMode(false)
+      onDeleteSuccess?.()
+    } catch { message.error('Lưu thất bại') }
+    finally { setSaving(false) }
+  }
+
+  const nsxFromLsx = (lsx) => {
+    if (!lsx || lsx.length < 6) return null
+    const dd = lsx.slice(0, 2), mm = lsx.slice(2, 4), yy = lsx.slice(4, 6)
+    if (!/^\d{2}$/.test(dd) || !/^\d{2}$/.test(mm) || !/^\d{2}$/.test(yy)) return null
+    return `${dd}/${mm}/${yy}`
+  }
   const [loaiOptions, setLoaiOptions] = useState([])
   const [toOptions] = useState(['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'])
 
@@ -2258,6 +2297,13 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
       render: v => v ? <Tag color="cyan" style={{ fontSize: 11, margin: 0 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
     { title: 'LSX',      dataIndex: 'lsx',        key: 'lsx',       width: 100, onHeaderCell: hc() },
+    {
+      title: 'NSX', key: 'nsx', width: 88, align: 'center', onHeaderCell: hc(),
+      render: (_, r) => {
+        const v = nsxFromLsx(r.lsx)
+        return v ? <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+      },
+    },
     { title: 'SL KH',    dataIndex: 'soLuong',    key: 'soLuong',   width: 76, align: 'center', onHeaderCell: hc(), render: v => v ?? '—' },
     { title: 'Mã ĐH',    dataIndex: 'maDonHang',  key: 'maDonHang', width: 120, ellipsis: true, onHeaderCell: hc() },
     {
@@ -2441,15 +2487,15 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
         onRow={record => ({
           onClick: e => {
             if (e.target.closest('.ant-checkbox-wrapper') || e.target.closest('button') || e.target.closest('.ant-popconfirm')) return
-            setDetailRecord(record)
+            openDetail(record)
           },
           style: { cursor: 'pointer' },
         })}
       />
 
-      <Drawer
+      <Modal
         open={!!detailRecord}
-        onClose={() => setDetailRecord(null)}
+        onCancel={closeDetail}
         title={
           <span>
             Chi tiết sản lượng —{' '}
@@ -2457,8 +2503,20 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
             {detailRecord?.maTp && <span style={{ color: '#6d28d9', marginLeft: 8, fontSize: 13 }}>{detailRecord.maTp}</span>}
           </span>
         }
-        width={580}
-        bodyStyle={{ padding: '16px 20px' }}
+        width={860}
+        centered
+        destroyOnClose
+        footer={
+          editMode
+            ? [
+                <Button key="cancel" onClick={() => setEditMode(false)}>Hủy</Button>,
+                <Button key="save" type="primary" loading={saving} onClick={handleSave}>Lưu</Button>,
+              ]
+            : [
+                <Button key="edit" type="primary" onClick={startEdit}>Chỉnh sửa</Button>,
+                <Button key="close" onClick={closeDetail}>Đóng</Button>,
+              ]
+        }
       >
         {detailRecord && (() => {
           const r = detailRecord
@@ -2476,8 +2534,25 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
               {txt}
             </div>
           )
+          const EInt = (field) => (
+            <InputNumber size="small" style={{ width: '100%' }} value={editVals[field] ?? null}
+              onChange={v => ev(field, v)} min={0} />
+          )
+          const EDec = (field) => (
+            <InputNumber size="small" style={{ width: '100%' }} value={editVals[field] ?? null}
+              onChange={v => ev(field, v)} step={0.01} />
+          )
+          const ETT = (field) => (
+            <Select size="small" style={{ width: '100%' }} allowClear value={editVals[field] || undefined}
+              onChange={v => ev(field, v || null)}
+              options={[{ label: 'doing', value: 'doing' }, { label: 'done', value: 'done' }]} />
+          )
+          const EStr = (field, rows = 1) => rows > 1
+            ? <Input.TextArea size="small" rows={rows} value={editVals[field] || ''} onChange={e => ev(field, e.target.value)} />
+            : <Input size="small" value={editVals[field] || ''} onChange={e => ev(field, e.target.value)} />
+
           return (
-            <div style={{ fontSize: 13 }}>
+            <div style={{ fontSize: 13, maxHeight: '70vh', overflowY: 'auto', paddingRight: 4 }}>
               {sectionTitle('Thông tin cơ bản', '#006666')}
               <Descriptions size="small" column={2} bordered labelStyle={labelStyle}>
                 <Descriptions.Item label="Mã Bravo">{r.maBravo || '—'}</Descriptions.Item>
@@ -2490,56 +2565,57 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
                   {r.toThucHien ? <Tag color="cyan" style={{ margin: 0 }}>{r.toThucHien}</Tag> : '—'}
                 </Descriptions.Item>
                 <Descriptions.Item label="LSX / Số lô">{r.lsx || '—'}</Descriptions.Item>
+                <Descriptions.Item label="NSX">{nsxFromLsx(r.lsx) || '—'}</Descriptions.Item>
                 <Descriptions.Item label="Mã đơn hàng">{r.maDonHang || '—'}</Descriptions.Item>
-                <Descriptions.Item label="SL kế hoạch">{fmtNum(r.soLuong)}</Descriptions.Item>
+                <Descriptions.Item label="SL kế hoạch">
+                  {editMode ? EInt('soLuong') : fmtNum(r.soLuong)}
+                </Descriptions.Item>
               </Descriptions>
 
               {sectionTitle('Trạng thái công đoạn', '#0369a1')}
               <Descriptions size="small" column={4} bordered labelStyle={labelStyle}>
-                <Descriptions.Item label="PC">{fmtTT(r.pcTrangThai)}</Descriptions.Item>
-                <Descriptions.Item label="PL">{fmtTT(r.plTrangThai)}</Descriptions.Item>
-                <Descriptions.Item label="ĐG">{fmtTT(r.dgTrangThai)}</Descriptions.Item>
-                <Descriptions.Item label="BBC1">{fmtTT(r.bbc1TrangThai)}</Descriptions.Item>
+                <Descriptions.Item label="PC">{editMode ? ETT('pcTrangThai') : fmtTT(r.pcTrangThai)}</Descriptions.Item>
+                <Descriptions.Item label="PL">{editMode ? ETT('plTrangThai') : fmtTT(r.plTrangThai)}</Descriptions.Item>
+                <Descriptions.Item label="ĐG">{editMode ? ETT('dgTrangThai') : fmtTT(r.dgTrangThai)}</Descriptions.Item>
+                <Descriptions.Item label="BBC1">{editMode ? ETT('bbc1TrangThai') : fmtTT(r.bbc1TrangThai)}</Descriptions.Item>
               </Descriptions>
 
               {sectionTitle('Sản lượng', '#166534')}
               <Descriptions size="small" column={2} bordered labelStyle={labelStyle}>
-                <Descriptions.Item label="SL PC">{fmtNum(r.slPc)}</Descriptions.Item>
-                <Descriptions.Item label="SL PL">{fmtNum(r.pcPl)}</Descriptions.Item>
-                <Descriptions.Item label="SL ĐG">{fmtNum(r.dg2)}</Descriptions.Item>
-                <Descriptions.Item label="SL BBC1">{fmtNum(r.bbc1_2)}</Descriptions.Item>
-                <Descriptions.Item label="SP Trung gian">{fmtNum(r.spTrungGian)}</Descriptions.Item>
-                <Descriptions.Item label="TP Nhập kho">{fmtNum(r.tpNhapKho)}</Descriptions.Item>
-                <Descriptions.Item label="SL Trung bình">{fmtNum(r.slTrungBinh)}</Descriptions.Item>
+                <Descriptions.Item label="SL PC">{editMode ? EInt('slPc') : fmtNum(r.slPc)}</Descriptions.Item>
+                <Descriptions.Item label="SL PL">{editMode ? EInt('pcPl') : fmtNum(r.pcPl)}</Descriptions.Item>
+                <Descriptions.Item label="SL ĐG">{editMode ? EInt('dg2') : fmtNum(r.dg2)}</Descriptions.Item>
+                <Descriptions.Item label="SL BBC1">{editMode ? EInt('bbc1_2') : fmtNum(r.bbc1_2)}</Descriptions.Item>
+                <Descriptions.Item label="SP Trung gian">{editMode ? EInt('spTrungGian') : fmtNum(r.spTrungGian)}</Descriptions.Item>
+                <Descriptions.Item label="TP Nhập kho">{editMode ? EInt('tpNhapKho') : fmtNum(r.tpNhapKho)}</Descriptions.Item>
+                <Descriptions.Item label="SL Trung bình" span={2}>{editMode ? EDec('slTrungBinh') : fmtNum(r.slTrungBinh)}</Descriptions.Item>
               </Descriptions>
 
               {sectionTitle('Chi phí công', '#7c2d12')}
               <Descriptions size="small" column={3} bordered labelStyle={labelStyle}>
-                <Descriptions.Item label="BBC1">{fmtDec(r.bbc1_3)}</Descriptions.Item>
-                <Descriptions.Item label="PC">{fmtDec(r.pcChiPhi)}</Descriptions.Item>
-                <Descriptions.Item label="PL">{fmtDec(r.plChiPhi)}</Descriptions.Item>
-                <Descriptions.Item label="ĐG">{fmtDec(r.dgChiPhi)}</Descriptions.Item>
-                <Descriptions.Item label="CC">{fmtDec(r.ccChiPhi)}</Descriptions.Item>
-                <Descriptions.Item label="GNNL">{fmtDec(r.temDb)}</Descriptions.Item>
+                <Descriptions.Item label="BBC1">{editMode ? EDec('bbc1_3') : fmtDec(r.bbc1_3)}</Descriptions.Item>
+                <Descriptions.Item label="PC">{editMode ? EDec('pcChiPhi') : fmtDec(r.pcChiPhi)}</Descriptions.Item>
+                <Descriptions.Item label="PL">{editMode ? EDec('plChiPhi') : fmtDec(r.plChiPhi)}</Descriptions.Item>
+                <Descriptions.Item label="ĐG">{editMode ? EDec('dgChiPhi') : fmtDec(r.dgChiPhi)}</Descriptions.Item>
+                <Descriptions.Item label="CC">{editMode ? EDec('ccChiPhi') : fmtDec(r.ccChiPhi)}</Descriptions.Item>
+                <Descriptions.Item label="GNNL">{editMode ? EDec('temDb') : fmtDec(r.temDb)}</Descriptions.Item>
               </Descriptions>
 
               {sectionTitle('QA Lấy mẫu', '#4c1d95')}
               <Descriptions size="small" column={2} bordered labelStyle={labelStyle}>
-                <Descriptions.Item label="PL">{fmtQA(r.plQaLayMau)}</Descriptions.Item>
-                <Descriptions.Item label="ĐG">{fmtQA(r.dgQaLayMau)}</Descriptions.Item>
+                <Descriptions.Item label="PL">{editMode ? EInt('plQaLayMau') : fmtQA(r.plQaLayMau)}</Descriptions.Item>
+                <Descriptions.Item label="ĐG">{editMode ? EInt('dgQaLayMau') : fmtQA(r.dgQaLayMau)}</Descriptions.Item>
               </Descriptions>
 
-              {(r.moTa || r.ghiChuHieuSuat) && (<>
-                {sectionTitle('Ghi chú', '#374151')}
-                <Descriptions size="small" column={1} bordered labelStyle={labelStyle}>
-                  {r.moTa && <Descriptions.Item label="Mô tả">{r.moTa}</Descriptions.Item>}
-                  {r.ghiChuHieuSuat && <Descriptions.Item label="Ghi chú HS">{r.ghiChuHieuSuat}</Descriptions.Item>}
-                </Descriptions>
-              </>)}
+              {sectionTitle('Ghi chú', '#374151')}
+              <Descriptions size="small" column={1} bordered labelStyle={labelStyle}>
+                <Descriptions.Item label="Mô tả">{editMode ? EStr('moTa', 2) : (r.moTa || '—')}</Descriptions.Item>
+                <Descriptions.Item label="Ghi chú HS">{editMode ? EStr('ghiChuHieuSuat', 2) : (r.ghiChuHieuSuat || '—')}</Descriptions.Item>
+              </Descriptions>
             </div>
           )
         })()}
-      </Drawer>
+      </Modal>
     </div>
   )
 }

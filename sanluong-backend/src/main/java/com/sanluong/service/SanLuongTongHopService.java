@@ -58,6 +58,34 @@ public class SanLuongTongHopService {
         return result;
     }
 
+    public SanLuongTongHop update(Long id, SanLuongTongHop body) {
+        SanLuongTongHop e = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi id=" + id));
+        e.setSoLuong(body.getSoLuong());
+        e.setPcTrangThai(body.getPcTrangThai());
+        e.setPlTrangThai(body.getPlTrangThai());
+        e.setDgTrangThai(body.getDgTrangThai());
+        e.setBbc1TrangThai(body.getBbc1TrangThai());
+        e.setSlPc(body.getSlPc());
+        e.setPcPl(body.getPcPl());
+        e.setDg2(body.getDg2());
+        e.setBbc1_2(body.getBbc1_2());
+        e.setSpTrungGian(body.getSpTrungGian());
+        e.setTpNhapKho(body.getTpNhapKho());
+        e.setSlTrungBinh(body.getSlTrungBinh());
+        e.setBbc1_3(body.getBbc1_3());
+        e.setPcChiPhi(body.getPcChiPhi());
+        e.setPlChiPhi(body.getPlChiPhi());
+        e.setDgChiPhi(body.getDgChiPhi());
+        e.setCcChiPhi(body.getCcChiPhi());
+        e.setTemDb(body.getTemDb());
+        e.setPlQaLayMau(body.getPlQaLayMau());
+        e.setDgQaLayMau(body.getDgQaLayMau());
+        e.setMoTa(body.getMoTa());
+        e.setGhiChuHieuSuat(body.getGhiChuHieuSuat());
+        return repo.save(e);
+    }
+
     public void delete(Long id) {
         repo.findById(id).ifPresent(repo::delete);
     }
