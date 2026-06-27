@@ -15,6 +15,7 @@ import {
 import { Upload } from 'antd'
 import InboxPanel from '../components/InboxPanel'
 import dayjs from 'dayjs'
+import * as XLSX from 'xlsx'
 
 const { RangePicker } = DatePicker
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -2257,6 +2258,86 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
     fixed: true,
   }
 
+  const handleExportExcel = () => {
+    const h1 = [
+      'Mã Bravo','Mã TP','Tên SP','Loại SP','Tổ TH','LSX','NSX','SL KH','Mã ĐH',
+      'Trạng thái','','','',
+      'Sản lượng','','','','','',
+      'Chi phí công','','','','','',
+      'QA Lấy mẫu','',
+      'SL TB','Mô tả','Ghi chú HS',
+      'Năng suất TB','','','',
+      'Máy Móc','','','',
+    ]
+    const h2 = [
+      '','','','','','','','','',
+      'PC','PL','ĐG','BBC1',
+      'SL PC','SL PL','SL ĐG','SL BBC1','SP TG','TP NKho',
+      'BBC1','PC','PL','ĐG','CC','GNNL',
+      'PL','ĐG',
+      '','','',
+      'NS TB (ĐG)','NS PC','NS PL','NS BBC1',
+      'PC','PL','BBC1','ĐG',
+    ]
+    const rows = (data || []).map(r => {
+      const pm = pmMap[r.maBravo] || {}
+      return [
+        r.maBravo, r.maTp, r.tienTrinh, r.loaiSanPham, r.toThucHien, r.lsx, nsxFromLsx(r.lsx) || '',
+        r.soLuong ?? '', r.maDonHang ?? '',
+        r.pcTrangThai ?? '', r.plTrangThai ?? '', r.dgTrangThai ?? '', r.bbc1TrangThai ?? '',
+        r.slPc ?? '', r.pcPl ?? '', r.dg2 ?? '', r.bbc1_2 ?? '', r.spTrungGian ?? '', r.tpNhapKho ?? '',
+        r.bbc1_3 != null ? Number(r.bbc1_3) : '',
+        r.pcChiPhi != null ? Number(r.pcChiPhi) : '',
+        r.plChiPhi != null ? Number(r.plChiPhi) : '',
+        r.dgChiPhi != null ? Number(r.dgChiPhi) : '',
+        r.ccChiPhi != null ? Number(r.ccChiPhi) : '',
+        r.temDb != null ? Number(r.temDb) : '',
+        r.plQaLayMau ?? '', r.dgQaLayMau ?? '',
+        r.slTrungBinh != null ? Number(r.slTrungBinh) : '',
+        r.moTa ?? '', r.ghiChuHieuSuat ?? '',
+        pm.slTrungBinh != null ? Number(pm.slTrungBinh) : '',
+        pm.nangSuatPc != null ? Number(pm.nangSuatPc) : '',
+        pm.nangSuatPl != null ? Number(pm.nangSuatPl) : '',
+        pm.nangSuatBbc1 != null ? Number(pm.nangSuatBbc1) : '',
+        pm.mayMocPc ?? '', pm.mayMocPl ?? '', pm.mayMocBbc1 ?? '', pm.mayMocDg ?? '',
+      ]
+    })
+    const ws = XLSX.utils.aoa_to_sheet([h1, h2, ...rows])
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } },
+      { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } },
+      { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } },
+      { s: { r: 0, c: 3 }, e: { r: 1, c: 3 } },
+      { s: { r: 0, c: 4 }, e: { r: 1, c: 4 } },
+      { s: { r: 0, c: 5 }, e: { r: 1, c: 5 } },
+      { s: { r: 0, c: 6 }, e: { r: 1, c: 6 } },
+      { s: { r: 0, c: 7 }, e: { r: 1, c: 7 } },
+      { s: { r: 0, c: 8 }, e: { r: 1, c: 8 } },
+      { s: { r: 0, c: 9  }, e: { r: 0, c: 12 } },
+      { s: { r: 0, c: 13 }, e: { r: 0, c: 18 } },
+      { s: { r: 0, c: 19 }, e: { r: 0, c: 24 } },
+      { s: { r: 0, c: 25 }, e: { r: 0, c: 26 } },
+      { s: { r: 0, c: 27 }, e: { r: 1, c: 27 } },
+      { s: { r: 0, c: 28 }, e: { r: 1, c: 28 } },
+      { s: { r: 0, c: 29 }, e: { r: 1, c: 29 } },
+      { s: { r: 0, c: 30 }, e: { r: 0, c: 33 } },
+      { s: { r: 0, c: 34 }, e: { r: 0, c: 37 } },
+    ]
+    ws['!cols'] = [
+      14,10,28,14,8,12,10,8,14,
+      7,7,7,7,
+      8,8,8,8,8,8,
+      7,7,7,7,7,7,
+      7,7,
+      8,20,20,
+      12,10,10,10,
+      22,22,22,22,
+    ].map(wch => ({ wch }))
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Tổng hợp SL')
+    XLSX.writeFile(wb, `tong_hop_sl_${dayjs().format('YYYYMMDD')}.xlsx`)
+  }
+
   const fmtNS = v => v != null && v !== '' ? Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 0 }) : '—'
 
   const ttRender = v => {
@@ -2441,6 +2522,14 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
           options={toOptions.map(v => ({ label: v, value: v }))}
         />
         <Button size="small" icon={<SearchOutlined />} type="primary" onClick={onSearch}>Tìm</Button>
+        <Button
+          size="small"
+          icon={<FileExcelOutlined />}
+          onClick={handleExportExcel}
+          style={{ borderColor: '#16a34a', color: '#16a34a' }}
+        >
+          Xuất Excel
+        </Button>
         {selectedRowKeys.length > 0 && (
           <Popconfirm
             title={`Xóa ${selectedRowKeys.length} bản ghi đã chọn?`}
