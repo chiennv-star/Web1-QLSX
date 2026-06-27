@@ -113,13 +113,17 @@ function AssignCard({
                 <input
                   type="number"
                   value={a.salg ?? ''}
-                  onChange={e => onUpdate(a.id, 'salg', e.target.value === '' ? null : Number(e.target.value))}
+                  readOnly={readOnly}
+                  onChange={readOnly ? undefined : e => onUpdate(a.id, 'salg', e.target.value === '' ? null : Number(e.target.value))}
                   onClick={e => e.stopPropagation()}
-                  placeholder="0"
+                  placeholder="—"
                   style={{
-                    width: 72, fontSize: 11, border: '1px solid #6ee7b7',
-                    borderRadius: 4, padding: '1px 5px', color: '#065f46', outline: 'none',
-                    background: '#ecfdf5', fontFamily: 'monospace',
+                    width: 72, fontSize: 11, borderRadius: 4, padding: '1px 5px',
+                    fontFamily: 'monospace', outline: 'none',
+                    border: readOnly ? '1px solid transparent' : '1px solid #6ee7b7',
+                    color: readOnly ? '#64748b' : '#065f46',
+                    background: readOnly ? 'transparent' : '#ecfdf5',
+                    cursor: readOnly ? 'default' : undefined,
                   }}
                 />
               </span>
