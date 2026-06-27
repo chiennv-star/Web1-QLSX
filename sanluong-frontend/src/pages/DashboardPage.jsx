@@ -3053,16 +3053,10 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
   // ── Machine pivot tables by stage ──
   const machineTimeData = React.useMemo(() => {
     const numPCVal = r => numPC(r) || Number(r.soLuong) || 0
-    const STAGES = [
-      { key: 'PC',   label: 'PC — Thiết Bị Pha Chế',   getMachine: r => (pmMap[r.maBravo] || {}).mayMocPc,   getVal: numPCVal, color: '#1565c0' },
-      { key: 'PL',   label: 'PL — Thiết Bị Chiết',     getMachine: r => (pmMap[r.maBravo] || {}).mayMocPl,   getVal: numPL,    color: '#7b1fa2' },
-      { key: 'BBC1', label: 'BBC1 — Thiết Bị BBC',      getMachine: r => (pmMap[r.maBravo] || {}).mayMocBbc1, getVal: numBBC1,  color: '#00695c' },
-      { key: 'DG',   label: 'ĐG — Thiết Bị Đóng Gói',  getMachine: r => (pmMap[r.maBravo] || {}).mayMocDg,   getVal: numDG,    color: '#e65100' },
-    ]
-    return STAGES.map(({ key, label, getMachine, getVal, color }) => {
+    const buildStage = (data, getMachine, getVal) => {
       const monthMap = {}
       const machineSet = new Set()
-      filteredData.forEach(r => {
+      data.forEach(r => {
         if (!r.lsx || r.lsx.length < 6) return
         const mm = r.lsx.slice(2, 4), yy = r.lsx.slice(4, 6)
         if (!/^\d{2}$/.test(mm) || !/^\d{2}$/.test(yy)) return
@@ -3080,8 +3074,21 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
         .map(r => ({ ...r, _rowTotal: machines.reduce((s, m) => s + (r[m] || 0), 0) }))
       const totRow = { thang: 'TỔNG', _total: true, _rowTotal: 0 }
       machines.forEach(m => { totRow[m] = rows.reduce((s, r) => s + (r[m] || 0), 0); totRow._rowTotal += totRow[m] })
-      return { key, label, color, machines, rows: [...rows, totRow] }
-    })
+      return { machines, rows: [...rows, totRow] }
+    }
+    const pcpl1 = filteredData.filter(r => (r.toThucHien || '').toUpperCase() === 'PCPL1')
+    const pcpl2 = filteredData.filter(r => (r.toThucHien || '').toUpperCase() === 'PCPL2')
+    const getMachinePC  = r => (pmMap[r.maBravo] || {}).mayMocPc
+    const getMachinePL  = r => (pmMap[r.maBravo] || {}).mayMocPl
+    const getMachineBBC = r => (pmMap[r.maBravo] || {}).mayMocBbc1
+    const getMachineDG  = r => (pmMap[r.maBravo] || {}).mayMocDg
+    return [
+      { key: 'PC_pcpl1', label: 'PC — Thiết Bị Pha Chế (Tổ PCPL1)', color: '#1565c0', ...buildStage(pcpl1, getMachinePC, numPCVal) },
+      { key: 'PC_pcpl2', label: 'PC — Thiết Bị Pha Chế (Tổ PCPL2)', color: '#0891b2', ...buildStage(pcpl2, getMachinePC, numPCVal) },
+      { key: 'PL',       label: 'PL — Thiết Bị Chiết',               color: '#7b1fa2', ...buildStage(filteredData, getMachinePL,  numPL)    },
+      { key: 'BBC1',     label: 'BBC1 — Thiết Bị BBC',                color: '#00695c', ...buildStage(filteredData, getMachineBBC, numBBC1)  },
+      { key: 'DG',       label: 'ĐG — Thiết Bị Đóng Gói',            color: '#e65100', ...buildStage(filteredData, getMachineDG,  numDG)    },
+    ]
   }, [filteredData, pmMap])
 
   // ── Machine pivot — Cong thuc hien ──
