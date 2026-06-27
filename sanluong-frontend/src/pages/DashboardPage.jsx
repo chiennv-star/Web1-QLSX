@@ -2,7 +2,8 @@
 import {
   Table, Button, Space, Input, Select, Tag, Typography,
   Popconfirm, message, Tooltip, Divider, DatePicker,
-  Spin, Collapse, Badge, Tabs, Segmented, Dropdown, Modal
+  Spin, Collapse, Badge, Tabs, Segmented, Dropdown, Modal,
+  Drawer, Descriptions
 } from 'antd'
 import {
   PlusOutlined, SearchOutlined, EditOutlined,
@@ -2145,6 +2146,7 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange
   const [delLoading, setDelLoading] = useState(false)
   const [selectedRowKeys, setSelectedRowKeys] = useState([])
   const [bulkDelLoading, setBulkDelLoading] = useState(false)
+  const [detailRecord, setDetailRecord] = useState(null)
 
   const handleDelete = async (id) => {
     setDelLoading(true)
@@ -2323,7 +2325,102 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange
           onChange: onPaginationChange,
         }}
         rowClassName={(_, idx) => idx % 2 !== 0 ? 'row-alt' : ''}
+        onRow={record => ({
+          onClick: e => {
+            if (e.target.closest('.ant-checkbox-wrapper') || e.target.closest('button') || e.target.closest('.ant-popconfirm')) return
+            setDetailRecord(record)
+          },
+          style: { cursor: 'pointer' },
+        })}
       />
+
+      <Drawer
+        open={!!detailRecord}
+        onClose={() => setDetailRecord(null)}
+        title={
+          <span>
+            Chi tiết sản lượng —{' '}
+            <span style={{ color: '#0f766e', fontWeight: 700 }}>{detailRecord?.maBravo}</span>
+            {detailRecord?.maTp && <span style={{ color: '#6d28d9', marginLeft: 8, fontSize: 13 }}>{detailRecord.maTp}</span>}
+          </span>
+        }
+        width={580}
+        bodyStyle={{ padding: '16px 20px' }}
+      >
+        {detailRecord && (() => {
+          const r = detailRecord
+          const fmtTT = v => {
+            if (!v) return <span style={{ color: '#d9d9d9' }}>—</span>
+            return <Tag color={v === 'done' ? 'success' : 'processing'} style={{ margin: 0 }}>{v}</Tag>
+          }
+          const fmtNum = v => v != null ? <b style={{ color: '#0f766e' }}>{Number(v).toLocaleString('vi-VN')}</b> : <span style={{ color: '#d9d9d9' }}>—</span>
+          const fmtDec = v => v != null ? <span style={{ color: '#c41d7f' }}>{Number(v).toFixed(2)}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+          const fmtQA  = v => v != null ? <span style={{ color: '#0891b2' }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+          const labelStyle = { fontWeight: 600, color: '#334155', fontSize: 12 }
+          const sectionTitle = (txt, color) => (
+            <div style={{ background: color, color: '#fff', fontWeight: 700, fontSize: 12,
+              padding: '4px 12px', borderRadius: 4, marginTop: 14, marginBottom: 6 }}>
+              {txt}
+            </div>
+          )
+          return (
+            <div style={{ fontSize: 13 }}>
+              {sectionTitle('Thông tin cơ bản', '#006666')}
+              <Descriptions size="small" column={2} bordered labelStyle={labelStyle}>
+                <Descriptions.Item label="Mã Bravo">{r.maBravo || '—'}</Descriptions.Item>
+                <Descriptions.Item label="Mã TP">{r.maTp || '—'}</Descriptions.Item>
+                <Descriptions.Item label="Tên SP" span={2}>{r.tienTrinh || '—'}</Descriptions.Item>
+                <Descriptions.Item label="LSX / Số lô">{r.lsx || '—'}</Descriptions.Item>
+                <Descriptions.Item label="Mã đơn hàng">{r.maDonHang || '—'}</Descriptions.Item>
+                <Descriptions.Item label="SL kế hoạch">{fmtNum(r.soLuong)}</Descriptions.Item>
+              </Descriptions>
+
+              {sectionTitle('Trạng thái công đoạn', '#0369a1')}
+              <Descriptions size="small" column={4} bordered labelStyle={labelStyle}>
+                <Descriptions.Item label="PC">{fmtTT(r.pcTrangThai)}</Descriptions.Item>
+                <Descriptions.Item label="PL">{fmtTT(r.plTrangThai)}</Descriptions.Item>
+                <Descriptions.Item label="ĐG">{fmtTT(r.dgTrangThai)}</Descriptions.Item>
+                <Descriptions.Item label="BBC1">{fmtTT(r.bbc1TrangThai)}</Descriptions.Item>
+              </Descriptions>
+
+              {sectionTitle('Sản lượng', '#166534')}
+              <Descriptions size="small" column={2} bordered labelStyle={labelStyle}>
+                <Descriptions.Item label="SL PC">{fmtNum(r.slPc)}</Descriptions.Item>
+                <Descriptions.Item label="SL PL">{fmtNum(r.pcPl)}</Descriptions.Item>
+                <Descriptions.Item label="SL ĐG">{fmtNum(r.dg2)}</Descriptions.Item>
+                <Descriptions.Item label="SL BBC1">{fmtNum(r.bbc1_2)}</Descriptions.Item>
+                <Descriptions.Item label="SP Trung gian">{fmtNum(r.spTrungGian)}</Descriptions.Item>
+                <Descriptions.Item label="TP Nhập kho">{fmtNum(r.tpNhapKho)}</Descriptions.Item>
+                <Descriptions.Item label="SL Trung bình">{fmtNum(r.slTrungBinh)}</Descriptions.Item>
+              </Descriptions>
+
+              {sectionTitle('Chi phí công', '#7c2d12')}
+              <Descriptions size="small" column={3} bordered labelStyle={labelStyle}>
+                <Descriptions.Item label="BBC1">{fmtDec(r.bbc1_3)}</Descriptions.Item>
+                <Descriptions.Item label="PC">{fmtDec(r.pcChiPhi)}</Descriptions.Item>
+                <Descriptions.Item label="PL">{fmtDec(r.plChiPhi)}</Descriptions.Item>
+                <Descriptions.Item label="ĐG">{fmtDec(r.dgChiPhi)}</Descriptions.Item>
+                <Descriptions.Item label="CC">{fmtDec(r.ccChiPhi)}</Descriptions.Item>
+                <Descriptions.Item label="GNNL">{fmtDec(r.temDb)}</Descriptions.Item>
+              </Descriptions>
+
+              {sectionTitle('QA Lấy mẫu', '#4c1d95')}
+              <Descriptions size="small" column={2} bordered labelStyle={labelStyle}>
+                <Descriptions.Item label="PL">{fmtQA(r.plQaLayMau)}</Descriptions.Item>
+                <Descriptions.Item label="ĐG">{fmtQA(r.dgQaLayMau)}</Descriptions.Item>
+              </Descriptions>
+
+              {(r.moTa || r.ghiChuHieuSuat) && (<>
+                {sectionTitle('Ghi chú', '#374151')}
+                <Descriptions size="small" column={1} bordered labelStyle={labelStyle}>
+                  {r.moTa && <Descriptions.Item label="Mô tả">{r.moTa}</Descriptions.Item>}
+                  {r.ghiChuHieuSuat && <Descriptions.Item label="Ghi chú HS">{r.ghiChuHieuSuat}</Descriptions.Item>}
+                </Descriptions>
+              </>)}
+            </div>
+          )
+        })()}
+      </Drawer>
     </div>
   )
 }
