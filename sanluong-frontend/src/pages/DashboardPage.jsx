@@ -2623,10 +2623,20 @@ function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84, onPmSaved }
   const fmtNS  = v => v != null && v !== '' ? Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 0 }) : '—'
   const fmtNum = v => v != null && v !== '' ? Number(v).toLocaleString('vi-VN') : '—'
 
-  const [drawer, setDrawer]     = useState(null)
-  const [editMode, setEditMode] = useState(false)
-  const [saving, setSaving]     = useState(false)
-  const [editVals, setEditVals] = useState({})
+  const [drawer, setDrawer]         = useState(null)
+  const [editMode, setEditMode]     = useState(false)
+  const [saving, setSaving]         = useState(false)
+  const [editVals, setEditVals]     = useState({})
+  const [thAll, setThAll]           = useState([])
+  const [thAllLoading, setThAllLoading] = useState(false)
+
+  useEffect(() => {
+    setThAllLoading(true)
+    api.get('/san-luong-tong-hop', { params: { page: 0, size: 9999 } })
+      .then(({ data: res }) => setThAll(res.content || []))
+      .catch(() => {})
+      .finally(() => setThAllLoading(false))
+  }, [])
 
   const openDrawer = (row) => {
     setDrawer(row)
@@ -2682,6 +2692,21 @@ function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84, onPmSaved }
     return Object.values(map).sort((a, b) => b.dangSx - a.dangSx || b.soLo - a.soLo)
   }, [data])
 
+  // Gom nhóm TH theo maBravo → soLo (đếm lô) + coLoTb (TB soLuong)
+  const thMapByBravo = React.useMemo(() => {
+    const map = {}
+    thAll.forEach(r => {
+      const key = r.maBravo || r.maTp || ''
+      if (!key) return
+      if (!map[key]) map[key] = { soLo: 0, totalSl: 0, records: [] }
+      map[key].soLo++
+      map[key].totalSl += Number(r.soLuong) || 0
+      map[key].records.push(r)
+    })
+    Object.values(map).forEach(v => { v.coLoTb = v.soLo > 0 ? Math.round(v.totalSl / v.soLo) : 0 })
+    return map
+  }, [thAll])
+
   const columns = [
     {
       title: '#', key: 'stt', width: 44, fixed: 'left', align: 'center',
@@ -2730,6 +2755,22 @@ function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84, onPmSaved }
       title: 'Cỡ Lô', dataIndex: 'coLoMax', key: 'coLoMax', width: 90, align: 'right',
       sorter: (a, b) => a.coLoMax - b.coLoMax,
       render: v => <span style={{ fontWeight: 600, color: '#374151' }}>{fmtNum(v || null)}</span>,
+    },
+    {
+      title: 'Số lô (TH)', key: 'soLoTh', width: 90, align: 'center',
+      sorter: (a, b) => (thMapByBravo[a.maBravo]?.soLo || 0) - (thMapByBravo[b.maBravo]?.soLo || 0),
+      render: (_, r) => {
+        const v = thMapByBravo[r.maBravo]?.soLo
+        return v ? <span style={{ fontWeight: 700, color: '#065f46' }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+      },
+    },
+    {
+      title: 'Cỡ lô TB (TH)', key: 'coLoTh', width: 115, align: 'right',
+      sorter: (a, b) => (thMapByBravo[a.maBravo]?.coLoTb || 0) - (thMapByBravo[b.maBravo]?.coLoTb || 0),
+      render: (_, r) => {
+        const v = thMapByBravo[r.maBravo]?.coLoTb
+        return v ? <span style={{ fontWeight: 600, color: '#065f46' }}>{fmtNum(v)}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+      },
     },
     {
       title: 'KL/ĐV (g)', key: 'khoiLuong', width: 95, align: 'right',
@@ -2797,8 +2838,9 @@ function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84, onPmSaved }
     },
   ]
 
-  const drawerPm  = drawer ? (pmMap[drawer.maBravo] || {}) : {}
-  const drawerLos = drawer ? (data || []).filter(r => r.maBravo === drawer.maBravo) : []
+  const drawerPm    = drawer ? (pmMap[drawer.maBravo] || {}) : {}
+  const drawerLos   = drawer ? (data  || []).filter(r => r.maBravo === drawer.maBravo) : []
+  const drawerThLos = drawer ? (thAll || []).filter(r => r.maBravo === drawer.maBravo) : []
 
   const loColumns = [
     { title: '#', width: 36, align: 'center', render: (_, __, i) => <span style={{ fontSize: 11, color: '#94a3b8' }}>{i+1}</span> },
@@ -2811,6 +2853,16 @@ function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84, onPmSaved }
         ? <Tag color="success" style={{ marginRight: 0 }}>Hoàn thành</Tag>
         : <Tag color="processing" style={{ marginRight: 0 }}>Đang SX</Tag>
     },
+  ]
+
+  const thLoColumns = [
+    { title: '#', width: 36, align: 'center', render: (_, __, i) => <span style={{ fontSize: 11, color: '#94a3b8' }}>{i+1}</span> },
+    { title: 'Lô SX (LSX)', dataIndex: 'lsx', key: 'lsx', width: 110 },
+    { title: 'Mã TP', dataIndex: 'maTp', key: 'maTp', width: 100 },
+    { title: 'Sản Lượng', dataIndex: 'soLuong', key: 'soLuong', width: 95, align: 'right',
+      render: v => <span style={{ fontWeight: 600, color: '#065f46' }}>{fmtNum(v)}</span> },
+    { title: 'Đơn Hàng', dataIndex: 'maDonHang', key: 'maDonHang', width: 120,
+      render: v => v || <span style={{ color: '#d9d9d9' }}>—</span> },
   ]
 
   const ENum = (field, label) => (
@@ -2846,9 +2898,9 @@ function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84, onPmSaved }
         columns={columns}
         dataSource={rows}
         rowKey="key"
-        loading={loading}
+        loading={loading || thAllLoading}
         size="small"
-        scroll={{ x: 2050 }}
+        scroll={{ x: 2280 }}
         sticky={{ offsetHeader: headerOffset }}
         rowHoverable
         onRow={r => ({ onClick: () => openDrawer(r), style: { cursor: 'pointer' } })}
@@ -2966,6 +3018,24 @@ function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84, onPmSaved }
           size="small"
           pagination={drawerLos.length > 10 ? { pageSize: 10, size: 'small' } : false}
           locale={{ emptyText: 'Không có lô nào' }}
+        />
+
+        <Divider style={{ margin: '16px 0 12px' }}>
+          Tổng hợp sản lượng (lịch sử)
+          <Tag color="green" style={{ marginLeft: 8 }}>{drawerThLos.length} lô</Tag>
+          {drawerThLos.length > 0 && (
+            <span style={{ fontSize: 12, color: '#065f46', marginLeft: 8 }}>
+              TB: <b>{fmtNum(thMapByBravo[drawer?.maBravo]?.coLoTb)}</b> SP/lô
+            </span>
+          )}
+        </Divider>
+        <Table
+          columns={thLoColumns}
+          dataSource={drawerThLos}
+          rowKey={r => r.id || r.lsx || Math.random()}
+          size="small"
+          pagination={drawerThLos.length > 10 ? { pageSize: 10, size: 'small' } : false}
+          locale={{ emptyText: 'Chưa có dữ liệu tổng hợp SL' }}
         />
       </Drawer>
     </div>
