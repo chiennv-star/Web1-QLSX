@@ -2455,6 +2455,7 @@ function PhanTichSanLuongTab() {
   const [loaiSpMap, setLoaiSpMap] = useState({})
   const [innerTab, setInnerTab] = useState('stage')
   const [sortBy, setSortBy] = useState('output-desc')
+  const [activeQuickRange, setActiveQuickRange] = useState('Hôm nay')
 
   const fetchData = useCallback(async (range = dateRange) => {
     setLoading(true)
@@ -2559,7 +2560,7 @@ function PhanTichSanLuongTab() {
         <span style={{ fontWeight: 700, color: '#0f766e', whiteSpace: 'nowrap' }}>📊 Khoảng thời gian:</span>
         <RangePicker
           value={dateRange}
-          onChange={v => v && setDateRange(v)}
+          onChange={v => { if (v) { setDateRange(v); setActiveQuickRange(null) } }}
           format="DD/MM/YYYY"
           size="small"
           allowClear={false}
@@ -2584,13 +2585,27 @@ function PhanTichSanLuongTab() {
       </div>
       {/* Quick range buttons */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
-        {QUICK_RANGES.map(q => (
-          <Button key={q.label} size="small"
-            style={{ fontSize: 12, borderRadius: 12, borderColor: '#99f6e4', color: '#0f766e', background: '#f0fdfa' }}
-            onClick={() => { const r = q.range(); setDateRange(r); fetchData(r) }}>
-            {q.label}
-          </Button>
-        ))}
+        {QUICK_RANGES.map(q => {
+          const isActive = activeQuickRange === q.label
+          return (
+            <Button key={q.label} size="small"
+              style={{
+                fontSize: 12, borderRadius: 12,
+                borderColor: isActive ? '#0f766e' : '#99f6e4',
+                color: isActive ? '#fff' : '#0f766e',
+                background: isActive ? '#0f766e' : '#f0fdfa',
+                fontWeight: isActive ? 700 : 400,
+              }}
+              onClick={() => {
+                const r = q.range()
+                setDateRange(r)
+                setActiveQuickRange(q.label)
+                fetchData(r)
+              }}>
+              {q.label}
+            </Button>
+          )
+        })}
       </div>
 
       {/* Stat cards */}
@@ -2605,22 +2620,27 @@ function PhanTichSanLuongTab() {
       </div>
 
       {/* Inner tabs */}
-      <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid #e0e0e0', marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
         {[
           { key: 'stage', label: '📈 Theo Công đoạn' },
           { key: 'loaisp', label: '🧪 Theo Loại SP' },
           { key: 'product', label: '📦 Theo Sản phẩm' },
-        ].map(t => (
-          <button key={t.key} onClick={() => setInnerTab(t.key)}
-            style={{
-              padding: '10px 20px', background: 'transparent', border: 'none', cursor: 'pointer',
-              fontWeight: 600, fontSize: 13, color: innerTab === t.key ? '#0f766e' : '#666',
-              borderBottom: `3px solid ${innerTab === t.key ? '#0f766e' : 'transparent'}`,
-              position: 'relative', bottom: -2, transition: 'all 0.2s',
-            }}>
-            {t.label}
-          </button>
-        ))}
+        ].map(t => {
+          const isActive = innerTab === t.key
+          return (
+            <button key={t.key} onClick={() => setInnerTab(t.key)}
+              style={{
+                padding: '8px 18px', cursor: 'pointer',
+                fontWeight: 600, fontSize: 13, borderRadius: 8,
+                border: `2px solid ${isActive ? '#0f766e' : '#d1d5db'}`,
+                color: isActive ? '#fff' : '#555',
+                background: isActive ? '#0f766e' : '#f9fafb',
+                transition: 'all 0.15s',
+              }}>
+              {t.label}
+            </button>
+          )
+        })}
       </div>
 
       {/* Tab: theo công đoạn */}
