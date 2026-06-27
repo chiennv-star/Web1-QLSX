@@ -1830,7 +1830,7 @@ export default function DashboardPage() {
                 Thêm mới
               </Button>
             )}
-            {canEditProduction() && (
+            {canEditProduction() && activeTab === 'tong_hop' && (
               <Button size="small" icon={<UploadOutlined />}
                 onClick={() => setImportOpen(true)}
                 style={{ borderColor: '#a78bfa', color: '#a78bfa', background: 'transparent', fontWeight: 600 }}>
