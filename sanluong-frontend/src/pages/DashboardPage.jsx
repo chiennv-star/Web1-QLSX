@@ -3048,11 +3048,12 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
 
   // ── Machine pivot tables by stage ──
   const machineTimeData = React.useMemo(() => {
+    const numPCVal = r => numPC(r) || Number(r.soLuong) || 0
     const STAGES = [
-      { key: 'PC',   label: 'PC — Thiết Bị Pha Chế',   getMachine: r => (pmMap[r.maBravo] || {}).mayMocPc,   getVal: numPC,   color: '#1565c0' },
-      { key: 'PL',   label: 'PL — Thiết Bị Chiết',     getMachine: r => (pmMap[r.maBravo] || {}).mayMocPl,   getVal: numPL,   color: '#7b1fa2' },
-      { key: 'BBC1', label: 'BBC1 — Thiết Bị BBC',      getMachine: r => (pmMap[r.maBravo] || {}).mayMocBbc1, getVal: numBBC1, color: '#00695c' },
-      { key: 'DG',   label: 'ĐG — Thiết Bị Đóng Gói', getMachine: r => (pmMap[r.maBravo] || {}).mayMocDg, getVal: numDG, color: '#e65100' },
+      { key: 'PC',   label: 'PC — Thiết Bị Pha Chế',   getMachine: r => (pmMap[r.maBravo] || {}).mayMocPc,   getVal: numPCVal, color: '#1565c0' },
+      { key: 'PL',   label: 'PL — Thiết Bị Chiết',     getMachine: r => (pmMap[r.maBravo] || {}).mayMocPl,   getVal: numPL,    color: '#7b1fa2' },
+      { key: 'BBC1', label: 'BBC1 — Thiết Bị BBC',      getMachine: r => (pmMap[r.maBravo] || {}).mayMocBbc1, getVal: numBBC1,  color: '#00695c' },
+      { key: 'DG',   label: 'ĐG — Thiết Bị Đóng Gói',  getMachine: r => (pmMap[r.maBravo] || {}).mayMocDg,   getVal: numDG,    color: '#e65100' },
     ]
     return STAGES.map(({ key, label, getMachine, getVal, color }) => {
       const monthMap = {}
@@ -3256,8 +3257,8 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
             <div style={{ fontWeight: 700, fontSize: 15, color: '#006666', marginBottom: 16, paddingBottom: 8, borderBottom: '2px solid #b2dfdb' }}>
               Phân Tích Theo Thời Gian — Từng Công Đoạn
             </div>
-            {machineTimeData.map(stage => (
-              <div key={stage.key} style={{ marginBottom: 28 }}>
+            {machineTimeData.map((stage, si) => (
+              <div key={stage.key} style={{ marginBottom: 32 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                   <div style={{ width: 6, height: 22, borderRadius: 3, background: stage.color }} />
                   <span style={{ fontWeight: 700, fontSize: 14, color: stage.color }}>{stage.label}</span>
@@ -3265,38 +3266,19 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
                 {stage.machines.length === 0 ? (
                   <div style={{ color: '#aaa', fontSize: 13, paddingLeft: 14 }}>Chưa có dữ liệu máy móc</div>
                 ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
-                      <thead>
-                        <tr>
-                          <th style={{ background: stage.color, color: '#fff', padding: '7px 12px', textAlign: 'left', whiteSpace: 'nowrap', position: 'sticky', left: 0, zIndex: 2 }}>Tháng/Năm</th>
-                          {stage.machines.map(m => (
-                            <th key={m} style={{ background: stage.color, color: '#fff', padding: '7px 10px', textAlign: 'right', whiteSpace: 'nowrap', minWidth: 110 }}>{m}</th>
-                          ))}
-                          <th style={{ background: '#004d40', color: '#fff', padding: '7px 10px', textAlign: 'right', whiteSpace: 'nowrap', minWidth: 110 }}>TỔNG</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {stage.rows.map((row, ri) => {
-                          const isTotal = row._total
-                          return (
-                            <tr key={row.thang} style={{ background: isTotal ? '#e8f5f5' : ri % 2 === 0 ? '#fff' : '#f9fffe' }}>
-                              <td style={{ padding: '6px 12px', fontWeight: isTotal ? 700 : 400, whiteSpace: 'nowrap', borderBottom: '1px solid #e8f5f5', position: 'sticky', left: 0, background: isTotal ? '#e8f5f5' : ri % 2 === 0 ? '#fff' : '#f9fffe' }}>
-                                {row.thang}
-                              </td>
-                              {stage.machines.map(m => (
-                                <td key={m} style={{ padding: '6px 10px', textAlign: 'right', borderBottom: '1px solid #e8f5f5', color: row[m] ? stage.color : '#ccc', fontWeight: isTotal ? 700 : 400 }}>
-                                  {row[m] ? Number(row[m]).toLocaleString('vi-VN') : '—'}
-                                </td>
-                              ))}
-                              <td style={{ padding: '6px 10px', textAlign: 'right', borderBottom: '1px solid #e8f5f5', fontWeight: 700, color: '#004d40' }}>
-                                {Number(row._rowTotal || 0).toLocaleString('vi-VN')}
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
+                  <div style={{ background: '#fff', padding: '16px 16px 8px', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,.07)', border: `1px solid ${stage.color}22` }}>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={stage.rows.filter(r => !r._total)} margin={{ top: 8, right: 24, left: 10, bottom: 60 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="thang" angle={-45} textAnchor="end" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} tickFormatter={v => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}K` : v} />
+                        <RechartTooltip formatter={(v, n) => [Number(v).toLocaleString('vi-VN'), n]} />
+                        <Legend wrapperStyle={{ paddingTop: 8 }} />
+                        {stage.machines.map((m, i) => (
+                          <Line key={m} type="monotone" dataKey={m} stroke={PIE_COLORS[(si * 3 + i) % PIE_COLORS.length]} dot={false} strokeWidth={2} />
+                        ))}
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
                 )}
               </div>
