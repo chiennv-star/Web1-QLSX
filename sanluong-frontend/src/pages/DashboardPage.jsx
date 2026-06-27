@@ -2204,6 +2204,7 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange
   const cols = [
     { title: 'Mã Bravo', dataIndex: 'maBravo',   key: 'maBravo',   width: 110, fixed: 'left', onHeaderCell: hc({ textAlign: 'left' }), render: v => <b>{v}</b> },
     { title: 'Mã TP',    dataIndex: 'maTp',       key: 'maTp',      width: 90,  fixed: 'left', onHeaderCell: hc({ textAlign: 'left' }) },
+    { title: 'Tên SP',   dataIndex: 'tienTrinh',  key: 'tienTrinh', width: 200, ellipsis: true, onHeaderCell: hc({ textAlign: 'left' }) },
     {
       title: 'Loại SP', dataIndex: 'loaiSanPham', key: 'loaiSanPham', width: 120, ellipsis: true,
       onHeaderCell: hc({ textAlign: 'left' }),
@@ -2217,7 +2218,6 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange
       onFilter: (value, record) => (record.toThucHien ?? '') === value,
       render: v => v ? <Tag color="cyan" style={{ fontSize: 11, margin: 0 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
-    { title: 'Tên SP',   dataIndex: 'tienTrinh',  key: 'tienTrinh', width: 200, ellipsis: true, onHeaderCell: hc({ textAlign: 'left' }) },
     { title: 'LSX',      dataIndex: 'lsx',        key: 'lsx',       width: 100, onHeaderCell: hc() },
     { title: 'SL KH',    dataIndex: 'soLuong',    key: 'soLuong',   width: 76, align: 'center', onHeaderCell: hc(), render: v => v ?? '—' },
     { title: 'Mã ĐH',    dataIndex: 'maDonHang',  key: 'maDonHang', width: 120, ellipsis: true, onHeaderCell: hc() },
@@ -2352,7 +2352,7 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange
         rowSelection={rowSelection}
         loading={loading}
         size="small"
-        scroll={{ x: 2000 }}
+        scroll={{ x: 2000, y: 'calc(100vh - 310px)' }}
         bordered
         pagination={{
           ...pagination,
