@@ -10,24 +10,25 @@ import org.springframework.data.repository.query.Param;
 public interface SanLuongTongHopRepository extends JpaRepository<SanLuongTongHop, Long> {
 
     @Query(value = """
-        SELECT s FROM SanLuongTongHop s
-        LEFT JOIN ProductMaster pm ON UPPER(pm.maTp) = UPPER(s.maTp)
-        WHERE (:maBravo      IS NULL OR LOWER(s.maBravo)   LIKE LOWER(CONCAT('%',:maBravo,'%')))
-          AND (:maTp         IS NULL OR LOWER(s.maTp)      LIKE LOWER(CONCAT('%',:maTp,'%')))
-          AND (:lsx          IS NULL OR LOWER(s.lsx)       LIKE LOWER(CONCAT('%',:lsx,'%')))
-          AND (:loaiSanPham  IS NULL OR pm.loaiSanPham     = :loaiSanPham)
-          AND (:toThucHien   IS NULL OR pm.toNhomPcpl      = :toThucHien)
-        ORDER BY s.createdAt DESC
+        SELECT s.* FROM san_luong_tong_hop s
+        LEFT JOIN product_master pm ON UPPER(pm.ma_tp) = UPPER(s.ma_tp)
+        WHERE (:maBravo     IS NULL OR s.ma_bravo  LIKE CONCAT('%',:maBravo,'%'))
+          AND (:maTp        IS NULL OR s.ma_tp     LIKE CONCAT('%',:maTp,'%'))
+          AND (:lsx         IS NULL OR s.lsx       LIKE CONCAT('%',:lsx,'%'))
+          AND (:loaiSanPham IS NULL OR pm.loai_san_pham = :loaiSanPham)
+          AND (:toThucHien  IS NULL OR pm.to_nhom_pcpl  = :toThucHien)
+        ORDER BY s.created_at DESC
         """,
         countQuery = """
-        SELECT COUNT(s) FROM SanLuongTongHop s
-        LEFT JOIN ProductMaster pm ON UPPER(pm.maTp) = UPPER(s.maTp)
-        WHERE (:maBravo      IS NULL OR LOWER(s.maBravo)   LIKE LOWER(CONCAT('%',:maBravo,'%')))
-          AND (:maTp         IS NULL OR LOWER(s.maTp)      LIKE LOWER(CONCAT('%',:maTp,'%')))
-          AND (:lsx          IS NULL OR LOWER(s.lsx)       LIKE LOWER(CONCAT('%',:lsx,'%')))
-          AND (:loaiSanPham  IS NULL OR pm.loaiSanPham     = :loaiSanPham)
-          AND (:toThucHien   IS NULL OR pm.toNhomPcpl      = :toThucHien)
-        """)
+        SELECT COUNT(*) FROM san_luong_tong_hop s
+        LEFT JOIN product_master pm ON UPPER(pm.ma_tp) = UPPER(s.ma_tp)
+        WHERE (:maBravo     IS NULL OR s.ma_bravo  LIKE CONCAT('%',:maBravo,'%'))
+          AND (:maTp        IS NULL OR s.ma_tp     LIKE CONCAT('%',:maTp,'%'))
+          AND (:lsx         IS NULL OR s.lsx       LIKE CONCAT('%',:lsx,'%'))
+          AND (:loaiSanPham IS NULL OR pm.loai_san_pham = :loaiSanPham)
+          AND (:toThucHien  IS NULL OR pm.to_nhom_pcpl  = :toThucHien)
+        """,
+        nativeQuery = true)
     Page<SanLuongTongHop> search(
             @Param("maBravo")     String maBravo,
             @Param("maTp")        String maTp,
