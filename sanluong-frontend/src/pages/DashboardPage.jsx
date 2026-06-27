@@ -1018,7 +1018,7 @@ export default function DashboardPage() {
   const [thLoading, setThLoading] = useState(false)
   const [thPagination, setThPagination] = useState({ current: 1, pageSize: 100, total: 0 })
   const thPaginationRef = useRef({ current: 1, pageSize: 100 })
-  const [thFilters, setThFilters] = useState({ maBravo: '', maTp: '', lsx: '' })
+  const [thFilters, setThFilters] = useState({ maBravo: '', maTp: '', lsx: '', loaiSanPham: '', toThucHien: '' })
   const [statsMonth, setStatsMonth] = useState(null)
   const [stats, setStats] = useState(null)
   const [statsLoading, setStatsLoading] = useState(false)
@@ -2147,6 +2147,14 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange
   const [selectedRowKeys, setSelectedRowKeys] = useState([])
   const [bulkDelLoading, setBulkDelLoading] = useState(false)
   const [detailRecord, setDetailRecord] = useState(null)
+  const [loaiOptions, setLoaiOptions] = useState([])
+  const [toOptions] = useState(['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'])
+
+  useEffect(() => {
+    api.get('/product-master/loai-san-pham-distinct').then(r => {
+      setLoaiOptions((r.data || []).filter(Boolean))
+    }).catch(() => {})
+  }, [])
 
   const handleDelete = async (id) => {
     setDelLoading(true)
@@ -2196,6 +2204,19 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange
   const cols = [
     { title: 'Mã Bravo', dataIndex: 'maBravo',   key: 'maBravo',   width: 110, fixed: 'left', onHeaderCell: hc({ textAlign: 'left' }), render: v => <b>{v}</b> },
     { title: 'Mã TP',    dataIndex: 'maTp',       key: 'maTp',      width: 90,  fixed: 'left', onHeaderCell: hc({ textAlign: 'left' }) },
+    {
+      title: 'Loại SP', dataIndex: 'loaiSanPham', key: 'loaiSanPham', width: 120, ellipsis: true,
+      onHeaderCell: hc({ textAlign: 'left' }),
+      ...colSearch('loaiSanPham'),
+      render: v => v ? <Tag color="geekblue" style={{ fontSize: 11, margin: 0 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>,
+    },
+    {
+      title: 'Tổ TH', dataIndex: 'toThucHien', key: 'toThucHien', width: 90, align: 'center',
+      onHeaderCell: hc(),
+      filters: ['PCPL1','PCPL2','PCPL3','ĐG','BBC1'].map(v => ({ text: v, value: v })),
+      onFilter: (value, record) => (record.toThucHien ?? '') === value,
+      render: v => v ? <Tag color="cyan" style={{ fontSize: 11, margin: 0 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>,
+    },
     { title: 'Tên SP',   dataIndex: 'tienTrinh',  key: 'tienTrinh', width: 200, ellipsis: true, onHeaderCell: hc({ textAlign: 'left' }) },
     { title: 'LSX',      dataIndex: 'lsx',        key: 'lsx',       width: 100, onHeaderCell: hc() },
     { title: 'SL KH',    dataIndex: 'soLuong',    key: 'soLuong',   width: 76, align: 'center', onHeaderCell: hc(), render: v => v ?? '—' },
@@ -2293,6 +2314,24 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange
           size="small"
           allowClear
         />
+        <Select
+          placeholder="Loại SP"
+          value={filters.loaiSanPham || undefined}
+          onChange={v => onFilterChange({ loaiSanPham: v ?? '' })}
+          allowClear
+          style={{ width: 140 }}
+          size="small"
+          options={loaiOptions.map(v => ({ label: v, value: v }))}
+        />
+        <Select
+          placeholder="Tổ thực hiện"
+          value={filters.toThucHien || undefined}
+          onChange={v => onFilterChange({ toThucHien: v ?? '' })}
+          allowClear
+          style={{ width: 130 }}
+          size="small"
+          options={toOptions.map(v => ({ label: v, value: v }))}
+        />
         <Button size="small" icon={<SearchOutlined />} type="primary" onClick={onSearch}>Tìm</Button>
         {selectedRowKeys.length > 0 && (
           <Popconfirm
@@ -2370,6 +2409,12 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange
                 <Descriptions.Item label="Mã Bravo">{r.maBravo || '—'}</Descriptions.Item>
                 <Descriptions.Item label="Mã TP">{r.maTp || '—'}</Descriptions.Item>
                 <Descriptions.Item label="Tên SP" span={2}>{r.tienTrinh || '—'}</Descriptions.Item>
+                <Descriptions.Item label="Loại SP">
+                  {r.loaiSanPham ? <Tag color="geekblue" style={{ margin: 0 }}>{r.loaiSanPham}</Tag> : '—'}
+                </Descriptions.Item>
+                <Descriptions.Item label="Tổ thực hiện">
+                  {r.toThucHien ? <Tag color="cyan" style={{ margin: 0 }}>{r.toThucHien}</Tag> : '—'}
+                </Descriptions.Item>
                 <Descriptions.Item label="LSX / Số lô">{r.lsx || '—'}</Descriptions.Item>
                 <Descriptions.Item label="Mã đơn hàng">{r.maDonHang || '—'}</Descriptions.Item>
                 <Descriptions.Item label="SL kế hoạch">{fmtNum(r.soLuong)}</Descriptions.Item>

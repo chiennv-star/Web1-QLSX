@@ -27,9 +27,11 @@ public class SanLuongTongHopController {
             @RequestParam(required = false) String maBravo,
             @RequestParam(required = false) String maTp,
             @RequestParam(required = false) String lsx,
+            @RequestParam(required = false) String loaiSanPham,
+            @RequestParam(required = false) String toThucHien,
             @RequestParam(defaultValue = "0")    int page,
             @RequestParam(defaultValue = "100")  int size) {
-        return ResponseEntity.ok(service.search(maBravo, maTp, lsx, page, size));
+        return ResponseEntity.ok(service.search(maBravo, maTp, lsx, loaiSanPham, toThucHien, page, size));
     }
 
     @DeleteMapping("/{id}")

@@ -97,6 +97,13 @@ public class SanLuongTongHop {
     @Column(name = "ghi_chu_hieu_suat", length = 500)
     private String ghiChuHieuSuat;
 
+    // Populated from ProductMaster join — not persisted
+    @jakarta.persistence.Transient
+    private String loaiSanPham;
+
+    @jakarta.persistence.Transient
+    private String toThucHien;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -176,6 +183,10 @@ public class SanLuongTongHop {
     public void setMoTa(String moTa) { this.moTa = moTa; }
     public String getGhiChuHieuSuat() { return ghiChuHieuSuat; }
     public void setGhiChuHieuSuat(String ghiChuHieuSuat) { this.ghiChuHieuSuat = ghiChuHieuSuat; }
+    public String getLoaiSanPham() { return loaiSanPham; }
+    public void setLoaiSanPham(String loaiSanPham) { this.loaiSanPham = loaiSanPham; }
+    public String getToThucHien() { return toThucHien; }
+    public void setToThucHien(String toThucHien) { this.toThucHien = toThucHien; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public String getCreatedBy() { return createdBy; }

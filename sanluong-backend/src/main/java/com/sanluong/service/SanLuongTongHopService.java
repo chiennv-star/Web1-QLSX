@@ -1,6 +1,8 @@
 package com.sanluong.service;
 
+import com.sanluong.entity.ProductMaster;
 import com.sanluong.entity.SanLuongTongHop;
+import com.sanluong.repository.ProductMasterRepository;
 import com.sanluong.repository.SanLuongTongHopRepository;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddressList;
@@ -17,16 +19,43 @@ import java.util.*;
 public class SanLuongTongHopService {
 
     private final SanLuongTongHopRepository repo;
+    private final ProductMasterRepository productMasterRepo;
 
-    public SanLuongTongHopService(SanLuongTongHopRepository repo) {
+    public SanLuongTongHopService(SanLuongTongHopRepository repo, ProductMasterRepository productMasterRepo) {
         this.repo = repo;
+        this.productMasterRepo = productMasterRepo;
     }
 
-    public Page<SanLuongTongHop> search(String maBravo, String maTp, String lsx, int page, int size) {
-        String mb = (maBravo == null || maBravo.isBlank()) ? null : maBravo.trim();
-        String mt = (maTp    == null || maTp.isBlank())    ? null : maTp.trim();
-        String ls = (lsx     == null || lsx.isBlank())     ? null : lsx.trim();
-        return repo.search(mb, mt, ls, PageRequest.of(page, size));
+    public Page<SanLuongTongHop> search(String maBravo, String maTp, String lsx,
+                                         String loaiSanPham, String toThucHien,
+                                         int page, int size) {
+        String mb  = (maBravo     == null || maBravo.isBlank())     ? null : maBravo.trim();
+        String mt  = (maTp        == null || maTp.isBlank())        ? null : maTp.trim();
+        String ls  = (lsx         == null || lsx.isBlank())         ? null : lsx.trim();
+        String lsp = (loaiSanPham == null || loaiSanPham.isBlank()) ? null : loaiSanPham.trim();
+        String tth = (toThucHien  == null || toThucHien.isBlank())  ? null : toThucHien.trim();
+        Page<SanLuongTongHop> result = repo.search(mb, mt, ls, lsp, tth, PageRequest.of(page, size));
+
+        // Populate transient fields from ProductMaster
+        java.util.Set<String> maTpSet = result.getContent().stream()
+            .filter(s -> s.getMaTp() != null)
+            .map(s -> s.getMaTp().toUpperCase())
+            .collect(java.util.stream.Collectors.toSet());
+        if (!maTpSet.isEmpty()) {
+            java.util.Map<String, ProductMaster> pmMap = productMasterRepo.findByMaTpIn(maTpSet)
+                .stream().collect(java.util.stream.Collectors.toMap(
+                    pm -> pm.getMaTp().toUpperCase(), pm -> pm, (a, b) -> a));
+            result.getContent().forEach(s -> {
+                if (s.getMaTp() != null) {
+                    ProductMaster pm = pmMap.get(s.getMaTp().toUpperCase());
+                    if (pm != null) {
+                        s.setLoaiSanPham(pm.getLoaiSanPham());
+                        s.setToThucHien(pm.getToNhomPcpl());
+                    }
+                }
+            });
+        }
+        return result;
     }
 
     public void delete(Long id) {
