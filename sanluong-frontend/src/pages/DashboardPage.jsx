@@ -3,7 +3,7 @@ import {
   Table, Button, Space, Input, Select, Tag, Typography,
   Popconfirm, message, Tooltip, Divider, DatePicker,
   Spin, Collapse, Badge, Tabs, Segmented, Dropdown, Modal,
-  Drawer, Descriptions
+  Drawer, Descriptions, InputNumber
 } from 'antd'
 import {
   PlusOutlined, SearchOutlined, EditOutlined,
@@ -1219,6 +1219,10 @@ export default function DashboardPage() {
     if (activeTab === 'phan_bo') loadPmMap()
   }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const handlePmSaved = useCallback((updated) => {
+    if (updated?.maBravo) setPmMap(prev => ({ ...prev, [updated.maBravo]: updated }))
+  }, [])
+
   useEffect(() => {
     if (savedState) fetchData(savedState.page - 1, savedState.pageSize, savedState.filters)
     else fetchData(0)
@@ -2145,6 +2149,7 @@ export default function DashboardPage() {
               pmMap={pmMap}
               loading={loading || pmLoading}
               headerOffset={headerOffset}
+              onPmSaved={handlePmSaved}
             />,
           },
         ]}
@@ -2614,25 +2619,60 @@ function ImportSanLuongModal({ open, onClose, onSuccess }) {
 }
 
 // ── Phân Bố Sản Phẩm Tab ─────────────────────────────────────────────────────
-function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84 }) {
+function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84, onPmSaved }) {
   const fmtNS  = v => v != null && v !== '' ? Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 0 }) : '—'
   const fmtNum = v => v != null && v !== '' ? Number(v).toLocaleString('vi-VN') : '—'
+
+  const [drawer, setDrawer]     = useState(null)
+  const [editMode, setEditMode] = useState(false)
+  const [saving, setSaving]     = useState(false)
+  const [editVals, setEditVals] = useState({})
+
+  const openDrawer = (row) => {
+    setDrawer(row)
+    setEditMode(false)
+    setEditVals({ ...(pmMap[row.maBravo] || {}) })
+  }
+  const closeDrawer = () => { setDrawer(null); setEditMode(false) }
+  const startEdit   = () => { setEditVals({ ...(pmMap[drawer?.maBravo] || {}) }); setEditMode(true) }
+  const setEv       = (field, val) => setEditVals(ev => ({ ...ev, [field]: val }))
+
+  const handleSave = async () => {
+    const pm = pmMap[drawer?.maBravo]
+    if (!pm?.id) { message.warning('Không tìm thấy dữ liệu sản phẩm để cập nhật'); return }
+    setSaving(true)
+    try {
+      const body = {
+        maTp:         pm.maTp,
+        maBravo:      pm.maBravo,
+        tienTrinh:    pm.tienTrinh,
+        loaiSanPham:  editVals.loaiSanPham  || null,
+        khoiLuong:    editVals.khoiLuong    ?? null,
+        slTrungBinh:  editVals.slTrungBinh  ?? null,
+        nangSuatPc:   editVals.nangSuatPc   ?? null,
+        nangSuatPl:   editVals.nangSuatPl   ?? null,
+        nangSuatBbc1: editVals.nangSuatBbc1 ?? null,
+        mayMocPc:     editVals.mayMocPc     || null,
+        mayMocPl:     editVals.mayMocPl     || null,
+        mayMocBbc1:   editVals.mayMocBbc1   || null,
+        mayMocDg:     editVals.mayMocDg     || null,
+        toNhomPcpl:   editVals.toNhomPcpl   || null,
+      }
+      const { data: updated } = await api.put(`/product-master/${pm.id}`, body)
+      message.success('Cập nhật thành công')
+      onPmSaved?.(updated)
+      setEditMode(false)
+    } catch { message.error('Lưu thất bại') }
+    finally { setSaving(false) }
+  }
 
   // Gom nhóm theo maBravo → mỗi maBravo 1 hàng
   const rows = React.useMemo(() => {
     const map = {}
     ;(data || []).forEach(r => {
-      const key = r.maBravo || r.maSp || '(trống)'
+      const key = r.maBravo || r.maTp || '(trống)'
       if (!map[key]) {
-        map[key] = {
-          key,
-          maBravo:   r.maBravo || '',
-          maSp:      r.maSp    || '',
-          tenTrinh:  r.tenTrinh || '',
-          soLo:      0,
-          coLoMax:   0,
-          dangSx:    0,
-        }
+        map[key] = { key, maBravo: r.maBravo || '', maTp: r.maTp || '', tenTrinh: r.tenTrinh || '', soLo: 0, coLoMax: 0, dangSx: 0 }
       }
       map[key].soLo++
       const cl = Number(r.coLo) || 0
@@ -2654,15 +2694,19 @@ function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84 }) {
         : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
     {
-      title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 85, align: 'center',
-      render: v => v ? <Tag color="blue" style={{ marginRight: 0, fontWeight: 600 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>,
+      title: 'Mã SP', key: 'maSp', width: 90, align: 'center',
+      render: (_, r) => {
+        const v = pmMap[r.maBravo]?.maTp || r.maTp || ''
+        return v ? <Tag color="blue" style={{ marginRight: 0, fontWeight: 600 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>
+      },
     },
     {
-      title: 'Tên Sản Phẩm', key: 'tenSP', width: 210, fixed: 'left', ellipsis: true,
+      title: 'Tên Sản Phẩm', key: 'tenSP', width: 220, fixed: 'left', ellipsis: true,
       render: (_, r) => {
-        const pm = pmMap[r.maBravo]
-        const name = pm?.tenSanPham || r.tenTrinh || ''
-        return <span style={{ fontSize: 13, color: '#1e293b', fontWeight: 500 }}>{name || <span style={{ color: '#d9d9d9' }}>—</span>}</span>
+        const name = pmMap[r.maBravo]?.tienTrinh || r.tenTrinh || ''
+        return name
+          ? <span style={{ fontSize: 13, color: '#1e293b', fontWeight: 500 }}>{name}</span>
+          : <span style={{ color: '#d9d9d9' }}>—</span>
       },
     },
     {
@@ -2680,9 +2724,7 @@ function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84 }) {
     {
       title: 'Đang SX', dataIndex: 'dangSx', key: 'dangSx', width: 80, align: 'center',
       sorter: (a, b) => a.dangSx - b.dangSx,
-      render: v => v > 0
-        ? <Tag color="processing" style={{ marginRight: 0 }}>{v}</Tag>
-        : <span style={{ color: '#d9d9d9' }}>—</span>,
+      render: v => v > 0 ? <Tag color="processing" style={{ marginRight: 0 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
     {
       title: 'Cỡ Lô', dataIndex: 'coLoMax', key: 'coLoMax', width: 90, align: 'right',
@@ -2755,13 +2797,50 @@ function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84 }) {
     },
   ]
 
+  const drawerPm  = drawer ? (pmMap[drawer.maBravo] || {}) : {}
+  const drawerLos = drawer ? (data || []).filter(r => r.maBravo === drawer.maBravo) : []
+
+  const loColumns = [
+    { title: '#', width: 36, align: 'center', render: (_, __, i) => <span style={{ fontSize: 11, color: '#94a3b8' }}>{i+1}</span> },
+    { title: 'Mã TP', dataIndex: 'maTp', key: 'maTp', width: 100 },
+    { title: 'LSX', dataIndex: 'lsx', key: 'lsx', width: 90 },
+    { title: 'Cỡ Lô', dataIndex: 'coLo', key: 'coLo', width: 80, align: 'right', render: v => fmtNum(v) },
+    {
+      title: 'Tình Trạng', dataIndex: 'tinhTrang', key: 'tinhTrang', width: 110,
+      render: v => v === 'done'
+        ? <Tag color="success" style={{ marginRight: 0 }}>Hoàn thành</Tag>
+        : <Tag color="processing" style={{ marginRight: 0 }}>Đang SX</Tag>
+    },
+  ]
+
+  const ENum = (field, label) => (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 3 }}>{label}</div>
+      <InputNumber
+        value={editVals[field] != null ? Number(editVals[field]) : null}
+        onChange={v => setEv(field, v)}
+        style={{ width: '100%' }}
+        min={0}
+        formatter={v => v !== '' && v != null ? Number(v).toLocaleString('vi-VN') : ''}
+        parser={v => v?.replace(/[^\d.]/g, '') || ''}
+      />
+    </div>
+  )
+
+  const EStr = (field, label) => (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 3 }}>{label}</div>
+      <Input value={editVals[field] || ''} onChange={e => setEv(field, e.target.value)} />
+    </div>
+  )
+
   return (
     <div style={{ padding: '8px 0' }}>
       <div style={{ padding: '6px 12px 10px', display: 'flex', alignItems: 'center', gap: 10 }}>
         <BarChartOutlined style={{ color: '#0891b2', fontSize: 15 }} />
         <span style={{ fontWeight: 700, fontSize: 14, color: '#0891b2' }}>Phân Bố Sản Phẩm</span>
         <Tag color="cyan">{rows.length} sản phẩm</Tag>
-        <span style={{ fontSize: 12, color: '#94a3b8' }}>— Mỗi hàng là 1 mã Bravo duy nhất, kèm năng suất & máy thực hiện</span>
+        <span style={{ fontSize: 12, color: '#94a3b8' }}>— Click hàng để xem chi tiết & chỉnh sửa</span>
       </div>
       <Table
         columns={columns}
@@ -2771,7 +2850,8 @@ function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84 }) {
         size="small"
         scroll={{ x: 2050 }}
         sticky={{ offsetHeader: headerOffset }}
-        rowHoverable={false}
+        rowHoverable
+        onRow={r => ({ onClick: () => openDrawer(r), style: { cursor: 'pointer' } })}
         pagination={{
           defaultPageSize: 50,
           pageSizeOptions: ['20', '50', '100', '200'],
@@ -2780,6 +2860,114 @@ function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84 }) {
         }}
         locale={{ emptyText: <span style={{ color: '#d9d9d9' }}>Không có dữ liệu</span> }}
       />
+
+      <Drawer
+        open={!!drawer}
+        onClose={closeDrawer}
+        width={700}
+        title={
+          <Space>
+            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{drawer?.maBravo}</span>
+            <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>
+              {drawerPm.tienTrinh || drawer?.tenTrinh || ''}
+            </span>
+          </Space>
+        }
+        footer={
+          editMode
+            ? <Space>
+                <Button onClick={() => setEditMode(false)} disabled={saving}>Hủy</Button>
+                <Button type="primary" loading={saving} onClick={handleSave}>Lưu</Button>
+              </Space>
+            : <Button icon={<EditOutlined />} onClick={startEdit} disabled={!drawerPm.id}>Chỉnh sửa</Button>
+        }
+      >
+        {!editMode && (
+          <Descriptions size="small" column={2} bordered style={{ marginBottom: 16 }}>
+            <Descriptions.Item label="Mã Bravo">
+              <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{drawerPm.maBravo || '—'}</span>
+            </Descriptions.Item>
+            <Descriptions.Item label="Mã SP">
+              {drawerPm.maTp ? <Tag color="blue" style={{ marginRight: 0 }}>{drawerPm.maTp}</Tag> : '—'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Tên Sản Phẩm" span={2}>
+              <span style={{ fontWeight: 500 }}>{drawerPm.tienTrinh || '—'}</span>
+            </Descriptions.Item>
+            <Descriptions.Item label="Loại SP">
+              {drawerPm.loaiSanPham ? <Tag color="purple">{drawerPm.loaiSanPham}</Tag> : '—'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Tổ PCPL">{drawerPm.toNhomPcpl || '—'}</Descriptions.Item>
+            <Descriptions.Item label="KL/ĐV (g)">
+              <span style={{ color: '#0369a1', fontWeight: 600 }}>{fmtNum(drawerPm.khoiLuong)}</span>
+            </Descriptions.Item>
+            <Descriptions.Item label="NS TB (ĐG)">
+              <span style={{ color: '#7c3aed', fontWeight: 700 }}>{fmtNS(drawerPm.slTrungBinh)}</span>
+            </Descriptions.Item>
+            <Descriptions.Item label="NS PC">
+              <span style={{ color: '#1d4ed8', fontWeight: 600 }}>{fmtNS(drawerPm.nangSuatPc)}</span>
+            </Descriptions.Item>
+            <Descriptions.Item label="NS PL">
+              <span style={{ color: '#0e7490', fontWeight: 600 }}>{fmtNS(drawerPm.nangSuatPl)}</span>
+            </Descriptions.Item>
+            <Descriptions.Item label="NS BBC1">
+              <span style={{ color: '#6d28d9', fontWeight: 600 }}>{fmtNS(drawerPm.nangSuatBbc1)}</span>
+            </Descriptions.Item>
+            <Descriptions.Item label=" " />
+            <Descriptions.Item label="Máy Móc PC" span={2}>{drawerPm.mayMocPc || '—'}</Descriptions.Item>
+            <Descriptions.Item label="Máy Móc PL" span={2}>{drawerPm.mayMocPl || '—'}</Descriptions.Item>
+            <Descriptions.Item label="Máy Móc BBC1" span={2}>{drawerPm.mayMocBbc1 || '—'}</Descriptions.Item>
+            <Descriptions.Item label="Máy Móc ĐG" span={2}>{drawerPm.mayMocDg || '—'}</Descriptions.Item>
+          </Descriptions>
+        )}
+
+        {editMode && (
+          <div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+              {EStr('loaiSanPham', 'Loại SP')}
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 3 }}>Tổ PCPL</div>
+                <Select
+                  value={editVals.toNhomPcpl || null}
+                  onChange={v => setEv('toNhomPcpl', v)}
+                  style={{ width: '100%' }}
+                  allowClear
+                  placeholder="Chọn tổ"
+                >
+                  <Option value="PCPL1">PCPL1</Option>
+                  <Option value="PCPL2">PCPL2</Option>
+                  <Option value="PL">PL</Option>
+                </Select>
+              </div>
+              {ENum('khoiLuong', 'KL/ĐV (g)')}
+              {ENum('slTrungBinh', 'NS TB (ĐG)')}
+              {ENum('nangSuatPc', 'NS PC (Pha Chế)')}
+              {ENum('nangSuatPl', 'NS PL (Phân Liều)')}
+              {ENum('nangSuatBbc1', 'NS BBC1')}
+              <div />
+            </div>
+            <Divider style={{ margin: '4px 0 12px' }}>Máy Móc</Divider>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+              {EStr('mayMocPc',   'Máy Móc PC')}
+              {EStr('mayMocPl',   'Máy Móc PL')}
+              {EStr('mayMocBbc1', 'Máy Móc BBC1')}
+              {EStr('mayMocDg',   'Máy Móc ĐG')}
+            </div>
+          </div>
+        )}
+
+        <Divider style={{ margin: '4px 0 12px' }}>
+          Lô sản xuất hiện tại
+          <Tag style={{ marginLeft: 8 }}>{drawerLos.length} lô</Tag>
+        </Divider>
+        <Table
+          columns={loColumns}
+          dataSource={drawerLos}
+          rowKey={r => r.id || r.lsx || Math.random()}
+          size="small"
+          pagination={drawerLos.length > 10 ? { pageSize: 10, size: 'small' } : false}
+          locale={{ emptyText: 'Không có lô nào' }}
+        />
+      </Drawer>
     </div>
   )
 }
