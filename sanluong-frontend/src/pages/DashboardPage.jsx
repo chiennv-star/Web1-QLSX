@@ -1011,6 +1011,13 @@ export default function DashboardPage() {
   const [hsLoading, setHsLoading] = useState(false)
   const [hsPagination, setHsPagination] = useState({ current: 1, pageSize: 1000, total: 0 })
   const hsPaginationRef = useRef({ current: 1, pageSize: 1000 })
+
+  // Tab "Tổng hợp sản lượng"
+  const [thData, setThData] = useState([])
+  const [thLoading, setThLoading] = useState(false)
+  const [thPagination, setThPagination] = useState({ current: 1, pageSize: 100, total: 0 })
+  const thPaginationRef = useRef({ current: 1, pageSize: 100 })
+  const [thFilters, setThFilters] = useState({ maBravo: '', maTp: '', lsx: '' })
   const [statsMonth, setStatsMonth] = useState(null)
   const [stats, setStats] = useState(null)
   const [statsLoading, setStatsLoading] = useState(false)
@@ -1164,6 +1171,20 @@ export default function DashboardPage() {
       if (!silent) setHsLoading(false)
     }
   }, [filters])
+
+  const fetchThData = useCallback(async (page = 0, size = 100, f = thFilters) => {
+    setThLoading(true)
+    try {
+      const params = { page, size, ...f }
+      const { data: res } = await api.get('/san-luong-tong-hop', { params })
+      setThData(res.content)
+      setThPagination(p => ({ ...p, total: res.totalElements, current: page + 1, pageSize: size }))
+    } catch {
+      message.error('Không thể tải dữ liệu tổng hợp sản lượng')
+    } finally {
+      setThLoading(false)
+    }
+  }, [thFilters])
 
   useEffect(() => {
     paginationRef.current = { current: pagination.current, pageSize: pagination.pageSize }
@@ -1903,6 +1924,7 @@ export default function DashboardPage() {
           setActiveTab(key)
           if (key === 'done_list') fetchDoneData(donePaginationRef.current.current - 1, donePaginationRef.current.pageSize)
           if (key === 'hieu_suat') fetchHsData(hsPaginationRef.current.current - 1, hsPaginationRef.current.pageSize)
+          if (key === 'tong_hop')  fetchThData(0, thPaginationRef.current.pageSize, thFilters)
         }}
         size="small"
         style={{ marginTop: 0 }}
@@ -2076,6 +2098,23 @@ export default function DashboardPage() {
               headerOffset={headerOffset}
             />,
           },
+          {
+            key: 'tong_hop',
+            label: <Space size={4}><FileExcelOutlined style={{ color: '#7c3aed' }} /><span style={{ color: '#7c3aed', fontWeight: 600 }}>Tổng hợp SL</span></Space>,
+            children: <TongHopSanLuongTab
+              data={thData}
+              loading={thLoading}
+              pagination={thPagination}
+              filters={thFilters}
+              onFilterChange={f => setThFilters(prev => ({ ...prev, ...f }))}
+              onSearch={() => fetchThData(0, thPaginationRef.current.pageSize, thFilters)}
+              onPaginationChange={(page, pageSize) => {
+                thPaginationRef.current = { current: page, pageSize }
+                fetchThData(page - 1, pageSize, thFilters)
+              }}
+              onDeleteSuccess={() => fetchThData(0, thPaginationRef.current.pageSize, thFilters)}
+            />,
+          },
         ]}
       />
       </div>
@@ -2091,7 +2130,150 @@ export default function DashboardPage() {
       <ImportSanLuongModal
         open={importOpen}
         onClose={() => setImportOpen(false)}
-        onSuccess={() => { setImportOpen(false); fetchData(0, pagination.pageSize) }}
+        onSuccess={() => {
+          setImportOpen(false)
+          setActiveTab('tong_hop')
+          fetchThData(0, thPaginationRef.current.pageSize, thFilters)
+        }}
+      />
+    </div>
+  )
+}
+
+// ── Tổng hợp Sản lượng Tab ────────────────────────────────────────────────────
+function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange, onSearch, onPaginationChange, onDeleteSuccess }) {
+  const [delLoading, setDelLoading] = useState(false)
+
+  const handleDelete = async (id) => {
+    setDelLoading(true)
+    try {
+      await api.delete(`/san-luong-tong-hop/${id}`)
+      message.success('Đã xóa bản ghi')
+      onDeleteSuccess?.()
+    } catch {
+      message.error('Xóa thất bại')
+    } finally {
+      setDelLoading(false)
+    }
+  }
+
+  const cols = [
+    { title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 110, fixed: 'left', render: v => <b>{v}</b> },
+    { title: 'Mã TP',    dataIndex: 'maTp',    key: 'maTp',    width: 90,  fixed: 'left' },
+    { title: 'Tên SP',   dataIndex: 'tienTrinh', key: 'tienTrinh', width: 200, ellipsis: true },
+    { title: 'LSX',      dataIndex: 'lsx',     key: 'lsx',     width: 100 },
+    { title: 'SL KH',    dataIndex: 'soLuong', key: 'soLuong', width: 80, align: 'center', render: v => v ?? '—' },
+    { title: 'Mã ĐH',   dataIndex: 'maDonHang', key: 'maDonHang', width: 120, ellipsis: true },
+    {
+      title: 'Trạng thái',
+      key: 'tt',
+      width: 180,
+      render: (_, r) => (
+        <Space size={4} wrap>
+          {[['PC', r.pcTrangThai], ['PL', r.plTrangThai], ['ĐG', r.dgTrangThai], ['BBC1', r.bbc1TrangThai]].map(([label, tt]) =>
+            tt ? <Tag key={label} color={tt === 'done' ? 'success' : 'processing'} style={{ fontSize: 11, padding: '0 4px' }}>{label}</Tag> : null
+          )}
+        </Space>
+      )
+    },
+    {
+      title: 'Sản lượng',
+      key: 'sl_group',
+      children: [
+        { title: 'SL PC',    dataIndex: 'slPc',       key: 'slPc',    width: 76, align: 'center', render: v => v ?? '—' },
+        { title: 'BBC1 Phối',dataIndex: 'bbc1_1',     key: 'bbc1_1',  width: 90, align: 'center', render: v => v ?? '—' },
+        { title: 'SL PL',    dataIndex: 'pcPl',       key: 'pcPl',    width: 76, align: 'center', render: v => v ?? '—' },
+        { title: 'SL ĐG',    dataIndex: 'dg2',        key: 'dg2',     width: 76, align: 'center', render: v => v ?? '—' },
+        { title: 'SL BBC1',  dataIndex: 'bbc1_2',     key: 'bbc1_2',  width: 80, align: 'center', render: v => v ?? '—' },
+        { title: 'SP TG',    dataIndex: 'spTrungGian', key: 'spTG',   width: 76, align: 'center', render: v => v ?? '—' },
+        { title: 'TP NKho',  dataIndex: 'tpNhapKho',  key: 'tpNK',   width: 80, align: 'center', render: v => v ?? '—' },
+      ]
+    },
+    {
+      title: 'Chi phí công',
+      key: 'cp_group',
+      children: [
+        { title: 'BBC1', dataIndex: 'bbc1_3',   key: 'cp_bbc1', width: 70, align: 'center', render: v => v != null ? <span style={{ color: '#c41d7f' }}>{Number(v).toFixed(2)}</span> : '—' },
+        { title: 'PC',   dataIndex: 'pcChiPhi', key: 'cp_pc',   width: 70, align: 'center', render: v => v != null ? <span style={{ color: '#c41d7f' }}>{Number(v).toFixed(2)}</span> : '—' },
+        { title: 'PL',   dataIndex: 'plChiPhi', key: 'cp_pl',   width: 70, align: 'center', render: v => v != null ? <span style={{ color: '#c41d7f' }}>{Number(v).toFixed(2)}</span> : '—' },
+        { title: 'ĐG',   dataIndex: 'dgChiPhi', key: 'cp_dg',   width: 70, align: 'center', render: v => v != null ? <span style={{ color: '#c41d7f' }}>{Number(v).toFixed(2)}</span> : '—' },
+        { title: 'CC',   dataIndex: 'ccChiPhi', key: 'cp_cc',   width: 70, align: 'center', render: v => v != null ? <span style={{ color: '#c41d7f' }}>{Number(v).toFixed(2)}</span> : '—' },
+        { title: 'GNNL', dataIndex: 'temDb',    key: 'cp_gnnl', width: 70, align: 'center', render: v => v != null ? <span style={{ color: '#c41d7f' }}>{Number(v).toFixed(2)}</span> : '—' },
+      ]
+    },
+    {
+      title: 'QA Lấy mẫu',
+      key: 'qa_group',
+      children: [
+        { title: 'PL',   dataIndex: 'plQaLayMau', key: 'qa_pl', width: 70, align: 'center', render: v => v != null ? <span style={{ color: '#0891b2' }}>{v}</span> : '—' },
+        { title: 'ĐG',   dataIndex: 'dgQaLayMau', key: 'qa_dg', width: 70, align: 'center', render: v => v != null ? <span style={{ color: '#0891b2' }}>{v}</span> : '—' },
+      ]
+    },
+    { title: 'SL TB',  dataIndex: 'slTrungBinh', key: 'slTB', width: 80, align: 'center', render: v => v ?? '—' },
+    { title: 'Ghi chú', dataIndex: 'moTa', key: 'moTa', width: 160, ellipsis: true },
+    {
+      title: '',
+      key: 'actions',
+      width: 60,
+      fixed: 'right',
+      render: (_, r) => (
+        <Popconfirm title="Xóa bản ghi này?" onConfirm={() => handleDelete(r.id)} okText="Xóa" cancelText="Hủy">
+          <Button size="small" danger icon={<DeleteOutlined />} loading={delLoading} />
+        </Popconfirm>
+      )
+    },
+  ]
+
+  return (
+    <div style={{ padding: '8px 12px' }}>
+      <Space style={{ marginBottom: 10 }} wrap>
+        <Input
+          placeholder="Mã Bravo"
+          value={filters.maBravo}
+          onChange={e => onFilterChange({ maBravo: e.target.value })}
+          onPressEnter={onSearch}
+          style={{ width: 130 }}
+          size="small"
+          allowClear
+        />
+        <Input
+          placeholder="Mã TP"
+          value={filters.maTp}
+          onChange={e => onFilterChange({ maTp: e.target.value })}
+          onPressEnter={onSearch}
+          style={{ width: 110 }}
+          size="small"
+          allowClear
+        />
+        <Input
+          placeholder="LSX / Số lô"
+          value={filters.lsx}
+          onChange={e => onFilterChange({ lsx: e.target.value })}
+          onPressEnter={onSearch}
+          style={{ width: 130 }}
+          size="small"
+          allowClear
+        />
+        <Button size="small" icon={<SearchOutlined />} type="primary" onClick={onSearch}>Tìm</Button>
+      </Space>
+      <Table
+        columns={cols}
+        dataSource={data}
+        rowKey="id"
+        loading={loading}
+        size="small"
+        scroll={{ x: 2000 }}
+        bordered
+        pagination={{
+          ...pagination,
+          size: 'small',
+          showSizeChanger: true,
+          pageSizeOptions: ['50', '100', '500'],
+          showTotal: total => `Tổng ${total} bản ghi`,
+          style: { margin: '8px 0 0' },
+          onChange: onPaginationChange,
+        }}
+        rowClassName={(_, idx) => idx % 2 !== 0 ? 'row-alt' : ''}
       />
     </div>
   )
@@ -2105,10 +2287,10 @@ function ImportSanLuongModal({ open, onClose, onSuccess }) {
 
   const handleDownloadTemplate = async () => {
     try {
-      const res = await api.get('/production/template', { responseType: 'blob' })
+      const res = await api.get('/san-luong-tong-hop/template', { responseType: 'blob' })
       const url = URL.createObjectURL(res.data)
       const a = document.createElement('a'); a.href = url
-      a.download = 'mau_import_sanluong.xlsx'; a.click()
+      a.download = 'mau_import_tong_hop_sl.xlsx'; a.click()
       URL.revokeObjectURL(url)
     } catch { message.error('Tải file mẫu thất bại') }
   }
@@ -2119,7 +2301,7 @@ function ImportSanLuongModal({ open, onClose, onSuccess }) {
     const fd = new FormData()
     fd.append('file', fileList[0].originFileObj)
     try {
-      const { data } = await api.post('/production/import', fd, {
+      const { data } = await api.post('/san-luong-tong-hop/import', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
       setResult(data)
@@ -2144,7 +2326,7 @@ function ImportSanLuongModal({ open, onClose, onSuccess }) {
     <Modal
       open={open}
       onCancel={handleClose}
-      title={<span style={{ fontWeight: 700 }}>Import Sản lượng từ Excel</span>}
+      title={<span style={{ fontWeight: 700 }}>Import Tổng hợp Sản lượng từ Excel</span>}
       footer={null}
       width={520}
     >
@@ -2154,6 +2336,7 @@ function ImportSanLuongModal({ open, onClose, onSuccess }) {
           <ul style={{ margin: 0, paddingLeft: 18, color: '#374151' }}>
             <li>Tải file mẫu, điền dữ liệu vào sheet <b>SanLuong</b></li>
             <li>Cột <b style={{ color: '#1e4570' }}>Mã Bravo</b> và <b style={{ color: '#1e4570' }}>Mã TP</b> là bắt buộc</li>
+            <li>Dữ liệu sẽ được thêm vào bảng <b style={{ color: '#7c3aed' }}>Tổng hợp SL</b>, không ảnh hưởng Danh sách</li>
             <li>Bản ghi trùng (Mã Bravo + LSX + Mã ĐH) sẽ bị bỏ qua</li>
           </ul>
         </div>
@@ -2163,7 +2346,7 @@ function ImportSanLuongModal({ open, onClose, onSuccess }) {
           onClick={handleDownloadTemplate}
           style={{ borderColor: '#16a34a', color: '#16a34a', width: '100%' }}
         >
-          Tải file mẫu (mau_import_sanluong.xlsx)
+          Tải file mẫu (mau_import_tong_hop_sl.xlsx)
         </Button>
 
         <Upload

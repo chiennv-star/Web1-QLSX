@@ -581,23 +581,23 @@ public class ProductionService {
                 "SL PC", "BBC1 Ngày phối", "SL PL (PC→PL)", "SL ĐG",
                 "SL BBC1", "SP Trung gian", "TP Nhập kho",
                 // Chi phí công
-                "Công BBC1", "Công PC", "Công PL", "Công ĐG", "Công CC",
+                "Công BBC1", "Công PC", "Công PL", "Công ĐG", "Công CC", "Công GNNL",
                 // Hiệu suất & QA
-                "TEM ĐB", "SL Trung bình", "QA Lấy mẫu", "Mô tả", "Ghi chú hiệu suất"
+                "SL Trung bình", "QA PL Lấy mẫu", "QA ĐG Lấy mẫu", "Mô tả", "Ghi chú hiệu suất"
             };
             // style index per column
             XSSFCellStyle[] colStyles = {
                 reqStyle, reqStyle, optStyle, optStyle, optStyle, optStyle,
                 optStyle, optStyle, optStyle, optStyle,
                 slStyle, slStyle, slStyle, slStyle, slStyle, slStyle, slStyle,
-                cpStyle, cpStyle, cpStyle, cpStyle, cpStyle,
+                cpStyle, cpStyle, cpStyle, cpStyle, cpStyle, cpStyle,
                 hsStyle, hsStyle, hsStyle, hsStyle, hsStyle
             };
             int[] widths = {
                 16, 12, 40, 16, 14, 16, 16, 16, 16, 16,
                 12, 14, 15, 12, 12, 14, 14,
-                12, 12, 12, 12, 12,
-                12, 14, 14, 30, 30
+                12, 12, 12, 12, 12, 12,
+                14, 14, 14, 30, 30
             };
 
             Row hRow = sheet.createRow(0);
@@ -612,11 +612,11 @@ public class ProductionService {
             // 3 dòng mẫu — chỉ điền các cột cơ bản
             String[][] samples = {
                 {"10101205","TP205","Son Lụa Diễm 104","2506001","2000","206150626","doing","doing","","",
-                 "","","","","","","","","","","","","","","","",""},
+                 "","","","","","","","","","","","","","","","","","",""},
                 {"10202287","TP287","Xịt khoáng hoa hồng Mineral Rose","2506002","5000","287070626","done","doing","doing","doing",
-                 "","","","","","","","","","","","","","","","",""},
+                 "","","","","","","","","","","","","","","","","","",""},
                 {"10108272","TP272","Son dưỡng nhiên 202","2506003","1500","","doing","","","",
-                 "","","","","","","","","","","","","","","","",""},
+                 "","","","","","","","","","","","","","","","","","",""},
             };
             for (int r = 0; r < samples.length; r++) {
                 Row row = sheet.createRow(r + 1);
@@ -658,13 +658,14 @@ public class ProductionService {
                 "  - SL PC, BBC1 Ngày phối, SL PL, SL ĐG, SL BBC1: số nguyên",
                 "  - SP Trung gian, TP Nhập kho: số nguyên",
                 "",
-                "Chi phí công (nền cam) — cột R÷V:",
+                "Chi phí công (nền cam) — cột R÷W:",
                 "  - Công BBC1, Công PC, Công PL, Công ĐG, Công CC: số thực (vd: 1.25)",
+                "  - Công GNNL: số thực (nguyên nhân lỗi / chi phí GNNL)",
                 "",
-                "Hiệu suất & QA (nền tím) — cột W÷AA:",
-                "  - TEM ĐB: số thực",
+                "Hiệu suất & QA (nền tím) — cột X÷AB:",
                 "  - SL Trung bình: số thực",
-                "  - QA Lấy mẫu: số nguyên",
+                "  - QA PL Lấy mẫu: số nguyên (lấy mẫu công đoạn PL)",
+                "  - QA ĐG Lấy mẫu: số nguyên (lấy mẫu công đoạn ĐG)",
                 "  - Mô tả, Ghi chú hiệu suất: văn bản",
                 "",
                 "Lưu ý:",
@@ -728,12 +729,13 @@ public class ProductionService {
                 String congDg    = cellStr(row, 20);
                 String congCc    = cellStr(row, 21);
 
-                // Cột 22-26: hiệu suất & QA
-                String temDb          = cellStr(row, 22);
+                // Cột 22: chi phí GNNL; cột 23-27: hiệu suất & QA
+                String congGnnl       = cellStr(row, 22);
                 String slTrungBinh    = cellStr(row, 23);
-                String qaLayMau       = cellStr(row, 24);
-                String moTa           = cellStr(row, 25);
-                String ghiChuHieuSuat = cellStr(row, 26);
+                String plQaLayMau     = cellStr(row, 24);
+                String dgQaLayMau     = cellStr(row, 25);
+                String moTa           = cellStr(row, 26);
+                String ghiChuHieuSuat = cellStr(row, 27);
 
                 if (existsByKey(maBravo, lsx, maDonHang.isBlank() ? null : maDonHang)) {
                     skipped++;
@@ -754,14 +756,15 @@ public class ProductionService {
                 parseIntCell(soLuongStr,   dto::setSoLuong);
                 parseIntCell(spTrungGian,  dto::setSpTrungGian);
                 parseIntCell(tpNhapKho,    dto::setTpNhapKho);
-                parseIntCell(qaLayMau,     dto::setQaLayMau);
                 parseBdCell(congBbc1,      dto::setBbc1_3);
                 parseBdCell(congPc,        dto::setPcChiPhi);
                 parseBdCell(congPl,        dto::setPlChiPhi);
                 parseBdCell(congDg,        dto::setDgChiPhi);
                 parseBdCell(congCc,        dto::setCcChiPhi);
-                parseBdCell(temDb,         dto::setTemDb);
+                parseBdCell(congGnnl,      dto::setTemDb);
                 parseBdCell(slTrungBinh,   dto::setSlTrungBinh);
+                parseIntCell(plQaLayMau,   dto::setPlQaLayMau);
+                parseIntCell(dgQaLayMau,   dto::setDgQaLayMau);
 
                 if (!slPc.isBlank())   dto.setSlPc(slPc);
                 if (!bbc1_1.isBlank()) dto.setBbc1_1(bbc1_1);
