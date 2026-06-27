@@ -1016,8 +1016,8 @@ export default function DashboardPage() {
   // Tab "Tổng hợp sản lượng"
   const [thData, setThData] = useState([])
   const [thLoading, setThLoading] = useState(false)
-  const [thPagination, setThPagination] = useState({ current: 1, pageSize: 100, total: 0 })
-  const thPaginationRef = useRef({ current: 1, pageSize: 100 })
+  const [thPagination, setThPagination] = useState({ current: 1, pageSize: 3000, total: 0 })
+  const thPaginationRef = useRef({ current: 1, pageSize: 3000 })
   const [thFilters, setThFilters] = useState({ maBravo: '', maTp: '', lsx: '', loaiSanPham: '', toThucHien: '' })
 
   // Tab "Phân Bố Sản Phẩm" — product master map
@@ -1178,7 +1178,7 @@ export default function DashboardPage() {
     }
   }, [filters])
 
-  const fetchThData = useCallback(async (page = 0, size = 100, f = thFilters) => {
+  const fetchThData = useCallback(async (page = 0, size = 3000, f = thFilters) => {
     setThLoading(true)
     try {
       const params = { page, size, ...f }
@@ -2394,7 +2394,7 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange
           ...pagination,
           size: 'small',
           showSizeChanger: true,
-          pageSizeOptions: ['50', '100', '500'],
+          pageSizeOptions: ['100', '500', '1000', '3000'],
           showTotal: total => `Tổng ${total} bản ghi`,
           style: { margin: '8px 0 0' },
           onChange: onPaginationChange,
