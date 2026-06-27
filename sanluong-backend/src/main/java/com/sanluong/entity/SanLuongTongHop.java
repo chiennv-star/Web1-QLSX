@@ -47,9 +47,6 @@ public class SanLuongTongHop {
     @Column(name = "sl_pc", length = 20)
     private String slPc;
 
-    @Column(name = "bbc1_1", length = 20)
-    private String bbc1_1;
-
     @Column(name = "pc_pl", length = 20)
     private String pcPl;
 
@@ -147,8 +144,6 @@ public class SanLuongTongHop {
     public void setBbc1TrangThai(String bbc1TrangThai) { this.bbc1TrangThai = bbc1TrangThai; }
     public String getSlPc() { return slPc; }
     public void setSlPc(String slPc) { this.slPc = slPc; }
-    public String getBbc1_1() { return bbc1_1; }
-    public void setBbc1_1(String bbc1_1) { this.bbc1_1 = bbc1_1; }
     public String getPcPl() { return pcPl; }
     public void setPcPl(String pcPl) { this.pcPl = pcPl; }
     public String getDg2() { return dg2; }

@@ -2186,7 +2186,6 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange
       key: 'sl_group',
       children: [
         { title: 'SL PC',     dataIndex: 'slPc',        key: 'slPc',  width: 76, align: 'center', render: v => v ?? '—' },
-        { title: 'BBC1 Phối', dataIndex: 'bbc1_1',      key: 'bbc11', width: 90, align: 'center', render: v => v ?? '—' },
         { title: 'SL PL',     dataIndex: 'pcPl',        key: 'pcPl',  width: 76, align: 'center', render: v => v ?? '—' },
         { title: 'SL ĐG',     dataIndex: 'dg2',         key: 'dg2',   width: 76, align: 'center', render: v => v ?? '—' },
         { title: 'SL BBC1',   dataIndex: 'bbc1_2',      key: 'bbc12', width: 80, align: 'center', render: v => v ?? '—' },

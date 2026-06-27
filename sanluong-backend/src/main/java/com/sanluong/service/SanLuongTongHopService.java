@@ -82,7 +82,7 @@ public class SanLuongTongHopService {
                 "LSX / Số Lô", "Số Lượng KH", "Mã Đơn Hàng",
                 "PC Trạng thái", "PL Trạng thái", "ĐG Trạng thái", "BBC1 Trạng thái",
                 // Sản lượng
-                "SL PC", "BBC1 Ngày phối", "SL PL (PC→PL)", "SL ĐG",
+                "SL PC", "SL PL (PC→PL)", "SL ĐG",
                 "SL BBC1", "SP Trung gian", "TP Nhập kho",
                 // Chi phí công
                 "Công BBC1", "Công PC", "Công PL", "Công ĐG", "Công CC", "Công GNNL",
@@ -92,13 +92,13 @@ public class SanLuongTongHopService {
             XSSFCellStyle[] colStyles = {
                 reqStyle, reqStyle, optStyle, optStyle, optStyle, optStyle,
                 optStyle, optStyle, optStyle, optStyle,
-                slStyle, slStyle, slStyle, slStyle, slStyle, slStyle, slStyle,
+                slStyle, slStyle, slStyle, slStyle, slStyle, slStyle,
                 cpStyle, cpStyle, cpStyle, cpStyle, cpStyle, cpStyle,
                 hsStyle, hsStyle, hsStyle, hsStyle, hsStyle
             };
             int[] widths = {
                 16, 12, 40, 16, 14, 16, 16, 16, 16, 16,
-                12, 14, 15, 12, 12, 14, 14,
+                12, 15, 12, 12, 14, 14,
                 12, 12, 12, 12, 12, 12,
                 14, 14, 14, 30, 30
             };
@@ -114,9 +114,9 @@ public class SanLuongTongHopService {
 
             String[][] samples = {
                 {"10101205","TP205","Son Lụa Diễm 104","2506001","2000","206150626","doing","doing","","",
-                 "","","","","","","","","","","","","","","","","",""},
+                 "","","","","","","","","","","","","","","","",""},
                 {"10202287","TP287","Xịt khoáng hoa hồng Mineral Rose","2506002","5000","287070626","done","doing","doing","doing",
-                 "","","","","","","","","","","","","","","","","",""},
+                 "","","","","","","","","","","","","","","","",""},
             };
             XSSFCellStyle dataStyleRow = wb.createCellStyle();
             dataStyleRow.cloneStyleFrom(dataStyle);
@@ -154,8 +154,8 @@ public class SanLuongTongHopService {
                 "  - Mã Đơn Hàng",
                 "  - PC/PL/ĐG/BBC1 Trạng thái: 'doing' hoặc 'done'",
                 "",
-                "Sản lượng công đoạn (nền xanh lá) — cột K÷Q:",
-                "  - SL PC, BBC1 Ngày phối, SL PL, SL ĐG, SL BBC1: số nguyên",
+                "Sản lượng công đoạn (nền xanh lá) — cột K÷P:",
+                "  - SL PC, SL PL, SL ĐG, SL BBC1: số nguyên",
                 "  - SP Trung gian, TP Nhập kho: số nguyên",
                 "",
                 "Chi phí công (nền cam) — cột R÷W:",
@@ -214,25 +214,24 @@ public class SanLuongTongHopService {
                 String bbc1TT     = normTT(cellStr(row, 9));
 
                 String slPc        = cellStr(row, 10);
-                String bbc1_1      = cellStr(row, 11);
-                String pcPl        = cellStr(row, 12);
-                String dg2         = cellStr(row, 13);
-                String bbc1_2      = cellStr(row, 14);
-                String spTrungGian = cellStr(row, 15);
-                String tpNhapKho   = cellStr(row, 16);
+                String pcPl        = cellStr(row, 11);
+                String dg2         = cellStr(row, 12);
+                String bbc1_2      = cellStr(row, 13);
+                String spTrungGian = cellStr(row, 14);
+                String tpNhapKho   = cellStr(row, 15);
 
-                String congBbc1 = cellStr(row, 17);
-                String congPc   = cellStr(row, 18);
-                String congPl   = cellStr(row, 19);
-                String congDg   = cellStr(row, 20);
-                String congCc   = cellStr(row, 21);
-                String congGnnl = cellStr(row, 22);
+                String congBbc1 = cellStr(row, 16);
+                String congPc   = cellStr(row, 17);
+                String congPl   = cellStr(row, 18);
+                String congDg   = cellStr(row, 19);
+                String congCc   = cellStr(row, 20);
+                String congGnnl = cellStr(row, 21);
 
-                String slTrungBinh    = cellStr(row, 23);
-                String plQaLayMau     = cellStr(row, 24);
-                String dgQaLayMau     = cellStr(row, 25);
-                String moTa           = cellStr(row, 26);
-                String ghiChuHieuSuat = cellStr(row, 27);
+                String slTrungBinh    = cellStr(row, 22);
+                String plQaLayMau     = cellStr(row, 23);
+                String dgQaLayMau     = cellStr(row, 24);
+                String moTa           = cellStr(row, 25);
+                String ghiChuHieuSuat = cellStr(row, 26);
 
                 String maDonHangKey = maDonHang.isBlank() ? null : maDonHang;
                 if (repo.existsByMaBravoAndLsxAndMaDonHang(maBravo, lsx.isBlank() ? null : lsx, maDonHangKey)) {
@@ -267,7 +266,6 @@ public class SanLuongTongHopService {
                 parseBdCell(slTrungBinh,  e::setSlTrungBinh);
 
                 if (!slPc.isBlank())   e.setSlPc(slPc);
-                if (!bbc1_1.isBlank()) e.setBbc1_1(bbc1_1);
                 if (!pcPl.isBlank())   e.setPcPl(pcPl);
                 if (!dg2.isBlank())    e.setDg2(dg2);
                 if (!bbc1_2.isBlank()) e.setBbc1_2(bbc1_2);
