@@ -1019,6 +1019,11 @@ export default function DashboardPage() {
   const [thPagination, setThPagination] = useState({ current: 1, pageSize: 100, total: 0 })
   const thPaginationRef = useRef({ current: 1, pageSize: 100 })
   const [thFilters, setThFilters] = useState({ maBravo: '', maTp: '', lsx: '', loaiSanPham: '', toThucHien: '' })
+
+  // Tab "Phân Bố Sản Phẩm" — product master map
+  const [pmMap, setPmMap] = useState({})
+  const [pmLoading, setPmLoading] = useState(false)
+
   const [statsMonth, setStatsMonth] = useState(null)
   const [stats, setStats] = useState(null)
   const [statsLoading, setStatsLoading] = useState(false)
@@ -1197,6 +1202,22 @@ export default function DashboardPage() {
   useEffect(() => {
     donePaginationRef.current = { current: donePagination.current, pageSize: donePagination.pageSize }
   }, [donePagination.current, donePagination.pageSize])
+
+  const loadPmMap = useCallback(async () => {
+    if (Object.keys(pmMap).length > 0) return
+    setPmLoading(true)
+    try {
+      const { data: pm } = await api.get('/product-master', { params: { page: 0, size: 9999 } })
+      const map = {}
+      ;(pm.content || []).forEach(p => { if (p.maBravo) map[p.maBravo] = p })
+      setPmMap(map)
+    } catch { /* non-blocking */ }
+    finally { setPmLoading(false) }
+  }, [pmMap])
+
+  useEffect(() => {
+    if (activeTab === 'phan_bo') loadPmMap()
+  }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (savedState) fetchData(savedState.page - 1, savedState.pageSize, savedState.filters)
@@ -2116,6 +2137,16 @@ export default function DashboardPage() {
               onDeleteSuccess={() => fetchThData(0, thPaginationRef.current.pageSize, thFilters)}
             />,
           },
+          {
+            key: 'phan_bo',
+            label: <Space size={4}><BarChartOutlined style={{ color: '#0891b2' }} /><span style={{ color: '#0891b2', fontWeight: 600 }}>Phân Bố SP</span></Space>,
+            children: <PhanBoSanPhamTab
+              data={data}
+              pmMap={pmMap}
+              loading={loading || pmLoading}
+              headerOffset={headerOffset}
+            />,
+          },
         ]}
       />
       </div>
@@ -2579,5 +2610,176 @@ function ImportSanLuongModal({ open, onClose, onSuccess }) {
         )}
       </div>
     </Modal>
+  )
+}
+
+// ── Phân Bố Sản Phẩm Tab ─────────────────────────────────────────────────────
+function PhanBoSanPhamTab({ data, pmMap, loading, headerOffset = 84 }) {
+  const fmtNS  = v => v != null && v !== '' ? Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 0 }) : '—'
+  const fmtNum = v => v != null && v !== '' ? Number(v).toLocaleString('vi-VN') : '—'
+
+  // Gom nhóm theo maBravo → mỗi maBravo 1 hàng
+  const rows = React.useMemo(() => {
+    const map = {}
+    ;(data || []).forEach(r => {
+      const key = r.maBravo || r.maSp || '(trống)'
+      if (!map[key]) {
+        map[key] = {
+          key,
+          maBravo:   r.maBravo || '',
+          maSp:      r.maSp    || '',
+          tenTrinh:  r.tenTrinh || '',
+          soLo:      0,
+          coLoMax:   0,
+          dangSx:    0,
+        }
+      }
+      map[key].soLo++
+      const cl = Number(r.coLo) || 0
+      if (cl > map[key].coLoMax) map[key].coLoMax = cl
+      if (r.tinhTrang === 'doing') map[key].dangSx++
+    })
+    return Object.values(map).sort((a, b) => b.dangSx - a.dangSx || b.soLo - a.soLo)
+  }, [data])
+
+  const columns = [
+    {
+      title: '#', key: 'stt', width: 44, fixed: 'left', align: 'center',
+      render: (_, __, i) => <span style={{ fontSize: 11, color: '#94a3b8' }}>{i + 1}</span>,
+    },
+    {
+      title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 115, fixed: 'left', align: 'center',
+      render: v => v
+        ? <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', fontSize: 12 }}>{v}</span>
+        : <span style={{ color: '#d9d9d9' }}>—</span>,
+    },
+    {
+      title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 85, align: 'center',
+      render: v => v ? <Tag color="blue" style={{ marginRight: 0, fontWeight: 600 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>,
+    },
+    {
+      title: 'Tên Sản Phẩm', key: 'tenSP', width: 210, fixed: 'left', ellipsis: true,
+      render: (_, r) => {
+        const pm = pmMap[r.maBravo]
+        const name = pm?.tenSanPham || r.tenTrinh || ''
+        return <span style={{ fontSize: 13, color: '#1e293b', fontWeight: 500 }}>{name || <span style={{ color: '#d9d9d9' }}>—</span>}</span>
+      },
+    },
+    {
+      title: 'Loại SP', key: 'loaiSp', width: 120,
+      render: (_, r) => {
+        const v = pmMap[r.maBravo]?.loaiSanPham
+        return v ? <Tag color="purple" style={{ marginRight: 0, fontSize: 11 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>
+      },
+    },
+    {
+      title: 'Số lô', dataIndex: 'soLo', key: 'soLo', width: 80, align: 'center',
+      sorter: (a, b) => a.soLo - b.soLo,
+      render: v => <span style={{ fontWeight: 700, color: '#374151' }}>{v}</span>,
+    },
+    {
+      title: 'Đang SX', dataIndex: 'dangSx', key: 'dangSx', width: 80, align: 'center',
+      sorter: (a, b) => a.dangSx - b.dangSx,
+      render: v => v > 0
+        ? <Tag color="processing" style={{ marginRight: 0 }}>{v}</Tag>
+        : <span style={{ color: '#d9d9d9' }}>—</span>,
+    },
+    {
+      title: 'Cỡ Lô', dataIndex: 'coLoMax', key: 'coLoMax', width: 90, align: 'right',
+      sorter: (a, b) => a.coLoMax - b.coLoMax,
+      render: v => <span style={{ fontWeight: 600, color: '#374151' }}>{fmtNum(v || null)}</span>,
+    },
+    {
+      title: 'KL/ĐV (g)', key: 'khoiLuong', width: 95, align: 'right',
+      render: (_, r) => <span style={{ color: '#0369a1', fontWeight: 600 }}>{fmtNum(pmMap[r.maBravo]?.khoiLuong)}</span>,
+    },
+    {
+      title: 'NS TB (ĐG)', key: 'nsTb', width: 105, align: 'right',
+      sorter: (a, b) => (Number(pmMap[a.maBravo]?.slTrungBinh) || 0) - (Number(pmMap[b.maBravo]?.slTrungBinh) || 0),
+      render: (_, r) => {
+        const v = pmMap[r.maBravo]?.slTrungBinh
+        return v ? <span style={{ color: '#7c3aed', fontWeight: 700 }}>{fmtNS(v)}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+      },
+    },
+    {
+      title: 'NS PC (Pha Chế)', key: 'nsPc', width: 125, align: 'right',
+      sorter: (a, b) => (Number(pmMap[a.maBravo]?.nangSuatPc) || 0) - (Number(pmMap[b.maBravo]?.nangSuatPc) || 0),
+      render: (_, r) => {
+        const v = pmMap[r.maBravo]?.nangSuatPc
+        return v ? <span style={{ color: '#1d4ed8', fontWeight: 600 }}>{fmtNS(v)}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+      },
+    },
+    {
+      title: 'NS PL (Phân Liều)', key: 'nsPl', width: 135, align: 'right',
+      sorter: (a, b) => (Number(pmMap[a.maBravo]?.nangSuatPl) || 0) - (Number(pmMap[b.maBravo]?.nangSuatPl) || 0),
+      render: (_, r) => {
+        const v = pmMap[r.maBravo]?.nangSuatPl
+        return v ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{fmtNS(v)}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+      },
+    },
+    {
+      title: 'NS BBC1', key: 'nsBbc1', width: 105, align: 'right',
+      sorter: (a, b) => (Number(pmMap[a.maBravo]?.nangSuatBbc1) || 0) - (Number(pmMap[b.maBravo]?.nangSuatBbc1) || 0),
+      render: (_, r) => {
+        const v = pmMap[r.maBravo]?.nangSuatBbc1
+        return v ? <span style={{ color: '#6d28d9', fontWeight: 600 }}>{fmtNS(v)}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+      },
+    },
+    {
+      title: 'Máy Móc PC', key: 'mmPc', width: 180,
+      render: (_, r) => {
+        const v = pmMap[r.maBravo]?.mayMocPc
+        return v ? <span style={{ fontSize: 12, color: '#374151' }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+      },
+    },
+    {
+      title: 'Máy Móc PL', key: 'mmPl', width: 180,
+      render: (_, r) => {
+        const v = pmMap[r.maBravo]?.mayMocPl
+        return v ? <span style={{ fontSize: 12, color: '#374151' }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+      },
+    },
+    {
+      title: 'Máy Móc BBC1', key: 'mmBbc1', width: 180,
+      render: (_, r) => {
+        const v = pmMap[r.maBravo]?.mayMocBbc1
+        return v ? <span style={{ fontSize: 12, color: '#374151' }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+      },
+    },
+    {
+      title: 'Máy Móc ĐG', key: 'mmDg', width: 180,
+      render: (_, r) => {
+        const v = pmMap[r.maBravo]?.mayMocDg
+        return v ? <span style={{ fontSize: 12, color: '#374151' }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+      },
+    },
+  ]
+
+  return (
+    <div style={{ padding: '8px 0' }}>
+      <div style={{ padding: '6px 12px 10px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <BarChartOutlined style={{ color: '#0891b2', fontSize: 15 }} />
+        <span style={{ fontWeight: 700, fontSize: 14, color: '#0891b2' }}>Phân Bố Sản Phẩm</span>
+        <Tag color="cyan">{rows.length} sản phẩm</Tag>
+        <span style={{ fontSize: 12, color: '#94a3b8' }}>— Mỗi hàng là 1 mã Bravo duy nhất, kèm năng suất & máy thực hiện</span>
+      </div>
+      <Table
+        columns={columns}
+        dataSource={rows}
+        rowKey="key"
+        loading={loading}
+        size="small"
+        scroll={{ x: 2050 }}
+        sticky={{ offsetHeader: headerOffset }}
+        rowHoverable={false}
+        pagination={{
+          defaultPageSize: 50,
+          pageSizeOptions: ['20', '50', '100', '200'],
+          showSizeChanger: true,
+          showTotal: t => `${t} sản phẩm`,
+        }}
+        locale={{ emptyText: <span style={{ color: '#d9d9d9' }}>Không có dữ liệu</span> }}
+      />
+    </div>
   )
 }
