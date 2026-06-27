@@ -2177,6 +2177,7 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
   const [editMode, setEditMode] = useState(false)
   const [editVals, setEditVals] = useState({})
   const [saving, setSaving] = useState(false)
+  const [selectedMonths, setSelectedMonths] = useState([])
 
   const openDetail = (record) => { setDetailRecord(record); setEditMode(false); setEditVals({}) }
   const closeDetail = () => { setDetailRecord(null); setEditMode(false); setEditVals({}) }
@@ -2258,6 +2259,31 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
     fixed: true,
   }
 
+  // Month options derived from loaded data (parse MMYY from LSX)
+  const monthOptions = React.useMemo(() => {
+    const set = new Set()
+    ;(data || []).forEach(r => {
+      if (!r.lsx || r.lsx.length < 6) return
+      const mm = r.lsx.slice(2, 4), yy = r.lsx.slice(4, 6)
+      if (/^\d{2}$/.test(mm) && /^\d{2}$/.test(yy)) set.add(`${mm}/${yy}`)
+    })
+    return [...set]
+      .sort((a, b) => {
+        const [am, ay] = a.split('/'), [bm, by] = b.split('/')
+        return by !== ay ? Number(by) - Number(ay) : Number(bm) - Number(am)
+      })
+      .map(v => ({ label: `Tháng ${v}`, value: v }))
+  }, [data])
+
+  const displayData = React.useMemo(() => {
+    if (!selectedMonths.length) return data || []
+    return (data || []).filter(r => {
+      if (!r.lsx || r.lsx.length < 6) return false
+      const mm = r.lsx.slice(2, 4), yy = r.lsx.slice(4, 6)
+      return selectedMonths.includes(`${mm}/${yy}`)
+    })
+  }, [data, selectedMonths])
+
   const handleExportExcel = () => {
     const h1 = [
       'Mã Bravo','Mã TP','Tên SP','Loại SP','Tổ TH','LSX','NSX','SL KH','Mã ĐH',
@@ -2279,7 +2305,7 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
       'NS TB (ĐG)','NS PC','NS PL','NS BBC1',
       'PC','PL','BBC1','ĐG',
     ]
-    const rows = (data || []).map(r => {
+    const rows = displayData.map(r => {
       const pm = pmMap[r.maBravo] || {}
       return [
         r.maBravo, r.maTp, r.tienTrinh, r.loaiSanPham, r.toThucHien, r.lsx, nsxFromLsx(r.lsx) || '',
@@ -2522,6 +2548,22 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
           options={toOptions.map(v => ({ label: v, value: v }))}
         />
         <Button size="small" icon={<SearchOutlined />} type="primary" onClick={onSearch}>Tìm</Button>
+        <Select
+          mode="multiple"
+          placeholder="Lọc theo tháng"
+          value={selectedMonths}
+          onChange={setSelectedMonths}
+          allowClear
+          style={{ minWidth: 160, maxWidth: 320 }}
+          size="small"
+          options={monthOptions}
+          maxTagCount="responsive"
+        />
+        {selectedMonths.length > 0 && (
+          <span style={{ fontSize: 12, color: '#6b7280' }}>
+            {displayData.length} / {(data || []).length} bản ghi
+          </span>
+        )}
         <Button
           size="small"
           icon={<FileExcelOutlined />}
@@ -2544,7 +2586,7 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
       </Space>
       <Table
         columns={cols}
-        dataSource={data}
+        dataSource={displayData}
         rowKey="id"
         rowSelection={rowSelection}
         loading={loading}
@@ -2554,6 +2596,7 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
         bordered
         pagination={{
           ...pagination,
+          total: selectedMonths.length ? displayData.length : pagination?.total,
           size: 'small',
           showSizeChanger: true,
           pageSizeOptions: ['100', '500', '1000', '3000'],
