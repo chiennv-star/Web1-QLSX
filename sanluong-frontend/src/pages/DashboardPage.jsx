@@ -2164,63 +2164,70 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, onFilterChange
   const cpRender = v => v != null ? <span style={{ color: '#c41d7f' }}>{Number(v).toFixed(2)}</span> : '—'
   const qaRender = v => v != null ? <span style={{ color: '#0891b2' }}>{v}</span> : '—'
 
+  const hc = (extra = {}) => () => ({ style: { background: '#006666', color: '#fff', textAlign: 'center', fontWeight: 700, fontSize: 11, padding: '6px 6px', ...extra } })
+
   const cols = [
-    { title: 'Mã Bravo', dataIndex: 'maBravo',   key: 'maBravo',   width: 110, fixed: 'left', render: v => <b>{v}</b> },
-    { title: 'Mã TP',    dataIndex: 'maTp',       key: 'maTp',      width: 90,  fixed: 'left' },
-    { title: 'Tên SP',   dataIndex: 'tienTrinh',  key: 'tienTrinh', width: 200, ellipsis: true },
-    { title: 'LSX',      dataIndex: 'lsx',        key: 'lsx',       width: 100 },
-    { title: 'SL KH',   dataIndex: 'soLuong',    key: 'soLuong',   width: 76, align: 'center', render: v => v ?? '—' },
-    { title: 'Mã ĐH',   dataIndex: 'maDonHang',  key: 'maDonHang', width: 120, ellipsis: true },
+    { title: 'Mã Bravo', dataIndex: 'maBravo',   key: 'maBravo',   width: 110, fixed: 'left', onHeaderCell: hc({ textAlign: 'left' }), render: v => <b>{v}</b> },
+    { title: 'Mã TP',    dataIndex: 'maTp',       key: 'maTp',      width: 90,  fixed: 'left', onHeaderCell: hc({ textAlign: 'left' }) },
+    { title: 'Tên SP',   dataIndex: 'tienTrinh',  key: 'tienTrinh', width: 200, ellipsis: true, onHeaderCell: hc({ textAlign: 'left' }) },
+    { title: 'LSX',      dataIndex: 'lsx',        key: 'lsx',       width: 100, onHeaderCell: hc() },
+    { title: 'SL KH',    dataIndex: 'soLuong',    key: 'soLuong',   width: 76, align: 'center', onHeaderCell: hc(), render: v => v ?? '—' },
+    { title: 'Mã ĐH',    dataIndex: 'maDonHang',  key: 'maDonHang', width: 120, ellipsis: true, onHeaderCell: hc() },
     {
       title: 'Trạng thái',
       key: 'tt_group',
+      onHeaderCell: hc(),
       children: [
-        { title: 'PC',   dataIndex: 'pcTrangThai',   key: 'tt_pc',   width: 72, align: 'center', render: ttRender },
-        { title: 'PL',   dataIndex: 'plTrangThai',   key: 'tt_pl',   width: 72, align: 'center', render: ttRender },
-        { title: 'ĐG',   dataIndex: 'dgTrangThai',   key: 'tt_dg',   width: 72, align: 'center', render: ttRender },
-        { title: 'BBC1', dataIndex: 'bbc1TrangThai', key: 'tt_bbc1', width: 72, align: 'center', render: ttRender },
+        { title: 'PC',   dataIndex: 'pcTrangThai',   key: 'tt_pc',   width: 72, align: 'center', onHeaderCell: hc(), render: ttRender },
+        { title: 'PL',   dataIndex: 'plTrangThai',   key: 'tt_pl',   width: 72, align: 'center', onHeaderCell: hc(), render: ttRender },
+        { title: 'ĐG',   dataIndex: 'dgTrangThai',   key: 'tt_dg',   width: 72, align: 'center', onHeaderCell: hc(), render: ttRender },
+        { title: 'BBC1', dataIndex: 'bbc1TrangThai', key: 'tt_bbc1', width: 72, align: 'center', onHeaderCell: hc(), render: ttRender },
       ]
     },
     {
       title: 'Sản lượng',
       key: 'sl_group',
+      onHeaderCell: hc(),
       children: [
-        { title: 'SL PC',     dataIndex: 'slPc',        key: 'slPc',  width: 76, align: 'center', render: v => v ?? '—' },
-        { title: 'SL PL',     dataIndex: 'pcPl',        key: 'pcPl',  width: 76, align: 'center', render: v => v ?? '—' },
-        { title: 'SL ĐG',     dataIndex: 'dg2',         key: 'dg2',   width: 76, align: 'center', render: v => v ?? '—' },
-        { title: 'SL BBC1',   dataIndex: 'bbc1_2',      key: 'bbc12', width: 80, align: 'center', render: v => v ?? '—' },
-        { title: 'SP TG',     dataIndex: 'spTrungGian', key: 'spTG',  width: 76, align: 'center', render: v => v ?? '—' },
-        { title: 'TP NKho',   dataIndex: 'tpNhapKho',   key: 'tpNK',  width: 80, align: 'center', render: v => v ?? '—' },
+        { title: 'SL PC',   dataIndex: 'slPc',        key: 'slPc',  width: 76, align: 'center', onHeaderCell: hc(), render: v => v ?? '—' },
+        { title: 'SL PL',   dataIndex: 'pcPl',        key: 'pcPl',  width: 76, align: 'center', onHeaderCell: hc(), render: v => v ?? '—' },
+        { title: 'SL ĐG',   dataIndex: 'dg2',         key: 'dg2',   width: 76, align: 'center', onHeaderCell: hc(), render: v => v ?? '—' },
+        { title: 'SL BBC1', dataIndex: 'bbc1_2',      key: 'bbc12', width: 80, align: 'center', onHeaderCell: hc(), render: v => v ?? '—' },
+        { title: 'SP TG',   dataIndex: 'spTrungGian', key: 'spTG',  width: 76, align: 'center', onHeaderCell: hc(), render: v => v ?? '—' },
+        { title: 'TP NKho', dataIndex: 'tpNhapKho',   key: 'tpNK',  width: 80, align: 'center', onHeaderCell: hc(), render: v => v ?? '—' },
       ]
     },
     {
       title: 'Chi phí công',
       key: 'cp_group',
+      onHeaderCell: hc(),
       children: [
-        { title: 'BBC1', dataIndex: 'bbc1_3',   key: 'cp_bbc1', width: 68, align: 'center', render: cpRender },
-        { title: 'PC',   dataIndex: 'pcChiPhi', key: 'cp_pc',   width: 68, align: 'center', render: cpRender },
-        { title: 'PL',   dataIndex: 'plChiPhi', key: 'cp_pl',   width: 68, align: 'center', render: cpRender },
-        { title: 'ĐG',   dataIndex: 'dgChiPhi', key: 'cp_dg',   width: 68, align: 'center', render: cpRender },
-        { title: 'CC',   dataIndex: 'ccChiPhi', key: 'cp_cc',   width: 68, align: 'center', render: cpRender },
-        { title: 'GNNL', dataIndex: 'temDb',    key: 'cp_gnnl', width: 68, align: 'center', render: cpRender },
+        { title: 'BBC1', dataIndex: 'bbc1_3',   key: 'cp_bbc1', width: 68, align: 'center', onHeaderCell: hc(), render: cpRender },
+        { title: 'PC',   dataIndex: 'pcChiPhi', key: 'cp_pc',   width: 68, align: 'center', onHeaderCell: hc(), render: cpRender },
+        { title: 'PL',   dataIndex: 'plChiPhi', key: 'cp_pl',   width: 68, align: 'center', onHeaderCell: hc(), render: cpRender },
+        { title: 'ĐG',   dataIndex: 'dgChiPhi', key: 'cp_dg',   width: 68, align: 'center', onHeaderCell: hc(), render: cpRender },
+        { title: 'CC',   dataIndex: 'ccChiPhi', key: 'cp_cc',   width: 68, align: 'center', onHeaderCell: hc(), render: cpRender },
+        { title: 'GNNL', dataIndex: 'temDb',    key: 'cp_gnnl', width: 68, align: 'center', onHeaderCell: hc(), render: cpRender },
       ]
     },
     {
       title: 'QA Lấy mẫu',
       key: 'qa_group',
+      onHeaderCell: hc(),
       children: [
-        { title: 'PL', dataIndex: 'plQaLayMau', key: 'qa_pl', width: 68, align: 'center', render: qaRender },
-        { title: 'ĐG', dataIndex: 'dgQaLayMau', key: 'qa_dg', width: 68, align: 'center', render: qaRender },
+        { title: 'PL', dataIndex: 'plQaLayMau', key: 'qa_pl', width: 68, align: 'center', onHeaderCell: hc(), render: qaRender },
+        { title: 'ĐG', dataIndex: 'dgQaLayMau', key: 'qa_dg', width: 68, align: 'center', onHeaderCell: hc(), render: qaRender },
       ]
     },
-    { title: 'SL TB',      dataIndex: 'slTrungBinh',   key: 'slTB',   width: 76, align: 'center', render: v => v ?? '—' },
-    { title: 'Mô tả',      dataIndex: 'moTa',           key: 'moTa',   width: 150, ellipsis: true, render: v => v || '—' },
-    { title: 'Ghi chú HS', dataIndex: 'ghiChuHieuSuat', key: 'ghiChu', width: 160, ellipsis: true, render: v => v || '—' },
+    { title: 'SL TB',      dataIndex: 'slTrungBinh',   key: 'slTB',   width: 76, align: 'center', onHeaderCell: hc(), render: v => v ?? '—' },
+    { title: 'Mô tả',      dataIndex: 'moTa',           key: 'moTa',   width: 150, ellipsis: true, onHeaderCell: hc({ textAlign: 'left' }), render: v => v || '—' },
+    { title: 'Ghi chú HS', dataIndex: 'ghiChuHieuSuat', key: 'ghiChu', width: 160, ellipsis: true, onHeaderCell: hc({ textAlign: 'left' }), render: v => v || '—' },
     {
       title: '',
       key: 'actions',
       width: 56,
       fixed: 'right',
+      onHeaderCell: hc(),
       render: (_, r) => (
         <Popconfirm title="Xóa bản ghi này?" onConfirm={() => handleDelete(r.id)} okText="Xóa" cancelText="Hủy">
           <Button size="small" danger icon={<DeleteOutlined />} loading={delLoading} />
