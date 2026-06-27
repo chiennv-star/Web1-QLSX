@@ -2882,6 +2882,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
       .finally(() => setLoading(false))
   }, [loaded])
 
+  const numPC   = r => Number(r.slPc)    || 0
   const numPL   = r => Number(r.pcPl)   || 0
   const numDG   = r => Number(r.dg2)    || 0
   const numBBC1 = r => Number(r.bbc1_2) || 0
@@ -3043,6 +3044,39 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
     })
     const rows = Object.values(map).sort((a, b) => a._yy !== b._yy ? a._yy - b._yy : a._mm - b._mm)
     return { rows, machines: [...machines].sort() }
+  }, [filteredData, pmMap])
+
+  // ── Machine pivot tables by stage ──
+  const machineTimeData = React.useMemo(() => {
+    const STAGES = [
+      { key: 'PC',   label: 'PC — Thiết Bị Pha Chế',   getMachine: r => (pmMap[r.maBravo] || {}).mayMocPc,   getVal: numPC,   color: '#1565c0' },
+      { key: 'PL',   label: 'PL — Thiết Bị Chiết',     getMachine: r => (pmMap[r.maBravo] || {}).mayMocPl,   getVal: numPL,   color: '#7b1fa2' },
+      { key: 'BBC1', label: 'BBC1 — Thiết Bị BBC',      getMachine: r => (pmMap[r.maBravo] || {}).mayMocBbc1, getVal: numBBC1, color: '#00695c' },
+      { key: 'DG',   label: 'ĐG — Thiết Bị Đóng Gói', getMachine: r => (pmMap[r.maBravo] || {}).mayMocDg, getVal: numDG, color: '#e65100' },
+    ]
+    return STAGES.map(({ key, label, getMachine, getVal, color }) => {
+      const monthMap = {}
+      const machineSet = new Set()
+      filteredData.forEach(r => {
+        if (!r.lsx || r.lsx.length < 6) return
+        const mm = r.lsx.slice(2, 4), yy = r.lsx.slice(4, 6)
+        if (!/^\d{2}$/.test(mm) || !/^\d{2}$/.test(yy)) return
+        const val = getVal(r)
+        if (val === 0) return
+        const thang = `${mm}/20${yy}`
+        const mName = getMachine(r) || '(Chua xac dinh)'
+        machineSet.add(mName)
+        if (!monthMap[thang]) monthMap[thang] = { thang, _mm: Number(mm), _yy: Number(yy) }
+        monthMap[thang][mName] = (monthMap[thang][mName] || 0) + val
+      })
+      const machines = [...machineSet].sort()
+      const rows = Object.values(monthMap)
+        .sort((a, b) => a._yy !== b._yy ? a._yy - b._yy : a._mm - b._mm)
+        .map(r => ({ ...r, _rowTotal: machines.reduce((s, m) => s + (r[m] || 0), 0) }))
+      const totRow = { thang: 'TỔNG', _total: true, _rowTotal: 0 }
+      machines.forEach(m => { totRow[m] = rows.reduce((s, r) => s + (r[m] || 0), 0); totRow._rowTotal += totRow[m] })
+      return { key, label, color, machines, rows: [...rows, totRow] }
+    })
   }, [filteredData, pmMap])
 
   // ── Top 15 ──
@@ -3218,6 +3252,56 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
               </ResponsiveContainer>
             </div>
           )}
+          <div style={{ marginTop: 24 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: '#006666', marginBottom: 16, paddingBottom: 8, borderBottom: '2px solid #b2dfdb' }}>
+              Phân Tích Theo Thời Gian — Từng Công Đoạn
+            </div>
+            {machineTimeData.map(stage => (
+              <div key={stage.key} style={{ marginBottom: 28 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <div style={{ width: 6, height: 22, borderRadius: 3, background: stage.color }} />
+                  <span style={{ fontWeight: 700, fontSize: 14, color: stage.color }}>{stage.label}</span>
+                </div>
+                {stage.machines.length === 0 ? (
+                  <div style={{ color: '#aaa', fontSize: 13, paddingLeft: 14 }}>Chưa có dữ liệu máy móc</div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
+                      <thead>
+                        <tr>
+                          <th style={{ background: stage.color, color: '#fff', padding: '7px 12px', textAlign: 'left', whiteSpace: 'nowrap', position: 'sticky', left: 0, zIndex: 2 }}>Tháng/Năm</th>
+                          {stage.machines.map(m => (
+                            <th key={m} style={{ background: stage.color, color: '#fff', padding: '7px 10px', textAlign: 'right', whiteSpace: 'nowrap', minWidth: 110 }}>{m}</th>
+                          ))}
+                          <th style={{ background: '#004d40', color: '#fff', padding: '7px 10px', textAlign: 'right', whiteSpace: 'nowrap', minWidth: 110 }}>TỔNG</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {stage.rows.map((row, ri) => {
+                          const isTotal = row._total
+                          return (
+                            <tr key={row.thang} style={{ background: isTotal ? '#e8f5f5' : ri % 2 === 0 ? '#fff' : '#f9fffe' }}>
+                              <td style={{ padding: '6px 12px', fontWeight: isTotal ? 700 : 400, whiteSpace: 'nowrap', borderBottom: '1px solid #e8f5f5', position: 'sticky', left: 0, background: isTotal ? '#e8f5f5' : ri % 2 === 0 ? '#fff' : '#f9fffe' }}>
+                                {row.thang}
+                              </td>
+                              {stage.machines.map(m => (
+                                <td key={m} style={{ padding: '6px 10px', textAlign: 'right', borderBottom: '1px solid #e8f5f5', color: row[m] ? stage.color : '#ccc', fontWeight: isTotal ? 700 : 400 }}>
+                                  {row[m] ? Number(row[m]).toLocaleString('vi-VN') : '—'}
+                                </td>
+                              ))}
+                              <td style={{ padding: '6px 10px', textAlign: 'right', borderBottom: '1px solid #e8f5f5', fontWeight: 700, color: '#004d40' }}>
+                                {Number(row._rowTotal || 0).toLocaleString('vi-VN')}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       ),
     },
