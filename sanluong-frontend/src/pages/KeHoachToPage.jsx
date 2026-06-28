@@ -31,7 +31,6 @@ const SS_TIME_MODE = 'kehoachto_timeMode'
 const SS_MONTH     = 'kehoachto_monthStart'
 const SS_ASSIGNS   = 'kehoachto_assigns'
 const SS_P1_OPEN   = 'kehoachto_p1Open'
-const SS_P2_OPEN   = 'kehoachto_p2Open'
 
 // WIP config theo tổ
 const WIP_CFG_MAP = {
@@ -851,7 +850,6 @@ export default function KeHoachToPage() {
 
   // ── Panel open/close ──────────────────────────────────────────────────────
   const [p1Open, setP1Open] = useState(() => sessionStorage.getItem(SS_P1_OPEN) === 'true')
-  const [p2Open, setP2Open] = useState(() => sessionStorage.getItem(SS_P2_OPEN) === 'true')
 
   // ── WIP (Hàng dở dang) ────────────────────────────────────────────────────
   const [wipItems, setWipItems]   = useState([])
@@ -1436,14 +1434,14 @@ export default function KeHoachToPage() {
         {/* ── Unified panel ── */}
         <div style={{ flex: 1, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
 
-          {/* ── ① Kế hoạch tổng (header strip) ── */}
+          {/* ── ① Kế hoạch tổng + Nhân viên (merged header strip) ── */}
           <div style={{ flexShrink: 0, borderBottom: '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', cursor: 'pointer', userSelect: 'none' }}
               onClick={() => setP1Open(v => { const next = !v; sessionStorage.setItem(SS_P1_OPEN, next); return next })}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.04em', textTransform: 'uppercase', flex: 1 }}>
-                ① Kế hoạch tổng — kéo sản phẩm
-                {selectedTo && planSource !== 'WIP' && <span style={{ fontWeight: 600, color: '#0f766e', marginLeft: 6, textTransform: 'none', fontSize: 10.5 }}>({filteredPlans.length})</span>}
-                {selectedTo && planSource === 'WIP' && <span style={{ fontWeight: 600, color: '#b45309', marginLeft: 6, textTransform: 'none', fontSize: 10.5 }}>({wipLoading ? '...' : `${wipItems.length} mặt hàng · ${wipItems.reduce((s, r) => s + r._doDang, 0).toLocaleString('vi-VN')} sp`})</span>}
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.04em', textTransform: 'uppercase', flexShrink: 0 }}>
+                Kéo sản phẩm
+                {selectedTo && planSource !== 'WIP' && <span style={{ fontWeight: 600, color: '#0f766e', marginLeft: 5, textTransform: 'none', fontSize: 10.5 }}>({filteredPlans.length})</span>}
+                {selectedTo && planSource === 'WIP' && <span style={{ fontWeight: 600, color: '#b45309', marginLeft: 5, textTransform: 'none', fontSize: 10.5 }}>({wipLoading ? '...' : `${wipItems.length} dở dang`})</span>}
               </span>
               <div style={{ display: 'flex', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}
                 onClick={e => e.stopPropagation()}>
@@ -1462,8 +1460,29 @@ export default function KeHoachToPage() {
                 onClick={e => e.stopPropagation()}
                 placeholder="Tìm SP..."
                 allowClear size="small"
-                style={{ width: 160, flexShrink: 0 }}
+                style={{ width: 130, flexShrink: 0 }}
               />
+              {/* Divider */}
+              <div style={{ width: 1, height: 16, background: '#e2e8f0', flexShrink: 0 }} onClick={e => e.stopPropagation()} />
+              {/* Nhân viên label + count */}
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.04em', textTransform: 'uppercase', flexShrink: 0 }}>
+                Kéo người
+                {empTo && <span style={{ fontWeight: 600, color: '#0f766e', marginLeft: 5, textTransform: 'none', fontSize: 10.5 }}>({displayEmps.length})</span>}
+              </span>
+              {/* Tổ tabs */}
+              <div style={{ display: 'flex', gap: 3, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                {visibleTabs.map(tab => {
+                  const isSel = empTo === tab.key
+                  return (
+                    <button key={tab.key} onClick={() => setEmpTo(tab.key)} style={{
+                      border: `1.5px solid ${isSel ? '#0f766e' : '#e2e8f0'}`,
+                      background: isSel ? '#0f766e' : '#f8fafc',
+                      color: isSel ? '#fff' : '#64748b',
+                      borderRadius: 999, padding: '2px 7px', cursor: 'pointer', fontWeight: 700, fontSize: 10.5,
+                    }}>{tab.label}</button>
+                  )
+                })}
+              </div>
               <span style={{ color: '#94a3b8', fontSize: 13, flexShrink: 0 }}>{p1Open ? '▴' : '▾'}</span>
             </div>
             {p1Open && (
@@ -1559,38 +1578,13 @@ export default function KeHoachToPage() {
                 })}
               </div>
             )}
-          </div>
-
-          {/* ── ② Nhân viên trong tổ (header strip) ── */}
-          <div style={{ flexShrink: 0, borderBottom: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', cursor: 'pointer', userSelect: 'none' }}
-              onClick={() => setP2Open(v => { const next = !v; sessionStorage.setItem(SS_P2_OPEN, next); return next })}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.04em', textTransform: 'uppercase', flex: 1 }}>
-                ② Nhân viên trong tổ — kéo người
-                {empTo && <span style={{ fontWeight: 600, color: '#0f766e', marginLeft: 6, textTransform: 'none', fontSize: 10.5 }}>({displayEmps.length} người)</span>}
-              </span>
-              {/* Tổ tabs inline */}
-              <div style={{ display: 'flex', gap: 3, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-                {visibleTabs.map(tab => {
-                  const isSel = empTo === tab.key
-                  return (
-                    <button key={tab.key} onClick={() => setEmpTo(tab.key)} style={{
-                      border: `1.5px solid ${isSel ? '#0f766e' : '#e2e8f0'}`,
-                      background: isSel ? '#0f766e' : '#f8fafc',
-                      color: isSel ? '#fff' : '#64748b',
-                      borderRadius: 999, padding: '2px 8px', cursor: 'pointer', fontWeight: 700, fontSize: 10.5,
-                    }}>{tab.label}</button>
-                  )
-                })}
-              </div>
-              <span style={{ color: '#94a3b8', fontSize: 13, flexShrink: 0 }}>{p2Open ? '▴' : '▾'}</span>
-            </div>
-            {p2Open && (
-              <div style={{ overflowX: 'auto', padding: '0 12px 8px', display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+            {/* Nhân viên row (hiển thị khi expanded, ngay dưới products) */}
+            {p1Open && (
+              <div style={{ borderTop: '1px dashed #e2e8f0', padding: '5px 12px 8px', display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
                 {!empTo ? (
-                  <div style={{ color: '#94a3b8', fontSize: 12 }}>— Chọn tổ để xem nhân viên —</div>
+                  <span style={{ color: '#94a3b8', fontSize: 11 }}>— Chọn tổ để xem nhân viên —</span>
                 ) : displayEmps.length === 0 ? (
-                  <div style={{ color: '#94a3b8', fontSize: 12 }}>Không có nhân viên trong tổ {TO_TABS.find(t => t.key === empTo)?.label || empTo}.</div>
+                  <span style={{ color: '#94a3b8', fontSize: 11 }}>Không có nhân viên trong tổ {TO_TABS.find(t => t.key === empTo)?.label || empTo}.</span>
                 ) : displayEmps.map(emp => {
                   const isTN = (emp.viTri || '').toLowerCase().includes('tổ trưởng') || (emp.viTri || '').toUpperCase() === 'TN'
                   return (
