@@ -591,6 +591,9 @@ function SanLuongKeToanTab({ data = [], loading = false, pagination = {}, onPagi
   }
 
   const columns = [
+    { title: 'STT', key: 'stt', width: 52, fixed: 'left', align: 'center',
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
+      render: (_, __, idx) => <span style={{ color: '#94a3b8', fontSize: 12 }}>{idx + 1}</span> },
     { title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 105, fixed: 'left',
       onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: v => v ? <span style={{ color: '#1d4ed8' }}>{v}</span> : '—' },
