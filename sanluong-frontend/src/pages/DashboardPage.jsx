@@ -2866,6 +2866,18 @@ function ImportSanLuongModal({ open, onClose, onSuccess }) {
 // ── Phân Tích Sản Lượng Tab ───────────────────────────────────────────────────
 const PIE_COLORS = ['#7b1fa2','#f57c00','#00695c','#1976d2','#c2185b','#0097a7','#d32f2f','#7cb342','#6a1b9a','#004d7f','#d84315','#558b2f','#00796b','#4a148c','#b71c1c']
 
+const MACHINE_COLORS = {
+  'Máy Nhũ Hóa 100L': '#00897b',
+  'Máy Nhũ Hóa 300L': '#fb8c00',
+  'Máy Nhũ Hóa 500L': '#1565c0',
+  'Máy Nhũ Hóa 700L': '#d32f2f',
+  'Máy Khuấy 700L':   '#e91e63',
+  'Máy Khuấy 500L':   '#f57c00',
+  'Thủ Công':         '#558b2f',
+  '(Chua xac dinh)':  '#9e9e9e',
+}
+const machineColor = (name, idx) => MACHINE_COLORS[name] ?? PIE_COLORS[idx % PIE_COLORS.length]
+
 function PhanTichSanLuongTab({ pmMap = {} }) {
   const [allData, setAllData] = useState([])
   const [loaded, setLoaded] = useState(false)
@@ -3365,7 +3377,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
                   <RechartTooltip formatter={(v, n) => [Number(v).toLocaleString('vi-VN'), n]} />
                   <Legend wrapperStyle={{ paddingTop: 8 }} />
                   {monthByMachinePl.machines.map((m, i) => (
-                    <Line key={m} type="monotone" dataKey={m} stroke={PIE_COLORS[i % PIE_COLORS.length]} dot={false} strokeWidth={2} />
+                    <Line key={m} type="monotone" dataKey={m} stroke={machineColor(m, i)} dot={false} strokeWidth={2} />
                   ))}
                 </LineChart>
               </ResponsiveContainer>
@@ -3393,7 +3405,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
                         <RechartTooltip formatter={(v, n) => [Number(v).toLocaleString('vi-VN'), n]} />
                         <Legend wrapperStyle={{ paddingTop: 8 }} />
                         {stage.machines.map((m, i) => (
-                          <Line key={m} type="monotone" dataKey={m} stroke={PIE_COLORS[(si * 3 + i) % PIE_COLORS.length]} dot={false} strokeWidth={2} />
+                          <Line key={m} type="monotone" dataKey={m} stroke={machineColor(m, i)} dot={false} strokeWidth={2} />
                         ))}
                       </LineChart>
                     </ResponsiveContainer>
@@ -3424,7 +3436,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
                         <RechartTooltip formatter={(v, n) => [Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 2 }), n]} />
                         <Legend wrapperStyle={{ paddingTop: 8 }} />
                         {stage.machines.map((m, i) => (
-                          <Line key={m} type="monotone" dataKey={m} stroke={PIE_COLORS[(si * 3 + i) % PIE_COLORS.length]} dot={false} strokeWidth={2} />
+                          <Line key={m} type="monotone" dataKey={m} stroke={machineColor(m, i)} dot={false} strokeWidth={2} />
                         ))}
                       </LineChart>
                     </ResponsiveContainer>
@@ -3540,7 +3552,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
                       <RechartTooltip formatter={(v, n) => [Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 1 }), n]} />
                       <Legend wrapperStyle={{ paddingTop: 8 }} />
                       {stage.machines.map((m, i) => (
-                        <Line key={m} type="monotone" dataKey={m} stroke={PIE_COLORS[i % PIE_COLORS.length]} dot={false} strokeWidth={2} />
+                        <Line key={m} type="monotone" dataKey={m} stroke={machineColor(m, i)} dot={false} strokeWidth={2} />
                       ))}
                     </LineChart>
                   </ResponsiveContainer>
