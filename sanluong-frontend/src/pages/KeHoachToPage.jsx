@@ -4,6 +4,7 @@ import { Select, Spin, message, DatePicker, Tooltip, Button, Popconfirm, Input, 
 import { ReloadOutlined, TeamOutlined, ProjectOutlined, WarningOutlined, LeftOutlined, RightOutlined, SearchOutlined, SaveOutlined, PlusOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
+import { useLocation } from 'react-router-dom'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
 
@@ -582,6 +583,7 @@ function AssignRow({
 // ─────────────────────────────────────────────────────────────────────────────
 export default function KeHoachToPage() {
   const { user } = useAuth()
+  const location = useLocation()
 
   const visibleTabs = (() => {
     const role = user?.role
@@ -594,6 +596,12 @@ export default function KeHoachToPage() {
   })()
 
   const [selectedTo, setSelectedToState] = useState(() => sessionStorage.getItem(SS_TO) || '')
+
+  // Khi click tổ khác trong sidebar (đang ở cùng route), đọc từ location.state
+  useEffect(() => {
+    const to = location.state?.selectedTo
+    if (to) setSelectedToState(to)
+  }, [location.state])
   const [weekStart, setWeekStartState]   = useState(() => {
     const saved = sessionStorage.getItem(SS_WEEK)
     return saved ? dayjs(saved).startOf('isoWeek') : dayjs().startOf('isoWeek')

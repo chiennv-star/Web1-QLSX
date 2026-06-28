@@ -303,7 +303,7 @@ export default function MainLayout() {
     if (key.startsWith('kht:')) {
       const to = key.slice(4)
       sessionStorage.setItem('kehoachto_selectedTo', to)
-      navigate('/ke-hoach-to')
+      navigate('/ke-hoach-to', { state: { selectedTo: to } })
     } else {
       navigate(key)
     }
