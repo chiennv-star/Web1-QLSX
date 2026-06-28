@@ -229,7 +229,7 @@ function StageTimelineTab({ filtersRef, searchTick, headerOffset = 120 }) {
       render: v => v ? <Tag color="blue" style={{ fontFamily: 'monospace', marginRight: 0, fontSize: 11 }}>{v}</Tag>
         : <span style={{ color: '#d9d9d9' }}>—</span> },
     { title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', fixed: 'left', width: 90, ...colSearch('maSp') },
-    { title: 'Tên Trình', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 130, ellipsis: true, ...colSearch('tenTrinh') },
+    { title: 'Tên Trình', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 130, ellipsis: true, fixed: 'left', ...colSearch('tenTrinh') },
     { title: 'Số Lô', dataIndex: 'soLo', key: 'soLo', width: 80, ...colSearch('soLo') },
     {
       title: 'Cỡ Lô', dataIndex: 'coLo', key: 'coLo', width: 78, align: 'right',
@@ -256,7 +256,7 @@ function StageTimelineTab({ filtersRef, searchTick, headerOffset = 120 }) {
       render: v => v ? <Tag color="blue" style={{ fontFamily: 'monospace', marginRight: 0, fontSize: 11 }}>{v}</Tag>
         : <span style={{ color: '#d9d9d9' }}>—</span> },
     { title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', fixed: 'left', width: 90, ...colSearch('maSp') },
-    { title: 'Tên Trình', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 150, ellipsis: true, ...colSearch('tenTrinh') },
+    { title: 'Tên Trình', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 150, ellipsis: true, fixed: 'left', ...colSearch('tenTrinh') },
     { title: 'Số Lô', dataIndex: 'soLo', key: 'soLo', width: 80, ...colSearch('soLo') },
     {
       title: 'Cỡ Lô', dataIndex: 'coLo', key: 'coLo', width: 80, align: 'right',
@@ -377,6 +377,7 @@ function TienDoTab({ filtersRef, searchTick, headerOffset = 120 }) {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [textSearch, setTextSearch] = useState('')
 
   const STAGES = ['pc', 'bbc1', 'pl', 'dg', 'cc']
   const STAGE_LABELS = { pc: 'PC', bbc1: 'BBC1', pl: 'PL', dg: 'ĐG', cc: 'CC' }
@@ -446,12 +447,21 @@ function TienDoTab({ filtersRef, searchTick, headerOffset = 120 }) {
     ],
   }))
 
-  const filteredData = data.filter(r => filterByStatus(r, statusFilter))
-    .slice().sort((a, b) => {
-      const ta = STAGES.reduce((acc, s) => acc + (a[s]?.soDays || 0), 0)
-      const tb = STAGES.reduce((acc, s) => acc + (b[s]?.soDays || 0), 0)
-      return tb - ta
-    })
+  const filteredData = data.filter(r => {
+    if (!filterByStatus(r, statusFilter)) return false
+    if (textSearch.trim()) {
+      const q = textSearch.trim().toLowerCase()
+      return (r.tenTrinh || '').toLowerCase().includes(q)
+        || (r.maSp || '').toLowerCase().includes(q)
+        || (r.soLo || '').toLowerCase().includes(q)
+        || (r.maBravo || '').toLowerCase().includes(q)
+    }
+    return true
+  }).slice().sort((a, b) => {
+    const ta = STAGES.reduce((acc, s) => acc + (a[s]?.soDays || 0), 0)
+    const tb = STAGES.reduce((acc, s) => acc + (b[s]?.soDays || 0), 0)
+    return tb - ta
+  })
 
   const columns = [
     { title: 'STT', key: 'stt', width: 46, align: 'center', fixed: 'left',
@@ -464,7 +474,7 @@ function TienDoTab({ filtersRef, searchTick, headerOffset = 120 }) {
     { title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', fixed: 'left', width: 88,
       onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: v => <b style={{ color: '#1d4ed8', fontSize: 12 }}>{v}</b> },
-    { title: 'Tên sản phẩm', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 190, ellipsis: true,
+    { title: 'Tên sản phẩm', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 190, ellipsis: true, fixed: 'left',
       onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: v => <span style={{ fontSize: 12 }}>{v || '—'}</span> },
     { title: 'Số Lô', dataIndex: 'soLo', key: 'soLo', width: 80,
@@ -501,7 +511,7 @@ function TienDoTab({ filtersRef, searchTick, headerOffset = 120 }) {
         .tiendo-table .ant-table-tbody > tr:hover > td { background: #e0f7fa !important; }
         .tiendo-table .ant-table-summary > tr > td { background: #e6f7f7 !important; font-weight: 700; border-right: 1px solid #b2dfdb !important; }
       `}</style>
-      <div style={{ padding: '6px 10px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ padding: '6px 10px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <Segmented
           size="small"
           value={statusFilter}
@@ -512,7 +522,16 @@ function TienDoTab({ filtersRef, searchTick, headerOffset = 120 }) {
             { label: <span style={{ color: '#389e0d' }}>Hoàn thành</span>, value: 'done' },
           ]}
         />
-        <Typography.Text style={{ color: '#64748b', fontSize: 12 }}>{filteredData.length} / {data.length} sản phẩm</Typography.Text>
+        <Input
+          size="small"
+          placeholder="Tên SP / Mã SP / Số lô…"
+          allowClear
+          value={textSearch}
+          onChange={e => setTextSearch(e.target.value)}
+          prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+          style={{ width: 220 }}
+        />
+        <Typography.Text style={{ color: '#64748b', fontSize: 12, marginLeft: 'auto' }}>{filteredData.length} / {data.length} sản phẩm</Typography.Text>
       </div>
       <Table
         className="tiendo-table"
@@ -578,7 +597,7 @@ function SanLuongKeToanTab({ data = [], loading = false, pagination = {}, onPagi
     { title: 'Mã SP', dataIndex: 'maTp', key: 'maTp', width: 95, fixed: 'left',
       onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: v => v ? <span style={{ color: '#595959' }}>{v}</span> : '—' },
-    { title: 'Tên sản phẩm', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 210,
+    { title: 'Tên sản phẩm', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 210, fixed: 'left',
       onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: v => <span>{v || '—'}</span> },
     { title: 'Mã lô SP', dataIndex: 'lsx', key: 'lsx', width: 145, align: 'center',
