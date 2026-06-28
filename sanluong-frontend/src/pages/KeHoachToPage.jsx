@@ -1716,49 +1716,80 @@ export default function KeHoachToPage() {
               ) : displayEmps.length === 0 ? (
                 <div style={{ color: '#94a3b8', fontSize: 12, padding: 12 }}>Không có nhân viên trong tổ {selectedTo}.</div>
               ) : displayEmps.map(emp => {
-                const empAssigns = assigns.filter(a =>
-                  Object.values(a.caShifts || {}).some(shift => (shift.mas || []).includes(emp.maNhanVien))
-                )
+                const empAssigns = assigns
+                  .filter(a => Object.values(a.caShifts || {}).some(shift => (shift.mas || []).includes(emp.maNhanVien)))
+                  .sort((a, b) => (a.ngayFull || a.ngay || '').localeCompare(b.ngayFull || b.ngay || ''))
                 const isTN = (emp.viTri || '').toLowerCase().includes('tổ trưởng') || (emp.viTri || '').toUpperCase() === 'TN'
+                // Group by date for cleaner display
+                const byDate = {}
+                empAssigns.forEach(a => { const k = a.ngay; if (!byDate[k]) byDate[k] = []; byDate[k].push(a) })
+                const dateKeys = Object.keys(byDate)
                 return (
                   <div key={emp.maNhanVien} style={{ border: '1px solid #e2e8f0', borderRadius: 11, padding: '11px 13px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 13, marginBottom: 7 }}>
-                      <span style={{ width: 24, height: 24, borderRadius: '50%', flexShrink: 0, background: isTN ? '#fde68a' : '#c7d2fe', color: isTN ? '#92400e' : '#4338ca', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 13, marginBottom: 8 }}>
+                      <span style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0, background: isTN ? '#fde68a' : '#c7d2fe', color: isTN ? '#92400e' : '#4338ca', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {initials(emp.hoVaTen)}
                       </span>
-                      <span style={{ color: '#475569', fontSize: 12 }}>{emp.maNhanVien}</span>
-                      <span>{emp.hoVaTen}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <span style={{ fontSize: 13, color: '#1e293b' }}>{emp.hoVaTen}</span>
+                        <span style={{ color: '#94a3b8', fontSize: 10.5, fontWeight: 500 }}>{emp.maNhanVien}</span>
+                      </div>
                       {isTN && <span style={{ fontSize: 10, fontWeight: 700, background: '#fde68a', color: '#92400e', borderRadius: 4, padding: '1px 6px' }}>Tổ trưởng</span>}
-                      <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#64748b', background: '#f1f5f9', borderRadius: 999, padding: '2px 9px' }}>{empAssigns.length} việc</span>
+                      <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#6366f1', background: '#eef2ff', borderRadius: 999, padding: '2px 10px' }}>
+                        {empAssigns.length} việc · {dateKeys.length} ngày
+                      </span>
                     </div>
-                    <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 5, paddingLeft: 0, margin: 0 }}>
-                      {empAssigns.length === 0 ? (
-                        <li style={{ color: '#94a3b8', fontSize: 12 }}>Chưa được xếp việc nào</li>
-                      ) : empAssigns.map(a => {
-                        const empShifts = Object.entries(a.caShifts || {})
-                          .filter(([, shift]) => (shift.mas || []).includes(emp.maNhanVien))
-                          .map(([caKey]) => caKey)
-                        const isConflict = empShifts.some(caKey => dup.has(`${emp.maNhanVien}|${a.ngay}|${caKey}`))
-                        return (
-                          <li key={a.id} style={{ fontSize: 12.5, color: '#334155', display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 10.5, fontWeight: 700, borderRadius: 5, padding: '2px 7px', background: '#f1f5f9', color: '#334155' }}>
-                              {a.ngay}
-                            </span>
-                            {empShifts.map(caKey => {
-                              const cs = CA_STYLE[caKey] || CA_STYLE['Ca 1']
-                              return (
-                                <span key={caKey} style={{ fontSize: 10, fontWeight: 700, borderRadius: 5, padding: '2px 7px', background: cs.bg, color: cs.text }}>
-                                  {caKey}
-                                </span>
-                              )
-                            })}
-                            {a.ten}
-                            {a.note && <span style={{ color: '#94a3b8', fontSize: 11.5 }}>· {a.note}</span>}
-                            {isConflict && <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 11 }}>⚠ trùng</span>}
-                          </li>
-                        )
-                      })}
-                    </ul>
+                    {empAssigns.length === 0 ? (
+                      <div style={{ color: '#94a3b8', fontSize: 12, paddingLeft: 4 }}>Chưa được xếp việc nào</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {dateKeys.map(dateKey => {
+                          const dayItems = byDate[dateKey]
+                          const d = dayjs(dayItems[0].ngayFull || dayjs().format('YYYY-MM-DD'))
+                          const dow2 = dayItems[0].ngayFull ? d.day() : -1
+                          const dowLabel = dow2 >= 0 ? DOW[dow2] : ''
+                          const isWknd = dow2 === 0 || dow2 === 6
+                          return (
+                            <div key={dateKey} style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                              {/* Date column */}
+                              <div style={{ flexShrink: 0, width: 68, paddingTop: 3, textAlign: 'center' }}>
+                                <div style={{ fontSize: 11, fontWeight: 800, color: isWknd ? '#c2410c' : '#4338ca', background: isWknd ? '#fff7ed' : '#eef2ff', borderRadius: 6, padding: '3px 6px', lineHeight: 1.4 }}>
+                                  {dowLabel && <span style={{ fontSize: 9, display: 'block', opacity: 0.8 }}>{dowLabel}</span>}
+                                  {dateKey}
+                                </div>
+                              </div>
+                              {/* Tasks for this date */}
+                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                {dayItems.map(a => {
+                                  const empShifts = Object.entries(a.caShifts || {})
+                                    .filter(([, shift]) => (shift.mas || []).includes(emp.maNhanVien))
+                                    .map(([caKey]) => caKey)
+                                  const isConflict = empShifts.some(caKey => dup.has(`${emp.maNhanVien}|${a.ngay}|${caKey}`))
+                                  return (
+                                    <div key={a.id} style={{ fontSize: 12.5, color: '#334155', display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap', background: isConflict ? '#fef2f2' : a.isUrgent ? '#fff8f8' : '#f8fafc', borderRadius: 6, padding: '4px 8px' }}>
+                                      {empShifts.map(caKey => {
+                                        const cs = CA_STYLE[caKey] || CA_STYLE['Ca 1']
+                                        return (
+                                          <span key={caKey} style={{ fontSize: 10, fontWeight: 800, borderRadius: 5, padding: '2px 7px', background: cs.bg, color: cs.text, border: `1px solid ${cs.border}`, flexShrink: 0 }}>
+                                            {caKey}
+                                          </span>
+                                        )
+                                      })}
+                                      <span style={{ flex: 1 }}>{a.ten}</span>
+                                      {a.maSp && <span style={{ fontSize: 10, color: '#94a3b8', fontFamily: 'monospace', flexShrink: 0 }}>{a.maSp}</span>}
+                                      {a.soLo && <span style={{ fontSize: 10, background: '#ede9fe', color: '#6d28d9', borderRadius: 3, padding: '0 5px', flexShrink: 0 }}>Lô {a.soLo}</span>}
+                                      {a.note && <span style={{ color: '#94a3b8', fontSize: 11 }}>· {a.note}</span>}
+                                      {a.isUrgent && <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 11, flexShrink: 0 }}>⚠ Gấp</span>}
+                                      {isConflict && <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 11, flexShrink: 0 }}>⚠ trùng</span>}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 )
               })}
