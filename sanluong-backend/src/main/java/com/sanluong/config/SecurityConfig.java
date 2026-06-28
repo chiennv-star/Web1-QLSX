@@ -82,6 +82,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/work-schedule-session/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH", "ADMIN_PC", "ADMIN_BBC1", "ADMIN_PL", "ADMIN_DG", "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3")
                 .requestMatchers(HttpMethod.PATCH, "/api/work-schedule-session/**").hasAnyRole(ALL_WRITE_ROLES)
                 .requestMatchers(HttpMethod.PUT, "/api/work-schedule-session/**").hasAnyRole(ALL_WRITE_ROLES)
+                .requestMatchers(HttpMethod.POST, "/api/work-schedule-session/batch").hasAnyRole(ALL_ROLES)
                 .requestMatchers(HttpMethod.POST, "/api/work-schedule-session/**").hasAnyRole(ALL_WRITE_ROLES)
                 .requestMatchers(HttpMethod.GET, "/api/work-schedule-session/**").hasAnyRole(ALL_ROLES)
 

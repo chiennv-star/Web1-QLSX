@@ -67,6 +67,19 @@ public class WorkScheduleSessionController {
         return ResponseEntity.ok(service.getByScheduleId(scheduleId, loaiSession));
     }
 
+    /** Batch: lấy sessions cho nhiều scheduleId cùng lúc — thay thế N+1 requests */
+    @PostMapping("/batch")
+    public ResponseEntity<List<WorkScheduleSession>> batchByScheduleIds(
+            @RequestBody java.util.Map<String, Object> body) {
+        @SuppressWarnings("unchecked")
+        java.util.List<Number> rawIds = (java.util.List<Number>) body.get("ids");
+        java.util.List<Long> ids = rawIds == null
+                ? java.util.List.of()
+                : rawIds.stream().map(Number::longValue).toList();
+        String loaiSession = body.get("loaiSession") != null ? body.get("loaiSession").toString() : null;
+        return ResponseEntity.ok(service.batchByScheduleIds(ids, loaiSession));
+    }
+
     @PostMapping
     public ResponseEntity<WorkScheduleSession> create(@RequestBody WorkScheduleSessionDto dto,
                                                        Authentication auth) {

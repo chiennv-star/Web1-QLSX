@@ -723,15 +723,12 @@ export default function KeHoachToPage() {
     const toDate   = timeMode === 'week' ? weekStart.add(6, 'day').format('YYYY-MM-DD') : null
     try {
       const wsIds = [...new Set(plansList.map(p => p.id))]
-      const sessionParams = planSource === 'SCHEDULE'
-        ? (id) => ({ scheduleId: id })
-        : (id) => ({ scheduleId: id, loaiSession: 'KH_TO' })
-      const results = await Promise.allSettled(
-        wsIds.map(id => api.get('/work-schedule-session', { params: sessionParams(id) }))
-      )
-      const allSessions = results.flatMap(r =>
-        r.status === 'fulfilled' ? (r.value.data || []) : []
-      ).filter(s => !fromDate || (s.ngay >= fromDate && s.ngay <= toDate))
+      const loaiSession = planSource === 'SCHEDULE' ? null : 'KH_TO'
+      const { data: allSessions0 } = await api.post('/work-schedule-session/batch', {
+        ids: wsIds,
+        loaiSession,
+      })
+      const allSessions = (allSessions0 || []).filter(s => !fromDate || (s.ngay >= fromDate && s.ngay <= toDate))
 
       if (!allSessions.length) return
 

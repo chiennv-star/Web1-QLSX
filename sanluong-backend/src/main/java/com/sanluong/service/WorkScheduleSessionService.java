@@ -51,6 +51,12 @@ public class WorkScheduleSessionService {
         this.employeeRepository = employeeRepository;
     }
 
+    public List<WorkScheduleSession> batchByScheduleIds(java.util.List<Long> ids, String loaiSession) {
+        if (ids == null || ids.isEmpty()) return java.util.List.of();
+        if ("KH_TO".equals(loaiSession)) return repository.findKhToByWorkScheduleIdIn(ids);
+        return repository.findByWorkScheduleIdIn(ids);
+    }
+
     public List<WorkScheduleSession> getByScheduleId(Long scheduleId, String loaiSession) {
         if ("KH_TO".equals(loaiSession)) {
             return repository.findKhToByWorkScheduleId(scheduleId);

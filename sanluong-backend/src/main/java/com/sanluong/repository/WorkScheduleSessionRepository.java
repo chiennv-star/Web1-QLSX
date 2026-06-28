@@ -21,6 +21,9 @@ public interface WorkScheduleSessionRepository extends JpaRepository<WorkSchedul
     @Query("SELECT s FROM WorkScheduleSession s WHERE s.workScheduleId IN :ids AND (s.loaiSession IS NULL OR s.loaiSession <> 'KH_TO')")
     List<WorkScheduleSession> findByWorkScheduleIdIn(@Param("ids") java.util.Collection<Long> workScheduleIds);
 
+    @Query("SELECT s FROM WorkScheduleSession s WHERE s.workScheduleId IN :ids AND s.loaiSession = 'KH_TO'")
+    List<WorkScheduleSession> findKhToByWorkScheduleIdIn(@Param("ids") java.util.Collection<Long> workScheduleIds);
+
     @Query("SELECT s FROM WorkScheduleSession s WHERE s.maNhanVien = :maNhanVien AND (s.loaiSession IS NULL OR s.loaiSession <> 'KH_TO') ORDER BY s.ngay DESC, s.id DESC")
     List<WorkScheduleSession> findByMaNhanVienOrderByNgayDescIdDesc(@Param("maNhanVien") String maNhanVien);
 
