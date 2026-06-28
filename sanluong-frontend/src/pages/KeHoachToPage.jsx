@@ -649,6 +649,7 @@ export default function KeHoachToPage() {
   const [selectedDay, setSelectedDay] = useState(() => fmtDay(dayjs()))
   const [viewMode, setViewMode]       = useState('viec')
   const [detailSearch, setDetailSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
   const [showAllDays, setShowAllDays]   = useState(false)
   const [editingDays, setEditingDays]   = useState(new Set())
   const [empTo, setEmpTo] = useState(selectedTo)
@@ -1550,6 +1551,14 @@ export default function KeHoachToPage() {
                   allowClear value={detailSearch}
                   onChange={e => setDetailSearch(e.target.value)}
                   style={{ flex: 1, minWidth: 0 }} />
+                <Select size="small" value={filterStatus} onChange={setFilterStatus}
+                  style={{ flexShrink: 0, width: 120 }}
+                  options={[
+                    { value: '',         label: 'Tình trạng' },
+                    { value: 'chua_xep', label: '⏳ Chưa xếp' },
+                    { value: 'da_xep',   label: '✓ Đã xếp'   },
+                    { value: 'gap',      label: '⚠ Gấp'       },
+                  ]} />
               </div>
 
               {/* Horizontal table */}
@@ -1571,13 +1580,22 @@ export default function KeHoachToPage() {
                       const q = detailSearch.toLowerCase()
                       return renderDays.map(d => {
                         const dayStr     = fmtDay(d)
-                        const dayAssigns = assigns.filter(a => a.ngay === dayStr && (
-                          !q ||
-                          (a.ten || '').toLowerCase().includes(q) ||
-                          (a.maSp || '').toLowerCase().includes(q) ||
-                          (a.soLo || '').toLowerCase().includes(q) ||
-                          (a.maDonHang || '').toLowerCase().includes(q)
-                        ))
+                        const dayAssigns = assigns.filter(a => {
+                          if (a.ngay !== dayStr) return false
+                          if (q && !(
+                            (a.ten || '').toLowerCase().includes(q) ||
+                            (a.maSp || '').toLowerCase().includes(q) ||
+                            (a.soLo || '').toLowerCase().includes(q) ||
+                            (a.maDonHang || '').toLowerCase().includes(q)
+                          )) return false
+                          if (filterStatus) {
+                            const mas = Object.values(a.caShifts || {}).flatMap(s => s.mas || [])
+                            if (filterStatus === 'gap')      return !!a.isUrgent
+                            if (filterStatus === 'da_xep')   return !a.isUrgent && mas.length > 0
+                            if (filterStatus === 'chua_xep') return !a.isUrgent && mas.length === 0
+                          }
+                          return true
+                        })
                         const isSel       = dayStr === selectedDay
                         const isEditing   = editingDays.has(dayStr)
                         const hasSaveable = dayAssigns.some(a => a.wsId && a.ngayFull)
