@@ -1592,7 +1592,7 @@ export default function DonHangPage() {
         {[
           { key: 'active',   label: '📋 Đơn Hàng',      count: displayData.length + (showHidden ? 0 : hiddenIds.size) },
           { key: 'done',     label: '🏆 Đã Hoàn Thành', count: completedData.length },
-          ...(canEdit ? [
+          ...(isAdmin() ? [
             { key: 'trend',    label: '📊 Xu Hướng',     count: displayData.length },
             { key: 'analysis', label: '🔬 Phân Tích',    count: displayData.length },
           ] : []),
