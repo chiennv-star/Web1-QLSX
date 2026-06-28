@@ -3030,6 +3030,51 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
   const monthByLoaiCongPCPL2 = React.useMemo(() =>
     makeMonthByLoai(filteredData.filter(r => (r.toThucHien || '').toUpperCase() === 'PCPL2'), numCongPL)
   , [filteredData])
+  const monthByLoaiCongPCPL1 = React.useMemo(() =>
+    makeMonthByLoai(filteredData.filter(r => (r.toThucHien || '').toUpperCase() === 'PCPL1'), numCongPL)
+  , [filteredData])
+
+  // ── Cong by loaiSanPham (table) ──
+  const congByLoaiRows = React.useMemo(() => {
+    const map = {}
+    filteredData.forEach(r => {
+      const loai = r.loaiSanPham || '(Chưa phân loại)'
+      if (!map[loai]) map[loai] = { loai, tpSet: new Set(), pcpl1: 0, pcpl2: 0, pl: 0, dg: 0, bbc1: 0 }
+      if (r.maTp) map[loai].tpSet.add(r.maTp)
+      const to = (r.toThucHien || '').toUpperCase()
+      if (to === 'PCPL1') map[loai].pcpl1 += numCongPC(r)
+      else if (to === 'PCPL2') map[loai].pcpl2 += numCongPC(r)
+      map[loai].pl   += numCongPL(r)
+      map[loai].dg   += numCongDG(r)
+      map[loai].bbc1 += numCongBBC1(r)
+    })
+    const fmtC = v => Number(v || 0).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+    const rows = Object.values(map).map(r => {
+      const tong = r.pcpl1 + r.pcpl2 + r.pl + r.dg + r.bbc1
+      return { ...r, soTp: r.tpSet.size, tong }
+    }).sort((a, b) => b.tong - a.tong)
+    const tot = rows.reduce((s, r) => ({ pcpl1: s.pcpl1+r.pcpl1, pcpl2: s.pcpl2+r.pcpl2, pl: s.pl+r.pl, dg: s.dg+r.dg, bbc1: s.bbc1+r.bbc1, soTp: s.soTp+r.soTp }), { pcpl1:0, pcpl2:0, pl:0, dg:0, bbc1:0, soTp:0 })
+    return [...rows, { loai: 'TỔNG CỘNG', soTp: tot.soTp, pcpl1: tot.pcpl1, pcpl2: tot.pcpl2, pl: tot.pl, dg: tot.dg, bbc1: tot.bbc1, tong: tot.pcpl1+tot.pcpl2+tot.pl+tot.dg+tot.bbc1, _total: true }]
+  }, [filteredData])
+
+  // ── Monthly cong by to ──
+  const monthCongByTo = React.useMemo(() => {
+    const map = {}
+    filteredData.forEach(r => {
+      if (!r.lsx || r.lsx.length < 6) return
+      const mm = r.lsx.slice(2, 4), yy = r.lsx.slice(4, 6)
+      if (!/^\d{2}$/.test(mm) || !/^\d{2}$/.test(yy)) return
+      const thang = `${mm}/20${yy}`
+      if (!map[thang]) map[thang] = { thang, _mm: Number(mm), _yy: Number(yy), PCPL1: 0, PCPL2: 0, PL: 0, ĐG: 0, BBC1: 0 }
+      const to = (r.toThucHien || '').toUpperCase()
+      if (to === 'PCPL1') map[thang].PCPL1 += numCongPC(r)
+      else if (to === 'PCPL2') map[thang].PCPL2 += numCongPC(r)
+      map[thang].PL   += numCongPL(r)
+      map[thang]['ĐG'] += numCongDG(r)
+      map[thang].BBC1 += numCongBBC1(r)
+    })
+    return Object.values(map).sort((a, b) => a._yy !== b._yy ? a._yy - b._yy : a._mm - b._mm)
+  }, [filteredData])
 
   // ── Monthly by PL machine (pha che) ──
   const monthByMachinePl = React.useMemo(() => {
@@ -3405,6 +3450,104 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
           { title: 'BBC1', dataIndex: 'bbc1', key: 'bbc1', width: 100, align: 'right', onHeaderCell: hc(), render: v => <span style={{ color: '#00695c' }}>{fmtN(v)}</span> },
           { title: 'Tổng SL', dataIndex: 'tong', key: 'tong', width: 120, align: 'right', onHeaderCell: hc(), render: v => <b style={{ color: '#0f766e' }}>{fmtN(v)}</b> },
         ]} dataSource={top15Rows} rowKey={(_, i) => i} pagination={false} />
+      ),
+    },
+    {
+      key: 'phan_tich_cong',
+      label: 'Phân Tích Công',
+      children: (
+        <div>
+          {/* Bảng Công theo Loại Sản Phẩm */}
+          <Table size="small" bordered columns={[
+            { title: 'Loại Sản Phẩm', dataIndex: 'loai', key: 'loai', onHeaderCell: hc({ textAlign: 'left' }), render: (v, r) => r._total ? <b>{v}</b> : v },
+            { title: 'Số TP', dataIndex: 'soTp', key: 'soTp', width: 70, align: 'right', onHeaderCell: hc(), render: fmtN },
+            { title: 'Công PC (PCPL1)', dataIndex: 'pcpl1', key: 'pcpl1', width: 140, align: 'right', onHeaderCell: hc(), render: (v, r) => <span style={{ color: '#1565c0', fontWeight: r._total ? 700 : 400 }}>{Number(v||0).toLocaleString('vi-VN',{maximumFractionDigits:1})}</span> },
+            { title: 'Công PC (PCPL2)', dataIndex: 'pcpl2', key: 'pcpl2', width: 140, align: 'right', onHeaderCell: hc(), render: (v, r) => <span style={{ color: '#0891b2', fontWeight: r._total ? 700 : 400 }}>{Number(v||0).toLocaleString('vi-VN',{maximumFractionDigits:1})}</span> },
+            { title: 'Công PL', dataIndex: 'pl', key: 'pl', width: 110, align: 'right', onHeaderCell: hc(), render: (v, r) => <span style={{ color: '#7b1fa2', fontWeight: r._total ? 700 : 400 }}>{Number(v||0).toLocaleString('vi-VN',{maximumFractionDigits:1})}</span> },
+            { title: 'Công ĐG', dataIndex: 'dg', key: 'dg', width: 110, align: 'right', onHeaderCell: hc(), render: (v, r) => <span style={{ color: '#e65100', fontWeight: r._total ? 700 : 400 }}>{Number(v||0).toLocaleString('vi-VN',{maximumFractionDigits:1})}</span> },
+            { title: 'Công BBC1', dataIndex: 'bbc1', key: 'bbc1', width: 110, align: 'right', onHeaderCell: hc(), render: (v, r) => <span style={{ color: '#00695c', fontWeight: r._total ? 700 : 400 }}>{Number(v||0).toLocaleString('vi-VN',{maximumFractionDigits:1})}</span> },
+            { title: 'Tổng Công', dataIndex: 'tong', key: 'tong', width: 120, align: 'right', onHeaderCell: hc(), render: (v, r) => <b style={{ color: r._total ? '#b45309' : '#374151' }}>{Number(v||0).toLocaleString('vi-VN',{maximumFractionDigits:1})}</b> },
+          ]} dataSource={congByLoaiRows} rowKey="loai" pagination={false} onRow={onRow} style={{ marginBottom: 24 }} />
+
+          {/* Chart: Xu Hướng Công Hàng Tháng Theo Tổ */}
+          <div style={{ background: '#fff', padding: 16, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,.08)', marginBottom: 24 }}>
+            <div style={{ textAlign: 'center', fontWeight: 600, color: '#b45309', marginBottom: 8 }}>Xu Hướng Công Hàng Tháng Theo Tổ</div>
+            {monthCongByTo.length === 0 ? (
+              <div style={{ textAlign: 'center', color: '#aaa', padding: '24px 0' }}>Không có dữ liệu</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={320}>
+                <LineChart data={monthCongByTo} margin={{ top: 8, right: 20, left: 10, bottom: 60 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="thang" angle={-45} textAnchor="end" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(1)}K` : Number(v).toFixed(1)} />
+                  <RechartTooltip formatter={(v, n) => [Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 1 }), n]} />
+                  <Legend />
+                  <Line type="monotone" dataKey="PCPL1" stroke="#1565c0" dot={false} strokeWidth={2} />
+                  <Line type="monotone" dataKey="PCPL2" stroke="#0891b2" dot={false} strokeWidth={2} />
+                  <Line type="monotone" dataKey="PL"    stroke="#7b1fa2" dot={false} strokeWidth={2} />
+                  <Line type="monotone" dataKey="ĐG"    stroke="#e65100" dot={false} strokeWidth={2} />
+                  <Line type="monotone" dataKey="BBC1"  stroke="#00695c" dot={false} strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Charts: Xu Hướng Công Theo Loại SP — PCPL1 & PCPL2 */}
+          {[{ label: 'Tổ PCPL1', data: monthByLoaiCongPCPL1 }, { label: 'Tổ PCPL2', data: monthByLoaiCongPCPL2 }].map(({ label, data }) => (
+            <div key={label} style={{ background: '#fff', padding: 16, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,.08)', marginBottom: 24 }}>
+              <div style={{ textAlign: 'center', fontWeight: 600, color: '#b45309', marginBottom: 8 }}>
+                Xu Hướng Công Hàng Tháng Theo Loại Sản Phẩm — <span style={{ color: '#7b1fa2' }}>{label}</span>
+              </div>
+              {data.rows.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#aaa', padding: '24px 0' }}>Không có dữ liệu</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={320}>
+                  <LineChart data={data.rows} margin={{ top: 8, right: 20, left: 10, bottom: 60 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="thang" angle={-45} textAnchor="end" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(1)}K` : Number(v).toFixed(1)} />
+                    <RechartTooltip formatter={(v, n) => [Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 1 }), n]} />
+                    <Legend wrapperStyle={{ paddingTop: 8 }} />
+                    {data.loais.map((loai, i) => (
+                      <Line key={loai} type="monotone" dataKey={loai} stroke={PIE_COLORS[i % PIE_COLORS.length]} dot={false} strokeWidth={2} />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          ))}
+
+          {/* Charts: Công Theo Máy Móc Từng Công Đoạn */}
+          <div style={{ fontWeight: 700, fontSize: 15, color: '#b45309', marginBottom: 16, paddingBottom: 8, borderBottom: '2px solid #fde68a' }}>
+            Phân Tích Công Theo Máy Móc Từng Công Đoạn
+          </div>
+          {machineTimeDataCong.map((stage, si) => (
+            <div key={stage.key} style={{ marginBottom: 32 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <div style={{ width: 6, height: 22, borderRadius: 3, background: stage.color }} />
+                <span style={{ fontWeight: 600, fontSize: 14, color: stage.color }}>{stage.label}</span>
+              </div>
+              {stage.rows.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#aaa', padding: '16px 0', background: '#fafafa', borderRadius: 6 }}>Chưa có dữ liệu</div>
+              ) : (
+                <div style={{ background: '#fff', padding: 16, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,.08)' }}>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={stage.rows} margin={{ top: 8, right: 20, left: 10, bottom: 60 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="thang" angle={-45} textAnchor="end" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(1)}K` : Number(v).toFixed(1)} />
+                      <RechartTooltip formatter={(v, n) => [Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 1 }), n]} />
+                      <Legend wrapperStyle={{ paddingTop: 8 }} />
+                      {stage.machines.map((m, i) => (
+                        <Line key={m} type="monotone" dataKey={m} stroke={PIE_COLORS[i % PIE_COLORS.length]} dot={false} strokeWidth={2} />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       ),
     },
     {
