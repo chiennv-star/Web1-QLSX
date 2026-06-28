@@ -41,6 +41,8 @@ public class ProductMasterController {
         body.put("nangSuatPc",   p.getNangSuatPc()   != null ? p.getNangSuatPc()   : java.math.BigDecimal.ONE);
         body.put("nangSuatPl",   p.getNangSuatPl()   != null ? p.getNangSuatPl()   : java.math.BigDecimal.ONE);
         body.put("nangSuatBbc1", p.getNangSuatBbc1() != null ? p.getNangSuatBbc1() : java.math.BigDecimal.ONE);
+        body.put("nangSuatDg",   p.getNangSuatDg()   != null ? p.getNangSuatDg()   : null);
+        body.put("khoiLuong",    p.getKhoiLuong()    != null ? p.getKhoiLuong()    : null);
         body.put("mayMocPc",     p.getMayMocPc()     != null ? p.getMayMocPc()     : "");
         body.put("mayMocPl",     p.getMayMocPl()     != null ? p.getMayMocPl()     : "");
         body.put("mayMocBbc1",   p.getMayMocBbc1()   != null ? p.getMayMocBbc1()   : "");

@@ -771,7 +771,7 @@ export default function LenhSanXuatTab() {
   const [lichSuOpen,   setLichSuOpen]   = useState(false)
   const [lichSuRecord, setLichSuRecord] = useState(null)
   const [tableH, setTableH] = useState(500)
-  const [loaiSpMap, setLoaiSpMap] = useState({}) // maSp → loaiSanPham
+  const [loaiSpMap, setLoaiSpMap] = useState({}) // maSp → { loaiSanPham, khoiLuong, mayMocPc, ... }
   const tableWrapRef = useRef(null)
   // useRef để lưu giá trị soLo — không gây re-render khi gõ, tránh input mất focus
   const soLoRef = useRef({})
@@ -831,7 +831,7 @@ export default function LenhSanXuatTab() {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  // Load loaiSanPham từ ProductMaster theo maSp
+  // Load ProductMaster fields (loaiSanPham, khoiLuong, mayMoc, nangSuat) theo maSp
   useEffect(() => {
     const allRows = [...lenhData, ...pendingData]
     const codes = [...new Set(allRows.filter(r => r.maSp).map(r => r.maSp))]
@@ -839,7 +839,7 @@ export default function LenhSanXuatTab() {
     api.get('/product-master/lookup-batch', { params: { codes } })
       .then(({ data: batchMap }) => {
         const m = {}
-        codes.forEach(sp => { if (batchMap[sp]?.loaiSanPham) m[sp] = batchMap[sp].loaiSanPham })
+        codes.forEach(sp => { if (batchMap[sp]) m[sp] = batchMap[sp] })
         setLoaiSpMap(m)
       })
       .catch(() => {})
@@ -878,6 +878,12 @@ export default function LenhSanXuatTab() {
 
   // ── Rows for current tab ───────────────────────────────────────────────────
   const rows = useMemo(() => {
+    if (activeTab === 'tat_ca') {
+      let list = [...pendingData, ...lenhData]
+      if (filterFromPL) list = list.filter(r => r.ngayPhatLenh && r.ngayPhatLenh >= filterFromPL.format('YYYY-MM-DD'))
+      if (filterToPL)   list = list.filter(r => r.ngayPhatLenh && r.ngayPhatLenh <= filterToPL.format('YYYY-MM-DD'))
+      return applySearch(list)
+    }
     if (activeTab === 'chua_xep') {
       return applySearch(pendingData)
     }
@@ -895,6 +901,7 @@ export default function LenhSanXuatTab() {
 
   // ── Quick-filter counts ────────────────────────────────────────────────────
   const baseList = useMemo(() => {
+    if (activeTab === 'tat_ca') return [...pendingData, ...lenhData]
     if (activeTab === 'chua_xep') return pendingData
     let list = lenhData.filter(r =>
       activeTab === 'hoan_thien'
@@ -1044,7 +1051,7 @@ export default function LenhSanXuatTab() {
     {
       title: 'LOẠI SP', key: 'loaiSp', width: 120,
       render: (_, r) => {
-        const loai = loaiSpMap[r.maSp]
+        const loai = loaiSpMap[r.maSp]?.loaiSanPham
         return loai ? <Tag color="purple" style={{ marginRight: 0, fontSize: 11 }}>{loai}</Tag> : <span style={{ color: '#d1d5db' }}>—</span>
       },
     },
@@ -1179,8 +1186,88 @@ export default function LenhSanXuatTab() {
     },
   ]
 
+  // ── Analytics columns (thêm vào tab Tất cả) ───────────────────────────────
+  const fmtNS = v => v != null && Number(v) > 1 ? Number(v).toLocaleString('vi-VN') : null
+  const analyticsColumns = [
+    {
+      title: 'KL/ĐV (G)', key: 'kl_dv', width: 88, align: 'right',
+      render: (_, r) => {
+        const v = loaiSpMap[r.maSp]?.khoiLuong
+        return v ? <span style={{ fontWeight: 600, color: '#1e4570' }}>{Number(v).toLocaleString('vi-VN')}</span>
+                 : <span style={{ color: '#d1d5db' }}>—</span>
+      },
+    },
+    {
+      title: 'NS TB (ĐG)', key: 'ns_dg', width: 96, align: 'right',
+      render: (_, r) => {
+        const v = fmtNS(loaiSpMap[r.maSp]?.nangSuatDg)
+        return v ? <span style={{ fontWeight: 600, color: '#d48806' }}>{v}</span>
+                 : <span style={{ color: '#d1d5db' }}>—</span>
+      },
+    },
+    {
+      title: 'NS PC (PHA CHẾ)', key: 'ns_pc', width: 120, align: 'right',
+      render: (_, r) => {
+        const v = fmtNS(loaiSpMap[r.maSp]?.nangSuatPc)
+        return v ? <span style={{ fontWeight: 600, color: '#1d4ed8' }}>{v}</span>
+                 : <span style={{ color: '#d1d5db' }}>—</span>
+      },
+    },
+    {
+      title: 'NS PL (PHÂN LIỀU)', key: 'ns_pl', width: 128, align: 'right',
+      render: (_, r) => {
+        const v = fmtNS(loaiSpMap[r.maSp]?.nangSuatPl)
+        return v ? <span style={{ fontWeight: 600, color: '#7c3aed' }}>{v}</span>
+                 : <span style={{ color: '#d1d5db' }}>—</span>
+      },
+    },
+    {
+      title: 'NS BBC1 (VS BBC1)', key: 'ns_bbc1', width: 130, align: 'right',
+      render: (_, r) => {
+        const v = fmtNS(loaiSpMap[r.maSp]?.nangSuatBbc1)
+        return v ? <span style={{ fontWeight: 600, color: '#16a34a' }}>{v}</span>
+                 : <span style={{ color: '#d1d5db' }}>—</span>
+      },
+    },
+    {
+      title: 'MÁY MÓC PC', key: 'mm_pc', width: 160, ellipsis: true,
+      render: (_, r) => {
+        const v = loaiSpMap[r.maSp]?.mayMocPc
+        return v ? <Tooltip title={v}><span style={{ fontSize: 11, color: '#1e4570' }}>{v}</span></Tooltip>
+                 : <span style={{ color: '#d1d5db' }}>—</span>
+      },
+    },
+    {
+      title: 'MÁY MÓC PL', key: 'mm_pl', width: 160, ellipsis: true,
+      render: (_, r) => {
+        const v = loaiSpMap[r.maSp]?.mayMocPl
+        return v ? <Tooltip title={v}><span style={{ fontSize: 11, color: '#6d28d9' }}>{v}</span></Tooltip>
+                 : <span style={{ color: '#d1d5db' }}>—</span>
+      },
+    },
+    {
+      title: 'MÁY MÓC BBC1', key: 'mm_bbc1', width: 160, ellipsis: true,
+      render: (_, r) => {
+        const v = loaiSpMap[r.maSp]?.mayMocBbc1
+        return v ? <Tooltip title={v}><span style={{ fontSize: 11, color: '#15803d' }}>{v}</span></Tooltip>
+                 : <span style={{ color: '#d1d5db' }}>—</span>
+      },
+    },
+    {
+      title: 'MÁY MÓC ĐG', key: 'mm_dg', width: 160, ellipsis: true,
+      render: (_, r) => {
+        const v = loaiSpMap[r.maSp]?.mayMocDg
+        return v ? <Tooltip title={v}><span style={{ fontSize: 11, color: '#b45309' }}>{v}</span></Tooltip>
+                 : <span style={{ color: '#d1d5db' }}>—</span>
+      },
+    },
+  ]
+
+  const tatCaTotal = lenhData.length + pendingData.length
+
   // ── Sub-tabs ───────────────────────────────────────────────────────────────
   const subTabs = [
+    { key: 'tat_ca',     label: `Tất cả (${tatCaTotal})`,                             warn: false },
     { key: 'chua_xep',   label: `Chưa xếp (${tabCounts.chua_xep})`,                  warn: false },
     ...TO_LIST.map(t => ({ key: t, label: `${t} (${tabCounts[t]})`,                   warn: tabCounts[t] > 0 })),
     { key: 'hoan_thien', label: `Lệnh đã hoàn thiện (${tabCounts.hoan_thien})`,       warn: false },
@@ -1353,10 +1440,10 @@ export default function LenhSanXuatTab() {
         className="lsx-tab-table"
         rowKey={r => r.isFromKhoach ? `ws-${r.workScheduleId}` : `l-${r.id}`}
         dataSource={rows}
-        columns={baseColumns}
+        columns={activeTab === 'tat_ca' ? [...baseColumns, ...analyticsColumns] : baseColumns}
         loading={isLoading}
         size="small"
-        scroll={{ x: 1620, y: tableH }}
+        scroll={{ x: activeTab === 'tat_ca' ? 2900 : 1620, y: tableH }}
         onRow={r => ({
           onDoubleClick: () => { setDetailRecord(r); setDetailOpen(true) },
           style: { cursor: 'pointer' },

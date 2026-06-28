@@ -35,6 +35,9 @@ public class ProductMaster {
     @Column(name = "nang_suat_bbc1", precision = 12, scale = 4)
     private java.math.BigDecimal nangSuatBbc1;
 
+    @Column(name = "nang_suat_dg", precision = 12, scale = 4)
+    private java.math.BigDecimal nangSuatDg;
+
     @Column(name = "may_moc_pc", length = 255)
     private String mayMocPc;
 
@@ -95,6 +98,8 @@ public class ProductMaster {
     public void setNangSuatPl(java.math.BigDecimal nangSuatPl) { this.nangSuatPl = nangSuatPl; }
     public java.math.BigDecimal getNangSuatBbc1() { return nangSuatBbc1; }
     public void setNangSuatBbc1(java.math.BigDecimal nangSuatBbc1) { this.nangSuatBbc1 = nangSuatBbc1; }
+    public java.math.BigDecimal getNangSuatDg() { return nangSuatDg; }
+    public void setNangSuatDg(java.math.BigDecimal nangSuatDg) { this.nangSuatDg = nangSuatDg; }
     public String getMayMocPc() { return mayMocPc; }
     public void setMayMocPc(String mayMocPc) { this.mayMocPc = mayMocPc; }
     public String getMayMocPl() { return mayMocPl; }
