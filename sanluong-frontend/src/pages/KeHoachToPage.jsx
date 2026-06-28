@@ -432,10 +432,11 @@ function AssignRow({
 
   const td = { padding: '9px 11px', verticalAlign: 'middle', borderRight: '1px solid #f0f4f8', borderBottom: '1px solid #f0f4f8' }
 
+  const missingSalg = !!a.salgSessionId && (a.salg == null || a.salg === '')
   return (
-    <tr style={{ background: a.isUrgent ? '#fff8f8' : '#fff' }}>
+    <tr style={{ background: a.isUrgent ? '#fff8f8' : missingSalg ? '#fffbeb' : '#fff' }}>
       {/* Sản phẩm */}
-      <td style={{ ...td, minWidth: 200, maxWidth: 280 }}>
+      <td style={{ ...td, minWidth: 200, maxWidth: 280, borderLeft: missingSalg ? '3px solid #f59e0b' : undefined }}>
         <div style={{ fontWeight: 700, fontSize: 13, color: a.isUrgent ? '#b91c1c' : '#1e293b', lineHeight: 1.35 }}>
           {a.ten}
         </div>
