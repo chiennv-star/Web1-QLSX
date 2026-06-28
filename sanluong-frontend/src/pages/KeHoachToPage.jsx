@@ -317,6 +317,154 @@ function AssignCard({
   )
 }
 
+// ── AssignRow — horizontal table-row variant of AssignCard ──────────────────
+function AssignRow({
+  a, employees, dup,
+  onDragOver, onDropPerson, onRemovePerson, onUpdate, onRemove,
+  isFirst, isLast, onMoveUp, onMoveDown, onClone,
+  onDragStartPersonMove, onSyncNote, onAddShift, onRemoveShift,
+  readOnly,
+}) {
+  const existingShifts  = SHIFTS.filter(s => a.caShifts?.[s])
+  const availableShifts = SHIFTS.filter(s => !a.caShifts?.[s])
+  const allMas = Object.values(a.caShifts || {}).flatMap(s => s.mas || [])
+  const status = a.isUrgent
+    ? { text: '⚠ Gấp',    bg: '#fef2f2', color: '#dc2626' }
+    : allMas.length > 0
+      ? { text: '✓ Đã xếp', bg: '#dcfce7', color: '#15803d' }
+      : { text: '⏳ Chưa xếp', bg: '#fff3cd', color: '#856404' }
+
+  const td = { padding: '9px 11px', verticalAlign: 'middle', borderRight: '1px solid #f0f4f8', borderBottom: '1px solid #f0f4f8' }
+
+  return (
+    <tr style={{ background: a.isUrgent ? '#fff8f8' : '#fff' }}>
+      {/* Sản phẩm */}
+      <td style={{ ...td, minWidth: 200, maxWidth: 280 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: a.isUrgent ? '#b91c1c' : '#1e293b', lineHeight: 1.35 }}>
+          {a.ten}
+        </div>
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 3, alignItems: 'center' }}>
+          {a.maSp && <span style={{ fontSize: 10.5, color: '#94a3b8', fontFamily: 'monospace' }}>{a.maSp}</span>}
+          {a.maDonHang && <span style={{ fontSize: 10.5, color: '#818cf8' }}>ĐH {a.maDonHang}</span>}
+          {a.soLo && <span style={{ fontSize: 10.5, background: '#ede9fe', color: '#6d28d9', borderRadius: 4, padding: '0 5px' }}>Lô {a.soLo}</span>}
+          {a.coLo && <span style={{ fontSize: 10.5, color: '#475569' }}>{Number(a.coLo).toLocaleString('vi-VN')} Salg</span>}
+        </div>
+        {a.salgSessionId && (
+          <div style={{ marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 10.5, color: '#059669', fontWeight: 700 }}>SL:</span>
+            <input type="number" value={a.salg ?? ''} readOnly={readOnly}
+              onChange={readOnly ? undefined : e => onUpdate(a.id, 'salg', e.target.value === '' ? null : Number(e.target.value))}
+              onClick={e => e.stopPropagation()} placeholder="—"
+              style={{ width: 70, fontSize: 11, border: readOnly ? '1px solid transparent' : '1px solid #6ee7b7', borderRadius: 4, padding: '1px 5px', background: readOnly ? 'transparent' : '#ecfdf5', color: '#065f46', outline: 'none', cursor: readOnly ? 'default' : undefined }} />
+          </div>
+        )}
+      </td>
+
+      {/* Công đoạn */}
+      <td style={{ ...td, textAlign: 'center', width: 88 }}>
+        <span style={{ display: 'inline-block', background: '#e3f2fd', color: '#1565c0', padding: '4px 10px', borderRadius: 6, fontWeight: 700, fontSize: 12 }}>
+          {a.congDoan || a.toNhom || '—'}
+        </span>
+        {a.isUrgent && <div style={{ marginTop: 3 }}><span style={{ fontSize: 9.5, background: '#fef2f2', color: '#dc2626', borderRadius: 4, padding: '1px 5px' }}>⚠ Gấp</span></div>}
+      </td>
+
+      {/* Người thực hiện */}
+      <td style={{ ...td, minWidth: 380 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+          {existingShifts.map(caKey => {
+            const shiftData = a.caShifts[caKey] || { mas: [], sessionIds: {} }
+            const cs        = CA_STYLE[caKey] || CA_STYLE['Ca 1']
+            const isEmpty   = (shiftData.mas || []).length === 0
+            return (
+              <React.Fragment key={caKey}>
+                {existingShifts.length > 1 && (
+                  <span style={{ fontSize: 10, fontWeight: 800, background: cs.bg, color: cs.text, border: `1px solid ${cs.border}`, borderRadius: 5, padding: '3px 8px', flexShrink: 0 }}>{caKey}</span>
+                )}
+                <div
+                  onDragOver={readOnly ? undefined : onDragOver}
+                  onDrop={readOnly ? undefined : e => onDropPerson(e, a.id, caKey)}
+                  onDragEnter={readOnly ? undefined : e => { e.preventDefault(); e.currentTarget.style.outline = '2px dashed #6366f1' }}
+                  onDragLeave={readOnly ? undefined : e => { e.currentTarget.style.outline = 'none' }}
+                  style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center', borderRadius: 8, padding: 2, transition: 'outline 0.1s' }}
+                >
+                  {(shiftData.mas || []).map(ma => {
+                    const emp        = employees.find(e => e.maNhanVien === ma)
+                    const isConflict = dup.has(`${ma}|${a.ngay}|${caKey}`)
+                    return (
+                      <div key={ma} draggable={!readOnly} onDragStart={readOnly ? undefined : e => onDragStartPersonMove(e, ma, a.id, caKey)}
+                        style={{ background: isConflict ? '#fef2f2' : '#fff8e1', border: `1px solid ${isConflict ? '#fca5a5' : '#ffd54f'}`, borderRadius: 6, padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 5, cursor: readOnly ? 'default' : 'grab', whiteSpace: 'nowrap' }}>
+                        <span style={{ width: 22, height: 22, borderRadius: '50%', background: isConflict ? '#fecaca' : '#f59e0b', color: isConflict ? '#b91c1c' : '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {initials(emp?.hoVaTen || ma)}
+                        </span>
+                        <span style={{ fontSize: 12, fontWeight: 500, color: isConflict ? '#b91c1c' : '#1a1a1a' }}>{emp?.hoVaTen || ma}</span>
+                        {(shiftData.sessionIds?.[ma]?.congThucHien != null) && (
+                          <span style={{ fontSize: 10, color: '#059669', fontWeight: 700 }}>{shiftData.sessionIds[ma].congThucHien}c</span>
+                        )}
+                        {!readOnly && (
+                          <Popconfirm title={`Xóa "${emp?.hoVaTen || ma}" khỏi ${caKey}?`} okText="Xóa" cancelText="Huỷ" okButtonProps={{ danger: true, size: 'small' }} onConfirm={e => { e?.stopPropagation(); onRemovePerson(a.id, ma, caKey) }}>
+                            <span style={{ cursor: 'pointer', fontSize: 11, color: '#94a3b8', lineHeight: 1 }} onClick={e => e.stopPropagation()}>✕</span>
+                          </Popconfirm>
+                        )}
+                      </div>
+                    )
+                  })}
+                  {!readOnly && (
+                    <span style={{ border: '1.5px dashed #cbd5e1', borderRadius: 999, padding: '3px 10px', fontSize: 10, color: '#94a3b8', userSelect: 'none' }}>⤵</span>
+                  )}
+                  {!readOnly && isEmpty && existingShifts.length > 1 && (
+                    <Tooltip title={`Xóa ca ${caKey}`}>
+                      <button onClick={() => onRemoveShift(a.id, caKey)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#cbd5e1', fontSize: 12, lineHeight: 1 }}>✕</button>
+                    </Tooltip>
+                  )}
+                </div>
+              </React.Fragment>
+            )
+          })}
+          {!readOnly && availableShifts.map(caKey => {
+            const cs = CA_STYLE[caKey] || CA_STYLE['Ca 1']
+            return (
+              <button key={caKey} onClick={() => onAddShift(a.id, caKey)}
+                style={{ border: `1.5px dashed ${cs.border}`, background: 'transparent', cursor: 'pointer', color: cs.text, borderRadius: 6, padding: '3px 9px', fontSize: 10.5, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
+                <PlusOutlined style={{ fontSize: 9 }} /> {caKey}
+              </button>
+            )
+          })}
+        </div>
+        {(a.note || !readOnly) && (
+          <input value={a.note || ''} readOnly={readOnly}
+            onChange={readOnly ? undefined : e => onUpdate(a.id, 'note', e.target.value)}
+            onBlur={readOnly ? undefined : e => onSyncNote(a.id, e.target.value)}
+            placeholder={readOnly ? '' : 'Ghi chú...'}
+            style={{ marginTop: 5, width: '100%', maxWidth: 420, border: readOnly ? '1px solid transparent' : '1px solid #e2e8f0', borderRadius: 6, padding: '3px 8px', fontSize: 11, color: '#64748b', background: readOnly ? 'transparent' : undefined, outline: 'none', cursor: readOnly ? 'default' : undefined }} />
+        )}
+      </td>
+
+      {/* Tình trạng */}
+      <td style={{ ...td, textAlign: 'center', width: 112, borderRight: 'none' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '4px 10px', borderRadius: 12, fontSize: 11.5, fontWeight: 600, background: status.bg, color: status.color, whiteSpace: 'nowrap' }}>
+          {status.text}
+        </span>
+      </td>
+
+      {/* Actions — only in edit mode */}
+      {!readOnly && (
+        <td style={{ padding: '6px 8px', verticalAlign: 'middle', textAlign: 'center', width: 60, borderBottom: '1px solid #f0f4f8', borderLeft: '1px solid #f0f4f8' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+            <button onClick={onMoveUp} disabled={isFirst} style={{ border: 'none', background: 'transparent', cursor: isFirst ? 'default' : 'pointer', color: isFirst ? '#e2e8f0' : '#94a3b8', fontSize: 14, padding: '2px 6px', lineHeight: 1 }}>↑</button>
+            <button onClick={onMoveDown} disabled={isLast} style={{ border: 'none', background: 'transparent', cursor: isLast ? 'default' : 'pointer', color: isLast ? '#e2e8f0' : '#94a3b8', fontSize: 14, padding: '2px 6px', lineHeight: 1 }}>↓</button>
+            <Tooltip title="Nhân bản">
+              <span onClick={() => onClone(a.id)} style={{ cursor: 'pointer', color: '#94a3b8', fontSize: 13, userSelect: 'none' }}>⧉</span>
+            </Tooltip>
+            <Popconfirm title="Xóa card này?" okText="Xóa" cancelText="Huỷ" okButtonProps={{ danger: true, size: 'small' }} onConfirm={() => onRemove(a.id)}>
+              <button style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#cbd5e1', fontSize: 14, padding: 0, lineHeight: 1 }}>🗑</button>
+            </Popconfirm>
+          </div>
+        </td>
+      )}
+    </tr>
+  )
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 export default function KeHoachToPage() {
   const { user } = useAuth()
@@ -1332,6 +1480,7 @@ export default function KeHoachToPage() {
 
           {viewMode === 'viec' ? (
             <>
+              {/* Nav + search */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '0 10px 5px', flexShrink: 0 }}>
                 <Button size="small" icon={<LeftOutlined />}
                   onClick={() => { setShowAllDays(false); setWeekStart(weekStart.subtract(1, 'month').startOf('month').startOf('isoWeek')) }}
@@ -1342,9 +1491,7 @@ export default function KeHoachToPage() {
                 <Button size="small" icon={<RightOutlined />}
                   onClick={() => { setShowAllDays(false); setWeekStart(weekStart.add(1, 'month').startOf('month').startOf('isoWeek')) }}
                   style={{ flexShrink: 0 }} />
-
                 <div style={{ width: 1, height: 16, background: '#e2e8f0', flexShrink: 0 }} />
-
                 <Button size="small" icon={<LeftOutlined />} onClick={() => { setShowAllDays(false); setWeekStart(weekStart.subtract(1, 'week').startOf('isoWeek')) }} style={{ flexShrink: 0 }} />
                 <DatePicker picker="week" value={weekStart}
                   onChange={v => v && (setShowAllDays(false), setWeekStart(v.startOf('isoWeek')))}
@@ -1353,12 +1500,10 @@ export default function KeHoachToPage() {
                 {!showAllDays && !weekStart.isSame(dayjs().startOf('isoWeek'), 'day') && (
                   <Button size="small" onClick={() => setWeekStart(dayjs().startOf('isoWeek'))} style={{ flexShrink: 0, fontSize: 10, padding: '0 6px' }}>Nay</Button>
                 )}
-
                 <div style={{ width: 1, height: 16, background: '#e2e8f0', flexShrink: 0 }} />
                 <Button size="small" type={showAllDays ? 'primary' : 'default'}
                   onClick={() => setShowAllDays(v => !v)}
                   style={{ flexShrink: 0, fontSize: 11, padding: '0 8px' }}>Tất cả</Button>
-
                 <Input size="small" placeholder="Tìm SP, mã, số lô..."
                   prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
                   allowClear value={detailSearch}
@@ -1366,7 +1511,30 @@ export default function KeHoachToPage() {
                   style={{ flex: 1, minWidth: 0 }} />
               </div>
 
-              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', padding: '0 10px 5px', flexShrink: 0 }}>
+              {/* Stats bar */}
+              {assigns.length > 0 && (() => {
+                const totalW   = new Set(assigns.flatMap(a => Object.values(a.caShifts || {}).flatMap(s => s.mas || []))).size
+                const assigned = assigns.filter(a => Object.values(a.caShifts || {}).some(s => (s.mas || []).length > 0)).length
+                const stats = [
+                  { label: 'Lệnh SX',   value: assigns.length, color: '#4f46e5' },
+                  { label: 'Nhân viên', value: totalW,         color: '#0f766e' },
+                  { label: 'Đã xếp',    value: assigned,       color: '#16a34a' },
+                  ...(conflictCount > 0 ? [{ label: 'Xung đột', value: conflictCount, color: '#dc2626' }] : []),
+                ]
+                return (
+                  <div style={{ display: 'flex', padding: '4px 10px 6px', borderBottom: '1px solid #f1f5f9', flexShrink: 0, background: '#fafbfc' }}>
+                    {stats.map(s => (
+                      <div key={s.label} style={{ flex: 1, textAlign: 'center', padding: '2px 4px' }}>
+                        <div style={{ fontSize: 9.5, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600, marginBottom: 1 }}>{s.label}</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: s.color }}>{s.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
+
+              {/* Day pills */}
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', padding: '5px 10px', flexShrink: 0 }}>
                 {days.map(d => {
                   const dayStr  = fmtDay(d)
                   const isSel   = dayStr === selectedDay
@@ -1387,95 +1555,104 @@ export default function KeHoachToPage() {
                 })}
               </div>
 
-              <div style={{ flex: 1, overflowY: 'auto', margin: '0 12px 12px', padding: 6, borderRadius: 12, background: '#f1f5f9' }}>
-                {(() => {
-                  const renderDays = showAllDays
-                    ? [...new Set(assigns.map(a => a.ngayFull).filter(Boolean))].sort((a, b) => b.localeCompare(a)).map(s => dayjs(s))
-                    : [...days].reverse()
-                  return renderDays
-                })().map(d => {
-                  const dayStr     = fmtDay(d)
-                  const q          = detailSearch.toLowerCase()
-                  const dayAssigns = assigns.filter(a => a.ngay === dayStr && (
-                    !q ||
-                    (a.ten || '').toLowerCase().includes(q) ||
-                    (a.maSp || '').toLowerCase().includes(q) ||
-                    (a.soLo || '').toLowerCase().includes(q) ||
-                    (a.maDonHang || '').toLowerCase().includes(q)
-                  ))
-                  const isSel = dayStr === selectedDay
-                  return (
-                    <div key={dayStr} style={{ border: `1px solid ${isSel ? '#6366f1' : '#e2e8f0'}`, boxShadow: isSel ? '0 0 0 3px #c7d2fe' : 'none', background: '#fff', borderRadius: 12, padding: '10px 12px', margin: '10px 4px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 13, color: '#334155', marginBottom: 8 }}>
-                        <span>{DOW[d.day()]} · {dayStr}</span>
-                        {isSel && <span style={{ fontSize: 10, fontWeight: 800, background: '#eef2ff', color: '#4338ca', borderRadius: 999, padding: '2px 10px' }}>Đang xếp</span>}
-                        {dayAssigns.length > 0 && <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>{dayAssigns.length} việc</span>}
-                        {(() => {
-                          const ni = days.findIndex(d2 => fmtDay(d2) === dayStr)
-                          const nd = ni >= 0 && ni < days.length - 1 ? days[ni + 1] : null
-                          const hasSaveable = dayAssigns.some(a => a.wsId && a.ngayFull)
-                          const isEditing   = editingDays.has(dayStr)
-                          const enterEdit   = () => setEditingDays(prev => new Set([...prev, dayStr]))
-                          const exitEdit    = () => setEditingDays(prev => { const n = new Set(prev); n.delete(dayStr); return n })
-                          return (
-                            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
-                              {isEditing ? (
-                                <>
-                                  {hasSaveable && (
-                                    <Button size="small" type="primary" icon={<SaveOutlined />}
-                                      loading={savingDay === dayStr}
-                                      onClick={async () => { await handleSaveDay(dayStr); exitEdit() }}
-                                      style={{ background: '#16a34a', borderColor: '#16a34a', fontSize: 11, height: 26 }}>
-                                      Lưu
-                                    </Button>
-                                  )}
-                                  <Button size="small" onClick={exitEdit}
-                                    style={{ fontSize: 11, height: 26 }}>
-                                    Huỷ
-                                  </Button>
-                                  <Tooltip title={nd ? `Sao chép sang ${DOW[nd.day()]} ${fmtDay(nd)}` : 'Đã là ngày cuối tuần'}>
-                                    <button onClick={() => cloneDay(dayStr)} disabled={!nd}
-                                      style={{ border: '1px solid #e2e8f0', background: nd ? '#f8fafc' : '#f1f5f9', borderRadius: 7, padding: '3px 9px', fontSize: 11, fontWeight: 600, color: nd ? '#64748b' : '#cbd5e1', cursor: nd ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                      ⧉ Nhân bản
-                                    </button>
-                                  </Tooltip>
-                                </>
-                              ) : (
-                                <Button size="small" onClick={enterEdit}
-                                  style={{ fontSize: 11, height: 26 }}>
-                                  ✏ Cập nhật
-                                </Button>
-                              )}
-                            </div>
-                          )
-                        })()}
-                      </div>
-                      {dayAssigns.map((a, idx) => {
-                        const isEditing = editingDays.has(dayStr)
+              {/* Horizontal table */}
+              <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', margin: '0 10px 10px', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: '#f9fafb', position: 'sticky', top: 0, zIndex: 10 }}>
+                      <th style={{ padding: '9px 12px', textAlign: 'left', fontWeight: 700, color: '#334155', borderBottom: '2px solid #e2e8f0', borderRight: '1px solid #e2e8f0', minWidth: 200, whiteSpace: 'nowrap' }}>Sản phẩm</th>
+                      <th style={{ padding: '9px 10px', textAlign: 'center', fontWeight: 700, color: '#334155', borderBottom: '2px solid #e2e8f0', borderRight: '1px solid #e2e8f0', width: 88, whiteSpace: 'nowrap' }}>Công đoạn</th>
+                      <th style={{ padding: '9px 12px', textAlign: 'left', fontWeight: 700, color: '#334155', borderBottom: '2px solid #e2e8f0', borderRight: '1px solid #e2e8f0' }}>Người thực hiện</th>
+                      <th style={{ padding: '9px 10px', textAlign: 'center', fontWeight: 700, color: '#334155', borderBottom: '2px solid #e2e8f0', width: 112, whiteSpace: 'nowrap' }}>Tình trạng</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const renderDays = showAllDays
+                        ? [...new Set(assigns.map(a => a.ngayFull).filter(Boolean))].sort((a, b) => b.localeCompare(a)).map(s => dayjs(s))
+                        : [...days].reverse()
+                      const q = detailSearch.toLowerCase()
+                      return renderDays.map(d => {
+                        const dayStr     = fmtDay(d)
+                        const dayAssigns = assigns.filter(a => a.ngay === dayStr && (
+                          !q ||
+                          (a.ten || '').toLowerCase().includes(q) ||
+                          (a.maSp || '').toLowerCase().includes(q) ||
+                          (a.soLo || '').toLowerCase().includes(q) ||
+                          (a.maDonHang || '').toLowerCase().includes(q)
+                        ))
+                        const isSel       = dayStr === selectedDay
+                        const isEditing   = editingDays.has(dayStr)
+                        const hasSaveable = dayAssigns.some(a => a.wsId && a.ngayFull)
+                        const ni = days.findIndex(d2 => fmtDay(d2) === dayStr)
+                        const nd = ni >= 0 && ni < days.length - 1 ? days[ni + 1] : null
+                        const enterEdit   = () => setEditingDays(prev => new Set([...prev, dayStr]))
+                        const exitEdit    = () => setEditingDays(prev => { const n = new Set(prev); n.delete(dayStr); return n })
+                        const colSpan     = isEditing ? 5 : 4
                         return (
-                          <AssignCard key={a.id} a={a} employees={employees} dup={dup}
-                            onDragOver={onDragOver} onDropPerson={onDropPerson}
-                            onRemovePerson={removePerson} onUpdate={updateAssign} onRemove={removeAssign}
-                            isFirst={idx === 0} isLast={idx === dayAssigns.length - 1}
-                            onMoveUp={() => moveAssign(a.id, 'up')} onMoveDown={() => moveAssign(a.id, 'down')}
-                            onClone={cloneAssign} onDragStartPersonMove={onDragStartPersonMove}
-                            onSyncNote={syncNoteToSessions} onAddShift={addShift} onRemoveShift={removeShift}
-                            readOnly={!isEditing} />
+                          <React.Fragment key={dayStr}>
+                            {/* Day group header */}
+                            <tr>
+                              <td colSpan={colSpan} style={{ padding: '6px 12px', background: isSel ? '#eef2ff' : '#f8fafc', fontWeight: 800, fontSize: 12, color: isSel ? '#4338ca' : '#475569', borderTop: '2px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span>{DOW[d.day()]} · {dayStr}</span>
+                                  {isSel && <span style={{ fontSize: 10, background: '#eef2ff', color: '#4338ca', borderRadius: 999, padding: '1px 8px', fontWeight: 800 }}>Đang xếp</span>}
+                                  {dayAssigns.length > 0 && <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>{dayAssigns.length} việc</span>}
+                                  <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                    {isEditing ? (
+                                      <>
+                                        {hasSaveable && (
+                                          <Button size="small" type="primary" icon={<SaveOutlined />}
+                                            loading={savingDay === dayStr}
+                                            onClick={async () => { await handleSaveDay(dayStr); exitEdit() }}
+                                            style={{ background: '#16a34a', borderColor: '#16a34a', fontSize: 11, height: 24 }}>
+                                            Lưu
+                                          </Button>
+                                        )}
+                                        <Button size="small" onClick={exitEdit} style={{ fontSize: 11, height: 24 }}>Huỷ</Button>
+                                        <Tooltip title={nd ? `Sao chép sang ${DOW[nd.day()]} ${fmtDay(nd)}` : 'Đã là ngày cuối tuần'}>
+                                          <button onClick={() => cloneDay(dayStr)} disabled={!nd}
+                                            style={{ border: '1px solid #e2e8f0', background: nd ? '#f8fafc' : '#f1f5f9', borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 600, color: nd ? '#64748b' : '#cbd5e1', cursor: nd ? 'pointer' : 'default' }}>
+                                            ⧉ Nhân bản
+                                          </button>
+                                        </Tooltip>
+                                      </>
+                                    ) : (
+                                      <Button size="small" onClick={enterEdit} style={{ fontSize: 11, height: 24 }}>✏ Cập nhật</Button>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                            {/* Assign rows */}
+                            {dayAssigns.map((a, idx) => (
+                              <AssignRow key={a.id} a={a} employees={employees} dup={dup}
+                                onDragOver={onDragOver} onDropPerson={onDropPerson}
+                                onRemovePerson={removePerson} onUpdate={updateAssign} onRemove={removeAssign}
+                                isFirst={idx === 0} isLast={idx === dayAssigns.length - 1}
+                                onMoveUp={() => moveAssign(a.id, 'up')} onMoveDown={() => moveAssign(a.id, 'down')}
+                                onClone={cloneAssign} onDragStartPersonMove={onDragStartPersonMove}
+                                onSyncNote={syncNoteToSessions} onAddShift={addShift} onRemoveShift={removeShift}
+                                readOnly={!isEditing} />
+                            ))}
+                            {/* Drop zone row */}
+                            {isEditing && (
+                              <tr>
+                                <td colSpan={5}
+                                  onDragOver={onDragOver} onDrop={e => onDropProduct(e, dayStr)}
+                                  onDragEnter={e => { e.preventDefault(); e.currentTarget.style.background = '#eef2ff'; e.currentTarget.style.color = '#4f46e5' }}
+                                  onDragLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = '#94a3b8' }}
+                                  style={{ padding: '8px 12px', textAlign: 'center', fontSize: 11.5, color: '#94a3b8', border: '2px dashed #cbd5e1', transition: 'all 0.15s', cursor: 'copy' }}>
+                                  + kéo sản phẩm vào ngày này
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
                         )
-                      })}
-                      {editingDays.has(dayStr) && (
-                        <div
-                          onDragOver={onDragOver} onDrop={e => onDropProduct(e, dayStr)}
-                          onDragEnter={e => { e.preventDefault(); e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.background = '#eef2ff'; e.currentTarget.style.color = '#4f46e5' }}
-                          onDragLeave={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = ''; e.currentTarget.style.color = '#94a3b8' }}
-                          style={{ border: '2px dashed #cbd5e1', borderRadius: 10, padding: '8px', textAlign: 'center', fontSize: 11.5, color: '#94a3b8', marginTop: 4, transition: 'all 0.15s' }}
-                        >
-                          + kéo sản phẩm vào ngày này
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
+                      })
+                    })()}
+                  </tbody>
+                </table>
               </div>
             </>
           ) : (
