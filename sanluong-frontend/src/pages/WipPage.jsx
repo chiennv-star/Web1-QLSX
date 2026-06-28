@@ -534,7 +534,14 @@ function WipStageTab({ cfg, tabOffset = 0, showMachineChart = false, knownMachin
       <Table
         className="wip-table"
         columns={buildColumns(cfg)}
-        dataSource={data}
+        dataSource={[...data].sort((a, b) => {
+          const da = cfg.doDang(a)
+          const db = cfg.doDang(b)
+          if (da > 0 && db <= 0) return -1
+          if (da <= 0 && db > 0) return 1
+          if (da > 0 && db > 0) return da - db
+          return 0
+        })}
         rowKey="id"
         loading={loading}
         size="small"
