@@ -419,7 +419,7 @@ function AssignRow({
   onDragOver, onDropPerson, onRemovePerson, onUpdate, onRemove,
   isFirst, isLast, onMoveUp, onMoveDown, onClone,
   onDragStartPersonMove, onSyncNote, onAddShift, onRemoveShift,
-  readOnly,
+  readOnly, onHide,
 }) {
   const existingShifts  = SHIFTS.filter(s => a.caShifts?.[s])
   const availableShifts = SHIFTS.filter(s => !a.caShifts?.[s])
@@ -540,9 +540,14 @@ function AssignRow({
 
       {/* Tình trạng */}
       <td style={{ ...td, textAlign: 'center', width: 112, borderRight: 'none' }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '4px 10px', borderRadius: 12, fontSize: 11.5, fontWeight: 600, background: status.bg, color: status.color, whiteSpace: 'nowrap' }}>
-          {status.text}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', padding: '4px 10px', borderRadius: 12, fontSize: 11.5, fontWeight: 600, background: status.bg, color: status.color, whiteSpace: 'nowrap' }}>
+            {status.text}
+          </span>
+          <Tooltip title="Ẩn hàng này">
+            <button onClick={() => onHide?.(a.id)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#cbd5e1', fontSize: 14, padding: 0, lineHeight: 1, flexShrink: 0 }}>⊖</button>
+          </Tooltip>
+        </div>
       </td>
 
       {/* Actions — only in edit mode */}
@@ -652,6 +657,7 @@ export default function KeHoachToPage() {
   const [detailSearch, setDetailSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [showAllDays, setShowAllDays]   = useState(false)
+  const [hiddenRows, setHiddenRows]     = useState(new Set())
   const [editingDays, setEditingDays]   = useState(new Set())
   const [empTo, setEmpTo] = useState(selectedTo)
   useEffect(() => { setEmpTo(selectedTo) }, [selectedTo])
@@ -1597,6 +1603,8 @@ export default function KeHoachToPage() {
                           }
                           return true
                         })
+                        const visibleAssigns = dayAssigns.filter(a => !hiddenRows.has(a.id))
+                        const hiddenCount    = dayAssigns.length - visibleAssigns.length
                         const isSel       = dayStr === selectedDay
                         const isEditing   = editingDays.has(dayStr)
                         const hasSaveable = dayAssigns.some(a => a.wsId && a.ngayFull)
@@ -1654,16 +1662,33 @@ export default function KeHoachToPage() {
                               </td>
                             </tr>
                             {/* Assign rows */}
-                            {dayAssigns.map((a, idx) => (
+                            {visibleAssigns.map((a, idx) => (
                               <AssignRow key={a.id} a={a} employees={employees} dup={dup}
                                 onDragOver={onDragOver} onDropPerson={onDropPerson}
                                 onRemovePerson={removePerson} onUpdate={updateAssign} onRemove={removeAssign}
-                                isFirst={idx === 0} isLast={idx === dayAssigns.length - 1}
+                                isFirst={idx === 0} isLast={idx === visibleAssigns.length - 1}
                                 onMoveUp={() => moveAssign(a.id, 'up')} onMoveDown={() => moveAssign(a.id, 'down')}
                                 onClone={cloneAssign} onDragStartPersonMove={onDragStartPersonMove}
                                 onSyncNote={syncNoteToSessions} onAddShift={addShift} onRemoveShift={removeShift}
-                                readOnly={!isEditing} />
+                                readOnly={!isEditing}
+                                onHide={id => setHiddenRows(prev => new Set([...prev, id]))} />
                             ))}
+                            {/* Hidden rows indicator */}
+                            {hiddenCount > 0 && (
+                              <tr>
+                                <td colSpan={colSpan} style={{ padding: '5px 14px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: 11.5, color: '#94a3b8', textAlign: 'center' }}>
+                                  {hiddenCount} hàng đang bị ẩn ·{' '}
+                                  <span
+                                    onClick={() => setHiddenRows(prev => {
+                                      const next = new Set(prev)
+                                      dayAssigns.forEach(a => next.delete(a.id))
+                                      return next
+                                    })}
+                                    style={{ color: '#6366f1', cursor: 'pointer', fontWeight: 600, textDecoration: 'underline' }}
+                                  >Hiện lại</span>
+                                </td>
+                              </tr>
+                            )}
                             {/* Drop zone row */}
                             {isEditing && (
                               <tr>
