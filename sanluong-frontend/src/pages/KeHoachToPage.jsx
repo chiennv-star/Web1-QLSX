@@ -1402,35 +1402,7 @@ export default function KeHoachToPage() {
       </div>
 
       {/* ── Main area ── */}
-      <div style={{ display: 'flex', flex: 1, minHeight: 0, gap: 8 }}>
-
-        {/* ── Sidebar dọc: chọn tổ ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0, width: 68 }}>
-          {visibleTabs.map(tab => {
-            const isSel      = selectedTo === tab.key
-            const tabAssigns = assignsByTo[tab.key] || []
-            return (
-              <button key={tab.key} onClick={() => setSelectedTo(tab.key)} style={{
-                border: `1.5px solid ${isSel ? '#4f46e5' : '#cbd5e1'}`,
-                background: isSel ? '#4f46e5' : '#fff',
-                color: isSel ? '#fff' : '#475569',
-                borderRadius: 9, padding: '8px 4px',
-                cursor: 'pointer', fontWeight: 700, fontSize: 12,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                boxShadow: isSel ? '0 2px 8px #4f46e533' : 'none',
-                transition: 'all 0.15s', width: '100%',
-              }}>
-                <TeamOutlined style={{ fontSize: 13 }} />
-                <span>{tab.label}</span>
-                {tabAssigns.length > 0 && (
-                  <span style={{ fontSize: 10, fontWeight: 800, background: isSel ? '#818cf8' : '#e2e8f0', color: isSel ? '#fff' : '#64748b', borderRadius: 999, padding: '1px 6px' }}>
-                    {tabAssigns.length}
-                  </span>
-                )}
-              </button>
-            )
-          })}
-        </div>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
 
         {/* ── Unified panel ── */}
         <div style={{ flex: 1, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>

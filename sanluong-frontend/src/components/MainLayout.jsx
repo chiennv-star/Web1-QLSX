@@ -38,8 +38,17 @@ const NAV = {
   border: 'rgba(255,255,255,0.07)',
 }
 
+const KHT_TABS_ALL = [
+  { key: 'BBC1',     label: 'BBC1'     },
+  { key: 'Cân Chia', label: 'Cân Chia' },
+  { key: 'PCPL1',    label: 'PCPL1'    },
+  { key: 'PCPL2',    label: 'PCPL2'    },
+  { key: 'PCPL3',    label: 'PL'       },
+  { key: 'ĐG',       label: 'ĐG'       },
+]
+
 // ── Shared sidebar inner content ───────────────────────────────────────────────
-function SidebarInner({ collapsed, location, menuItems, onNavigate }) {
+function SidebarInner({ collapsed, location, menuItems, onNavigate, selectedKeys }) {
   return (
     <>
       {/* Brand */}
@@ -73,10 +82,16 @@ function SidebarInner({ collapsed, location, menuItems, onNavigate }) {
         .nav-menu.ant-menu-dark .ant-menu-item-selected .ant-menu-title-content { color: #ffffff !important; }
         .nav-menu.ant-menu-dark .ant-menu-item .anticon { color: #e0ffff !important; }
         .nav-menu.ant-menu-dark .ant-menu-item-selected .anticon { color: #ffffff !important; }
+        .nav-menu.ant-menu-dark .ant-menu-submenu-title { color: #e0ffff !important; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 12px; }
+        .nav-menu.ant-menu-dark .ant-menu-submenu-title:hover { color: #ffffff !important; background: rgba(255,255,255,0.15) !important; }
+        .nav-menu.ant-menu-dark .ant-menu-submenu-title .anticon { color: #e0ffff !important; }
+        .nav-menu.ant-menu-dark .ant-menu-sub { background: rgba(0,0,0,0.25) !important; }
+        .nav-menu.ant-menu-dark .ant-menu-sub .ant-menu-item { font-size: 11.5px; padding-left: 40px !important; }
       `}</style>
       <Menu
         mode="inline"
-        selectedKeys={[location.pathname]}
+        selectedKeys={selectedKeys}
+        defaultOpenKeys={selectedKeys.some(k => k.startsWith('kht:')) ? ['ke-hoach-to-group'] : []}
         items={menuItems}
         onClick={({ key }) => onNavigate(key)}
         theme="dark"
@@ -200,7 +215,15 @@ export default function MainLayout() {
           label: mkBadgeLabel('Sản lượng tổ', lichSxNew),
         },
         { key: '/khoach',          icon: <CalendarOutlined />,  label: 'Kế hoạch' },
-        ...(!isAdminKH() ? [{ key: '/ke-hoach-to', icon: <TeamOutlined />, label: 'Kế Hoạch Tổ' }] : []),
+        ...(!isAdminKH() ? [{
+          key: 'ke-hoach-to-group',
+          icon: <TeamOutlined />,
+          label: 'Kế Hoạch Tổ',
+          children: visibleToTabs.map(t => ({
+            key: `kht:${t.key}`,
+            label: t.label,
+          })),
+        }] : []),
         { key: '/lenh-san-xuat', icon: <FileDoneOutlined />, label: 'Lệnh Sản Xuất' },
         ...(canEditHangLoi() ? [{
           key: '/hang-loi',
@@ -264,10 +287,36 @@ export default function MainLayout() {
     KE_TOAN:            'Kế toán',
   }
 
+  // Tổ tabs hiển thị theo role (giống KeHoachToPage.visibleTabs)
+  const visibleToTabs = (() => {
+    const role = user?.role
+    if (role === 'ADMIN_PCPL1') return KHT_TABS_ALL.filter(t => ['PCPL1', 'PCPL3'].includes(t.key))
+    if (role === 'ADMIN_PCPL2') return KHT_TABS_ALL.filter(t => t.key === 'PCPL2')
+    if (role === 'ADMIN_PCPL3') return KHT_TABS_ALL.filter(t => t.key === 'PCPL3')
+    if (role === 'ADMIN_BBC1')  return KHT_TABS_ALL.filter(t => t.key === 'BBC1')
+    if (role === 'ADMIN_DG')    return KHT_TABS_ALL.filter(t => t.key === 'ĐG')
+    return KHT_TABS_ALL
+  })()
+
   const handleNavigate = (key) => {
-    navigate(key)
+    if (key.startsWith('kht:')) {
+      const to = key.slice(4)
+      sessionStorage.setItem('kehoachto_selectedTo', to)
+      navigate('/ke-hoach-to')
+    } else {
+      navigate(key)
+    }
     if (isMobile) setDrawerOpen(false)
   }
+
+  const selectedKeys = (() => {
+    const p = location.pathname
+    if (p === '/ke-hoach-to') {
+      const saved = sessionStorage.getItem('kehoachto_selectedTo') || ''
+      return saved ? [`kht:${saved}`] : [p]
+    }
+    return [p]
+  })()
 
   const handleChangePw = async () => {
     const values = await pwForm.validateFields()
@@ -310,6 +359,7 @@ export default function MainLayout() {
             location={location}
             menuItems={menuItems}
             onNavigate={handleNavigate}
+            selectedKeys={selectedKeys}
           />
         </Drawer>
       )}
