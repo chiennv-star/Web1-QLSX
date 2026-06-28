@@ -1000,6 +1000,110 @@ function HieuSuatTab({ data = [], loading = false, pagination = {}, onPagination
   )
 }
 
+// ── ProductionOverview — bảng tổng quan trên tab Danh sách ───────────────────
+function ProductionOverview({ data, doneTotal }) {
+  const fmtN = v => v ? Number(v).toLocaleString('vi-VN') : '0'
+
+  const totalKH      = data.reduce((s, r) => s + (r.soLuong || 0), 0)
+  const hangLoiCount = data.filter(r => Number(r.hlSoLuongTraVe) > 0).length
+  const totalSlPc    = data.reduce((s, r) => s + (parseInt(r.slPc)   || 0), 0)
+  const totalSlPl    = data.reduce((s, r) => s + (parseInt(r.pcPl)   || 0), 0)
+  const totalSlDg    = data.reduce((s, r) => s + (parseInt(r.dg2)    || 0), 0)
+  const totalSlBbc1  = data.reduce((s, r) => s + (parseInt(r.bbc1_2) || 0), 0)
+  const ddPc   = data.reduce((s, r) => s + Math.max(0, (r.soLuong||0) - (parseInt(r.slPc)||0)), 0)
+  const ddPl   = data.reduce((s, r) => s + Math.max(0, (parseInt(r.slPc)||0) - (parseInt(r.pcPl)||0)), 0)
+  const ddDg   = data.reduce((s, r) => s + Math.max(0, (parseInt(r.pcPl)||0) - (parseInt(r.dg2)||0)), 0)
+  const ddBbc1 = data.reduce((s, r) => s + Math.max(0, (r.soLuong||0) - (parseInt(r.bbc1_2)||0)), 0)
+
+  const pcpl1Doing = data.filter(r => r.pcpl1TrangThai === 'doing').length
+  const pcpl1Done  = data.filter(r => r.pcpl1TrangThai === 'done').length
+  const pcpl2Doing = data.filter(r => r.pcpl2TrangThai === 'doing').length
+  const pcpl2Done  = data.filter(r => r.pcpl2TrangThai === 'done').length
+  const plDoing    = data.filter(r => r.plTrangThai    === 'doing').length
+  const plDone     = data.filter(r => r.plTrangThai    === 'done').length
+  const dgDoing    = data.filter(r => r.dgTrangThai    === 'doing').length
+  const dgDone     = data.filter(r => r.dgTrangThai    === 'done').length
+  const bbc1Doing  = data.filter(r => r.bbc1TrangThai  === 'doing').length
+  const bbc1Done   = data.filter(r => r.bbc1TrangThai  === 'done').length
+
+  const KpiCard = ({ label, value, sub, bg }) => (
+    <div style={{ flex: 1, background: bg, borderRadius: 10, padding: '10px 16px', color: '#fff', textAlign: 'center', minWidth: 100 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.85, letterSpacing: '0.05em', marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.15 }}>{value}</div>
+      {sub && <div style={{ fontSize: 10, opacity: 0.75, marginTop: 2 }}>{sub}</div>}
+    </div>
+  )
+
+  const TtBadge = ({ count, type }) => !count ? null : (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 3,
+      padding: '2px 7px', borderRadius: 999, fontSize: 11, fontWeight: 700,
+      background: type === 'doing' ? '#eff6ff' : '#f0fdf4',
+      color: type === 'doing' ? '#1d4ed8' : '#16a34a',
+      border: `1px solid ${type === 'doing' ? '#bfdbfe' : '#bbf7d0'}`,
+    }}>
+      {type === 'doing' ? '⚙' : '✓'} {count}
+    </span>
+  )
+
+  const StageCard = ({ label, doing1, done1, doing2, done2, sl, dd, slColor, accent }) => (
+    <div style={{
+      flex: 1, background: '#fff', borderRadius: 10,
+      border: `1.5px solid ${accent}30`,
+      borderTop: `3px solid ${accent}`,
+      padding: '8px 12px', minWidth: 120,
+    }}>
+      <div style={{ fontWeight: 800, fontSize: 12, color: accent, marginBottom: 6, textAlign: 'center', letterSpacing: '0.05em' }}>{label}</div>
+      {doing2 !== undefined ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6 }}>
+          {[['PCPL1', doing1, done1], ['PCPL2', doing2, done2]].map(([lbl, d, dn]) => (
+            <div key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
+              <span style={{ fontSize: 10, color: '#94a3b8', width: 40, textAlign: 'right', flexShrink: 0 }}>{lbl}</span>
+              <TtBadge count={d} type="doing" />
+              <TtBadge count={dn} type="done" />
+              {!d && !dn && <span style={{ fontSize: 11, color: '#cbd5e1' }}>—</span>}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 5, marginBottom: 6, minHeight: 28, alignItems: 'center' }}>
+          <TtBadge count={doing1} type="doing" />
+          <TtBadge count={done1} type="done" />
+          {!doing1 && !done1 && <span style={{ fontSize: 11, color: '#cbd5e1' }}>—</span>}
+        </div>
+      )}
+      <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 6, display: 'flex', gap: 4 }}>
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>SL thực tế</div>
+          <div style={{ fontWeight: 800, fontSize: 13, color: slColor }}>{fmtN(sl)}</div>
+        </div>
+        <div style={{ width: 1, background: '#f1f5f9', flexShrink: 0 }} />
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>Dở dang</div>
+          <div style={{ fontWeight: 800, fontSize: 13, color: dd > 0 ? '#d48806' : '#94a3b8' }}>{fmtN(dd)}</div>
+        </div>
+      </div>
+    </div>
+  )
+
+  return (
+    <div style={{ background: 'linear-gradient(135deg, #f0f9ff 0%, #e8f4f0 100%)', padding: '10px 12px', borderBottom: '1px solid #d1e9df' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        <KpiCard label="ĐANG SẢN XUẤT" value={data.length} sub="lô" bg="#006666" />
+        <KpiCard label="TỔNG KẾ HOẠCH" value={fmtN(totalKH)} sub="sản phẩm" bg="#1d4ed8" />
+        <KpiCard label="ĐÃ HOÀN THÀNH" value={doneTotal} sub="lô done" bg="#16a34a" />
+        {hangLoiCount > 0 && <KpiCard label="CÓ HÀNG LỖI" value={hangLoiCount} sub="lô" bg="#dc2626" />}
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <StageCard label="PC" doing1={pcpl1Doing} done1={pcpl1Done} doing2={pcpl2Doing} done2={pcpl2Done} sl={totalSlPc} dd={ddPc} slColor="#1d4ed8" accent="#1d4ed8" />
+        <StageCard label="PL" doing1={plDoing} done1={plDone} sl={totalSlPl} dd={ddPl} slColor="#7c3aed" accent="#7c3aed" />
+        <StageCard label="ĐG" doing1={dgDoing} done1={dgDone} sl={totalSlDg} dd={ddDg} slColor="#d48806" accent="#d48806" />
+        <StageCard label="BBC1" doing1={bbc1Doing} done1={bbc1Done} sl={totalSlBbc1} dd={ddBbc1} slColor="#16a34a" accent="#16a34a" />
+      </div>
+    </div>
+  )
+}
+
 export default function DashboardPage() {
   const { isAdmin, isAdminKH, canEditProduction, isStageAdmin, getAllowedNhom, getAllowedStages } = useAuth()
   const getRowJumpStage = () => {
@@ -1988,7 +2092,9 @@ export default function DashboardPage() {
             key: 'list',
             label: 'Danh sách',
             children: (
-              <Table
+              <>
+                <ProductionOverview data={data} doneTotal={donePagination.total} />
+                <Table
                 className="prod-table"
                 columns={columns}
                 dataSource={data}
@@ -2029,6 +2135,7 @@ export default function DashboardPage() {
                   },
                 })}
               />
+              </>
             )
           },
           {
