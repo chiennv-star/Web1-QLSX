@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
-  Table, Input, Select, Tag, Tooltip, message, Button, Badge,
+  Table, Input, Select, Tag, Tooltip, message, Button, Badge, Progress,
   Modal, Form, DatePicker, InputNumber, Divider, AutoComplete, Spin,
 } from 'antd'
 import { Rnd } from 'react-rnd'
@@ -771,7 +771,8 @@ export default function LenhSanXuatTab() {
   const [lichSuOpen,   setLichSuOpen]   = useState(false)
   const [lichSuRecord, setLichSuRecord] = useState(null)
   const [tableH, setTableH] = useState(500)
-  const [loaiSpMap, setLoaiSpMap] = useState({}) // maSp → { loaiSanPham, khoiLuong, mayMocPc, ... }
+  const [loaiSpMap,      setLoaiSpMap]      = useState({}) // maSp → { loaiSanPham, khoiLuong, mayMocPc, ... }
+  const [employeeCounts, setEmployeeCounts] = useState({})
   const tableWrapRef = useRef(null)
   // useRef để lưu giá trị soLo — không gây re-render khi gõ, tránh input mất focus
   const soLoRef = useRef({})
@@ -831,6 +832,23 @@ export default function LenhSanXuatTab() {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
+  const loadEmployeeCounts = useCallback(async () => {
+    if (Object.keys(employeeCounts).length > 0) return
+    try {
+      const groups = ['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG']
+      const results = await Promise.all(
+        groups.map(g => api.get('/employees', { params: { page: 0, size: 1, toNhom: g, excludeTinhTrang: 'tam_nghi' } }))
+      )
+      const counts = {}
+      groups.forEach((g, i) => { counts[g] = results[i].data.totalElements || 0 })
+      setEmployeeCounts(counts)
+    } catch { /* non-blocking */ }
+  }, [employeeCounts])
+
+  useEffect(() => {
+    if (activeTab === 'phan_tich') loadEmployeeCounts()
+  }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Load ProductMaster fields (loaiSanPham, khoiLuong, mayMoc, nangSuat) theo maSp
   useEffect(() => {
     const allRows = [...lenhData, ...pendingData]
@@ -878,6 +896,7 @@ export default function LenhSanXuatTab() {
 
   // ── Rows for current tab ───────────────────────────────────────────────────
   const rows = useMemo(() => {
+    if (activeTab === 'phan_tich') return lenhData
     if (activeTab === 'tat_ca') {
       let list = [...pendingData, ...lenhData]
       if (filterFromPL) list = list.filter(r => r.ngayPhatLenh && r.ngayPhatLenh >= filterFromPL.format('YYYY-MM-DD'))
@@ -901,6 +920,7 @@ export default function LenhSanXuatTab() {
 
   // ── Quick-filter counts ────────────────────────────────────────────────────
   const baseList = useMemo(() => {
+    if (activeTab === 'phan_tich') return lenhData
     if (activeTab === 'tat_ca') return [...pendingData, ...lenhData]
     if (activeTab === 'chua_xep') return pendingData
     let list = lenhData.filter(r =>
@@ -1267,10 +1287,11 @@ export default function LenhSanXuatTab() {
 
   // ── Sub-tabs ───────────────────────────────────────────────────────────────
   const subTabs = [
-    { key: 'tat_ca',     label: `Tất cả (${tatCaTotal})`,                             warn: false },
+    { key: 'tat_ca',     label: `Lệnh sản xuất (${tatCaTotal})`,                      warn: false },
     { key: 'chua_xep',   label: `Chưa xếp (${tabCounts.chua_xep})`,                  warn: false },
     ...TO_LIST.map(t => ({ key: t, label: `${t} (${tabCounts[t]})`,                   warn: tabCounts[t] > 0 })),
     { key: 'hoan_thien', label: `Lệnh đã hoàn thiện (${tabCounts.hoan_thien})`,       warn: false },
+    { key: 'phan_tich',  label: `🔬 Phân tích`,                                        warn: false },
   ]
 
   const isLoading = loading || pendingLoad
@@ -1434,8 +1455,368 @@ export default function LenhSanXuatTab() {
         </div>
       </div>
 
+      {/* ── Phân tích tab ── */}
+      {activeTab === 'phan_tich' && (() => {
+        const trendData = lenhData.map(r => ({ ...r, _pm: loaiSpMap[r.maSp] || {} }))
+
+        const normalizeLoai = raw => {
+          if (!raw) return null
+          return raw.trim().replace(/\s+/g, ' ')
+            .split(' ').map(w => w ? w.charAt(0).toUpperCase() + w.slice(1) : '').join(' ')
+        }
+        const loaiKeyFn = raw => (raw || '').trim().toLowerCase().replace(/\s+/g, ' ') || '(chưa phân loại)'
+
+        const typeMap = {}
+        let totalSl = 0
+        trendData.forEach(r => {
+          const key  = loaiKeyFn(r._pm.loaiSanPham)
+          const loai = normalizeLoai(r._pm.loaiSanPham) || '(Chưa phân loại)'
+          const sl   = Number(r.soLuong) || 0
+          totalSl += sl
+          if (!typeMap[key]) typeMap[key] = { loai, soLenh: 0, skuSet: new Set(), totalSl: 0, congDg: 0, congPc: 0, congPl: 0 }
+          const s = typeMap[key]
+          s.soLenh++
+          s.skuSet.add(r.maSp)
+          s.totalSl += sl
+          const nsDg = Number(r._pm.nangSuatDg) > 0 ? Number(r._pm.nangSuatDg) : (Number(r._pm.slTrungBinh) > 0 ? Number(r._pm.slTrungBinh) : 0)
+          if (nsDg   > 0) s.congDg += sl / nsDg
+          if (Number(r._pm.nangSuatPc)  > 0) s.congPc += sl / Number(r._pm.nangSuatPc)
+          if (Number(r._pm.nangSuatPl)  > 0) s.congPl += sl / Number(r._pm.nangSuatPl)
+        })
+        const typeRows = Object.values(typeMap)
+          .map(s => ({ ...s, sku: s.skuSet.size, tyLe: totalSl > 0 ? s.totalSl / totalSl * 100 : 0 }))
+          .sort((a, b) => b.totalSl - a.totalSl)
+        const TYPE_COLORS = ['#1677ff','#52c41a','#fa8c16','#722ed1','#eb2f96','#13c2c2','#faad14','#f5222d','#a0d911','#2f54eb']
+        const colorOf = loai => TYPE_COLORS[typeRows.findIndex(r => r.loai === loai) % TYPE_COLORS.length]
+        const fmtCong  = v => v > 0 ? Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) : '—'
+        const fmtH     = v => (v != null && v > 0) ? Number(v).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'
+        const fmtDays  = v => (v != null && v > 0) ? Number(v).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'
+
+        const typeColumns = [
+          { title: 'Loại Sản Phẩm', dataIndex: 'loai', key: 'loai', width: 160,
+            render: v => <Tag color={colorOf(v)} style={{ fontWeight: 600, fontSize: 12 }}>{v}</Tag> },
+          { title: 'Số Lệnh', dataIndex: 'soLenh', key: 'soLenh', width: 80, align: 'center',
+            render: v => <span style={{ fontWeight: 700, color: '#374151' }}>{v}</span> },
+          { title: 'Số SKU', dataIndex: 'sku', key: 'sku', width: 75, align: 'center',
+            render: v => <span style={{ color: '#0369a1', fontWeight: 600 }}>{v}</span> },
+          { title: 'Tổng SL', dataIndex: 'totalSl', key: 'totalSl', width: 110, align: 'right',
+            sorter: (a, b) => a.totalSl - b.totalSl,
+            render: v => <span style={{ fontWeight: 700 }}>{Number(v).toLocaleString('vi-VN')}</span> },
+          { title: 'Tỷ Lệ SL', dataIndex: 'tyLe', key: 'tyLe', width: 170, align: 'center',
+            sorter: (a, b) => a.tyLe - b.tyLe,
+            render: (v, r) => (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Progress percent={Math.round(v)} size="small" strokeColor={colorOf(r.loai)}
+                  style={{ flex: 1, marginBottom: 0 }} showInfo={false} />
+                <span style={{ fontWeight: 700, color: colorOf(r.loai), minWidth: 40 }}>{v.toFixed(1)}%</span>
+              </div>
+            ) },
+          { title: 'Công ĐG', dataIndex: 'congDg', key: 'congDg', width: 100, align: 'right',
+            sorter: (a, b) => a.congDg - b.congDg,
+            render: v => v > 0 ? <span style={{ color: '#7c3aed', fontWeight: 700 }}>{fmtCong(v)}</span>
+                               : <span style={{ color: '#d9d9d9' }}>—</span> },
+          { title: 'Công PC', dataIndex: 'congPc', key: 'congPc', width: 100, align: 'right',
+            sorter: (a, b) => a.congPc - b.congPc,
+            render: v => v > 0 ? <span style={{ color: '#1d4ed8', fontWeight: 600 }}>{fmtCong(v)}</span>
+                               : <span style={{ color: '#d9d9d9' }}>—</span> },
+          { title: 'Công PL', dataIndex: 'congPl', key: 'congPl', width: 100, align: 'right',
+            sorter: (a, b) => a.congPl - b.congPl,
+            render: v => v > 0 ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{fmtCong(v)}</span>
+                               : <span style={{ color: '#d9d9d9' }}>—</span> },
+        ]
+        const typeSummary = () => {
+          const totSl  = typeRows.reduce((s, r) => s + r.totalSl, 0)
+          const totDon = typeRows.reduce((s, r) => s + r.soLenh, 0)
+          const totDg  = typeRows.reduce((s, r) => s + r.congDg, 0)
+          const totPc  = typeRows.reduce((s, r) => s + r.congPc, 0)
+          const totPl  = typeRows.reduce((s, r) => s + r.congPl, 0)
+          const tdS    = { fontWeight: 700, background: '#f0f5ff', padding: '6px 8px', display: 'block' }
+          return (
+            <Table.Summary.Row>
+              <Table.Summary.Cell index={0} colSpan={2}><span style={tdS}>Tổng cộng ({totDon} lệnh)</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={1} align="center"><span style={tdS}>{typeRows.reduce((s, r) => s + r.sku, 0)}</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={2} align="right"><span style={tdS}>{totSl.toLocaleString('vi-VN')}</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={3} align="center"><span style={tdS}>100%</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={4} align="right"><span style={{ ...tdS, color: '#7c3aed' }}>{fmtCong(totDg)}</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={5} align="right"><span style={{ ...tdS, color: '#1d4ed8' }}>{fmtCong(totPc)}</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={6} align="right"><span style={{ ...tdS, color: '#0e7490' }}>{fmtCong(totPl)}</span></Table.Summary.Cell>
+            </Table.Summary.Row>
+          )
+        }
+
+        /* Bottleneck analysis per lệnh */
+        const stageWorkers = {
+          PC:   (employeeCounts['PCPL1'] || 0) + (employeeCounts['PCPL2'] || 0),
+          PL:   employeeCounts['PCPL3'] || 0,
+          BBC1: employeeCounts['BBC1']  || 0,
+          DG:   employeeCounts['ĐG']   || 0,
+        }
+        const orderAnalysis = trendData.map(r => {
+          const sl   = Number(r.soLuong) || 0
+          const nsPc  = Number(r._pm.nangSuatPc)  || 0
+          const nsPl  = Number(r._pm.nangSuatPl)  || 0
+          const nsBbc = Number(r._pm.nangSuatBbc1) || 0
+          const nsDg  = Number(r._pm.nangSuatDg) > 0 ? Number(r._pm.nangSuatDg)
+                      : Number(r._pm.slTrungBinh) > 0 ? Number(r._pm.slTrungBinh) : 0
+          const tPc  = nsPc  > 0 ? sl / nsPc  : null
+          const tPl  = nsPl  > 0 ? sl / nsPl  : null
+          const tBbc = nsBbc > 0 ? sl / nsBbc : null
+          const tDg  = nsDg  > 0 ? sl / nsDg  : null
+          const times = [
+            tPc  != null ? { key: 'PC',   t: tPc  } : null,
+            tPl  != null ? { key: 'PL',   t: tPl  } : null,
+            tBbc != null ? { key: 'BBC1', t: tBbc } : null,
+            tDg  != null ? { key: 'DG',   t: tDg  } : null,
+          ].filter(Boolean)
+          const bottleneck = times.length > 0 ? times.reduce((a, b) => b.t > a.t ? b : a) : null
+          const total = times.reduce((s, x) => s + x.t, 0)
+          return { ...r, tPc, tPl, tBbc, tDg, total, bottleneck }
+        }).sort((a, b) => b.total - a.total)
+
+        const ordersWithData = orderAnalysis.filter(r => r.bottleneck)
+
+        const stageSummary = [
+          { key: 'PC',   label: 'Pha Chế',   tField: 'tPc',  color: '#1e40af', bg: '#dbeafe' },
+          { key: 'PL',   label: 'Phân Liều', tField: 'tPl',  color: '#92400e', bg: '#fef3c7' },
+          { key: 'BBC1', label: 'VS BBC1',   tField: 'tBbc', color: '#991b1b', bg: '#fee2e2' },
+          { key: 'DG',   label: 'Đóng Gói', tField: 'tDg',  color: '#6d28d9', bg: '#f5f3ff' },
+        ].map(s => {
+          const vals   = ordersWithData.filter(r => r[s.tField] != null)
+          const totalH = vals.reduce((sum, r) => sum + r[s.tField], 0)
+          const bnCount = ordersWithData.filter(r => r.bottleneck?.key === s.key).length
+          const soNguoi = stageWorkers[s.key] || 0
+          return { ...s, totalH, orderCount: vals.length, bnCount, soNguoi }
+        })
+        const maxStageH = Math.max(...stageSummary.map(s => s.totalH)) || 1
+        const bottleneckStage = stageSummary.reduce((a, b) => b.totalH > a.totalH ? b : a)
+
+        /* Tải máy */
+        const STAGE_MACHINE_MAP = [
+          { stageKey: 'PC',   machineField: 'mayMocPc',   nsField: 'nangSuatPc'   },
+          { stageKey: 'PL',   machineField: 'mayMocPl',   nsField: 'nangSuatPl'   },
+          { stageKey: 'BBC1', machineField: 'mayMocBbc1', nsField: 'nangSuatBbc1' },
+          { stageKey: 'DG',   machineField: 'mayMocDg',   nsField: 'nangSuatDg_or_slTB' },
+        ]
+        const machineLoad = {}
+        trendData.forEach(r => {
+          const sl = Number(r.soLuong) || 0
+          STAGE_MACHINE_MAP.forEach(({ stageKey, machineField, nsField }) => {
+            const machine = r._pm[machineField]
+            const ns = nsField === 'nangSuatDg_or_slTB'
+              ? (Number(r._pm.nangSuatDg) > 0 ? Number(r._pm.nangSuatDg) : Number(r._pm.slTrungBinh) || 0)
+              : Number(r._pm[nsField]) || 0
+            if (!machine || ns === 0) return
+            const key = `${stageKey}__${machine}`
+            if (!machineLoad[key]) machineLoad[key] = { machine, stageKey, hours: 0, orders: 0 }
+            machineLoad[key].hours  += sl / ns
+            machineLoad[key].orders += 1
+          })
+        })
+        const machineList = Object.values(machineLoad).sort((a, b) => b.hours - a.hours)
+        const maxHours = machineList[0]?.hours || 1
+        const dgM   = machineList.filter(m => m.stageKey === 'DG')
+        const pcM   = machineList.filter(m => m.stageKey === 'PC')
+        const plM   = machineList.filter(m => m.stageKey === 'PL')
+        const bbc1M = machineList.filter(m => m.stageKey === 'BBC1')
+
+        /* Xung đột máy */
+        const machineToBravo = {}
+        trendData.forEach(r => {
+          const sl = Number(r.soLuong) || 0
+          STAGE_MACHINE_MAP.forEach(({ stageKey, machineField, nsField }) => {
+            const machine = r._pm[machineField]
+            const ns = nsField === 'nangSuatDg_or_slTB'
+              ? (Number(r._pm.nangSuatDg) > 0 ? Number(r._pm.nangSuatDg) : Number(r._pm.slTrungBinh) || 0)
+              : Number(r._pm[nsField]) || 0
+            if (!machine || ns === 0) return
+            const key = `${stageKey}__${machine}`
+            if (!machineToBravo[key]) machineToBravo[key] = []
+            machineToBravo[key].push({ maSp: r.maSp, soLo: r.soLo, ten: r.tenSanPham || r.maSp, t: sl / ns })
+          })
+        })
+        const conflicts = Object.entries(machineToBravo)
+          .filter(([, orders]) => orders.length > 1)
+          .map(([key, orders]) => {
+            const [stageKey, machine] = key.split('__')
+            const totalH = orders.reduce((s, o) => s + o.t, 0)
+            return { machine, stageKey, orders: orders.sort((a, b) => b.t - a.t), totalH }
+          })
+          .sort((a, b) => b.totalH - a.totalH)
+
+        const SecTitle = ({ n, title, sub }) => (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, borderBottom: '2px solid #e5e7eb', paddingBottom: 8 }}>
+              <span style={{ fontSize: 15, fontWeight: 700, color: '#111827' }}>{n}. {title}</span>
+            </div>
+            {sub && <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>{sub}</div>}
+          </div>
+        )
+        const Callout = ({ color = 'green', children }) => {
+          const map = { green: ['#ecfdf5','#10b981'], amber: ['#fffbeb','#f59e0b'], blue: ['#eff6ff','#3b82f6'], red: ['#fef2f2','#dc2626'] }
+          const [bg, border] = map[color] || map.green
+          return <div style={{ background: bg, borderLeft: `4px solid ${border}`, padding: '12px 16px', borderRadius: '0 6px 6px 0', marginBottom: 14, fontSize: 13 }}>{children}</div>
+        }
+        const BarRow = ({ label, hours, maxH, color, orders }) => {
+          const pct = maxH > 0 ? Math.max(4, Math.round((hours / maxH) * 100)) : 4
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <div style={{ width: 210, fontSize: 12, color: '#374151', flexShrink: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={label}>{label}</div>
+              <div style={{ flex: 1, background: '#f1f3f5', borderRadius: 4, height: 24, overflow: 'hidden' }}>
+                <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 4, display: 'flex', alignItems: 'center', paddingLeft: 8 }}>
+                  <span style={{ color: '#fff', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtH(hours)} công{orders > 1 ? ` — ${orders} lệnh` : ''}</span>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        return (
+          <div style={{ padding: '20px 16px', maxWidth: 1100, background: '#fff' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#0f766e', marginBottom: 12 }}>🔬 Phân Tích Năng Suất &amp; Tải Máy — Lệnh Sản Xuất</div>
+            <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>
+              Phân tích {lenhData.length} lệnh sản xuất · {trendData.filter(r => r._pm.nangSuatPc || r._pm.slTrungBinh).length} lệnh có đủ dữ liệu NS
+            </div>
+
+            {/* ── Thống kê theo loại SP ── */}
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '14px 16px', marginBottom: 20 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#1e293b', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>📊</span><span>Thống Kê Theo Loại Sản Phẩm</span>
+                <span style={{ fontSize: 12, fontWeight: 400, color: '#64748b' }}>— Công = Cỡ Lô ÷ Năng Suất (sp/công)</span>
+              </div>
+              <Table
+                columns={typeColumns}
+                dataSource={typeRows}
+                rowKey="loai"
+                size="small"
+                pagination={false}
+                loading={loading}
+                scroll={{ x: 900 }}
+                rowHoverable={false}
+                summary={typeSummary}
+                locale={{ emptyText: <span style={{ color: '#d9d9d9' }}>Không có dữ liệu</span> }}
+              />
+            </div>
+
+            <Callout color="green">
+              <b>Nguyên tắc nút thắt (bottleneck):</b> Thời gian mỗi công đoạn = <b>Cỡ Lô ÷ Năng Suất (NS)</b>. Công đoạn nào lâu nhất chính là <b>nút thắt</b> — nó quyết định tiến độ hoàn thành lệnh.
+            </Callout>
+
+            {/* ── Section 1: Thời gian SX ── */}
+            <div style={{ marginBottom: 36 }}>
+              <SecTitle n="1" title="Thời gian sản xuất theo công đoạn (công)"
+                sub="t = Cỡ Lô ÷ NS (sp/công). Ngày HT = Tổng công ÷ Số người tổ. Nút thắt là công đoạn lâu nhất." />
+
+              {ordersWithData.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>Tổng công toàn bộ lệnh theo từng công đoạn</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, background: '#f8fafc', borderRadius: 8, overflow: 'hidden' }}>
+                    <thead>
+                      <tr style={{ background: '#e2e8f0' }}>
+                        {['Công đoạn','Tổng công','Số người','Ngày HT','Lệnh là nút thắt','Tải (% so cao nhất)'].map(h => (
+                          <th key={h} style={{ padding: '8px 12px', textAlign: h === 'Công đoạn' ? 'left' : 'right', fontWeight: 600, color: '#374151', borderBottom: '2px solid #cbd5e1', whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stageSummary.map((s, i) => {
+                        const pct = maxStageH > 0 ? Math.round((s.totalH / maxStageH) * 100) : 0
+                        const isBN = s.key === bottleneckStage.key
+                        return (
+                          <tr key={s.key} style={{ background: isBN ? s.bg : (i % 2 === 0 ? '#fff' : '#f8fafc'), borderLeft: isBN ? `3px solid ${s.color}` : '3px solid transparent' }}>
+                            <td style={{ padding: '9px 12px', fontWeight: 700, color: s.color, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              {s.label}
+                              {isBN && <span style={{ fontSize: 10, background: s.color, color: '#fff', borderRadius: 4, padding: '1px 6px' }}>NÚT THẮT</span>}
+                            </td>
+                            <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 700, color: s.color }}>{fmtH(s.totalH)}</td>
+                            <td style={{ padding: '9px 12px', textAlign: 'right', color: '#374151', fontWeight: 600 }}>
+                              {s.soNguoi > 0 ? s.soNguoi : <span style={{ color: '#d1d5db', fontSize: 11 }}>—</span>}
+                            </td>
+                            <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 700, color: s.soNguoi > 0 ? (isBN ? s.color : '#059669') : '#d1d5db' }}>
+                              {s.soNguoi > 0 ? <>{fmtDays(s.totalH / s.soNguoi)} <span style={{ fontWeight: 400, fontSize: 11 }}>ngày</span></> : '—'}
+                            </td>
+                            <td style={{ padding: '9px 12px', textAlign: 'right', color: '#374151' }}>{s.bnCount}</td>
+                            <td style={{ padding: '9px 12px', textAlign: 'right' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
+                                <div style={{ width: 80, background: '#e2e8f0', borderRadius: 3, height: 8, overflow: 'hidden' }}>
+                                  <div style={{ width: `${pct}%`, height: '100%', background: s.color, borderRadius: 3 }} />
+                                </div>
+                                <span style={{ color: isBN ? s.color : '#6b7280', fontWeight: isBN ? 700 : 400, minWidth: 36, textAlign: 'right', fontSize: 12 }}>{pct}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* ── Section 2: Tải máy ── */}
+            {machineList.length > 0 && (
+              <div style={{ marginBottom: 36 }}>
+                <SecTitle n="2" title="Tải máy theo công đoạn (công)"
+                  sub="Tổng công tất cả lệnh phân bổ trên từng máy — máy nào nhiều công nhất sẽ là điểm nghẽn thiết bị." />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+                  {[
+                    { key: 'DG',   label: 'Đóng Gói (ĐG)', list: dgM,   color: '#6d28d9' },
+                    { key: 'PC',   label: 'Pha Chế (PC)',   list: pcM,   color: '#1e40af' },
+                    { key: 'PL',   label: 'Phân Liều (PL)', list: plM,   color: '#92400e' },
+                    { key: 'BBC1', label: 'VS BBC1',         list: bbc1M, color: '#991b1b' },
+                  ].filter(g => g.list.length > 0).map(g => (
+                    <div key={g.key} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '14px 16px' }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: g.color, marginBottom: 12 }}>{g.label}</div>
+                      {g.list.map(m => (
+                        <BarRow key={m.machine} label={m.machine} hours={m.hours} maxH={maxHours} color={g.color} orders={m.orders} />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── Section 3: Xung đột máy ── */}
+            {conflicts.length > 0 && (
+              <div style={{ marginBottom: 36 }}>
+                <SecTitle n="3" title="Xung đột máy"
+                  sub="Một máy phải phục vụ nhiều lệnh cùng lúc — cần lên lịch tránh chồng chéo." />
+                <Callout color="amber">
+                  <b>{conflicts.length} máy</b> đang phải phục vụ từ 2 lệnh trở lên. Cần lên lịch luân phiên hoặc bổ sung thiết bị.
+                </Callout>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {conflicts.slice(0, 10).map((c, i) => (
+                    <div key={i} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 14px', background: '#fefce8' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <span style={{ fontWeight: 700, color: '#92400e', fontSize: 13 }}>⚠ {c.machine}</span>
+                        <span style={{ fontSize: 11, color: '#6b7280' }}>[{c.stageKey}]</span>
+                        <span style={{ fontSize: 11, background: '#fef3c7', color: '#92400e', borderRadius: 4, padding: '1px 6px' }}>
+                          {fmtH(c.totalH)} công tổng · {c.orders.length} lệnh
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {c.orders.map((o, j) => (
+                          <span key={j} style={{ fontSize: 11, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: '2px 8px', color: '#374151' }}>
+                            {o.soLo ? `[${o.soLo}] ` : ''}{o.ten} — {fmtH(o.t)} công
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {ordersWithData.length === 0 && (
+              <Callout color="blue">
+                Chưa có dữ liệu năng suất trong ProductMaster. Vào <b>Quản lý danh mục → Quản lý SP</b> để nhập NS cho từng sản phẩm.
+              </Callout>
+            )}
+          </div>
+        )
+      })()}
+
       {/* ── Table ── */}
-      <div ref={tableWrapRef}>
+      <div ref={tableWrapRef} style={{ display: activeTab === 'phan_tich' ? 'none' : undefined }}>
       <SkeletonTable
         className="lsx-tab-table"
         rowKey={r => r.isFromKhoach ? `ws-${r.workScheduleId}` : `l-${r.id}`}
