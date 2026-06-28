@@ -2448,14 +2448,14 @@ const ANALYSIS_STAGES = [
 ]
 
 function PhanTichSanLuongTab() {
-  const [dateRange, setDateRange] = useState([dayjs(), dayjs()])
+  const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs()])
   const [stageFilter, setStageFilter] = useState('')
   const [loading, setLoading] = useState(false)
   const [raw, setRaw] = useState([])
   const [loaiSpMap, setLoaiSpMap] = useState({})
   const [innerTab, setInnerTab] = useState('stage')
   const [sortBy, setSortBy] = useState('output-desc')
-  const [activeQuickRange, setActiveQuickRange] = useState('Hôm nay')
+  const [activeQuickRange, setActiveQuickRange] = useState('Tháng này')
 
   const fetchData = useCallback(async (range = dateRange) => {
     setLoading(true)
