@@ -121,6 +121,7 @@ public class EmployeeService {
         e.setViTri(dto.getViTri());
         e.setHocVan(dto.getHocVan());
         e.setToNhom(dto.getToNhom());
+        e.setNhom(dto.getNhom());
         e.setNgaySinh(dto.getNgaySinh());
         e.setThoiGianVaoCongTy(dto.getThoiGianVaoCongTy());
         e.setNgayNghiViec(dto.getNgayNghiViec());
