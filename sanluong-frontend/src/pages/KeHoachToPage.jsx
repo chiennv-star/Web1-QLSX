@@ -1586,11 +1586,17 @@ export default function KeHoachToPage() {
                         const enterEdit   = () => setEditingDays(prev => new Set([...prev, dayStr]))
                         const exitEdit    = () => setEditingDays(prev => { const n = new Set(prev); n.delete(dayStr); return n })
                         const colSpan     = isEditing ? 5 : 4
+                        const dow2     = d.day() // 0=CN,6=T7
+                        const isSunday = dow2 === 0
+                        const isSat    = dow2 === 6
+                        const isWknd   = isSunday || isSat
+                        const hdrBg    = isSel ? '#eef2ff' : isWknd ? (isSunday ? '#fff1f2' : '#fff7ed') : '#f8fafc'
+                        const hdrClr   = isSel ? '#4338ca' : isWknd ? (isSunday ? '#be123c' : '#c2410c') : '#475569'
                         return (
                           <React.Fragment key={dayStr}>
                             {/* Day group header */}
                             <tr>
-                              <td colSpan={colSpan} style={{ padding: '6px 12px', background: isSel ? '#eef2ff' : '#f8fafc', fontWeight: 800, fontSize: 12, color: isSel ? '#4338ca' : '#475569', borderTop: '2px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+                              <td colSpan={colSpan} style={{ padding: '6px 12px', background: hdrBg, fontWeight: 800, fontSize: 12, color: hdrClr, borderTop: '2px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                   <span>{DOW[d.day()]} · {dayStr}</span>
                                   {isSel && <span style={{ fontSize: 10, background: '#eef2ff', color: '#4338ca', borderRadius: 999, padding: '1px 8px', fontWeight: 800 }}>Đang xếp</span>}
