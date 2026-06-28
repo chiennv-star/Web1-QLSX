@@ -384,6 +384,7 @@ export default function MainLayout() {
             location={location}
             menuItems={menuItems}
             onNavigate={handleNavigate}
+            selectedKeys={selectedKeys}
           />
         </Sider>
       )}
