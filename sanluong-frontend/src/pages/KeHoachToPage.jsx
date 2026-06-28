@@ -839,16 +839,16 @@ export default function KeHoachToPage() {
   const exportDayAsImage = useCallback(async (dayStr, dow, dayAssigns) => {
     const { toPng } = await import('html-to-image')
     const container = document.createElement('div')
-    container.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;'
+    container.style.cssText = 'position:absolute;left:-9999px;top:0;width:900px;overflow:visible;'
     document.body.appendChild(container)
     const toLabel = TO_TABS.find(t => t.key === selectedTo)?.label || selectedTo || ''
     const root = createRoot(container)
     root.render(
       <ExportDayView dayStr={dayStr} dow={dow} assigns={dayAssigns} employees={employees} toLabel={toLabel} />
     )
-    await new Promise(r => setTimeout(r, 300))
+    await new Promise(r => setTimeout(r, 500))
     try {
-      const dataUrl = await toPng(container, { quality: 1, pixelRatio: 2, backgroundColor: '#fff' })
+      const dataUrl = await toPng(container.firstChild, { quality: 1, pixelRatio: 2, backgroundColor: '#fff' })
       const a = document.createElement('a')
       a.download = `ke-hoach-${toLabel}-${dayStr.replace('/', '-')}.png`
       a.href = dataUrl
