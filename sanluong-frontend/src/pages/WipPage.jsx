@@ -250,6 +250,10 @@ const STAGE_CFG = {
 function buildColumns(cfg) {
   return [
     {
+      title: 'STT', key: 'stt', width: 52, fixed: 'left', align: 'center',
+      render: (_, __, idx) => <span style={{ color: '#94a3b8', fontSize: 12 }}>{idx + 1}</span>,
+    },
+    {
       title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 110, fixed: 'left', align: 'center',
       render: v => v ? <Tag color="blue" style={{ fontWeight: 700, marginRight: 0, fontFamily: 'monospace' }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>
     },
