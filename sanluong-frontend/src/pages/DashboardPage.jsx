@@ -3222,7 +3222,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
   const subItems = [
     {
       key: 'thoi_gian',
-      label: 'Theo Thời Gian',
+      label: <span style={{ color: '#0000CC' }}>Theo Thời Gian</span>,
       children: (
         <div>
           <Table size="small" bordered columns={[
@@ -3254,7 +3254,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
     },
     {
       key: 'san_pham',
-      label: 'Theo Sản Phẩm',
+      label: <span style={{ color: '#0000CC' }}>Theo Sản Phẩm</span>,
       children: (
         <div>
           <Table size="small" bordered columns={[
@@ -3329,7 +3329,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
     },
     {
       key: 'may_moc',
-      label: 'Theo Máy Móc',
+      label: <span style={{ color: '#0000CC' }}>Theo Máy Móc</span>,
       children: (
         <div>
           <Table size="small" bordered columns={[
@@ -3437,7 +3437,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
     },
     {
       key: 'top15',
-      label: 'Top 15 SP',
+      label: <span style={{ color: '#0000CC' }}>Top 15 SP</span>,
       children: (
         <Table size="small" bordered columns={[
           { title: 'STT', key: 'stt', width: 48, align: 'center', onHeaderCell: hc(), render: (_, __, i) => <b>{i + 1}</b> },
@@ -3454,7 +3454,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
     },
     {
       key: 'phan_tich_cong',
-      label: 'Phân Tích Công',
+      label: <span style={{ color: '#0000CC' }}>Phân Tích Công</span>,
       children: (
         <div>
           {/* Bảng Công theo Loại Sản Phẩm */}
@@ -3552,7 +3552,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
     },
     {
       key: 'tong_hop_pt',
-      label: 'Tổng Hợp',
+      label: <span style={{ color: '#0000CC' }}>Tổng Hợp</span>,
       children: (
         <div>
           <div style={{ fontWeight: 600, color: '#006666', marginBottom: 12 }}>Top Máy Móc Theo Sản Lượng</div>
