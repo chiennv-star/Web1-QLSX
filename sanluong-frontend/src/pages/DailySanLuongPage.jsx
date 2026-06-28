@@ -2934,7 +2934,7 @@ function PhanTichSanLuongTab() {
 export default function DailySanLuongPage() {
   const { isAdmin, isAdminKH, isManHinh, isTKSX } = useAuth()
   const canApprove     = isAdmin() || isAdminKH()
-  const canViewAnalytics = isAdmin() || isAdminKH() || isTKSX()
+  const canViewAnalytics = isAdmin() || isTKSX()
   const manHinh = isManHinh()
   const location = useLocation()
 
