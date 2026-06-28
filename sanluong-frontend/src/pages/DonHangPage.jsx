@@ -13,6 +13,7 @@ import {
   UploadOutlined, FileExcelOutlined, CloseCircleOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
+import * as XLSX from 'xlsx'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
 
@@ -1155,6 +1156,36 @@ export default function DonHangPage() {
     finally { setBulkDeleting(false) }
   }
 
+  const exportExcel = (rows, sheetName, filename) => {
+    const wsData = [
+      ['#', 'Mã Bravo', 'Mã SP', 'Tên Sản Phẩm', 'Ngày Đặt Hàng', 'Mã Đơn Hàng',
+       'SL Đặt Hàng', 'Tình Trạng ĐH', 'SL Đã Xếp KH', 'SL Còn Lại',
+       'Tình Trạng SX', 'Tổ Thực Hiện', 'Đã Lên Lịch', 'Đã ĐG & Lịch ĐG', 'Ghi Chú'],
+      ...rows.map((r, i) => [
+        i + 1,
+        r.maBravo       || '',
+        r.maSp          || '',
+        r.tenSanPham    || '',
+        r.ngayDatHang   ? dayjs(r.ngayDatHang).format('DD/MM/YYYY') : '',
+        r.maDonHang     || '',
+        Number(r.soLuongDatHang) || 0,
+        r.tinhTrangDatHang === 'rat_gap' ? 'Rất Gấp' : r.tinhTrangDatHang === 'gap' ? 'Gấp' : '',
+        Number(r.soLuongDaXepKh) || 0,
+        Number(r.soLuongConLai)  || 0,
+        r.tinhTrangSx === 'done' ? 'Hoàn thành' : r.tinhTrangSx === 'doing' ? 'Đang SX' : 'Chưa bắt đầu',
+        (r.toThucHienList || []).join(', '),
+        r.daLenLichLam     ? 'Có' : '',
+        r.daDgVaXepLichDg  ? 'Có' : '',
+        r.ghiChu || '',
+      ]),
+    ]
+    const wb = XLSX.utils.book_new()
+    const ws = XLSX.utils.aoa_to_sheet(wsData)
+    ws['!cols'] = [5, 14, 10, 36, 13, 15, 13, 12, 13, 12, 14, 18, 12, 14, 30].map(w => ({ wch: w }))
+    XLSX.utils.book_append_sheet(wb, ws, sheetName)
+    XLSX.writeFile(wb, filename)
+  }
+
   const rowSelection = canEdit ? {
     selectedRowKeys,
     onChange: keys => setSelectedRowKeys(keys),
@@ -1564,6 +1595,37 @@ export default function DonHangPage() {
               </Button>
             </Popconfirm>
           )}
+          <Dropdown
+            menu={{
+              items: [
+                {
+                  key: 'export-active',
+                  icon: <FileExcelOutlined style={{ color: '#217346' }} />,
+                  label: <span style={{ fontWeight: 600 }}>Đơn Hàng ({displayData.length} dòng)</span>,
+                  onClick: () => exportExcel(
+                    displayData,
+                    'Đơn Hàng',
+                    `DonHang_${dayjs().format('YYYYMMDD_HHmm')}.xlsx`
+                  ),
+                },
+                {
+                  key: 'export-done',
+                  icon: <FileExcelOutlined style={{ color: '#16a34a' }} />,
+                  label: <span style={{ fontWeight: 600 }}>Đã Hoàn Thành ({completedData.length} dòng)</span>,
+                  onClick: () => exportExcel(
+                    completedData,
+                    'Đã Hoàn Thành',
+                    `DonHang_HoanThanh_${dayjs().format('YYYYMMDD_HHmm')}.xlsx`
+                  ),
+                },
+              ],
+            }}
+          >
+            <Button size="small" icon={<FileExcelOutlined />}
+              style={{ borderColor: '#217346', color: '#217346', fontWeight: 600 }}>
+              Xuất Excel ▾
+            </Button>
+          </Dropdown>
           {canEdit && (
             <>
               <Tooltip title="Tự động điền Mã SP và Tên Sản Phẩm cho các đơn hàng đang trống (tra từ danh mục Mã Bravo)">
