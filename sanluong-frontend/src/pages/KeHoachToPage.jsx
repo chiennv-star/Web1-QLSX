@@ -370,20 +370,20 @@ function AssignRow({
 
       {/* Người thực hiện */}
       <td style={{ ...td, minWidth: 380 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           {existingShifts.map(caKey => {
             const shiftData = a.caShifts[caKey] || { mas: [], sessionIds: {} }
             const cs        = CA_STYLE[caKey] || CA_STYLE['Ca 1']
             const isEmpty   = (shiftData.mas || []).length === 0
             return (
-              <React.Fragment key={caKey}>
-                <span style={{ fontSize: 10, fontWeight: 800, background: cs.bg, color: cs.text, border: `1px solid ${cs.border}`, borderRadius: 5, padding: '3px 8px', flexShrink: 0 }}>{caKey}</span>
+              <div key={caKey} style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                <span style={{ fontSize: 10, fontWeight: 800, background: cs.bg, color: cs.text, border: `1px solid ${cs.border}`, borderRadius: 5, padding: '3px 8px', flexShrink: 0, marginTop: 2 }}>{caKey}</span>
                 <div
                   onDragOver={readOnly ? undefined : onDragOver}
                   onDrop={readOnly ? undefined : e => onDropPerson(e, a.id, caKey)}
                   onDragEnter={readOnly ? undefined : e => { e.preventDefault(); e.currentTarget.style.outline = '2px dashed #6366f1' }}
                   onDragLeave={readOnly ? undefined : e => { e.currentTarget.style.outline = 'none' }}
-                  style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center', borderRadius: 8, padding: 2, transition: 'outline 0.1s' }}
+                  style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center', borderRadius: 8, padding: 2, transition: 'outline 0.1s', flex: 1 }}
                 >
                   {(shiftData.mas || []).map(ma => {
                     const emp        = employees.find(e => e.maNhanVien === ma)
@@ -415,18 +415,22 @@ function AssignRow({
                     </Tooltip>
                   )}
                 </div>
-              </React.Fragment>
+              </div>
             )
           })}
-          {!readOnly && availableShifts.map(caKey => {
-            const cs = CA_STYLE[caKey] || CA_STYLE['Ca 1']
-            return (
-              <button key={caKey} onClick={() => onAddShift(a.id, caKey)}
-                style={{ border: `1.5px dashed ${cs.border}`, background: 'transparent', cursor: 'pointer', color: cs.text, borderRadius: 6, padding: '3px 9px', fontSize: 10.5, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
-                <PlusOutlined style={{ fontSize: 9 }} /> {caKey}
-              </button>
-            )
-          })}
+          {!readOnly && availableShifts.length > 0 && (
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+              {availableShifts.map(caKey => {
+                const cs = CA_STYLE[caKey] || CA_STYLE['Ca 1']
+                return (
+                  <button key={caKey} onClick={() => onAddShift(a.id, caKey)}
+                    style={{ border: `1.5px dashed ${cs.border}`, background: 'transparent', cursor: 'pointer', color: cs.text, borderRadius: 6, padding: '3px 9px', fontSize: 10.5, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <PlusOutlined style={{ fontSize: 9 }} /> {caKey}
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
         {(a.note || !readOnly) && (
           <input value={a.note || ''} readOnly={readOnly}
