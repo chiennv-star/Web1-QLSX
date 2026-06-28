@@ -1,10 +1,11 @@
-﻿import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Table, Button, Space, Input, Modal,
   Form, Popconfirm, message, Tag, Row, Col, InputNumber, Select, Tooltip
 } from 'antd'
 import {
-  PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, AppstoreOutlined
+  PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined,
+  ReloadOutlined, AppstoreOutlined, SaveOutlined, CloseOutlined
 } from '@ant-design/icons'
 import api from '../api/axios'
 
@@ -21,14 +22,59 @@ const viParser = v => {
   return isNaN(n) ? '' : n
 }
 
+const MAY_MOC_PC_OPTIONS = [
+  'Máy nhũ hóa 500L', 'Máy nhũ hóa 700L', 'Máy Khuấy 1500L',
+  'Máy Khuấy 700L', 'Máy nhũ hóa 100L', 'Thủ Công',
+]
+const MAY_MOC_PL_OPTIONS = [
+  'Máy Chiết Tube Hàn Nhiệt', 'Máy Chiết Tube Hàn Seal',
+  'Máy Chiết Bánh Răng', 'Máy Chiết 4 vòi bơm khí',
+  'Máy Chiết 4 vòi bơm từ', 'Máy Chiết 2 vòi',
+  'Máy Chiết mặt nạ', 'Máy Chiết Nhu Động',
+  'Máy Chiết Bột', 'Thủ Công/ Sục ozon',
+]
+const LOAI_SP_OPTIONS = [
+  'Nhũ Tương', 'Dung Dịch', 'Gel', 'Son', 'Sáp', 'Bột',
+  'Nước hoa', 'Dầu gội', 'Sữa tắm', 'Tinh dầu', 'Nến',
+  'Kem trang điểm', 'Chiết xuất', 'Khác',
+]
+const TO_NHOM_OPTIONS = ['PCPL1', 'PCPL2', 'PCPL3']
+
+// ── Editable cell ─────────────────────────────────────────────────────────────
+function EditableCell({ editing, dataIndex, inputType, inputProps = {}, children, ...restProps }) {
+  let input
+  if (inputType === 'number') {
+    input = <InputNumber min={0} max={999999999} formatter={viFormatter} parser={viParser} style={{ width: '100%' }} size="small" {...inputProps} />
+  } else if (inputType === 'select') {
+    input = <Select size="small" allowClear style={{ width: '100%' }} {...inputProps} />
+  } else if (inputType === 'selectCreatable') {
+    input = (
+      <Select size="small" allowClear showSearch mode="tags" maxTagCount={1} style={{ width: '100%' }} {...inputProps} />
+    )
+  } else {
+    input = <Input size="small" {...inputProps} />
+  }
+  return (
+    <td {...restProps}>
+      {editing ? (
+        <Form.Item name={dataIndex} style={{ margin: 0 }}>
+          {input}
+        </Form.Item>
+      ) : children}
+    </td>
+  )
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
 export default function ProductMasterPage() {
-  const [data, setData] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [data, setData]           = useState([])
+  const [loading, setLoading]     = useState(false)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 })
-  const [keyword, setKeyword] = useState('')
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editItem, setEditItem] = useState(null)
-  const [form] = Form.useForm()
+  const [keyword, setKeyword]     = useState('')
+  const [editingKey, setEditingKey] = useState(null)
+  const [addModalOpen, setAddModalOpen] = useState(false)
+  const [form]    = Form.useForm()
+  const [addForm] = Form.useForm()
 
   const toolbarRef = useRef(null)
   const [toolbarH, setToolbarH] = useState(0)
@@ -39,7 +85,7 @@ export default function ProductMasterPage() {
     return () => obs.disconnect()
   }, [])
 
-  const fetchData = async (page = 0, size = 20, kw = keyword) => {
+  const fetchData = useCallback(async (page = 0, size = pagination.pageSize, kw = keyword) => {
     setLoading(true)
     try {
       const { data: res } = await api.get('/product-master', {
@@ -52,54 +98,47 @@ export default function ProductMasterPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [keyword, pagination.pageSize])
 
   useEffect(() => { fetchData(0) }, [])
 
-  const openCreate = () => {
-    setEditItem(null)
-    form.resetFields()
-    form.setFieldsValue({ slTrungBinh: 1000 })
-    setModalOpen(true)
-  }
+  const isEditing = record => record.id === editingKey
 
-  const openEdit = (item) => {
-    setEditItem(item)
+  const startEdit = record => {
     form.setFieldsValue({
-      ...item,
-      slTrungBinh:  item.slTrungBinh  != null ? Number(item.slTrungBinh)  : 1000,
-      nangSuatPc:   item.nangSuatPc   != null ? Number(item.nangSuatPc)   : 1000,
-      nangSuatPl:   item.nangSuatPl   != null ? Number(item.nangSuatPl)   : 1000,
-      nangSuatBbc1: item.nangSuatBbc1 != null ? Number(item.nangSuatBbc1) : 1000,
-      mayMocPc:   item.mayMocPc   || '',
-      mayMocPl:   item.mayMocPl   || '',
-      mayMocBbc1: item.mayMocBbc1 || '',
-      mayMocDg:   item.mayMocDg   || '',
+      maBravo:     record.maBravo     || '',
+      tienTrinh:   record.tienTrinh   || '',
+      spCong:      record.spCong      != null ? Number(record.spCong)      : null,
+      slTrungBinh: record.slTrungBinh != null ? Number(record.slTrungBinh) : 1000,
+      nangSuatPc:  record.nangSuatPc  != null ? Number(record.nangSuatPc)  : null,
+      nangSuatPl:  record.nangSuatPl  != null ? Number(record.nangSuatPl)  : null,
+      nangSuatBbc1:record.nangSuatBbc1!= null ? Number(record.nangSuatBbc1): null,
+      mayMocPc:    record.mayMocPc    || undefined,
+      mayMocPl:    record.mayMocPl    || undefined,
+      mayMocBbc1:  record.mayMocBbc1  || '',
+      mayMocDg:    record.mayMocDg    || '',
+      loaiSanPham: record.loaiSanPham || undefined,
+      khoiLuong:   record.khoiLuong   != null ? Number(record.khoiLuong)   : null,
+      toNhomPcpl:  record.toNhomPcpl  || undefined,
     })
-    setModalOpen(true)
+    setEditingKey(record.id)
   }
 
-  const numFields = ['slTrungBinh', 'nangSuatPc', 'nangSuatPl', 'nangSuatBbc1']
-  const onSave = async () => {
+  const cancelEdit = () => { setEditingKey(null); form.resetFields() }
+
+  const saveEdit = async (record) => {
     try {
       const values = await form.validateFields()
-      const payload = { ...values }
+      const numFields = ['slTrungBinh', 'nangSuatPc', 'nangSuatPl', 'nangSuatBbc1', 'khoiLuong', 'spCong']
       numFields.forEach(k => {
-        const raw = payload[k]
-        if (raw == null) return
-        if (typeof raw === 'number' && !isNaN(raw)) return
-        // fallback: Ant Design trả về chuỗi định dạng Việt Nam
-        const cleaned = String(raw).replace(/\./g, '').replace(',', '.')
-        payload[k] = parseFloat(cleaned) || 0
+        if (values[k] == null) return
+        if (typeof values[k] === 'number') return
+        const cleaned = String(values[k]).replace(/\./g, '').replace(',', '.')
+        values[k] = parseFloat(cleaned) || 0
       })
-      if (editItem) {
-        await api.put(`/product-master/${editItem.id}`, payload)
-        message.success('Cập nhật thành công')
-      } else {
-        await api.post('/product-master', payload)
-        message.success('Thêm mới thành công')
-      }
-      setModalOpen(false)
+      await api.put(`/product-master/${record.id}`, values)
+      message.success('Cập nhật thành công')
+      setEditingKey(null)
       fetchData(pagination.current - 1)
     } catch (err) {
       if (err?.response) message.error(err.response.data?.message || 'Lưu thất bại')
@@ -116,51 +155,169 @@ export default function ProductMasterPage() {
     }
   }
 
+  const openAdd = () => {
+    addForm.resetFields()
+    addForm.setFieldsValue({ slTrungBinh: 1000 })
+    setAddModalOpen(true)
+  }
+
+  const onAdd = async () => {
+    try {
+      const values = await addForm.validateFields()
+      const numFields = ['slTrungBinh', 'nangSuatPc', 'nangSuatPl', 'nangSuatBbc1', 'khoiLuong', 'spCong']
+      numFields.forEach(k => {
+        if (values[k] == null) return
+        if (typeof values[k] === 'number') return
+        const cleaned = String(values[k]).replace(/\./g, '').replace(',', '.')
+        values[k] = parseFloat(cleaned) || 0
+      })
+      await api.post('/product-master', values)
+      message.success('Thêm mới thành công')
+      setAddModalOpen(false)
+      fetchData(0)
+    } catch (err) {
+      if (err?.response) message.error(err.response.data?.message || 'Lưu thất bại')
+    }
+  }
+
   const numCell = v => v != null
     ? <span style={{ fontWeight: 600 }}>{Number(v).toLocaleString('vi-VN')}</span>
     : <span style={{ color: '#d9d9d9' }}>—</span>
 
+  const editCol = (dataIndex, inputType, inputProps) => ({
+    onCell: record => ({
+      record, editing: isEditing(record),
+      dataIndex, inputType, inputProps,
+    })
+  })
+
   const columns = [
     {
       title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 120, fixed: 'left',
-      render: v => <Tag color="blue" style={{ fontWeight: 700, marginRight: 0, fontFamily: 'monospace' }}>{v || '—'}</Tag>
+      render: v => <Tag color="blue" style={{ fontWeight: 700, marginRight: 0, fontFamily: 'monospace' }}>{v || '—'}</Tag>,
+      ...editCol('maBravo', 'text', { placeholder: '10601364' }),
     },
     {
-      title: 'Mã TP', dataIndex: 'maTp', key: 'maTp', width: 100,
-      render: v => <span style={{ fontWeight: 600, color: '#595959' }}>{v}</span>
+      title: 'Mã TP', dataIndex: 'maTp', key: 'maTp', width: 90, fixed: 'left',
+      render: v => <span style={{ fontWeight: 600, color: '#595959' }}>{v}</span>,
+      // maTp is the unique key — not editable after creation
     },
     {
-      title: 'Tiến Trình (Tên Sản Phẩm)', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 260,
-      render: v => <span style={{ fontWeight: 500 }}>{v}</span>
+      title: 'Tiến Trình (Tên SP)', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 240,
+      render: v => <span style={{ fontWeight: 500 }}>{v}</span>,
+      ...editCol('tienTrinh', 'text', { placeholder: 'Xịt khử mùi 10ml' }),
     },
     {
-      title: 'SL Trung Bình', dataIndex: 'slTrungBinh', key: 'slTrungBinh', width: 120, align: 'right',
-      render: v => <span style={{ fontWeight: 700, color: '#1E3A5F' }}>{v != null ? Number(v).toLocaleString('vi-VN') : 1}</span>
+      title: 'Loại SP', dataIndex: 'loaiSanPham', key: 'loaiSanPham', width: 120,
+      render: v => v ? <Tag color="geekblue" style={{ margin: 0, fontSize: 11 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>,
+      ...editCol('loaiSanPham', 'select', {
+        placeholder: 'Chọn loại',
+        options: LOAI_SP_OPTIONS.map(v => ({ value: v, label: v })),
+      }),
     },
-    { title: 'Năng Suất PC',   dataIndex: 'nangSuatPc',   key: 'nangSuatPc',   width: 120, align: 'right', render: numCell },
-    { title: 'Năng Suất PL',   dataIndex: 'nangSuatPl',   key: 'nangSuatPl',   width: 120, align: 'right', render: numCell },
-    { title: 'Năng Suất BBC1', dataIndex: 'nangSuatBbc1', key: 'nangSuatBbc1', width: 130, align: 'right', render: numCell },
-    { title: 'Máy Móc PC',   dataIndex: 'mayMocPc',   key: 'mayMocPc',   width: 160, render: v => v || <span style={{ color: '#d9d9d9' }}>—</span> },
-    { title: 'Máy Móc PL',   dataIndex: 'mayMocPl',   key: 'mayMocPl',   width: 180, render: v => v || <span style={{ color: '#d9d9d9' }}>—</span> },
-    { title: 'Máy Móc BBC1', dataIndex: 'mayMocBbc1', key: 'mayMocBbc1', width: 160, render: v => v || <span style={{ color: '#d9d9d9' }}>—</span> },
-    { title: 'Máy Móc ĐG',  dataIndex: 'mayMocDg',   key: 'mayMocDg',   width: 140, render: v => v || <span style={{ color: '#d9d9d9' }}>—</span> },
     {
-      title: 'Thao Tác', key: 'action', width: 90, fixed: 'right', align: 'center',
-      render: (_, record) => (
-        <Space size={4}>
-          <Tooltip title="Sửa">
-            <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} />
-          </Tooltip>
-          <Popconfirm title="Xóa mục này?" onConfirm={() => handleDelete(record.id)}
-            okText="Xóa" cancelText="Hủy">
-            <Tooltip title="Xóa">
-              <Button size="small" danger icon={<DeleteOutlined />} />
+      title: 'Tổ/Nhóm PCPL', dataIndex: 'toNhomPcpl', key: 'toNhomPcpl', width: 110, align: 'center',
+      render: v => v ? <Tag color="purple" style={{ margin: 0, fontSize: 11 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>,
+      ...editCol('toNhomPcpl', 'select', {
+        placeholder: 'PCPL1/2/3',
+        options: TO_NHOM_OPTIONS.map(v => ({ value: v, label: v })),
+      }),
+    },
+    {
+      title: 'SL TB', dataIndex: 'slTrungBinh', key: 'slTrungBinh', width: 100, align: 'right',
+      render: v => <span style={{ fontWeight: 700, color: '#1E3A5F' }}>{v != null ? Number(v).toLocaleString('vi-VN') : 1}</span>,
+      ...editCol('slTrungBinh', 'number', { placeholder: '1000' }),
+    },
+    {
+      title: 'SP/Công', dataIndex: 'spCong', key: 'spCong', width: 100, align: 'right',
+      render: numCell,
+      ...editCol('spCong', 'number', { placeholder: 'SP/công' }),
+    },
+    {
+      title: 'Khối lượng (g)', dataIndex: 'khoiLuong', key: 'khoiLuong', width: 120, align: 'right',
+      render: numCell,
+      ...editCol('khoiLuong', 'number', { placeholder: 'gram' }),
+    },
+    {
+      title: 'NS PC', dataIndex: 'nangSuatPc', key: 'nangSuatPc', width: 100, align: 'right',
+      render: numCell,
+      ...editCol('nangSuatPc', 'number'),
+    },
+    {
+      title: 'NS PL', dataIndex: 'nangSuatPl', key: 'nangSuatPl', width: 100, align: 'right',
+      render: numCell,
+      ...editCol('nangSuatPl', 'number'),
+    },
+    {
+      title: 'NS BBC1', dataIndex: 'nangSuatBbc1', key: 'nangSuatBbc1', width: 100, align: 'right',
+      render: numCell,
+      ...editCol('nangSuatBbc1', 'number'),
+    },
+    {
+      title: 'Máy PC', dataIndex: 'mayMocPc', key: 'mayMocPc', width: 160,
+      render: v => v || <span style={{ color: '#d9d9d9' }}>—</span>,
+      ...editCol('mayMocPc', 'select', {
+        placeholder: 'Chọn máy PC',
+        options: MAY_MOC_PC_OPTIONS.map(v => ({ value: v, label: v })),
+      }),
+    },
+    {
+      title: 'Máy PL', dataIndex: 'mayMocPl', key: 'mayMocPl', width: 200,
+      render: v => v || <span style={{ color: '#d9d9d9' }}>—</span>,
+      ...editCol('mayMocPl', 'select', {
+        placeholder: 'Chọn máy PL',
+        options: MAY_MOC_PL_OPTIONS.map(v => ({ value: v, label: v })),
+      }),
+    },
+    {
+      title: 'Máy BBC1', dataIndex: 'mayMocBbc1', key: 'mayMocBbc1', width: 150,
+      render: v => v || <span style={{ color: '#d9d9d9' }}>—</span>,
+      ...editCol('mayMocBbc1', 'text', { placeholder: 'Tên máy BBC1' }),
+    },
+    {
+      title: 'Máy ĐG', dataIndex: 'mayMocDg', key: 'mayMocDg', width: 150,
+      render: v => v || <span style={{ color: '#d9d9d9' }}>—</span>,
+      ...editCol('mayMocDg', 'text', { placeholder: 'Tên máy ĐG' }),
+    },
+    {
+      title: 'Thao Tác', key: 'action', width: 100, fixed: 'right', align: 'center',
+      render: (_, record) => {
+        const editing = isEditing(record)
+        return editing ? (
+          <Space size={4}>
+            <Tooltip title="Lưu">
+              <Button size="small" type="primary" icon={<SaveOutlined />}
+                style={{ background: '#16a34a', borderColor: '#16a34a' }}
+                onClick={() => saveEdit(record)} />
             </Tooltip>
-          </Popconfirm>
-        </Space>
-      )
+            <Tooltip title="Hủy">
+              <Button size="small" icon={<CloseOutlined />} onClick={cancelEdit} />
+            </Tooltip>
+          </Space>
+        ) : (
+          <Space size={4}>
+            <Tooltip title="Sửa">
+              <Button size="small" icon={<EditOutlined />}
+                disabled={editingKey !== null}
+                onClick={() => startEdit(record)} />
+            </Tooltip>
+            <Popconfirm title="Xóa mục này?" onConfirm={() => handleDelete(record.id)}
+              okText="Xóa" cancelText="Hủy">
+              <Tooltip title="Xóa">
+                <Button size="small" danger icon={<DeleteOutlined />}
+                  disabled={editingKey !== null} />
+              </Tooltip>
+            </Popconfirm>
+          </Space>
+        )
+      }
     }
   ]
+
+  const mergedColumns = columns.map(col => {
+    if (!col.onCell) return col
+    return { ...col, onCell: record => col.onCell(record) }
+  })
 
   return (
     <>
@@ -172,9 +329,11 @@ export default function ProductMasterPage() {
           border-right: 1px solid #4db3d4 !important; white-space: nowrap;
         }
         .pm-table .ant-table-thead > tr > th::before { display: none !important; }
-        .pm-table .ant-table-tbody > tr > td { padding: 7px 10px !important; vertical-align: middle; }
+        .pm-table .ant-table-tbody > tr > td { padding: 5px 8px !important; vertical-align: middle; }
         .pm-table .ant-table-tbody > tr:hover > td { background: #EAECF2 !important; }
         .pm-table .row-stripe td { background: #fafbff !important; }
+        .pm-table .row-editing td { background: #fffbeb !important; }
+        .pm-table .ant-form-item-control-input { min-height: unset; }
       `}</style>
 
       {/* Toolbar */}
@@ -189,11 +348,9 @@ export default function ProductMasterPage() {
             Danh mục Mã TP
           </span>
           <span style={{ fontSize: 12, color: '#888' }}>
-            Quản lý danh sách Mã TP kèm Mã Bravo và Tiến trình.
-            Khi nhập Mã TP ở form Sản lượng, hệ thống sẽ tự động điền các thông tin này.
+            Click nút ✏️ trên hàng để sửa trực tiếp tất cả các ô.
           </span>
         </div>
-
         <Row gutter={12} align="middle">
           <Col flex="auto">
             <Input
@@ -210,12 +367,10 @@ export default function ProductMasterPage() {
           <Col>
             <Space>
               <Button size="small" type="primary" icon={<SearchOutlined />}
-                onClick={() => fetchData(0, pagination.pageSize, keyword)}>
-                Tìm
-              </Button>
+                onClick={() => fetchData(0, pagination.pageSize, keyword)}>Tìm</Button>
               <Button size="small" icon={<ReloadOutlined />}
                 onClick={() => { setKeyword(''); fetchData(0) }} />
-              <Button size="small" type="primary" icon={<PlusOutlined />} onClick={openCreate}
+              <Button size="small" type="primary" icon={<PlusOutlined />} onClick={openAdd}
                 style={{ background: '#1D4ED8', borderColor: '#1D4ED8' }}>
                 Thêm mã TP
               </Button>
@@ -224,103 +379,122 @@ export default function ProductMasterPage() {
         </Row>
       </div>
 
-      <Table
-        className="pm-table"
-        columns={columns}
-        dataSource={data}
-        rowKey="id"
-        loading={loading}
-        size="small"
-        scroll={{ x: 1600 }}
-        sticky={{ offsetHeader: toolbarH }}
-        rowClassName={(_, i) => i % 2 !== 0 ? 'row-stripe' : ''}
-        pagination={{
-          ...pagination,
-          showSizeChanger: true,
-          showTotal: total => `Tổng ${total} mục`,
-          onChange: (page, pageSize) => {
-            setPagination(p => ({ ...p, current: page, pageSize }))
-            fetchData(page - 1, pageSize)
-          }
-        }}
-      />
+      <Form form={form} component={false}>
+        <Table
+          className="pm-table"
+          components={{ body: { cell: EditableCell } }}
+          columns={mergedColumns}
+          dataSource={data}
+          rowKey="id"
+          loading={loading}
+          size="small"
+          scroll={{ x: 1800 }}
+          sticky={{ offsetHeader: toolbarH }}
+          rowClassName={(record, i) => {
+            if (isEditing(record)) return 'row-editing'
+            return i % 2 !== 0 ? 'row-stripe' : ''
+          }}
+          pagination={{
+            ...pagination,
+            showSizeChanger: true,
+            showTotal: total => `Tổng ${total} mục`,
+            onChange: (page, pageSize) => {
+              if (editingKey) cancelEdit()
+              setPagination(p => ({ ...p, current: page, pageSize }))
+              fetchData(page - 1, pageSize)
+            }
+          }}
+        />
+      </Form>
 
+      {/* Add new modal */}
       <Modal
-        title={editItem ? 'Chỉnh sửa Mã TP' : 'Thêm Mã TP mới'}
-        open={modalOpen}
-        onOk={onSave}
-        onCancel={() => setModalOpen(false)}
+        title="Thêm Mã TP mới"
+        open={addModalOpen}
+        onOk={onAdd}
+        onCancel={() => setAddModalOpen(false)}
         okText="Lưu"
         cancelText="Hủy"
-        width={520}
+        width={600}
       >
-        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+        <Form form={addForm} layout="vertical" style={{ marginTop: 16 }}>
           <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item label="Mã TP" name="maTp"
-                rules={[{ required: true, message: 'Nhập Mã TP' }]}>
-                <Input disabled={Boolean(editItem)} placeholder="Ví dụ: TP364" />
+            <Col span={8}>
+              <Form.Item label="Mã TP" name="maTp" rules={[{ required: true, message: 'Nhập Mã TP' }]}>
+                <Input placeholder="TP364" />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item label="Mã Bravo" name="maBravo"
-                rules={[{ required: true, message: 'Nhập Mã Bravo' }]}>
-                <Input placeholder="Ví dụ: 10601364" />
+            <Col span={8}>
+              <Form.Item label="Mã Bravo" name="maBravo" rules={[{ required: true, message: 'Nhập Mã Bravo' }]}>
+                <Input placeholder="10601364" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="Tổ/Nhóm PCPL" name="toNhomPcpl">
+                <Select allowClear placeholder="PCPL1/2/3"
+                  options={TO_NHOM_OPTIONS.map(v => ({ value: v, label: v }))} />
               </Form.Item>
             </Col>
           </Row>
 
           <Form.Item label="Tiến trình (Tên sản phẩm)" name="tienTrinh"
             rules={[{ required: true, message: 'Nhập tên tiến trình' }]}>
-            <Input placeholder="Ví dụ: Xịt khử mùi Wings up 24H 10ml" />
-          </Form.Item>
-
-          <Form.Item label="SL Trung bình" name="slTrungBinh"
-            rules={[{ required: true, message: 'Nhập SL Trung bình' }]}>
-            <InputNumber min={0} max={999999999} formatter={viFormatter} parser={viParser} style={{ width: '100%' }} placeholder="Mặc định: 1000" />
+            <Input placeholder="Xịt khử mùi Wings up 24H 10ml" />
           </Form.Item>
 
           <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="Loại sản phẩm" name="loaiSanPham">
+                <Select allowClear placeholder="Chọn loại"
+                  options={LOAI_SP_OPTIONS.map(v => ({ value: v, label: v }))} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Khối lượng (gram)" name="khoiLuong">
+                <InputNumber min={0} formatter={viFormatter} parser={viParser} style={{ width: '100%' }} placeholder="250" />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="SP/Công" name="spCong">
+                <InputNumber min={0} formatter={viFormatter} parser={viParser} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item label="SL Trung bình" name="slTrungBinh" rules={[{ required: true }]}>
+                <InputNumber min={0} formatter={viFormatter} parser={viParser} style={{ width: '100%' }} placeholder="1000" />
+              </Form.Item>
+            </Col>
             <Col span={8}>
               <Form.Item label="Năng suất PC" name="nangSuatPc">
-                <InputNumber min={0} max={999999999} formatter={viFormatter} parser={viParser} style={{ width: '100%' }} placeholder="PC" />
+                <InputNumber min={0} formatter={viFormatter} parser={viParser} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col span={8}>
               <Form.Item label="Năng suất PL" name="nangSuatPl">
-                <InputNumber min={0} max={999999999} formatter={viFormatter} parser={viParser} style={{ width: '100%' }} placeholder="PL" />
+                <InputNumber min={0} formatter={viFormatter} parser={viParser} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
-            <Col span={8}>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
               <Form.Item label="Năng suất BBC1" name="nangSuatBbc1">
-                <InputNumber min={0} max={999999999} formatter={viFormatter} parser={viParser} style={{ width: '100%' }} placeholder="BBC1" />
+                <InputNumber min={0} formatter={viFormatter} parser={viParser} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
           </Row>
 
           <Form.Item label="Máy Móc PC" name="mayMocPc">
-            <Select placeholder="Chọn máy móc PC" allowClear options={[
-              { value: 'Máy nhũ hóa 500L', label: 'Máy nhũ hóa 500L' },
-              { value: 'Máy Khuấy 1500L',  label: 'Máy Khuấy 1500L' },
-              { value: 'Máy Khuấy 700L',   label: 'Máy Khuấy 700L' },
-              { value: 'Máy nhũ hóa 100L', label: 'Máy nhũ hóa 100L' },
-              { value: 'Thủ Công',         label: 'Thủ Công' },
-            ]} />
+            <Select placeholder="Chọn máy móc PC" allowClear
+              options={MAY_MOC_PC_OPTIONS.map(v => ({ value: v, label: v }))} />
           </Form.Item>
 
           <Form.Item label="Máy Móc PL" name="mayMocPl">
-            <Select placeholder="Chọn máy móc PL" allowClear options={[
-              { value: 'Máy Chiết Tube Hàn Nhiệt', label: 'Máy Chiết Tube Hàn Nhiệt' },
-              { value: 'Máy Chiết Tube Hàn Seal',  label: 'Máy Chiết Tube Hàn Seal' },
-              { value: 'Máy Chiết Bánh Răng',      label: 'Máy Chiết Bánh Răng' },
-              { value: 'Máy Chiết 4 vòi bơm khí', label: 'Máy Chiết 4 vòi bơm khí' },
-              { value: 'Máy Chiết 4 vòi bơm từ',  label: 'Máy Chiết 4 vòi bơm từ' },
-              { value: 'Máy Chiết 2 vòi',          label: 'Máy Chiết 2 vòi' },
-              { value: 'Máy Chiết mặt nạ',         label: 'Máy Chiết mặt nạ' },
-              { value: 'Máy Chiết Nhu Động',       label: 'Máy Chiết Nhu Động' },
-              { value: 'Máy Chiết Bột',            label: 'Máy Chiết Bột' },
-              { value: 'Thủ Công/ Sục ozon',       label: 'Thủ Công/ Sục ozon' },
-            ]} />
+            <Select placeholder="Chọn máy móc PL" allowClear
+              options={MAY_MOC_PL_OPTIONS.map(v => ({ value: v, label: v }))} />
           </Form.Item>
 
           <Row gutter={16}>
