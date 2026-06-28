@@ -2872,6 +2872,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
   const [loading, setLoading] = useState(false)
   const [filterMode, setFilterMode] = useState('all')
   const [customRange, setCustomRange] = useState(null)
+  const [activeSubTab, setActiveSubTab] = useState(() => localStorage.getItem('phanTichSL_tab') || 'thoi_gian')
 
   useEffect(() => {
     if (loaded) return
@@ -3628,7 +3629,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
             </div>
           ))}
         </div>
-        <Tabs size="small" items={subItems} />
+        <Tabs size="small" items={subItems} activeKey={activeSubTab} onChange={k => { setActiveSubTab(k); localStorage.setItem('phanTichSL_tab', k) }} />
       </Spin>
     </div>
   )
