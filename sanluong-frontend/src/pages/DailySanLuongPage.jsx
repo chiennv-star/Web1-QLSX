@@ -2932,16 +2932,20 @@ function PhanTichSanLuongTab() {
 // ─── Page chính: wrapper Tabs ─────────────────────────────────────────────────
 
 export default function DailySanLuongPage() {
-  const { isAdmin, isAdminKH, isManHinh } = useAuth()
-  const canApprove = isAdmin() || isAdminKH()
+  const { isAdmin, isAdminKH, isManHinh, isTKSX } = useAuth()
+  const canApprove     = isAdmin() || isAdminKH()
+  const canViewAnalytics = isAdmin() || isAdminKH() || isTKSX()
   const manHinh = isManHinh()
   const location = useLocation()
 
   // Đọc ?tab= từ URL, fallback localStorage, rồi mới default 'daily'
   const tabFromUrl = new URLSearchParams(location.search).get('tab')
-  const [activeTab, setActiveTab] = useState(
-    manHinh ? 'baocao' : (tabFromUrl || localStorage.getItem('dailysl_activeTab') || 'daily')
-  )
+  const [activeTab, setActiveTab] = useState(() => {
+    if (manHinh) return 'baocao'
+    const t = tabFromUrl || localStorage.getItem('dailysl_activeTab') || 'daily'
+    if (!canViewAnalytics && (t === 'thongke' || t === 'phantich')) return 'daily'
+    return t
+  })
 
   // Cập nhật activeTab khi URL thay đổi
   useEffect(() => {
@@ -2998,7 +3002,7 @@ export default function DailySanLuongPage() {
       ),
       children: <BaoCaoTab />,
     },
-    {
+    ...(canViewAnalytics ? [{
       key: 'thongke',
       label: (
         <span>
@@ -3007,8 +3011,8 @@ export default function DailySanLuongPage() {
         </span>
       ),
       children: <ThongKeSanXuatTab />,
-    },
-    {
+    }] : []),
+    ...(canViewAnalytics ? [{
       key: 'phantich',
       label: (
         <span>
@@ -3017,7 +3021,7 @@ export default function DailySanLuongPage() {
         </span>
       ),
       children: <PhanTichSanLuongTab />,
-    },
+    }] : []),
   ]
 
   return (
