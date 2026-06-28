@@ -377,9 +377,7 @@ function AssignRow({
             const isEmpty   = (shiftData.mas || []).length === 0
             return (
               <React.Fragment key={caKey}>
-                {existingShifts.length > 1 && (
-                  <span style={{ fontSize: 10, fontWeight: 800, background: cs.bg, color: cs.text, border: `1px solid ${cs.border}`, borderRadius: 5, padding: '3px 8px', flexShrink: 0 }}>{caKey}</span>
-                )}
+                <span style={{ fontSize: 10, fontWeight: 800, background: cs.bg, color: cs.text, border: `1px solid ${cs.border}`, borderRadius: 5, padding: '3px 8px', flexShrink: 0 }}>{caKey}</span>
                 <div
                   onDragOver={readOnly ? undefined : onDragOver}
                   onDrop={readOnly ? undefined : e => onDropPerson(e, a.id, caKey)}
