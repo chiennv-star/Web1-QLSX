@@ -214,7 +214,7 @@ export default function MainLayout() {
           { key: '/cham-cong', icon: <FileDoneOutlined />, label: 'Chấm công' },
         ] : []),
         { key: '/danh-muc',        icon: <AppstoreOutlined />, label: 'Quản Lý Danh Mục' },
-        {
+        ...(isAdmin() ? [{
           key: '/notifications',
           icon: (
             <Badge count={unreadCount} size="small" style={{ background: '#008080' }} offset={[6, -2]}>
@@ -229,7 +229,7 @@ export default function MainLayout() {
               )}
             </span>
           ),
-        },
+        }] : []),
         ...(isAdmin() ? [{ key: '/trash', icon: <DeleteOutlined style={{ color: '#f87171' }} />, label: <span style={{ color: '#f87171' }}>Thùng Rác</span> }] : []),
       ]
 
@@ -387,7 +387,8 @@ export default function MainLayout() {
           </Space>
 
           <Space size={8} align="center">
-          {/* Bell icon */}
+          {/* Bell icon — chỉ admin */}
+          {isAdmin() && (
           <Tooltip title="Thông báo">
             <Badge count={unreadCount} size="small" style={{ background: '#008080' }}>
               <Button
@@ -398,6 +399,7 @@ export default function MainLayout() {
               />
             </Badge>
           </Tooltip>
+          )}
 
           {/* User info */}
           <Dropdown menu={userMenu} placement="bottomRight">
