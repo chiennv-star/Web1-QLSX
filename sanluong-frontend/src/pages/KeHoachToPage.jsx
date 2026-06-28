@@ -32,6 +32,16 @@ const SS_MONTH     = 'kehoachto_monthStart'
 const SS_ASSIGNS   = 'kehoachto_assigns'
 const SS_P1_OPEN   = 'kehoachto_p1Open'
 const SS_P2_OPEN   = 'kehoachto_p2Open'
+const SS_P3_OPEN   = 'kehoachto_p3Open'
+
+// WIP config theo tổ
+const WIP_CFG_MAP = {
+  PCPL1:      { endpoint: '/production/wip-pc',   doDang: r => (r.soLuong || 0) - (parseInt(r.slPc) || 0) },
+  PCPL2:      { endpoint: '/production/wip-pc',   doDang: r => (r.soLuong || 0) - (parseInt(r.slPc) || 0) },
+  PCPL3:      { endpoint: '/production/wip-pl',   doDang: r => (parseInt(r.slPc) || 0) - (parseInt(r.pcPl) || 0) },
+  ĐG:         { endpoint: '/production/wip-dg',   doDang: r => (parseInt(r.pcPl) || 0) - (parseInt(r.dg2) || 0) },
+  BBC1:       { endpoint: '/production/wip-bbc1', doDang: r => (r.soLuong || 0) - (parseInt(r.bbc1_2) || 0) },
+}
 
 const TIME_MODES = [
   { key: 'week',  label: 'Tuần'   },
@@ -842,6 +852,28 @@ export default function KeHoachToPage() {
   // ── Panel open/close ──────────────────────────────────────────────────────
   const [p1Open, setP1Open] = useState(() => sessionStorage.getItem(SS_P1_OPEN) === 'true')
   const [p2Open, setP2Open] = useState(() => sessionStorage.getItem(SS_P2_OPEN) === 'true')
+  const [p3Open, setP3Open] = useState(() => sessionStorage.getItem(SS_P3_OPEN) === 'true')
+
+  // ── WIP (Hàng dở dang) ────────────────────────────────────────────────────
+  const [wipItems, setWipItems]   = useState([])
+  const [wipLoading, setWipLoading] = useState(false)
+
+  useEffect(() => {
+    if (!selectedTo) { setWipItems([]); return }
+    const cfg = WIP_CFG_MAP[selectedTo]
+    if (!cfg) { setWipItems([]); return }
+    setWipLoading(true)
+    api.get(cfg.endpoint)
+      .then(({ data }) => {
+        const items = (data || [])
+          .map(r => ({ ...r, _doDang: cfg.doDang(r) }))
+          .filter(r => r._doDang > 0)
+          .sort((a, b) => b._doDang - a._doDang)
+        setWipItems(items)
+      })
+      .catch(() => {})
+      .finally(() => setWipLoading(false))
+  }, [selectedTo]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Export day as image ────────────────────────────────────────────────────
   const exportDayAsImage = useCallback(async (dayStr, dow, dayAssigns) => {
@@ -1526,6 +1558,73 @@ export default function KeHoachToPage() {
               </div>
             )}
           </div>
+
+          {/* ── ③ Hàng dở dang (header strip) ── */}
+          {WIP_CFG_MAP[selectedTo] && (
+            <div style={{ flexShrink: 0, borderBottom: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => setP3Open(v => { const next = !v; sessionStorage.setItem(SS_P3_OPEN, next); return next })}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.04em', textTransform: 'uppercase', flex: 1 }}>
+                  ③ Hàng dở dang
+                  {selectedTo && (
+                    <span style={{ fontWeight: 600, color: '#b45309', marginLeft: 6, textTransform: 'none', fontSize: 10.5 }}>
+                      ({wipLoading ? '...' : `${wipItems.length} mặt hàng · ${wipItems.reduce((s, r) => s + r._doDang, 0).toLocaleString('vi-VN')} sp`})
+                    </span>
+                  )}
+                </span>
+                <span style={{ color: '#94a3b8', fontSize: 13, flexShrink: 0 }}>{p3Open ? '▴' : '▾'}</span>
+              </div>
+              {p3Open && (
+                <div style={{ overflowX: 'auto', padding: '0 12px 8px', display: 'flex', gap: 7, alignItems: 'flex-start' }}>
+                  {wipLoading ? (
+                    <div style={{ padding: '8px 0' }}><Spin size="small" /></div>
+                  ) : !selectedTo ? (
+                    <div style={{ color: '#94a3b8', fontSize: 12, padding: '4px 0' }}>— Chọn tổ để xem hàng dở dang —</div>
+                  ) : wipItems.length === 0 ? (
+                    <div style={{ color: '#94a3b8', fontSize: 12, padding: '4px 0', whiteSpace: 'nowrap' }}>Không có hàng dở dang.</div>
+                  ) : wipItems.map((r, idx) => {
+                    const matchedPlan = plans.find(p =>
+                      p.maBravo && r.maBravo && p.maBravo === r.maBravo &&
+                      p.soLo && r.lsx && String(p.soLo) === String(r.lsx)
+                    )
+                    return (
+                      <div
+                        key={idx}
+                        draggable={!!matchedPlan}
+                        onDragStart={matchedPlan ? e => onDragStartProduct(e, matchedPlan) : undefined}
+                        title={matchedPlan ? 'Kéo vào lịch' : 'Chưa có kế hoạch tương ứng'}
+                        style={{
+                          border: `1px solid ${matchedPlan ? '#fde68a' : '#e2e8f0'}`,
+                          background: matchedPlan ? '#fffbeb' : '#f8fafc',
+                          borderRadius: 8, padding: '6px 9px',
+                          cursor: matchedPlan ? 'grab' : 'default',
+                          flexShrink: 0, width: 185,
+                          opacity: matchedPlan ? 1 : 0.75,
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, fontSize: 12, color: '#92400e', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {r.tienTrinh || r.maBravo || '(Không tên)'}
+                        </div>
+                        <div style={{ fontSize: 10, color: '#64748b', fontFamily: 'monospace', marginTop: 2, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                          {r.maTp && <span>{r.maTp}</span>}
+                          {r.lsx && <span style={{ background: '#ede9fe', color: '#6d28d9', borderRadius: 3, padding: '0 4px' }}>Lô {r.lsx}</span>}
+                        </div>
+                        <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: '#1d4ed8', background: '#dbeafe', borderRadius: 4, padding: '1px 6px' }}>
+                            Dở dang: {r._doDang.toLocaleString('vi-VN')}
+                          </span>
+                          {matchedPlan
+                            ? <span style={{ fontSize: 9, color: '#15803d', fontWeight: 700 }}>⤵ kéo</span>
+                            : <span style={{ fontSize: 9, color: '#94a3b8' }}>chưa có KH</span>
+                          }
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {viewMode === 'viec' ? (
             <>
