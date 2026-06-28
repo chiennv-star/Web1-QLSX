@@ -82,11 +82,17 @@ function SidebarInner({ collapsed, location, menuItems, onNavigate, selectedKeys
         .nav-menu.ant-menu-dark .ant-menu-item-selected .ant-menu-title-content { color: #ffffff !important; }
         .nav-menu.ant-menu-dark .ant-menu-item .anticon { color: #e0ffff !important; }
         .nav-menu.ant-menu-dark .ant-menu-item-selected .anticon { color: #ffffff !important; }
-        .nav-menu.ant-menu-dark .ant-menu-submenu-title { color: #e0ffff !important; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 12px; }
-        .nav-menu.ant-menu-dark .ant-menu-submenu-title:hover { color: #ffffff !important; background: rgba(255,255,255,0.15) !important; }
-        .nav-menu.ant-menu-dark .ant-menu-submenu-title .anticon { color: #e0ffff !important; }
-        .nav-menu.ant-menu-dark .ant-menu-sub { background: rgba(0,0,0,0.25) !important; }
-        .nav-menu.ant-menu-dark .ant-menu-sub .ant-menu-item { font-size: 11.5px; padding-left: 40px !important; }
+        .nav-menu.ant-menu-dark .ant-menu-submenu-title { color: #94a3b8 !important; font-weight: 500; text-transform: none !important; letter-spacing: 0; font-size: 12.5px; }
+        .nav-menu.ant-menu-dark .ant-menu-submenu-title:hover { color: #ffffff !important; background: rgba(255,255,255,0.08) !important; }
+        .nav-menu.ant-menu-dark .ant-menu-submenu-title .anticon { color: #94a3b8 !important; }
+        .nav-menu.ant-menu-dark .ant-menu-submenu-open > .ant-menu-submenu-title { color: #e2e8f0 !important; }
+        .nav-menu.ant-menu-dark .ant-menu-submenu-open > .ant-menu-submenu-title .anticon { color: #e2e8f0 !important; }
+        .nav-menu.ant-menu-dark .ant-menu-sub { background: rgba(0,0,0,0.18) !important; }
+        .nav-menu.ant-menu-dark .ant-menu-sub .ant-menu-item { font-size: 12.5px; font-weight: 400; text-transform: none !important; letter-spacing: 0; padding-left: 36px !important; color: #94a3b8 !important; border-left: 3px solid transparent; }
+        .nav-menu.ant-menu-dark .ant-menu-sub .ant-menu-item .ant-menu-title-content { color: inherit !important; }
+        .nav-menu.ant-menu-dark .ant-menu-sub .ant-menu-item:hover { color: #e2e8f0 !important; background: rgba(255,255,255,0.07) !important; border-left-color: rgba(20,184,166,0.5) !important; }
+        .nav-menu.ant-menu-dark .ant-menu-sub .ant-menu-item-selected { background: rgba(20,184,166,0.12) !important; color: #ffffff !important; border-left: 3px solid #14b8a6 !important; font-weight: 600 !important; }
+        .nav-menu.ant-menu-dark .ant-menu-sub .ant-menu-item-selected .ant-menu-title-content { color: #ffffff !important; }
       `}</style>
       <Menu
         mode="inline"

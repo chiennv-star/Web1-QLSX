@@ -1457,7 +1457,7 @@ export default function KeHoachToPage() {
               </div>
               {/* Tổ tabs */}
               <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
-                {visibleTabs.map(tab => {
+                {TO_TABS.map(tab => {
                   const isSel = empTo === tab.key
                   return (
                     <button key={tab.key} onClick={() => setEmpTo(tab.key)} style={{
