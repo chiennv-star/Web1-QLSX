@@ -545,7 +545,7 @@ function AssignRow({
             onChange={readOnly ? undefined : e => onUpdate(a.id, 'note', e.target.value)}
             onBlur={readOnly ? undefined : e => onSyncNote(a.id, e.target.value)}
             placeholder={readOnly ? '' : 'Ghi chú...'}
-            style={{ marginTop: 5, width: '100%', maxWidth: 420, border: readOnly ? '1px solid transparent' : '1px solid #e2e8f0', borderRadius: 6, padding: '3px 8px', fontSize: 11, color: '#64748b', background: readOnly ? 'transparent' : undefined, outline: 'none', cursor: readOnly ? 'default' : undefined }} />
+            style={{ marginTop: 5, width: '100%', maxWidth: 420, border: readOnly ? '1px solid transparent' : '1px solid #e2e8f0', borderRadius: 6, padding: '3px 8px', fontSize: 11, color: '#0033FF', background: readOnly ? 'transparent' : undefined, outline: 'none', cursor: readOnly ? 'default' : undefined }} />
         )}
       </td>
 
