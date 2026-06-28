@@ -42,6 +42,26 @@ public interface WorkScheduleSessionRepository extends JpaRepository<WorkSchedul
 
     void deleteByWorkScheduleId(Long workScheduleId);
 
+    // có công nhưng chưa nhập SL hôm nay
+    @Query("SELECT COUNT(DISTINCT s.workScheduleId) FROM WorkScheduleSession s " +
+           "WHERE s.ngay = :today AND s.maNhanVien IS NOT NULL " +
+           "AND (s.loaiSession IS NULL OR s.loaiSession <> 'KH_TO') " +
+           "AND s.workScheduleId NOT IN (" +
+           "  SELECT s2.workScheduleId FROM WorkScheduleSession s2 " +
+           "  WHERE s2.ngay = :today AND s2.sanLuong IS NOT NULL " +
+           "  AND (s2.loaiSession IS NULL OR s2.loaiSession <> 'KH_TO'))")
+    long countWithWorkersButNoSanLuongToday(@Param("today") LocalDate today);
+
+    // có SL nhưng không có công nhân hôm nay
+    @Query("SELECT COUNT(DISTINCT s.workScheduleId) FROM WorkScheduleSession s " +
+           "WHERE s.ngay = :today AND s.sanLuong IS NOT NULL " +
+           "AND (s.loaiSession IS NULL OR s.loaiSession <> 'KH_TO') " +
+           "AND s.workScheduleId NOT IN (" +
+           "  SELECT s2.workScheduleId FROM WorkScheduleSession s2 " +
+           "  WHERE s2.ngay = :today AND s2.maNhanVien IS NOT NULL " +
+           "  AND (s2.loaiSession IS NULL OR s2.loaiSession <> 'KH_TO'))")
+    long countWithSanLuongButNoWorkersToday(@Param("today") LocalDate today);
+
     // ── KH_TO sessions (Kế Hoạch Tổ "Lịch SX" — dataset riêng) ──────────────
 
     @Query("SELECT s FROM WorkScheduleSession s WHERE s.workScheduleId = :id AND s.loaiSession = 'KH_TO' ORDER BY s.ngay ASC, s.id ASC")

@@ -167,6 +167,11 @@ public class WorkScheduleSessionController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/count-missing-sl-today")
+    public ResponseEntity<Map<String, Long>> countMissingSlToday() {
+        return ResponseEntity.ok(service.countMissingSlToday());
+    }
+
     @GetMapping("/daily-report")
     public ResponseEntity<List<DailyProductionDto>> getDailyReport(
             @RequestParam(required = false) String fromDate,

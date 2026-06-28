@@ -45,9 +45,24 @@ async function fetchKhoachHomNayKH() {
   return list.filter(w => w.tinhTrang !== 'done').length
 }
 
+async function fetchMissingSlToday() {
+  const { data } = await api.get('/work-schedule-session/count-missing-sl-today')
+  return (data?.total || 0)
+}
+
 async function fetchLenhChuaPhatHanh() {
   const { data } = await api.get('/lenh-san-xuat/count-chua-phat-hanh')
   return typeof data?.total === 'number' ? data.total : 0
+}
+
+const MISSING_SL_TASK = {
+  id:    'missing_sl_today',
+  icon:  '📥',
+  label: 'Sản phẩm lệch công — sản lượng',
+  desc:  'Có công nhưng chưa nhập SL, hoặc có SL nhưng thiếu công',
+  route: '/work-schedule',
+  fetch: fetchMissingSlToday,
+  color: '#ef4444',
 }
 
 const LENH_CHUA_PHAT_HANH_TASK = {
@@ -114,6 +129,7 @@ function buildTasks(role) {
         fetch: fetchChoDuyetSL,
         color: '#8b5cf6',
       },
+      MISSING_SL_TASK,
       LENH_CHUA_PHAT_HANH_TASK,
       HANG_LOI_TASK,
     ]
@@ -131,6 +147,7 @@ function buildTasks(role) {
         fetch: fetchChoDuyetSL,
         color: '#8b5cf6',
       },
+      MISSING_SL_TASK,
       LENH_CHUA_PHAT_HANH_TASK,
       HANG_LOI_TASK,
     ]
@@ -192,6 +209,7 @@ function buildTasks(role) {
     },
   ]
 
+  tasks.push(MISSING_SL_TASK)
   tasks.push(LENH_CHUA_PHAT_HANH_TASK)
 
   // Fix lỗi 3b: tất cả role trong CAN_EDIT_HANG_LOI đều thấy task hàng lỗi

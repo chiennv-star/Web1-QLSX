@@ -571,6 +571,17 @@ public class WorkScheduleSessionService {
         }).collect(Collectors.toList());
     }
 
+    public java.util.Map<String, Long> countMissingSlToday() {
+        LocalDate today = LocalDate.now();
+        long coCongChuaSl = repository.countWithWorkersButNoSanLuongToday(today);
+        long coSlKhongCong = repository.countWithSanLuongButNoWorkersToday(today);
+        java.util.Map<String, Long> result = new java.util.HashMap<>();
+        result.put("coCongChuaSl", coCongChuaSl);
+        result.put("coSlKhongCong", coSlKhongCong);
+        result.put("total", coCongChuaSl + coSlKhongCong);
+        return result;
+    }
+
     public List<DailyProductionDto> getDailyReport(LocalDate from, LocalDate to, String congDoan) {
 
         // ── 1. Tất cả session trong khoảng ngày ──────────────────────────
