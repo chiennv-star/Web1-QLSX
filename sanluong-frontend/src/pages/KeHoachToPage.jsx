@@ -585,6 +585,8 @@ export default function KeHoachToPage() {
   const { user } = useAuth()
   const location = useLocation()
 
+  const canEdit = !['QUAN_DOC', 'MAN_HINH'].includes(user?.role)
+
   const visibleTabs = (() => {
     const role = user?.role
     if (role === 'ADMIN_PCPL1') return TO_TABS.filter(t => ['PCPL1', 'PCPL3'].includes(t.key))
@@ -1415,7 +1417,7 @@ export default function KeHoachToPage() {
         <div style={{ flex: 1, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
 
           {/* ── ① Kế hoạch tổng + Nhân viên (merged header strip) ── */}
-          <div style={{ flexShrink: 0, borderBottom: '1px solid #e2e8f0' }}>
+          {canEdit && <div style={{ flexShrink: 0, borderBottom: '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', userSelect: 'none' }}>
               {/* ── Left zone: Kéo sản phẩm ── */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', flexShrink: 0 }}
@@ -1584,7 +1586,7 @@ export default function KeHoachToPage() {
                 })}
               </div>
             )}
-          </div>
+          </div>}
 
           {viewMode === 'viec' ? (
             <>
@@ -1688,7 +1690,7 @@ export default function KeHoachToPage() {
                                   {isSel && <span style={{ fontSize: 10, background: '#eef2ff', color: '#4338ca', borderRadius: 999, padding: '1px 8px', fontWeight: 800 }}>Đang xếp</span>}
                                   {dayAssigns.length > 0 && <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>{dayAssigns.length} việc</span>}
                                   <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
-                                    {isEditing ? (
+                                    {canEdit && (isEditing ? (
                                       <>
                                         {hasSaveable && (
                                           <Button size="small" type="primary" icon={<SaveOutlined />}
@@ -1708,7 +1710,7 @@ export default function KeHoachToPage() {
                                       </>
                                     ) : (
                                       <Button size="small" onClick={enterEdit} style={{ fontSize: 11, height: 24 }}>✏ Cập nhật</Button>
-                                    )}
+                                    ))}
                                     {dayAssigns.length > 0 && (
                                       <Button size="small"
                                         onClick={() => exportDayAsImage(dayStr, DOW[d.day()], dayAssigns)}
