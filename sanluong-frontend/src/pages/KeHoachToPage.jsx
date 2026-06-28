@@ -1769,63 +1769,60 @@ export default function KeHoachToPage() {
               </div>
             </>
           ) : (
-            <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
               {!selectedTo ? (
                 <div style={{ color: '#94a3b8', fontSize: 12, padding: 12 }}>Chọn tổ ở thanh trên.</div>
-              ) : displayEmps.length === 0 ? (
-                <div style={{ color: '#94a3b8', fontSize: 12, padding: 12 }}>Không có nhân viên trong tổ {selectedTo}.</div>
-              ) : displayEmps.map(emp => {
-                const empAssigns = assigns
-                  .filter(a => Object.values(a.caShifts || {}).some(shift => (shift.mas || []).includes(emp.maNhanVien)))
-                  .sort((a, b) => (a.ngayFull || a.ngay || '').localeCompare(b.ngayFull || b.ngay || ''))
-                const isTN = (emp.viTri || '').toLowerCase().includes('tổ trưởng') || (emp.viTri || '').toUpperCase() === 'TN'
-                // Group by date for cleaner display
-                const byDate = {}
-                empAssigns.forEach(a => { const k = a.ngay; if (!byDate[k]) byDate[k] = []; byDate[k].push(a) })
-                const dateKeys = Object.keys(byDate)
-                return (
-                  <div key={emp.maNhanVien} style={{ border: '1px solid #e2e8f0', borderRadius: 11, padding: '11px 13px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 13, marginBottom: 8 }}>
-                      <span style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0, background: isTN ? '#fde68a' : '#c7d2fe', color: isTN ? '#92400e' : '#4338ca', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {initials(emp.hoVaTen)}
-                      </span>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        <span style={{ fontSize: 13, color: '#1e293b' }}>{emp.hoVaTen}</span>
-                        <span style={{ color: '#94a3b8', fontSize: 10.5, fontWeight: 500 }}>{emp.maNhanVien}</span>
+              ) : (() => {
+                const renderDays = showAllDays
+                  ? [...new Set(assigns.map(a => a.ngayFull).filter(Boolean))].sort((a, b) => b.localeCompare(a)).map(s => dayjs(s))
+                  : [...days].reverse()
+                return renderDays.map(d => {
+                  const dayStr   = fmtDay(d)
+                  const dow2     = d.day()
+                  const isWknd   = dow2 === 0 || dow2 === 6
+                  const isSunday = dow2 === 0
+                  const isSel    = dayStr === selectedDay
+                  const dayAssigns = assigns.filter(a => a.ngay === dayStr)
+                  // employees that have at least one assign this day
+                  const empsThisDay = displayEmps.filter(emp =>
+                    dayAssigns.some(a => Object.values(a.caShifts || {}).some(shift => (shift.mas || []).includes(emp.maNhanVien)))
+                  )
+                  if (empsThisDay.length === 0) return null
+                  const hdrBg  = isSel ? '#eef2ff' : isWknd ? (isSunday ? '#fff1f2' : '#fff7ed') : '#f8fafc'
+                  const hdrClr = isSel ? '#4338ca' : isWknd ? (isSunday ? '#be123c' : '#c2410c') : '#475569'
+                  return (
+                    <div key={dayStr} style={{ border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
+                      {/* Day header */}
+                      <div style={{ background: hdrBg, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontWeight: 800, fontSize: 12.5, color: hdrClr }}>{DOW[dow2]} · {dayStr}</span>
+                        {isSel && <span style={{ fontSize: 10, background: '#eef2ff', color: '#4338ca', borderRadius: 999, padding: '1px 8px', fontWeight: 800 }}>Đang xếp</span>}
+                        <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>{empsThisDay.length} người · {dayAssigns.length} việc</span>
                       </div>
-                      {isTN && <span style={{ fontSize: 10, fontWeight: 700, background: '#fde68a', color: '#92400e', borderRadius: 4, padding: '1px 6px' }}>Tổ trưởng</span>}
-                      <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#6366f1', background: '#eef2ff', borderRadius: 999, padding: '2px 10px' }}>
-                        {empAssigns.length} việc · {dateKeys.length} ngày
-                      </span>
-                    </div>
-                    {empAssigns.length === 0 ? (
-                      <div style={{ color: '#94a3b8', fontSize: 12, paddingLeft: 4 }}>Chưa được xếp việc nào</div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {dateKeys.map(dateKey => {
-                          const dayItems = byDate[dateKey]
-                          const d = dayjs(dayItems[0].ngayFull || dayjs().format('YYYY-MM-DD'))
-                          const dow2 = dayItems[0].ngayFull ? d.day() : -1
-                          const dowLabel = dow2 >= 0 ? DOW[dow2] : ''
-                          const isWknd = dow2 === 0 || dow2 === 6
+                      {/* Employees */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                        {empsThisDay.map((emp, empIdx) => {
+                          const isTN = (emp.viTri || '').toLowerCase().includes('tổ trưởng') || (emp.viTri || '').toUpperCase() === 'TN'
+                          const empDayAssigns = dayAssigns.filter(a =>
+                            Object.values(a.caShifts || {}).some(shift => (shift.mas || []).includes(emp.maNhanVien))
+                          )
                           return (
-                            <div key={dateKey} style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-                              {/* Date column */}
-                              <div style={{ flexShrink: 0, width: 68, paddingTop: 3, textAlign: 'center' }}>
-                                <div style={{ fontSize: 11, fontWeight: 800, color: isWknd ? '#c2410c' : '#4338ca', background: isWknd ? '#fff7ed' : '#eef2ff', borderRadius: 6, padding: '3px 6px', lineHeight: 1.4 }}>
-                                  {dowLabel && <span style={{ fontSize: 9, display: 'block', opacity: 0.8 }}>{dowLabel}</span>}
-                                  {dateKey}
-                                </div>
+                            <div key={emp.maNhanVien} style={{ borderTop: empIdx === 0 ? 'none' : '1px solid #f1f5f9', padding: '8px 12px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                              {/* Avatar + name */}
+                              <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, width: 52 }}>
+                                <span style={{ width: 26, height: 26, borderRadius: '50%', background: isTN ? '#fde68a' : '#c7d2fe', color: isTN ? '#92400e' : '#4338ca', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  {initials(emp.hoVaTen)}
+                                </span>
+                                <span style={{ fontSize: 9.5, color: '#64748b', fontWeight: 600, textAlign: 'center', lineHeight: 1.2, wordBreak: 'break-word' }}>{emp.hoVaTen.split(' ').slice(-2).join(' ')}</span>
                               </div>
-                              {/* Tasks for this date */}
+                              {/* Tasks */}
                               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                {dayItems.map(a => {
+                                {empDayAssigns.map(a => {
                                   const empShifts = Object.entries(a.caShifts || {})
                                     .filter(([, shift]) => (shift.mas || []).includes(emp.maNhanVien))
                                     .map(([caKey]) => caKey)
                                   const isConflict = empShifts.some(caKey => dup.has(`${emp.maNhanVien}|${a.ngay}|${caKey}`))
                                   return (
-                                    <div key={a.id} style={{ fontSize: 12.5, color: '#334155', display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap', background: isConflict ? '#fef2f2' : a.isUrgent ? '#fff8f8' : '#f8fafc', borderRadius: 6, padding: '4px 8px' }}>
+                                    <div key={a.id} style={{ fontSize: 12, color: '#334155', display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap', background: isConflict ? '#fef2f2' : a.isUrgent ? '#fff8f8' : '#f8fafc', borderRadius: 6, padding: '4px 8px' }}>
                                       {empShifts.map(caKey => {
                                         const cs = CA_STYLE[caKey] || CA_STYLE['Ca 1']
                                         return (
@@ -1848,10 +1845,10 @@ export default function KeHoachToPage() {
                           )
                         })}
                       </div>
-                    )}
-                  </div>
-                )
-              })}
+                    </div>
+                  )
+                })
+              })()}
             </div>
           )}
         </div>
