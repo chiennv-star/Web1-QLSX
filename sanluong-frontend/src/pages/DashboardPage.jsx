@@ -1000,9 +1000,10 @@ function HieuSuatTab({ data = [], loading = false, pagination = {}, onPagination
   )
 }
 
-// ── ProductionOverview — bảng tổng quan trên tab Danh sách ───────────────────
+// ── ProductionOverview — bảng tổng quan phía trên tabs ───────────────────────
 function ProductionOverview({ data, doneTotal }) {
   const fmtN = v => v ? Number(v).toLocaleString('vi-VN') : '0'
+  const pct  = (a, b) => b > 0 ? Math.min(100, Math.round(a / b * 100)) : 0
 
   const totalKH      = data.reduce((s, r) => s + (r.soLuong || 0), 0)
   const hangLoiCount = data.filter(r => Number(r.hlSoLuongTraVe) > 0).length
@@ -1026,8 +1027,18 @@ function ProductionOverview({ data, doneTotal }) {
   const bbc1Doing  = data.filter(r => r.bbc1TrangThai  === 'doing').length
   const bbc1Done   = data.filter(r => r.bbc1TrangThai  === 'done').length
 
-  const KpiCard = ({ label, value, sub, bg }) => (
-    <div style={{ flex: 1, background: bg, borderRadius: 10, padding: '10px 16px', color: '#fff', textAlign: 'center', minWidth: 100 }}>
+  // Tiến độ tổng thể: avg % của 4 công đoạn chính
+  const pcPct   = pct(totalSlPc,   totalKH)
+  const plPct   = pct(totalSlPl,   totalKH)
+  const dgPct   = pct(totalSlDg,   totalKH)
+  const bbc1Pct = pct(totalSlBbc1, totalKH)
+  const overallPct = totalKH > 0 ? Math.round((pcPct + plPct + dgPct + bbc1Pct) / 4) : 0
+
+  const KpiCard = ({ label, value, sub, bg, badge }) => (
+    <div style={{ flex: 1, background: bg, borderRadius: 10, padding: '10px 16px', color: '#fff', textAlign: 'center', minWidth: 100, position: 'relative' }}>
+      {badge != null && badge > 0 && (
+        <span style={{ position: 'absolute', top: 7, right: 10, background: 'rgba(255,255,255,0.25)', borderRadius: 999, fontSize: 10, fontWeight: 700, padding: '1px 7px' }}>{badge}%</span>
+      )}
       <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.85, letterSpacing: '0.05em', marginBottom: 3 }}>{label}</div>
       <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.15 }}>{value}</div>
       {sub && <div style={{ fontSize: 10, opacity: 0.75, marginTop: 2 }}>{sub}</div>}
@@ -1037,7 +1048,7 @@ function ProductionOverview({ data, doneTotal }) {
   const TtBadge = ({ count, type }) => !count ? null : (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 3,
-      padding: '2px 7px', borderRadius: 999, fontSize: 11, fontWeight: 700,
+      padding: '1px 6px', borderRadius: 999, fontSize: 11, fontWeight: 700,
       background: type === 'doing' ? '#eff6ff' : '#f0fdf4',
       color: type === 'doing' ? '#1d4ed8' : '#16a34a',
       border: `1px solid ${type === 'doing' ? '#bfdbfe' : '#bbf7d0'}`,
@@ -1046,59 +1057,89 @@ function ProductionOverview({ data, doneTotal }) {
     </span>
   )
 
-  const StageCard = ({ label, doing1, done1, doing2, done2, sl, dd, slColor, accent }) => (
-    <div style={{
-      flex: 1, background: '#fff', borderRadius: 10,
-      border: `1.5px solid ${accent}30`,
-      borderTop: `3px solid ${accent}`,
-      padding: '8px 12px', minWidth: 120,
-    }}>
-      <div style={{ fontWeight: 800, fontSize: 12, color: accent, marginBottom: 6, textAlign: 'center', letterSpacing: '0.05em' }}>{label}</div>
-      {doing2 !== undefined ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6 }}>
-          {[['PCPL1', doing1, done1], ['PCPL2', doing2, done2]].map(([lbl, d, dn]) => (
-            <div key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
-              <span style={{ fontSize: 10, color: '#94a3b8', width: 40, textAlign: 'right', flexShrink: 0 }}>{lbl}</span>
-              <TtBadge count={d} type="doing" />
-              <TtBadge count={dn} type="done" />
-              {!d && !dn && <span style={{ fontSize: 11, color: '#cbd5e1' }}>—</span>}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 5, marginBottom: 6, minHeight: 28, alignItems: 'center' }}>
-          <TtBadge count={doing1} type="doing" />
-          <TtBadge count={done1} type="done" />
-          {!doing1 && !done1 && <span style={{ fontSize: 11, color: '#cbd5e1' }}>—</span>}
-        </div>
-      )}
-      <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 6, display: 'flex', gap: 4 }}>
-        <div style={{ flex: 1, textAlign: 'center' }}>
-          <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>SL thực tế</div>
-          <div style={{ fontWeight: 800, fontSize: 13, color: slColor }}>{fmtN(sl)}</div>
-        </div>
-        <div style={{ width: 1, background: '#f1f5f9', flexShrink: 0 }} />
-        <div style={{ flex: 1, textAlign: 'center' }}>
-          <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>Dở dang</div>
-          <div style={{ fontWeight: 800, fontSize: 13, color: dd > 0 ? '#d48806' : '#94a3b8' }}>{fmtN(dd)}</div>
-        </div>
-      </div>
+  const ProgressBar = ({ value, color }) => (
+    <div style={{ height: 5, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden', margin: '4px 0 2px' }}>
+      <div style={{ height: '100%', width: `${value}%`, background: color, borderRadius: 999, transition: 'width 0.4s ease' }} />
     </div>
   )
 
-  return (
-    <div style={{ background: 'linear-gradient(135deg, #f0f9ff 0%, #e8f4f0 100%)', padding: '10px 12px', borderBottom: '1px solid #d1e9df' }}>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-        <KpiCard label="ĐANG SẢN XUẤT" value={data.length} sub="lô" bg="#006666" />
-        <KpiCard label="TỔNG KẾ HOẠCH" value={fmtN(totalKH)} sub="sản phẩm" bg="#1d4ed8" />
-        <KpiCard label="ĐÃ HOÀN THÀNH" value={doneTotal} sub="lô done" bg="#16a34a" />
-        {hangLoiCount > 0 && <KpiCard label="CÓ HÀNG LỖI" value={hangLoiCount} sub="lô" bg="#dc2626" />}
+  const StageCard = ({ label, doing1, done1, doing2, done2, sl, dd, kh, slColor, accent }) => {
+    const progress = pct(sl, kh)
+    const doneLo   = (doing2 !== undefined ? pcpl1Done + pcpl2Done : done1)
+    const doingLo  = (doing2 !== undefined ? pcpl1Doing + pcpl2Doing : doing1)
+    const totalLo  = doingLo + doneLo
+    return (
+      <div style={{
+        flex: 1, background: '#fff', borderRadius: 10,
+        border: `1.5px solid ${accent}22`,
+        borderTop: `3px solid ${accent}`,
+        padding: '8px 12px', minWidth: 130,
+      }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+          <span style={{ fontWeight: 800, fontSize: 13, color: accent, letterSpacing: '0.05em' }}>{label}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: progress >= 80 ? '#16a34a' : progress >= 50 ? '#d48806' : '#dc2626', background: progress >= 80 ? '#f0fdf4' : progress >= 50 ? '#fffbeb' : '#fff1f2', padding: '1px 7px', borderRadius: 999, border: `1px solid ${progress >= 80 ? '#bbf7d0' : progress >= 50 ? '#fed7aa' : '#fecdd3'}` }}>{progress}%</span>
+        </div>
+
+        {/* Badge lô */}
+        {doing2 !== undefined ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 5 }}>
+            {[['PCPL1', doing1, done1], ['PCPL2', doing2, done2]].map(([lbl, d, dn]) => (
+              <div key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                <span style={{ fontSize: 10, color: '#94a3b8', width: 38, flexShrink: 0 }}>{lbl}</span>
+                <TtBadge count={d} type="doing" />
+                <TtBadge count={dn} type="done" />
+                {!d && !dn && <span style={{ fontSize: 11, color: '#cbd5e1' }}>—</span>}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 4, marginBottom: 5, minHeight: 24, alignItems: 'center' }}>
+            <TtBadge count={doing1} type="doing" />
+            <TtBadge count={done1} type="done" />
+            {!doing1 && !done1 && <span style={{ fontSize: 11, color: '#cbd5e1' }}>—</span>}
+          </div>
+        )}
+
+        {/* Progress bar */}
+        <ProgressBar value={progress} color={accent} />
+
+        {/* Số liệu */}
+        <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+          <div style={{ flex: 1, textAlign: 'center' }}>
+            <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600, marginBottom: 1 }}>SL thực tế</div>
+            <div style={{ fontWeight: 800, fontSize: 12, color: slColor }}>{fmtN(sl)}</div>
+          </div>
+          <div style={{ width: 1, background: '#f1f5f9', flexShrink: 0 }} />
+          <div style={{ flex: 1, textAlign: 'center' }}>
+            <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600, marginBottom: 1 }}>Dở dang</div>
+            <div style={{ fontWeight: 800, fontSize: 12, color: dd > 0 ? '#d48806' : '#94a3b8' }}>{fmtN(dd)}</div>
+          </div>
+          <div style={{ width: 1, background: '#f1f5f9', flexShrink: 0 }} />
+          <div style={{ flex: 1, textAlign: 'center' }}>
+            <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600, marginBottom: 1 }}>Lô/Tổng</div>
+            <div style={{ fontWeight: 700, fontSize: 12, color: '#475569' }}>{doneLo}<span style={{ color: '#94a3b8', fontWeight: 400 }}>/{totalLo || data.length}</span></div>
+          </div>
+        </div>
       </div>
+    )
+  }
+
+  return (
+    <div style={{ background: 'linear-gradient(135deg, #f0f9ff 0%, #e8f5f0 100%)', padding: '10px 12px 10px', borderBottom: '1px solid #d1e9df' }}>
+      {/* Row 1: KPI */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+        <KpiCard label="ĐANG SẢN XUẤT" value={data.length} sub="lô" bg="#006666" />
+        <KpiCard label="TỔNG KẾ HOẠCH" value={fmtN(totalKH)} sub="sản phẩm" bg="#1d4ed8" badge={overallPct} />
+        <KpiCard label="ĐÃ HOÀN THÀNH" value={doneTotal} sub="lô done" bg="#16a34a" />
+        <KpiCard label="CÓ HÀNG LỖI" value={hangLoiCount} sub="lô" bg={hangLoiCount > 0 ? '#dc2626' : '#94a3b8'} />
+      </div>
+      {/* Row 2: Stage cards */}
       <div style={{ display: 'flex', gap: 8 }}>
-        <StageCard label="PC" doing1={pcpl1Doing} done1={pcpl1Done} doing2={pcpl2Doing} done2={pcpl2Done} sl={totalSlPc} dd={ddPc} slColor="#1d4ed8" accent="#1d4ed8" />
-        <StageCard label="PL" doing1={plDoing} done1={plDone} sl={totalSlPl} dd={ddPl} slColor="#7c3aed" accent="#7c3aed" />
-        <StageCard label="ĐG" doing1={dgDoing} done1={dgDone} sl={totalSlDg} dd={ddDg} slColor="#d48806" accent="#d48806" />
-        <StageCard label="BBC1" doing1={bbc1Doing} done1={bbc1Done} sl={totalSlBbc1} dd={ddBbc1} slColor="#16a34a" accent="#16a34a" />
+        <StageCard label="PC" doing1={pcpl1Doing} done1={pcpl1Done} doing2={pcpl2Doing} done2={pcpl2Done} sl={totalSlPc} dd={ddPc} kh={totalKH} slColor="#1d4ed8" accent="#1d4ed8" />
+        <StageCard label="PL" doing1={plDoing} done1={plDone} sl={totalSlPl} dd={ddPl} kh={totalKH} slColor="#7c3aed" accent="#7c3aed" />
+        <StageCard label="ĐG" doing1={dgDoing} done1={dgDone} sl={totalSlDg} dd={ddDg} kh={totalKH} slColor="#d48806" accent="#d48806" />
+        <StageCard label="BBC1" doing1={bbc1Doing} done1={bbc1Done} sl={totalSlBbc1} dd={ddBbc1} kh={totalKH} slColor="#16a34a" accent="#16a34a" />
       </div>
     </div>
   )
@@ -2073,6 +2114,9 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {/* ── Tổng quan sản xuất — luôn hiển thị phía trên tabs ────────── */}
+      <ProductionOverview data={data} doneTotal={donePagination.total} />
+
       {/* ── Tabs: Danh sách | Tiến độ ─────────────────────────────── */}
       <div ref={tabsWrapRef}>
       <Tabs
@@ -2093,7 +2137,6 @@ export default function DashboardPage() {
             label: 'Danh sách',
             children: (
               <>
-                <ProductionOverview data={data} doneTotal={donePagination.total} />
                 <Table
                 className="prod-table"
                 columns={columns}
