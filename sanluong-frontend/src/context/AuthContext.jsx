@@ -171,8 +171,21 @@ export function AuthProvider({ children }) {
     return null // ADMIN, ADMIN_KH → tất cả
   }
 
+  // Trả về key công đoạn duy nhất mà user được phép xem trong Sản lượng / Phân tích
+  // null = không hạn chế (ADMIN, TKSX, ADMIN_PC, ADMIN_PL, v.v.)
+  const getLockedCongDoan = () => {
+    const role = user?.role
+    if (role === 'ADMIN_DG')    return 'DG'
+    if (role === 'ADMIN_BBC1')  return 'BBC1'
+    if (role === 'ADMIN_PCPL1') return 'PCPL1'
+    if (role === 'ADMIN_PCPL2') return 'PCPL2'
+    if (role === 'ADMIN_PCPL3') return 'PL'
+    if (role === 'ADMIN_PL')    return 'PL'
+    return null
+  }
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, updateUser, isAdmin, isAdminKH, isTKSX, isQuanDoc, isNhanVien, isHCNS, isKeToan, isManHinh, getMaNhanVien, getToNhom, canEditProduction, canEditProductMaster, canEditPlan, canEditLenh, canEditStage, isStageAdmin, canEditHangLoi, canEditAttendance, allowedEfficiencyTabs, getAllowedNhom, getAllowedStages, getAllowedEmployeeGroups, canDeleteSchedule }}>
+    <AuthContext.Provider value={{ user, login, logout, updateUser, isAdmin, isAdminKH, isTKSX, isQuanDoc, isNhanVien, isHCNS, isKeToan, isManHinh, getMaNhanVien, getToNhom, canEditProduction, canEditProductMaster, canEditPlan, canEditLenh, canEditStage, isStageAdmin, canEditHangLoi, canEditAttendance, allowedEfficiencyTabs, getAllowedNhom, getAllowedStages, getAllowedEmployeeGroups, canDeleteSchedule, getLockedCongDoan }}>
       {children}
     </AuthContext.Provider>
   )

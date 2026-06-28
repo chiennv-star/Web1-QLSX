@@ -607,8 +607,9 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
 // ─── Tab 1: Sản lượng theo ngày (chi tiết) ───────────────────────────────────
 
 function DailyDetailTab() {
-  const { isAdmin, isAdminKH } = useAuth()
+  const { isAdmin, isAdminKH, getLockedCongDoan } = useAuth()
   const canApprove = isAdmin() || isAdminKH()
+  const lockedCongDoan = getLockedCongDoan()
 
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
@@ -620,7 +621,7 @@ function DailyDetailTab() {
     return [dayjs().subtract(6, 'day'), dayjs()]
   })
   const [congDoan, setCongDoan] = useState(
-    () => localStorage.getItem('daily_congDoan') || ''
+    () => lockedCongDoan || localStorage.getItem('daily_congDoan') || ''
   )
   const [filterTienTrinh, setFilterTienTrinh] = useState('')
 
@@ -698,9 +699,9 @@ function DailyDetailTab() {
   const handleReset = () => {
     const def = [dayjs().subtract(6, 'day'), dayjs()]
     setDateRange(def)
-    setCongDoan('')
+    setCongDoan(lockedCongDoan || '')
     setFilterTienTrinh('')
-    fetchData(def, '')
+    fetchData(def, lockedCongDoan || '')
   }
 
   const handleApprove = async (requestId) => {
@@ -1031,7 +1032,8 @@ function DailyDetailTab() {
       }}>
         <RangePicker size="small" value={dateRange} onChange={setDateRange}
           format="DD/MM/YYYY" allowClear placeholder={['Từ ngày', 'Đến ngày']} />
-        <Select size="small" value={congDoan} onChange={setCongDoan}
+        <Select size="small" value={congDoan} onChange={lockedCongDoan ? undefined : setCongDoan}
+          disabled={!!lockedCongDoan}
           options={CONG_DOAN_OPTIONS} style={{ width: 160 }} />
         <Input
           size="small" allowClear placeholder="Tiến trình..."
@@ -2448,8 +2450,10 @@ const ANALYSIS_STAGES = [
 ]
 
 function PhanTichSanLuongTab() {
+  const { getLockedCongDoan } = useAuth()
+  const lockedCongDoan = getLockedCongDoan()
   const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs()])
-  const [stageFilter, setStageFilter] = useState('')
+  const [stageFilter, setStageFilter] = useState(lockedCongDoan || '')
   const [loading, setLoading] = useState(false)
   const [raw, setRaw] = useState([])
   const [loaiSpMap, setLoaiSpMap] = useState({})
@@ -2569,7 +2573,8 @@ function PhanTichSanLuongTab() {
         <Select
           size="small"
           value={stageFilter}
-          onChange={setStageFilter}
+          onChange={lockedCongDoan ? undefined : setStageFilter}
+          disabled={!!lockedCongDoan}
           style={{ width: 145 }}
           options={[
             { value: '', label: 'Tất cả công đoạn' },
