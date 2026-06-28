@@ -188,7 +188,7 @@ export default function MainLayout() {
   const visibleToTabs = (() => {
     const role = user?.role
     if (role === 'ADMIN_PCPL1') return KHT_TABS_ALL.filter(t => ['PCPL1', 'PCPL3'].includes(t.key))
-    if (role === 'ADMIN_PCPL2') return KHT_TABS_ALL.filter(t => t.key === 'PCPL2')
+    if (role === 'ADMIN_PCPL2') return KHT_TABS_ALL.filter(t => ['PCPL2', 'Cân Chia'].includes(t.key))
     if (role === 'ADMIN_PCPL3') return KHT_TABS_ALL.filter(t => t.key === 'PCPL3')
     if (role === 'ADMIN_BBC1')  return KHT_TABS_ALL.filter(t => t.key === 'BBC1')
     if (role === 'ADMIN_DG')    return KHT_TABS_ALL.filter(t => t.key === 'ĐG')

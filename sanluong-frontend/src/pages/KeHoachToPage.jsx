@@ -588,7 +588,7 @@ export default function KeHoachToPage() {
   const visibleTabs = (() => {
     const role = user?.role
     if (role === 'ADMIN_PCPL1') return TO_TABS.filter(t => ['PCPL1', 'PCPL3'].includes(t.key))
-    if (role === 'ADMIN_PCPL2') return TO_TABS.filter(t => t.key === 'PCPL2')
+    if (role === 'ADMIN_PCPL2') return TO_TABS.filter(t => ['PCPL2', 'Cân Chia'].includes(t.key))
     if (role === 'ADMIN_PCPL3') return TO_TABS.filter(t => t.key === 'PCPL3')
     if (role === 'ADMIN_BBC1')  return TO_TABS.filter(t => t.key === 'BBC1')
     if (role === 'ADMIN_DG')    return TO_TABS.filter(t => t.key === 'ĐG')
