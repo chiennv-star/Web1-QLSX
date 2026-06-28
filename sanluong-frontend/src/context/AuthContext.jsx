@@ -44,6 +44,9 @@ export function AuthProvider({ children }) {
   // Tài khoản sản xuất: tương đương ADMIN trừ write Lệnh Sản Xuất
   const isTKSX = () => user?.role === 'TKSX'
 
+  // Trưởng phòng sản xuất: xem như ADMIN nhưng không có quyền thêm/sửa/xóa
+  const isTPSX = () => user?.role === 'TPSX'
+
   // Quản lý chỉ đọc
   const isQuanDoc = () => user?.role === 'QUAN_DOC'
 
@@ -108,6 +111,7 @@ export function AuthProvider({ children }) {
     if (role === 'ADMIN_PCPL1') return ['PCPL1']
     if (role === 'ADMIN_PCPL2') return ['PCPL2']
     if (role === 'ADMIN_PCPL3') return ['PCPL3']
+    if (role === 'TPSX') return null // xem tất cả như ADMIN
     if (role === 'ADMIN_KH') return []
     // NV roles — tabs không dùng vì isNhanVien() filter riêng
     if (role === 'NHAN_VIEN_PCPL1') return ['PCPL1']
@@ -185,7 +189,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, updateUser, isAdmin, isAdminKH, isTKSX, isQuanDoc, isNhanVien, isHCNS, isKeToan, isManHinh, getMaNhanVien, getToNhom, canEditProduction, canEditProductMaster, canEditPlan, canEditLenh, canEditStage, isStageAdmin, canEditHangLoi, canEditAttendance, allowedEfficiencyTabs, getAllowedNhom, getAllowedStages, getAllowedEmployeeGroups, canDeleteSchedule, getLockedCongDoan }}>
+    <AuthContext.Provider value={{ user, login, logout, updateUser, isAdmin, isAdminKH, isTKSX, isTPSX, isQuanDoc, isNhanVien, isHCNS, isKeToan, isManHinh, getMaNhanVien, getToNhom, canEditProduction, canEditProductMaster, canEditPlan, canEditLenh, canEditStage, isStageAdmin, canEditHangLoi, canEditAttendance, allowedEfficiencyTabs, getAllowedNhom, getAllowedStages, getAllowedEmployeeGroups, canDeleteSchedule, getLockedCongDoan }}>
       {children}
     </AuthContext.Provider>
   )

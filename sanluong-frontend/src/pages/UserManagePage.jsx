@@ -11,6 +11,7 @@ const { Option } = Select
 const ROLE_MAP = {
   ADMIN:            { color: 'blue',     label: 'Quản trị viên' },
   TKSX:             { color: 'blue',     label: 'Tài khoản SX' },
+  TPSX:             { color: 'purple',   label: 'Trưởng Phòng SX' },
   QUAN_DOC:         { color: 'default',  label: 'Quản lý (đọc)' },
   NHAN_VIEN:        { color: 'green',    label: 'Nhân viên' },
   NHAN_VIEN_PCPL1:  { color: 'cyan',     label: 'NV PCPL1' },
@@ -411,6 +412,7 @@ export default function UserManagePage() {
             <Select>
               <Option value="ADMIN">Quản trị viên (toàn quyền)</Option>
               <Option value="TKSX">Tài khoản SX (như ADMIN, trừ Lệnh Sản Xuất)</Option>
+              <Option value="TPSX">Trưởng Phòng SX (xem tất cả như ADMIN, không thêm/sửa/xóa)</Option>
               <Option value="QUAN_DOC">Quản lý đọc (chỉ xem, không sửa)</Option>
               <optgroup label="── Nhân viên ──" />
               <Option value="NHAN_VIEN">Nhân viên (tất cả nhóm)</Option>

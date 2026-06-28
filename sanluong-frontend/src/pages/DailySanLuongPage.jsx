@@ -2932,9 +2932,9 @@ function PhanTichSanLuongTab() {
 // ─── Page chính: wrapper Tabs ─────────────────────────────────────────────────
 
 export default function DailySanLuongPage() {
-  const { isAdmin, isAdminKH, isManHinh, isTKSX } = useAuth()
+  const { isAdmin, isAdminKH, isManHinh, isTKSX, isTPSX } = useAuth()
   const canApprove     = isAdmin() || isAdminKH()
-  const canViewAnalytics = isAdmin() || isTKSX()
+  const canViewAnalytics = isAdmin() || isTKSX() || isTPSX()
   const manHinh = isManHinh()
   const location = useLocation()
 

@@ -41,7 +41,7 @@ public class SecurityConfig {
         "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3"
     };
     private static final String[] ALL_ROLES = {
-        "ADMIN", "TKSX", "QUAN_DOC", "MAN_HINH",
+        "ADMIN", "TKSX", "TPSX", "QUAN_DOC", "MAN_HINH",
         "NHAN_VIEN", "NHAN_VIEN_PCPL1", "NHAN_VIEN_PCPL2", "NHAN_VIEN_PCPL3", "NHAN_VIEN_BBC1", "NHAN_VIEN_DG",
         "ADMIN_PC", "ADMIN_BBC1", "ADMIN_PL", "ADMIN_DG", "ADMIN_KH",
         "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3", "HCNS", "KE_TOAN"
@@ -149,7 +149,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PATCH, "/api/users/me/change-password").hasAnyRole(ALL_ROLES)
                 .requestMatchers(HttpMethod.PATCH, "/api/users/me/change-username").hasAnyRole(ALL_ROLES)
                 .requestMatchers(HttpMethod.PATCH, "/api/users/me/ma-nhan-vien").hasAnyRole(ALL_ROLES)
-                // ── Quản lý người dùng: ADMIN và TKSX ─────────────────────────
+                // ── Quản lý người dùng: ADMIN và TKSX; TPSX chỉ xem ──────────
+                .requestMatchers(HttpMethod.GET, "/api/users/**").hasAnyRole("ADMIN", "TKSX", "TPSX")
                 .requestMatchers("/api/users/**").hasAnyRole("ADMIN", "TKSX")
 
                 // ── Chat realtime ─────────────────────────────────────────────

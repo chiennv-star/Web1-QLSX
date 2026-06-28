@@ -114,7 +114,7 @@ export default function MainLayout() {
   const [pwModal, setPwModal] = useState(false)
   const [pwSaving, setPwSaving] = useState(false)
   const [pwForm] = Form.useForm()
-  const { user, logout, isAdmin, isAdminKH, isTKSX, isQuanDoc, isStageAdmin, canEditHangLoi, isNhanVien, isHCNS, isKeToan, isManHinh } = useAuth()
+  const { user, logout, isAdmin, isAdminKH, isTKSX, isTPSX, isQuanDoc, isStageAdmin, canEditHangLoi, isNhanVien, isHCNS, isKeToan, isManHinh } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const screens = useBreakpoint()
@@ -207,14 +207,14 @@ export default function MainLayout() {
           icon: <WarningOutlined />,
           label: 'Hàng Xử Lý',
         }] : []),
-        ...(isAdmin() || isTKSX() || isQuanDoc() || isStageAdmin() ? [
+        ...(isAdmin() || isTKSX() || isTPSX() || isQuanDoc() || isStageAdmin() ? [
           { key: '/work-efficiency', icon: <TrophyOutlined />, label: 'Nhân Viên' },
         ] : []),
-        ...(isAdmin() || isStageAdmin() ? [
+        ...(isAdmin() || isTPSX() || isStageAdmin() ? [
           { key: '/cham-cong', icon: <FileDoneOutlined />, label: 'Chấm công' },
         ] : []),
         { key: '/danh-muc',        icon: <AppstoreOutlined />, label: 'Quản Lý Danh Mục' },
-        ...(isAdmin() ? [{
+        ...(isAdmin() || isTPSX() ? [{
           key: '/notifications',
           icon: (
             <Badge count={unreadCount} size="small" style={{ background: '#008080' }} offset={[6, -2]}>
@@ -387,8 +387,8 @@ export default function MainLayout() {
           </Space>
 
           <Space size={8} align="center">
-          {/* Bell icon — chỉ admin */}
-          {isAdmin() && (
+          {/* Bell icon — admin + TPSX */}
+          {(isAdmin() || isTPSX()) && (
           <Tooltip title="Thông báo">
             <Badge count={unreadCount} size="small" style={{ background: '#008080' }}>
               <Button
