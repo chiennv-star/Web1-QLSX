@@ -1428,50 +1428,6 @@ export default function KeHoachToPage() {
                   style={{ flex: 1, minWidth: 0 }} />
               </div>
 
-              {/* Stats bar */}
-              {assigns.length > 0 && (() => {
-                const totalW   = new Set(assigns.flatMap(a => Object.values(a.caShifts || {}).flatMap(s => s.mas || []))).size
-                const assigned = assigns.filter(a => Object.values(a.caShifts || {}).some(s => (s.mas || []).length > 0)).length
-                const stats = [
-                  { label: 'Lệnh SX',   value: assigns.length, color: '#4f46e5' },
-                  { label: 'Nhân viên', value: totalW,         color: '#0f766e' },
-                  { label: 'Đã xếp',    value: assigned,       color: '#16a34a' },
-                  ...(conflictCount > 0 ? [{ label: 'Xung đột', value: conflictCount, color: '#dc2626' }] : []),
-                ]
-                return (
-                  <div style={{ display: 'flex', padding: '4px 10px 6px', borderBottom: '1px solid #f1f5f9', flexShrink: 0, background: '#fafbfc' }}>
-                    {stats.map(s => (
-                      <div key={s.label} style={{ flex: 1, textAlign: 'center', padding: '2px 4px' }}>
-                        <div style={{ fontSize: 9.5, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600, marginBottom: 1 }}>{s.label}</div>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: s.color }}>{s.value}</div>
-                      </div>
-                    ))}
-                  </div>
-                )
-              })()}
-
-              {/* Day pills */}
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', padding: '5px 10px', flexShrink: 0 }}>
-                {days.map(d => {
-                  const dayStr  = fmtDay(d)
-                  const isSel   = dayStr === selectedDay
-                  const isToday = d.isSame(dayjs(), 'day')
-                  return (
-                    <button key={dayStr} onClick={() => setSelectedDay(dayStr)} style={{
-                      border: `1.5px solid ${isSel ? '#4f46e5' : isToday ? '#a5b4fc' : '#e2e8f0'}`,
-                      background: isSel ? '#4f46e5' : isToday ? '#eef2ff' : '#fff',
-                      color: isSel ? '#fff' : '#475569',
-                      borderRadius: 8, padding: '3px 9px',
-                      cursor: 'pointer', fontWeight: 800, fontSize: 11, lineHeight: 1.3, position: 'relative',
-                    }}>
-                      <div style={{ fontSize: 9, color: isSel ? '#c7d2fe' : isToday ? '#6366f1' : '#94a3b8', fontWeight: 800 }}>{DOW[d.day()]}</div>
-                      {dayStr}
-                      {isToday && !isSel && <span style={{ position: 'absolute', bottom: 2, left: '50%', transform: 'translateX(-50%)', width: 3, height: 3, borderRadius: '50%', background: '#6366f1', display: 'block' }} />}
-                    </button>
-                  )
-                })}
-              </div>
-
               {/* Horizontal table */}
               <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', margin: '0 10px 10px', border: '1px solid #e2e8f0', borderRadius: 8 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
