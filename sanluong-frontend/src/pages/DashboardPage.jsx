@@ -10,7 +10,7 @@ import {
   DeleteOutlined, FileExcelOutlined, ReloadOutlined,
   WarningOutlined, BarChartOutlined, DownOutlined, CalendarOutlined,
   EyeInvisibleOutlined, EyeOutlined, BellOutlined, ExclamationCircleOutlined,
-  AccountBookOutlined, UploadOutlined, DownloadOutlined,
+  AccountBookOutlined, UploadOutlined, DownloadOutlined, AppstoreOutlined,
 } from '@ant-design/icons'
 import { Upload } from 'antd'
 import InboxPanel from '../components/InboxPanel'
@@ -2114,10 +2114,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* ── Tổng quan sản xuất — luôn hiển thị phía trên tabs ────────── */}
-      <ProductionOverview data={data} doneTotal={donePagination.total} />
-
-      {/* ── Tabs: Danh sách | Tiến độ ─────────────────────────────── */}
+      {/* ── Tabs: Tổng quan | Danh sách | Tiến độ ─────────────────────── */}
       <div ref={tabsWrapRef}>
       <Tabs
         className="db-outer-tabs"
@@ -2132,6 +2129,11 @@ export default function DashboardPage() {
         style={{ marginTop: 0 }}
         tabBarStyle={{ paddingLeft: 12, marginBottom: 0 }}
         items={[
+          {
+            key: 'tong_quan',
+            label: <Space size={4}><AppstoreOutlined />Tổng quan</Space>,
+            children: <ProductionOverview data={data} doneTotal={donePagination.total} />,
+          },
           {
             key: 'list',
             label: 'Danh sách',
