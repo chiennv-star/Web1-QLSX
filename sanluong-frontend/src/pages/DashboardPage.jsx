@@ -1000,11 +1000,12 @@ function HieuSuatTab({ data = [], loading = false, pagination = {}, onPagination
   )
 }
 
-// ── ProductionOverview — bảng tổng quan phía trên tabs ───────────────────────
+// ── ProductionOverview — tab Tổng quan ───────────────────────────────────────
 function ProductionOverview({ data, doneTotal }) {
   const fmtN = v => v ? Number(v).toLocaleString('vi-VN') : '0'
   const pct  = (a, b) => b > 0 ? Math.min(100, Math.round(a / b * 100)) : 0
 
+  // ── KPI ──────────────────────────────────────────────────────────────────
   const totalKH      = data.reduce((s, r) => s + (r.soLuong || 0), 0)
   const hangLoiCount = data.filter(r => Number(r.hlSoLuongTraVe) > 0).length
   const totalSlPc    = data.reduce((s, r) => s + (parseInt(r.slPc)   || 0), 0)
@@ -1016,6 +1017,7 @@ function ProductionOverview({ data, doneTotal }) {
   const ddDg   = data.reduce((s, r) => s + Math.max(0, (parseInt(r.pcPl)||0) - (parseInt(r.dg2)||0)), 0)
   const ddBbc1 = data.reduce((s, r) => s + Math.max(0, (r.soLuong||0) - (parseInt(r.bbc1_2)||0)), 0)
 
+  // ── Trạng thái per tổ ────────────────────────────────────────────────────
   const pcpl1Doing = data.filter(r => r.pcpl1TrangThai === 'doing').length
   const pcpl1Done  = data.filter(r => r.pcpl1TrangThai === 'done').length
   const pcpl2Doing = data.filter(r => r.pcpl2TrangThai === 'doing').length
@@ -1027,13 +1029,57 @@ function ProductionOverview({ data, doneTotal }) {
   const bbc1Doing  = data.filter(r => r.bbc1TrangThai  === 'doing').length
   const bbc1Done   = data.filter(r => r.bbc1TrangThai  === 'done').length
 
-  // Tiến độ tổng thể: avg % của 4 công đoạn chính
   const pcPct   = pct(totalSlPc,   totalKH)
   const plPct   = pct(totalSlPl,   totalKH)
   const dgPct   = pct(totalSlDg,   totalKH)
   const bbc1Pct = pct(totalSlBbc1, totalKH)
   const overallPct = totalKH > 0 ? Math.round((pcPct + plPct + dgPct + bbc1Pct) / 4) : 0
 
+  // ── Phân tích trạng thái lô ──────────────────────────────────────────────
+  const hasAnyDoing = r => ['pcpl1TrangThai','pcpl2TrangThai','plTrangThai','dgTrangThai','bbc1TrangThai'].some(k => r[k] === 'doing')
+  const hasAnyDone  = r => ['pcpl1TrangThai','pcpl2TrangThai','plTrangThai','dgTrangThai','bbc1TrangThai'].some(k => r[k] === 'done')
+  const hasAnyStage = r => hasAnyDoing(r) || hasAnyDone(r)
+
+  const loAngSX       = data.filter(r => hasAnyDoing(r)).length
+  const loSapHoanThanh= data.filter(r => !hasAnyDoing(r) && hasAnyDone(r)).length
+  const loChuaBatDau  = data.filter(r => !hasAnyStage(r)).length
+  const total         = data.length
+
+  // ── Phân tích theo tổ thực hiện ──────────────────────────────────────────
+  const toStats = [
+    { key: 'PCPL1', label: 'PCPL1', accent: '#3b82f6', doing: pcpl1Doing, done: pcpl1Done },
+    { key: 'PCPL2', label: 'PCPL2', accent: '#6366f1', doing: pcpl2Doing, done: pcpl2Done },
+    { key: 'PL',    label: 'PL',    accent: '#7c3aed', doing: plDoing,    done: plDone    },
+    { key: 'ĐG',    label: 'ĐG',    accent: '#d48806', doing: dgDoing,    done: dgDone    },
+    { key: 'BBC1',  label: 'BBC1',  accent: '#16a34a', doing: bbc1Doing,  done: bbc1Done  },
+  ]
+
+  // ── Cảnh báo bất thường ──────────────────────────────────────────────────
+  const warnings = []
+
+  const loChuaBatDauList = data.filter(r => !hasAnyStage(r))
+  if (loChuaBatDauList.length > 0)
+    warnings.push({ level: 'warn', icon: '⏸', label: 'Chưa bắt đầu bất kỳ công đoạn nào', count: loChuaBatDauList.length, color: '#d48806', bg: '#fffbeb', border: '#fde68a' })
+
+  const loBtpChoNhieu = data.filter(r => (parseInt(r.slPc)||0) > 0 && (parseInt(r.pcPl)||0) === 0)
+  if (loBtpChoNhieu.length > 0)
+    warnings.push({ level: 'warn', icon: '📦', label: 'BTP sau PC chưa chuyển sang PL', count: loBtpChoNhieu.length, sl: loBtpChoNhieu.reduce((s, r) => s + Math.max(0, (parseInt(r.slPc)||0) - (parseInt(r.pcPl)||0)), 0), color: '#7c3aed', bg: '#faf5ff', border: '#ddd6fe' })
+
+  const loBtpChoDg = data.filter(r => (parseInt(r.pcPl)||0) > 0 && (parseInt(r.dg2)||0) === 0)
+  if (loBtpChoDg.length > 0)
+    warnings.push({ level: 'info', icon: '🔬', label: 'BTP sau PL chưa qua ĐG', count: loBtpChoDg.length, sl: loBtpChoDg.reduce((s, r) => s + Math.max(0, (parseInt(r.pcPl)||0) - (parseInt(r.dg2)||0)), 0), color: '#d48806', bg: '#fffbeb', border: '#fde68a' })
+
+  if (hangLoiCount > 0)
+    warnings.push({ level: 'error', icon: '⚠️', label: 'Có hàng lỗi cần xử lý', count: hangLoiCount, color: '#dc2626', bg: '#fff1f2', border: '#fecdd3' })
+
+  const loSlLechCao = data.filter(r => {
+    const pc = parseInt(r.slPc)||0; const pl = parseInt(r.pcPl)||0
+    return pc > 0 && pl > 0 && Math.abs(pc - pl) > pc * 0.15
+  })
+  if (loSlLechCao.length > 0)
+    warnings.push({ level: 'info', icon: '📊', label: 'SL lệch >15% giữa PC và PL', count: loSlLechCao.length, color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc' })
+
+  // ── Sub-components ────────────────────────────────────────────────────────
   const KpiCard = ({ label, value, sub, bg, badge }) => (
     <div style={{ flex: 1, background: bg, borderRadius: 10, padding: '10px 16px', color: '#fff', textAlign: 'center', minWidth: 100, position: 'relative' }}>
       {badge != null && badge > 0 && (
@@ -1069,19 +1115,11 @@ function ProductionOverview({ data, doneTotal }) {
     const doingLo  = (doing2 !== undefined ? pcpl1Doing + pcpl2Doing : doing1)
     const totalLo  = doingLo + doneLo
     return (
-      <div style={{
-        flex: 1, background: '#fff', borderRadius: 10,
-        border: `1.5px solid ${accent}22`,
-        borderTop: `3px solid ${accent}`,
-        padding: '8px 12px', minWidth: 130,
-      }}>
-        {/* Header */}
+      <div style={{ flex: 1, background: '#fff', borderRadius: 10, border: `1.5px solid ${accent}22`, borderTop: `3px solid ${accent}`, padding: '8px 12px', minWidth: 130 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
           <span style={{ fontWeight: 800, fontSize: 13, color: accent, letterSpacing: '0.05em' }}>{label}</span>
           <span style={{ fontSize: 11, fontWeight: 700, color: progress >= 80 ? '#16a34a' : progress >= 50 ? '#d48806' : '#dc2626', background: progress >= 80 ? '#f0fdf4' : progress >= 50 ? '#fffbeb' : '#fff1f2', padding: '1px 7px', borderRadius: 999, border: `1px solid ${progress >= 80 ? '#bbf7d0' : progress >= 50 ? '#fed7aa' : '#fecdd3'}` }}>{progress}%</span>
         </div>
-
-        {/* Badge lô */}
         {doing2 !== undefined ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 5 }}>
             {[['PCPL1', doing1, done1], ['PCPL2', doing2, done2]].map(([lbl, d, dn]) => (
@@ -1100,11 +1138,7 @@ function ProductionOverview({ data, doneTotal }) {
             {!doing1 && !done1 && <span style={{ fontSize: 11, color: '#cbd5e1' }}>—</span>}
           </div>
         )}
-
-        {/* Progress bar */}
         <ProgressBar value={progress} color={accent} />
-
-        {/* Số liệu */}
         <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
           <div style={{ flex: 1, textAlign: 'center' }}>
             <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600, marginBottom: 1 }}>SL thực tế</div>
@@ -1125,22 +1159,108 @@ function ProductionOverview({ data, doneTotal }) {
     )
   }
 
+  // ── Section header ────────────────────────────────────────────────────────
+  const SectionLabel = ({ children }) => (
+    <div style={{ fontSize: 10, fontWeight: 800, color: '#64748b', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 6, borderLeft: '3px solid #94a3b8', paddingLeft: 6 }}>{children}</div>
+  )
+
   return (
-    <div style={{ background: 'linear-gradient(135deg, #f0f9ff 0%, #e8f5f0 100%)', padding: '10px 12px 10px', borderBottom: '1px solid #d1e9df' }}>
-      {/* Row 1: KPI */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-        <KpiCard label="ĐANG SẢN XUẤT" value={data.length} sub="lô" bg="#006666" />
-        <KpiCard label="TỔNG KẾ HOẠCH" value={fmtN(totalKH)} sub="sản phẩm" bg="#1d4ed8" badge={overallPct} />
-        <KpiCard label="ĐÃ HOÀN THÀNH" value={doneTotal} sub="lô done" bg="#16a34a" />
-        <KpiCard label="CÓ HÀNG LỖI" value={hangLoiCount} sub="lô" bg={hangLoiCount > 0 ? '#dc2626' : '#94a3b8'} />
+    <div style={{ background: 'linear-gradient(135deg, #f0f9ff 0%, #e8f5f0 100%)', padding: '12px 14px 14px' }}>
+
+      {/* ── Row 1: KPI ── */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        <KpiCard label="ĐANG SẢN XUẤT"  value={data.length}    sub="lô"         bg="#006666" />
+        <KpiCard label="TỔNG KẾ HOẠCH"  value={fmtN(totalKH)} sub="sản phẩm"   bg="#1d4ed8" badge={overallPct} />
+        <KpiCard label="ĐÃ HOÀN THÀNH"  value={doneTotal}      sub="lô done"    bg="#16a34a" />
+        <KpiCard label="CÓ HÀNG LỖI"    value={hangLoiCount}   sub="lô"         bg={hangLoiCount > 0 ? '#dc2626' : '#94a3b8'} />
       </div>
-      {/* Row 2: Stage cards */}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <StageCard label="PC" doing1={pcpl1Doing} done1={pcpl1Done} doing2={pcpl2Doing} done2={pcpl2Done} sl={totalSlPc} dd={ddPc} kh={totalKH} slColor="#1d4ed8" accent="#1d4ed8" />
-        <StageCard label="PL" doing1={plDoing} done1={plDone} sl={totalSlPl} dd={ddPl} kh={totalKH} slColor="#7c3aed" accent="#7c3aed" />
-        <StageCard label="ĐG" doing1={dgDoing} done1={dgDone} sl={totalSlDg} dd={ddDg} kh={totalKH} slColor="#d48806" accent="#d48806" />
-        <StageCard label="BBC1" doing1={bbc1Doing} done1={bbc1Done} sl={totalSlBbc1} dd={ddBbc1} kh={totalKH} slColor="#16a34a" accent="#16a34a" />
+
+      {/* ── Row 2: Stage cards ── */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        <StageCard label="PC"   doing1={pcpl1Doing} done1={pcpl1Done} doing2={pcpl2Doing} done2={pcpl2Done} sl={totalSlPc}   dd={ddPc}   kh={totalKH} slColor="#1d4ed8" accent="#1d4ed8" />
+        <StageCard label="PL"   doing1={plDoing}    done1={plDone}                                          sl={totalSlPl}   dd={ddPl}   kh={totalKH} slColor="#7c3aed" accent="#7c3aed" />
+        <StageCard label="ĐG"   doing1={dgDoing}    done1={dgDone}                                          sl={totalSlDg}   dd={ddDg}   kh={totalKH} slColor="#d48806" accent="#d48806" />
+        <StageCard label="BBC1" doing1={bbc1Doing}  done1={bbc1Done}                                        sl={totalSlBbc1} dd={ddBbc1} kh={totalKH} slColor="#16a34a" accent="#16a34a" />
       </div>
+
+      {/* ── Row 3: Phân tích tình trạng lô + Per-tổ ── */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+
+        {/* Trạng thái lô */}
+        <div style={{ flex: 1.2, background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: '10px 12px' }}>
+          <SectionLabel>Trạng thái lô sản xuất ({total} lô)</SectionLabel>
+          {[
+            { label: 'Đang thực hiện',        count: loAngSX,        color: '#1d4ed8', bg: '#eff6ff', icon: '⚙' },
+            { label: 'Chờ hoàn thành (done ≥1 stage, 0 doing)', count: loSapHoanThanh, color: '#16a34a', bg: '#f0fdf4', icon: '✅' },
+            { label: 'Chưa bắt đầu công đoạn nào', count: loChuaBatDau, color: '#94a3b8', bg: '#f8fafc', icon: '⏸' },
+          ].map(row => {
+            const w = total > 0 ? Math.round(row.count / total * 100) : 0
+            return (
+              <div key={row.label} style={{ marginBottom: 7 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                  <span style={{ fontSize: 11, color: '#475569' }}>{row.icon} {row.label}</span>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: row.color }}>{row.count} <span style={{ fontSize: 10, fontWeight: 500, color: '#94a3b8' }}>({w}%)</span></span>
+                </div>
+                <div style={{ height: 6, background: '#f1f5f9', borderRadius: 999, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${w}%`, background: row.color, borderRadius: 999, transition: 'width 0.4s ease', opacity: 0.8 }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Per-tổ breakdown */}
+        <div style={{ flex: 2, background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: '10px 12px' }}>
+          <SectionLabel>Hoạt động theo tổ</SectionLabel>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {toStats.map(t => {
+              const active = t.doing + t.done
+              return (
+                <div key={t.key} style={{ flex: 1, textAlign: 'center', background: `${t.accent}08`, border: `1px solid ${t.accent}22`, borderRadius: 8, padding: '6px 4px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: t.accent, marginBottom: 4 }}>{t.label}</div>
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginBottom: 4, flexWrap: 'wrap' }}>
+                    {t.doing > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: '#eff6ff', color: '#1d4ed8', borderRadius: 999, padding: '1px 5px', border: '1px solid #bfdbfe' }}>⚙ {t.doing}</span>}
+                    {t.done  > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: '#f0fdf4', color: '#16a34a', borderRadius: 999, padding: '1px 5px', border: '1px solid #bbf7d0' }}>✓ {t.done}</span>}
+                    {!active && <span style={{ fontSize: 10, color: '#cbd5e1' }}>—</span>}
+                  </div>
+                  <div style={{ height: 4, background: '#f1f5f9', borderRadius: 999, overflow: 'hidden' }}>
+                    {t.doing > 0 && <div style={{ height: '100%', width: `${pct(t.doing, active)}%`, background: '#3b82f6', borderRadius: 999 }} />}
+                  </div>
+                  <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 3, fontWeight: 600 }}>{active} lô có TT</div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Row 4: Cảnh báo bất thường ── */}
+      {warnings.length > 0 && (
+        <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: '10px 12px' }}>
+          <SectionLabel>Cảnh báo bất thường ({warnings.length})</SectionLabel>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {warnings.map((w, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, background: w.bg, border: `1px solid ${w.border}`, borderRadius: 8, padding: '6px 12px', flexShrink: 0 }}>
+                <span style={{ fontSize: 14 }}>{w.icon}</span>
+                <div>
+                  <div style={{ fontSize: 11, color: w.color, fontWeight: 700 }}>{w.label}</div>
+                  <div style={{ fontSize: 11, color: '#64748b' }}>
+                    <strong>{w.count}</strong> lô
+                    {w.sl != null && <> · dở dang <strong>{fmtN(w.sl)}</strong> SP</>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {warnings.length === 0 && data.length > 0 && (
+        <div style={{ background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 16 }}>✅</span>
+          <span style={{ fontSize: 12, color: '#15803d', fontWeight: 600 }}>Không phát hiện bất thường trong {total} lô đang sản xuất</span>
+        </div>
+      )}
     </div>
   )
 }
