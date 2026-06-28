@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { createRoot } from 'react-dom/client'
 import { Select, Spin, message, DatePicker, Tooltip, Button, Popconfirm, Input, Dropdown } from 'antd'
 import { ReloadOutlined, TeamOutlined, ProjectOutlined, WarningOutlined, LeftOutlined, RightOutlined, SearchOutlined, SaveOutlined, PlusOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
@@ -72,6 +73,101 @@ function initials(name = '') {
 }
 function fmtDay(d) { return dayjs(d).format('DD/MM') }
 function dowOf(d)  { return DOW[dayjs(d).day()] }
+
+// ── ExportDayView — rendered offscreen then captured as PNG ──────────────────
+function ExportDayView({ dayStr, dow, assigns, employees, toLabel }) {
+  const tdBase = { padding: '9px 11px', verticalAlign: 'top', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }
+  return (
+    <div style={{ background: '#fff', padding: '18px 22px', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif', minWidth: 820 }}>
+      {/* Title */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, paddingBottom: 10, borderBottom: '2px solid #e2e8f0' }}>
+        <div style={{ fontWeight: 800, fontSize: 16, color: '#1e293b' }}>KẾ HOẠCH TỔ {toLabel?.toUpperCase()}</div>
+        <div style={{ fontWeight: 700, fontSize: 14, color: '#4f46e5', background: '#eef2ff', borderRadius: 8, padding: '3px 13px' }}>{dow} · {dayStr}</div>
+        <div style={{ marginLeft: 'auto', fontSize: 11.5, color: '#94a3b8' }}>{assigns.length} lệnh sản xuất</div>
+      </div>
+      {/* Table */}
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead>
+          <tr style={{ background: '#f9fafb' }}>
+            <th style={{ ...tdBase, textAlign: 'left', fontWeight: 700, color: '#334155', borderBottom: '2px solid #e2e8f0', minWidth: 200 }}>Sản phẩm</th>
+            <th style={{ ...tdBase, textAlign: 'center', fontWeight: 700, color: '#334155', borderBottom: '2px solid #e2e8f0', width: 88 }}>Công đoạn</th>
+            <th style={{ ...tdBase, textAlign: 'left', fontWeight: 700, color: '#334155', borderBottom: '2px solid #e2e8f0' }}>Người thực hiện</th>
+            <th style={{ ...tdBase, textAlign: 'center', fontWeight: 700, color: '#334155', borderBottom: '2px solid #e2e8f0', width: 110, borderRight: 'none' }}>Tình trạng</th>
+          </tr>
+        </thead>
+        <tbody>
+          {assigns.map(a => {
+            const existingShifts = SHIFTS.filter(s => a.caShifts?.[s])
+            const allMas = Object.values(a.caShifts || {}).flatMap(s => s.mas || [])
+            const status = a.isUrgent
+              ? { text: '⚠ Gấp',      bg: '#fef2f2', color: '#dc2626' }
+              : allMas.length > 0
+                ? { text: '✓ Đã xếp', bg: '#dcfce7', color: '#15803d' }
+                : { text: '⏳ Chưa xếp', bg: '#fff3cd', color: '#856404' }
+            return (
+              <tr key={a.id} style={{ background: a.isUrgent ? '#fff8f8' : '#fff' }}>
+                <td style={{ ...tdBase, minWidth: 200 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: a.isUrgent ? '#b91c1c' : '#1e293b', lineHeight: 1.4 }}>{a.ten}</div>
+                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 3, alignItems: 'center' }}>
+                    {a.maSp && <span style={{ fontSize: 10.5, color: '#94a3b8', fontFamily: 'monospace' }}>{a.maSp}</span>}
+                    {a.maDonHang && <span style={{ fontSize: 10.5, color: '#818cf8' }}>ĐH {a.maDonHang}</span>}
+                    {a.soLo && <span style={{ fontSize: 10.5, background: '#ede9fe', color: '#6d28d9', borderRadius: 4, padding: '0 5px' }}>Lô {a.soLo}</span>}
+                    {a.coLo && <span style={{ fontSize: 10.5, color: '#475569' }}>{Number(a.coLo).toLocaleString('vi-VN')} Salg</span>}
+                  </div>
+                  {a.salg != null && <div style={{ marginTop: 3, fontSize: 10.5, color: '#059669', fontWeight: 700 }}>SL: {a.salg.toLocaleString('vi-VN')}</div>}
+                  {a.note && <div style={{ marginTop: 3, fontSize: 10.5, color: '#64748b', fontStyle: 'italic' }}>📝 {a.note}</div>}
+                </td>
+                <td style={{ ...tdBase, textAlign: 'center', width: 88 }}>
+                  <span style={{ display: 'inline-block', background: '#e3f2fd', color: '#1565c0', padding: '4px 10px', borderRadius: 6, fontWeight: 700, fontSize: 12 }}>
+                    {a.congDoan || a.toNhom || '—'}
+                  </span>
+                  {a.isUrgent && <div style={{ marginTop: 4 }}><span style={{ fontSize: 9.5, background: '#fef2f2', color: '#dc2626', borderRadius: 4, padding: '1px 6px' }}>⚠ Gấp</span></div>}
+                </td>
+                <td style={{ ...tdBase }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {existingShifts.map(caKey => {
+                      const shiftData = a.caShifts[caKey] || { mas: [], sessionIds: {} }
+                      const cs = CA_STYLE[caKey] || CA_STYLE['Ca 1']
+                      return (
+                        <div key={caKey} style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                          <span style={{ fontSize: 10, fontWeight: 800, background: cs.bg, color: cs.text, border: `1px solid ${cs.border}`, borderRadius: 5, padding: '3px 8px', flexShrink: 0, marginTop: 2 }}>{caKey}</span>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                            {(shiftData.mas || []).map(ma => {
+                              const emp = employees.find(e => e.maNhanVien === ma)
+                              return (
+                                <div key={ma} style={{ background: '#fff8e1', border: '1px solid #ffd54f', borderRadius: 6, padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                  <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#f59e0b', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    {initials(emp?.hoVaTen || ma)}
+                                  </span>
+                                  <span style={{ fontSize: 12, fontWeight: 500, color: '#1a1a1a' }}>{emp?.hoVaTen || ma}</span>
+                                  {shiftData.sessionIds?.[ma]?.congThucHien != null && (
+                                    <span style={{ fontSize: 10, color: '#059669', fontWeight: 700 }}>{shiftData.sessionIds[ma].congThucHien}c</span>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </td>
+                <td style={{ ...tdBase, textAlign: 'center', width: 110, borderRight: 'none' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', padding: '4px 10px', borderRadius: 12, fontSize: 11.5, fontWeight: 600, background: status.bg, color: status.color, whiteSpace: 'nowrap' }}>
+                    {status.text}
+                  </span>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      <div style={{ marginTop: 10, fontSize: 10, color: '#cbd5e1', textAlign: 'right' }}>
+        Xuất {new Date().toLocaleString('vi-VN')} · QTSX Song An
+      </div>
+    </div>
+  )
+}
 
 // ── AssignCard ────────────────────────────────────────────────────────────────
 function AssignCard({
@@ -738,6 +834,32 @@ export default function KeHoachToPage() {
   // ── Panel open/close ──────────────────────────────────────────────────────
   const [p1Open, setP1Open] = useState(() => sessionStorage.getItem(SS_P1_OPEN) === 'true')
   const [p2Open, setP2Open] = useState(() => sessionStorage.getItem(SS_P2_OPEN) === 'true')
+
+  // ── Export day as image ────────────────────────────────────────────────────
+  const exportDayAsImage = useCallback(async (dayStr, dow, dayAssigns) => {
+    const { toPng } = await import('html-to-image')
+    const container = document.createElement('div')
+    container.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;'
+    document.body.appendChild(container)
+    const toLabel = TO_TABS.find(t => t.key === selectedTo)?.label || selectedTo || ''
+    const root = createRoot(container)
+    root.render(
+      <ExportDayView dayStr={dayStr} dow={dow} assigns={dayAssigns} employees={employees} toLabel={toLabel} />
+    )
+    await new Promise(r => setTimeout(r, 300))
+    try {
+      const dataUrl = await toPng(container, { quality: 1, pixelRatio: 2, backgroundColor: '#fff' })
+      const a = document.createElement('a')
+      a.download = `ke-hoach-${toLabel}-${dayStr.replace('/', '-')}.png`
+      a.href = dataUrl
+      a.click()
+    } catch (err) {
+      message.error('Không thể xuất ảnh, thử lại')
+    } finally {
+      root.unmount()
+      document.body.removeChild(container)
+    }
+  }, [selectedTo, employees])
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const isUrgent = p => {
@@ -1494,6 +1616,13 @@ export default function KeHoachToPage() {
                                       </>
                                     ) : (
                                       <Button size="small" onClick={enterEdit} style={{ fontSize: 11, height: 24 }}>✏ Cập nhật</Button>
+                                    )}
+                                    {dayAssigns.length > 0 && (
+                                      <Button size="small"
+                                        onClick={() => exportDayAsImage(dayStr, DOW[d.day()], dayAssigns)}
+                                        style={{ fontSize: 11, height: 24, color: '#6366f1', borderColor: '#a5b4fc' }}>
+                                        📷 Xuất ảnh
+                                      </Button>
                                     )}
                                   </div>
                                 </div>
