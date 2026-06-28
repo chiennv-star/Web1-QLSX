@@ -1343,35 +1343,8 @@ export default function KeHoachToPage() {
   return (
     <div style={{ padding: '12px 20px', background: '#eef1f6', height: '100%', display: 'flex', flexDirection: 'column', gap: 10, overflow: 'hidden', boxSizing: 'border-box' }}>
 
-      {/* ── Hàng 1: Tab bộ phận + controls ── */}
+      {/* ── Hàng 1: controls ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
-        {visibleTabs.map(tab => {
-          const isSel      = selectedTo === tab.key
-          const tabAssigns = assignsByTo[tab.key] || []
-          return (
-            <button key={tab.key} onClick={() => setSelectedTo(tab.key)} style={{
-              border: `1.5px solid ${isSel ? '#4f46e5' : '#cbd5e1'}`,
-              background: isSel ? '#4f46e5' : '#fff',
-              color: isSel ? '#fff' : '#475569',
-              borderRadius: 9, padding: '5px 14px',
-              cursor: 'pointer', fontWeight: 700, fontSize: 12.5,
-              display: 'flex', alignItems: 'center', gap: 5,
-              boxShadow: isSel ? '0 2px 8px #4f46e533' : 'none',
-              transition: 'all 0.15s',
-            }}>
-              <TeamOutlined style={{ fontSize: 11 }} />
-              {tab.label}
-              {tabAssigns.length > 0 && (
-                <span style={{ fontSize: 10, fontWeight: 800, background: isSel ? '#818cf8' : '#e2e8f0', color: isSel ? '#fff' : '#64748b', borderRadius: 999, padding: '1px 5px' }}>
-                  {tabAssigns.length}
-                </span>
-              )}
-            </button>
-          )
-        })}
-
-        <div style={{ width: 1, height: 22, background: '#cbd5e1', flexShrink: 0 }} />
-
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 800, color: '#1e293b', flexShrink: 0 }}>
           <ProjectOutlined style={{ color: '#6366f1', fontSize: 15 }} />
           <span style={{ fontSize: 14 }}>Kế Hoạch Tổ</span>
@@ -1429,7 +1402,35 @@ export default function KeHoachToPage() {
       </div>
 
       {/* ── Main area ── */}
-      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, gap: 8 }}>
+
+        {/* ── Sidebar dọc: chọn tổ ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0, width: 68 }}>
+          {visibleTabs.map(tab => {
+            const isSel      = selectedTo === tab.key
+            const tabAssigns = assignsByTo[tab.key] || []
+            return (
+              <button key={tab.key} onClick={() => setSelectedTo(tab.key)} style={{
+                border: `1.5px solid ${isSel ? '#4f46e5' : '#cbd5e1'}`,
+                background: isSel ? '#4f46e5' : '#fff',
+                color: isSel ? '#fff' : '#475569',
+                borderRadius: 9, padding: '8px 4px',
+                cursor: 'pointer', fontWeight: 700, fontSize: 12,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                boxShadow: isSel ? '0 2px 8px #4f46e533' : 'none',
+                transition: 'all 0.15s', width: '100%',
+              }}>
+                <TeamOutlined style={{ fontSize: 13 }} />
+                <span>{tab.label}</span>
+                {tabAssigns.length > 0 && (
+                  <span style={{ fontSize: 10, fontWeight: 800, background: isSel ? '#818cf8' : '#e2e8f0', color: isSel ? '#fff' : '#64748b', borderRadius: 999, padding: '1px 6px' }}>
+                    {tabAssigns.length}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
 
         {/* ── Unified panel ── */}
         <div style={{ flex: 1, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
