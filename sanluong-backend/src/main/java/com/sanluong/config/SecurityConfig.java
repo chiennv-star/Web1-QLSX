@@ -134,7 +134,9 @@ public class SecurityConfig {
                 // ── Nhân sự: tất cả xem, nhân viên tự cập nhật hồ sơ cá nhân ──
                 .requestMatchers(HttpMethod.GET, "/api/employees/**").hasAnyRole(ALL_ROLES)
                 .requestMatchers(HttpMethod.PUT, "/api/employees/me").hasAnyRole(ALL_ROLES)
-                .requestMatchers("/api/employees/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH")
+                .requestMatchers("/api/employees/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH",
+                    "ADMIN_PC", "ADMIN_BBC1", "ADMIN_PL", "ADMIN_DG",
+                    "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3")
 
                 // ── Hiệu quả công việc: tất cả xem, ADMIN và TKSX cập nhật ───
                 .requestMatchers(HttpMethod.GET, "/api/work-efficiency/**").hasAnyRole(ALL_ROLES)
