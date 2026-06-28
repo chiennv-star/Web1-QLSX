@@ -31,6 +31,7 @@ const SS_TIME_MODE = 'kehoachto_timeMode'
 const SS_MONTH     = 'kehoachto_monthStart'
 const SS_ASSIGNS   = 'kehoachto_assigns'
 const SS_P1_OPEN   = 'kehoachto_p1Open'
+const SS_EMP_OPEN  = 'kehoachto_empOpen'
 
 // WIP config theo tổ
 const WIP_CFG_MAP = {
@@ -850,6 +851,7 @@ export default function KeHoachToPage() {
 
   // ── Panel open/close ──────────────────────────────────────────────────────
   const [p1Open, setP1Open] = useState(() => sessionStorage.getItem(SS_P1_OPEN) === 'true')
+  const [empOpen, setEmpOpen] = useState(() => sessionStorage.getItem(SS_EMP_OPEN) !== 'false')
 
   // ── WIP (Hàng dở dang) ────────────────────────────────────────────────────
   const [wipItems, setWipItems]   = useState([])
@@ -1409,15 +1411,18 @@ export default function KeHoachToPage() {
 
           {/* ── ① Kế hoạch tổng + Nhân viên (merged header strip) ── */}
           <div style={{ flexShrink: 0, borderBottom: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', cursor: 'pointer', userSelect: 'none' }}
-              onClick={() => setP1Open(v => { const next = !v; sessionStorage.setItem(SS_P1_OPEN, next); return next })}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.04em', textTransform: 'uppercase', flexShrink: 0 }}>
-                Kéo sản phẩm
-                {selectedTo && planSource !== 'WIP' && <span style={{ fontWeight: 600, color: '#0f766e', marginLeft: 5, textTransform: 'none', fontSize: 10.5 }}>({filteredPlans.length})</span>}
-                {selectedTo && planSource === 'WIP' && <span style={{ fontWeight: 600, color: '#b45309', marginLeft: 5, textTransform: 'none', fontSize: 10.5 }}>({wipLoading ? '...' : `${wipItems.length} dở dang`})</span>}
-              </span>
-              <div style={{ display: 'flex', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}
-                onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', userSelect: 'none' }}>
+              {/* ── Left zone: Kéo sản phẩm ── */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', flexShrink: 0 }}
+                onClick={() => setP1Open(v => { const next = !v; sessionStorage.setItem(SS_P1_OPEN, next); return next })}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  Kéo sản phẩm
+                  {selectedTo && planSource !== 'WIP' && <span style={{ fontWeight: 600, color: '#0f766e', marginLeft: 5, textTransform: 'none', fontSize: 10.5 }}>({filteredPlans.length})</span>}
+                  {selectedTo && planSource === 'WIP' && <span style={{ fontWeight: 600, color: '#b45309', marginLeft: 5, textTransform: 'none', fontSize: 10.5 }}>({wipLoading ? '...' : `${wipItems.length} dở dang`})</span>}
+                </span>
+                <span style={{ color: '#94a3b8', fontSize: 12 }}>{p1Open ? '▴' : '▾'}</span>
+              </div>
+              <div style={{ display: 'flex', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}>
                 {PLAN_SOURCES.map(s => (
                   <button key={s.key} onClick={() => setPlanSource(s.key)} style={{
                     border: 'none', cursor: 'pointer', padding: '3px 8px',
@@ -1429,21 +1434,24 @@ export default function KeHoachToPage() {
               </div>
               <Input.Search
                 value={searchProduct}
-                onChange={e => { e.stopPropagation(); setSearchProduct(e.target.value) }}
-                onClick={e => e.stopPropagation()}
+                onChange={e => setSearchProduct(e.target.value)}
                 placeholder="Tìm SP..."
                 allowClear size="small"
                 style={{ width: 130, flexShrink: 0 }}
               />
               {/* Divider */}
-              <div style={{ width: 1, height: 16, background: '#e2e8f0', flexShrink: 0 }} onClick={e => e.stopPropagation()} />
-              {/* Nhân viên label + count */}
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.04em', textTransform: 'uppercase', flexShrink: 0 }}>
-                Kéo người
-                {empTo && <span style={{ fontWeight: 600, color: '#0f766e', marginLeft: 5, textTransform: 'none', fontSize: 10.5 }}>({displayEmps.length})</span>}
-              </span>
+              <div style={{ width: 1, height: 16, background: '#e2e8f0', flexShrink: 0 }} />
+              {/* ── Right zone: Kéo người ── */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', flexShrink: 0 }}
+                onClick={() => setEmpOpen(v => { const next = !v; sessionStorage.setItem(SS_EMP_OPEN, next); return next })}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  Kéo người
+                  {empTo && <span style={{ fontWeight: 600, color: '#0f766e', marginLeft: 5, textTransform: 'none', fontSize: 10.5 }}>({displayEmps.length})</span>}
+                </span>
+                <span style={{ color: '#94a3b8', fontSize: 12 }}>{empOpen ? '▴' : '▾'}</span>
+              </div>
               {/* Tổ tabs */}
-              <div style={{ display: 'flex', gap: 3, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
                 {visibleTabs.map(tab => {
                   const isSel = empTo === tab.key
                   return (
@@ -1456,7 +1464,6 @@ export default function KeHoachToPage() {
                   )
                 })}
               </div>
-              <span style={{ color: '#94a3b8', fontSize: 13, flexShrink: 0 }}>{p1Open ? '▴' : '▾'}</span>
             </div>
             {p1Open && (
               <div style={{ overflowX: 'auto', padding: '0 12px 8px', display: 'flex', gap: 7, alignItems: 'flex-start' }}>
@@ -1551,8 +1558,8 @@ export default function KeHoachToPage() {
                 })}
               </div>
             )}
-            {/* Nhân viên row (hiển thị khi expanded, ngay dưới products) */}
-            {p1Open && (
+            {/* Nhân viên row (toggle độc lập) */}
+            {empOpen && (
               <div style={{ borderTop: '1px dashed #e2e8f0', padding: '5px 12px 8px', display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
                 {!empTo ? (
                   <span style={{ color: '#94a3b8', fontSize: 11 }}>— Chọn tổ để xem nhân viên —</span>
