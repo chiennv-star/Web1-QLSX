@@ -733,28 +733,9 @@ export default function KeHoachToPage() {
     }
   }, [user?.role]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Panel resize ──────────────────────────────────────────────────────────
-  const [leftW,  setLeftW]  = useState(300)
-  const [splitY, setSplitY] = useState(320)
-  const [p1Open, setP1Open] = useState(() => sessionStorage.getItem(SS_P1_OPEN) !== 'true' ? false : true)
-  const [p2Open, setP2Open] = useState(() => sessionStorage.getItem(SS_P2_OPEN) !== 'true' ? false : true)
-  const resizeDrag = useRef(null)
-
-  useEffect(() => {
-    const onMove = e => {
-      const d = resizeDrag.current
-      if (!d) return
-      if (d.kind === 'col') setLeftW(Math.max(180, Math.min(560, d.initW + e.clientX - d.startX)))
-      else setSplitY(Math.max(100, Math.min(580, d.initH + e.clientY - d.startY)))
-    }
-    const onUp = () => { resizeDrag.current = null }
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup',  onUp)
-    return () => {
-      document.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseup',  onUp)
-    }
-  }, [])
+  // ── Panel open/close ──────────────────────────────────────────────────────
+  const [p1Open, setP1Open] = useState(() => sessionStorage.getItem(SS_P1_OPEN) === 'true')
+  const [p2Open, setP2Open] = useState(() => sessionStorage.getItem(SS_P2_OPEN) === 'true')
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const isUrgent = p => {
@@ -1287,23 +1268,21 @@ export default function KeHoachToPage() {
       </div>
 
       {/* ── Main area ── */}
-      <div style={{ display: 'flex', flex: 1, minHeight: 0, alignItems: 'stretch' }}>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
 
-        {/* ── Left column ── */}
-        <div style={{ width: leftW, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, gap: 0 }}>
+        {/* ── Unified panel ── */}
+        <div style={{ flex: 1, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
 
-          {/* ① Kế hoạch tổng */}
-          <div style={{
-            background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
-            display: 'flex', flexDirection: 'column',
-            flex: p1Open ? (p2Open ? `0 0 ${splitY}px` : '1 1 0') : '0 0 38px',
-            overflow: 'hidden',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 12px', flexShrink: 0, borderBottom: p1Open ? '1px solid #f1f5f9' : 'none' }}>
+          {/* ── ① Kế hoạch tổng (header strip) ── */}
+          <div style={{ flexShrink: 0, borderBottom: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', cursor: 'pointer', userSelect: 'none' }}
+              onClick={() => setP1Open(v => { const next = !v; sessionStorage.setItem(SS_P1_OPEN, next); return next })}>
               <span style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.04em', textTransform: 'uppercase', flex: 1 }}>
                 ① Kế hoạch tổng — kéo sản phẩm
+                {selectedTo && <span style={{ fontWeight: 600, color: '#0f766e', marginLeft: 6, textTransform: 'none', fontSize: 10.5 }}>({filteredPlans.length})</span>}
               </span>
-              <div style={{ display: 'flex', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}>
+              <div style={{ display: 'flex', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}
+                onClick={e => e.stopPropagation()}>
                 {PLAN_SOURCES.map(s => (
                   <button key={s.key} onClick={() => setPlanSource(s.key)} style={{
                     border: 'none', cursor: 'pointer', padding: '3px 8px',
@@ -1313,169 +1292,107 @@ export default function KeHoachToPage() {
                   }}>{s.label}</button>
                 ))}
               </div>
-              <button onClick={() => setP1Open(v => { const next = !v; sessionStorage.setItem(SS_P1_OPEN, next); return next })} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', fontSize: 14, padding: '0 2px', lineHeight: 1 }}>
-                {p1Open ? '▴' : '▾'}
-              </button>
+              <Input.Search
+                value={searchProduct}
+                onChange={e => { e.stopPropagation(); setSearchProduct(e.target.value) }}
+                onClick={e => e.stopPropagation()}
+                placeholder="Tìm SP..."
+                allowClear size="small"
+                style={{ width: 160, flexShrink: 0 }}
+              />
+              <span style={{ color: '#94a3b8', fontSize: 13, flexShrink: 0 }}>{p1Open ? '▴' : '▾'}</span>
             </div>
-
             {p1Open && (
-              <>
-                <div style={{ fontSize: 10.5, color: '#94a3b8', padding: '5px 13px 4px', flexShrink: 0 }}>
-                  {selectedTo
-                    ? <span>Đang xem: <b style={{ color: '#0f766e' }}>{TO_TABS.find(t => t.key === selectedTo)?.label || selectedTo}</b> · Kéo thả vào ngày bên phải.</span>
-                    : 'Chọn tổ ở tab trên rồi kéo thả vào ngày.'}
-                </div>
-                <div style={{ padding: '0 12px 7px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <Select value={filterDay || undefined} placeholder="Tất cả ngày" allowClear onChange={v => setFilterDay(v || '')} style={{ width: '100%' }} size="small" popupMatchSelectWidth={false}>
-                    {days.map(d => <Option key={fmtDay(d)} value={fmtDay(d)}>{dowOf(d)} {fmtDay(d)}</Option>)}
-                  </Select>
-                  <Input.Search
-                    value={searchProduct}
-                    onChange={e => setSearchProduct(e.target.value)}
-                    onSearch={v => setSearchProduct(v)}
-                    placeholder="Tìm tên SP / mã SP / số lô..."
-                    allowClear size="small"
-                  />
-                </div>
-                <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 10px', display: 'flex', flexDirection: 'column', gap: 7 }}>
-                  {loading ? (
-                    <div style={{ padding: 16, textAlign: 'center' }}><Spin size="small" /></div>
-                  ) : !selectedTo ? (
-                    <div style={{ color: '#94a3b8', fontSize: 12, padding: '10px 0' }}>— Chọn tổ để xem kế hoạch —</div>
-                  ) : filteredPlans.length === 0 ? (
-                    <div style={{ color: '#94a3b8', fontSize: 12, padding: '10px 0' }}>
-                      {(() => {
-                        const hasAny = planSource === 'SCHEDULE'
-                          ? plans.some(p => p.congDoan === selectedTab?.schedCongDoan)
-                          : (selectedTab?.congDoanKey ? plans.some(p => p.congDoan === selectedTab.congDoanKey) : plans.some(p => p.toNhom === selectedTo))
-                        return hasAny ? 'Không có kết quả khớp bộ lọc.' : `Không có dữ liệu từ "${PLAN_SOURCES.find(s => s.key === planSource)?.label}" cho tổ ${TO_TABS.find(t => t.key === selectedTo)?.label || selectedTo} tuần này.`
-                      })()}
-                    </div>
-                  ) : filteredPlans.map(p => {
-                    const pDay   = p.ngayThucHien ? dayjs(p.ngayThucHien) : null
-                    const urgent = isUrgent(p)
-                    const ctxItems = {
-                      items: [{
-                        key: 'delete', danger: true,
-                        label: (
-                          <Popconfirm
-                            title={`Xóa kế hoạch "${p.tenTrinh || p.maSp || p.id}"?`}
-                            okText="Xóa" cancelText="Huỷ"
-                            okButtonProps={{ danger: true, size: 'small' }}
-                            onConfirm={() => deletePlan(p.id)}
-                          >
-                            <span onClick={e => e.stopPropagation()}>🗑 Xóa kế hoạch này</span>
-                          </Popconfirm>
-                        ),
-                      }],
-                    }
-                    return (
-                      <Dropdown key={p.id} menu={ctxItems} trigger={['contextMenu']}>
-                        <div draggable onDragStart={e => onDragStartProduct(e, p)}
-                          style={{ border: `1px solid ${urgent ? '#fca5a5' : '#d1fae5'}`, background: urgent ? '#fff5f5' : '#ecfdf5', borderRadius: 10, padding: '8px 10px', cursor: 'grab' }}>
-                          <div style={{ fontWeight: 700, fontSize: 12.5, color: urgent ? '#b91c1c' : '#065f46', lineHeight: 1.35 }}>
-                            {p.tenTrinh || p.maBravo || p.maSp || '(Chưa có tên)'}
-                          </div>
-                          <div style={{ fontSize: 10.5, color: '#64748b', fontFamily: 'monospace', marginTop: 2, display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
-                            {p.maSp && <span>{p.maSp}</span>}
-                            {p.maDonHang && <span style={{ color: '#818cf8' }}>ĐH {p.maDonHang}</span>}
-                            {p.soLo && <span style={{ background: '#ede9fe', color: '#6d28d9', borderRadius: 4, padding: '1px 5px', fontSize: 10 }}>Lô {p.soLo}</span>}
-                            {p.coLo && <span style={{ color: '#475569' }}>SL {Number(p.coLo).toLocaleString('vi-VN')}</span>}
-                          </div>
-                          <div style={{ display: 'flex', gap: 5, marginTop: 5, flexWrap: 'wrap', alignItems: 'center' }}>
-                            {p.toNhom && <span style={{ fontSize: 10, fontWeight: 800, background: '#ccfbf1', color: '#0f766e', borderRadius: 4, padding: '1px 6px' }}>{p.toNhom}</span>}
-                            {p.congDoan && <span style={{ fontSize: 10, fontWeight: 700, background: '#e0f2fe', color: '#0369a1', borderRadius: 4, padding: '1px 6px' }}>{p.congDoan}</span>}
-                            {pDay && <span style={{ fontSize: 10, fontWeight: 700, background: '#f1f5f9', color: '#475569', borderRadius: 4, padding: '1px 6px' }}>{DOW[pDay.day()]} {fmtDay(pDay)}</span>}
-                            {urgent && <span style={{ fontSize: 10, fontWeight: 800, background: '#fef2f2', color: '#dc2626', borderRadius: 4, padding: '1px 6px' }}>⚠ Gấp</span>}
-                            {p.tinhTrang && <span style={{ fontSize: 10, background: p.tinhTrang === 'done' ? '#dcfce7' : '#fef9c3', color: p.tinhTrang === 'done' ? '#166534' : '#854d0e', borderRadius: 4, padding: '1px 6px' }}>{p.tinhTrang}</span>}
-                          </div>
+              <div style={{ overflowX: 'auto', padding: '0 12px 8px', display: 'flex', gap: 7 }}>
+                {loading ? (
+                  <div style={{ padding: '8px 0' }}><Spin size="small" /></div>
+                ) : !selectedTo ? (
+                  <div style={{ color: '#94a3b8', fontSize: 12, padding: '4px 0' }}>— Chọn tổ để xem kế hoạch —</div>
+                ) : filteredPlans.length === 0 ? (
+                  <div style={{ color: '#94a3b8', fontSize: 12, padding: '4px 0', whiteSpace: 'nowrap' }}>Không có dữ liệu.</div>
+                ) : filteredPlans.map(p => {
+                  const pDay   = p.ngayThucHien ? dayjs(p.ngayThucHien) : null
+                  const urgent = isUrgent(p)
+                  const ctxItems = {
+                    items: [{
+                      key: 'delete', danger: true,
+                      label: (
+                        <Popconfirm
+                          title={`Xóa kế hoạch "${p.tenTrinh || p.maSp || p.id}"?`}
+                          okText="Xóa" cancelText="Huỷ"
+                          okButtonProps={{ danger: true, size: 'small' }}
+                          onConfirm={() => deletePlan(p.id)}
+                        >
+                          <span onClick={e => e.stopPropagation()}>🗑 Xóa kế hoạch này</span>
+                        </Popconfirm>
+                      ),
+                    }],
+                  }
+                  return (
+                    <Dropdown key={p.id} menu={ctxItems} trigger={['contextMenu']}>
+                      <div draggable onDragStart={e => onDragStartProduct(e, p)}
+                        style={{ border: `1px solid ${urgent ? '#fca5a5' : '#d1fae5'}`, background: urgent ? '#fff5f5' : '#ecfdf5', borderRadius: 8, padding: '6px 9px', cursor: 'grab', flexShrink: 0, width: 195 }}>
+                        <div style={{ fontWeight: 700, fontSize: 12, color: urgent ? '#b91c1c' : '#065f46', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {p.tenTrinh || p.maBravo || p.maSp || '(Chưa có tên)'}
                         </div>
-                      </Dropdown>
-                    )
-                  })}
-                </div>
-              </>
+                        <div style={{ fontSize: 10, color: '#64748b', fontFamily: 'monospace', marginTop: 2, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                          {p.maSp && <span>{p.maSp}</span>}
+                          {p.soLo && <span style={{ background: '#ede9fe', color: '#6d28d9', borderRadius: 3, padding: '0 4px' }}>Lô {p.soLo}</span>}
+                          {pDay && <span style={{ background: '#f1f5f9', color: '#475569', borderRadius: 3, padding: '0 4px' }}>{DOW[pDay.day()]} {fmtDay(pDay)}</span>}
+                          {urgent && <span style={{ color: '#dc2626', fontWeight: 800 }}>⚠ Gấp</span>}
+                        </div>
+                      </div>
+                    </Dropdown>
+                  )
+                })}
+              </div>
             )}
           </div>
 
-          {/* Drag handle dọc */}
-          {p1Open && p2Open && (
-            <div onMouseDown={e => { resizeDrag.current = { kind: 'row', startY: e.clientY, initH: splitY } }}
-              style={{ height: 10, flexShrink: 0, cursor: 'row-resize', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#d1d5db' }} />
-            </div>
-          )}
-
-          {/* ② Nhân viên */}
-          <div style={{
-            background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
-            display: 'flex', flexDirection: 'column',
-            flex: p2Open ? '1 1 0' : '0 0 38px',
-            overflow: 'hidden', minHeight: 38,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 12px', flexShrink: 0, borderBottom: p2Open ? '1px solid #f1f5f9' : 'none' }}>
+          {/* ── ② Nhân viên trong tổ (header strip) ── */}
+          <div style={{ flexShrink: 0, borderBottom: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', cursor: 'pointer', userSelect: 'none' }}
+              onClick={() => setP2Open(v => { const next = !v; sessionStorage.setItem(SS_P2_OPEN, next); return next })}>
               <span style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.04em', textTransform: 'uppercase', flex: 1 }}>
                 ② Nhân viên trong tổ — kéo người
+                {empTo && <span style={{ fontWeight: 600, color: '#0f766e', marginLeft: 6, textTransform: 'none', fontSize: 10.5 }}>({displayEmps.length} người)</span>}
               </span>
-              {p2Open && empTo && <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{displayEmps.length} người</span>}
-              <button onClick={() => setP2Open(v => { const next = !v; sessionStorage.setItem(SS_P2_OPEN, next); return next })} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', fontSize: 14, padding: '0 2px', lineHeight: 1 }}>
-                {p2Open ? '▴' : '▾'}
-              </button>
+              {/* Tổ tabs inline */}
+              <div style={{ display: 'flex', gap: 3, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                {visibleTabs.map(tab => {
+                  const isSel = empTo === tab.key
+                  return (
+                    <button key={tab.key} onClick={() => setEmpTo(tab.key)} style={{
+                      border: `1.5px solid ${isSel ? '#0f766e' : '#e2e8f0'}`,
+                      background: isSel ? '#0f766e' : '#f8fafc',
+                      color: isSel ? '#fff' : '#64748b',
+                      borderRadius: 999, padding: '2px 8px', cursor: 'pointer', fontWeight: 700, fontSize: 10.5,
+                    }}>{tab.label}</button>
+                  )
+                })}
+              </div>
+              <span style={{ color: '#94a3b8', fontSize: 13, flexShrink: 0 }}>{p2Open ? '▴' : '▾'}</span>
             </div>
-
             {p2Open && (
-              <>
-                <div style={{ padding: '6px 12px 4px', display: 'flex', flexWrap: 'wrap', gap: 4, flexShrink: 0 }}>
-                  {visibleTabs.map(tab => {
-                    const isSel = empTo === tab.key
-                    return (
-                      <button key={tab.key} onClick={() => setEmpTo(tab.key)} style={{
-                        border: `1.5px solid ${isSel ? '#0f766e' : '#e2e8f0'}`,
-                        background: isSel ? '#0f766e' : '#f8fafc',
-                        color: isSel ? '#fff' : '#64748b',
-                        borderRadius: 999, padding: '2px 9px', cursor: 'pointer', fontWeight: 700, fontSize: 11,
-                      }}>{tab.label}</button>
-                    )
-                  })}
-                </div>
-                <div style={{ fontSize: 10.5, color: '#94a3b8', padding: '0 13px 5px', flexShrink: 0 }}>
-                  {empTo
-                    ? <span>Tổ <b style={{ color: '#0f766e' }}>{TO_TABS.find(t => t.key === empTo)?.label || empTo}</b> · {displayEmps.length} người · kéo thả vào card bên phải.</span>
-                    : 'Chọn tổ để xem nhân viên.'}
-                </div>
-                <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 10px', display: 'flex', flexWrap: 'wrap', gap: 6, alignContent: 'flex-start' }}>
-                  {!empTo ? (
-                    <div style={{ color: '#94a3b8', fontSize: 12 }}>— Chưa chọn tổ —</div>
-                  ) : displayEmps.length === 0 ? (
-                    <div style={{ color: '#94a3b8', fontSize: 12 }}>Không có nhân viên trong tổ {TO_TABS.find(t => t.key === empTo)?.label || empTo}.</div>
-                  ) : displayEmps.map(emp => {
-                    const isTN = (emp.viTri || '').toLowerCase().includes('tổ trưởng') || (emp.viTri || '').toUpperCase() === 'TN'
-                    return (
-                      <div key={emp.maNhanVien} draggable onDragStart={e => onDragStartPerson(e, emp)} title={`${emp.maNhanVien} · ${emp.toNhom || ''}`}
-                        style={{ display: 'flex', alignItems: 'center', gap: 5, border: `1px solid ${isTN ? '#fde68a' : '#e2e8f0'}`, background: isTN ? '#fffbeb' : '#f8fafc', borderRadius: 999, padding: '4px 10px 4px 4px', fontSize: 12, fontWeight: 600, cursor: 'grab', userSelect: 'none' }}>
-                        <span style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: isTN ? '#fde68a' : '#c7d2fe', color: isTN ? '#92400e' : '#4338ca', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {initials(emp.hoVaTen)}
-                        </span>
-                        {emp.hoVaTen}
-                      </div>
-                    )
-                  })}
-                </div>
-              </>
+              <div style={{ overflowX: 'auto', padding: '0 12px 8px', display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                {!empTo ? (
+                  <div style={{ color: '#94a3b8', fontSize: 12 }}>— Chọn tổ để xem nhân viên —</div>
+                ) : displayEmps.length === 0 ? (
+                  <div style={{ color: '#94a3b8', fontSize: 12 }}>Không có nhân viên trong tổ {TO_TABS.find(t => t.key === empTo)?.label || empTo}.</div>
+                ) : displayEmps.map(emp => {
+                  const isTN = (emp.viTri || '').toLowerCase().includes('tổ trưởng') || (emp.viTri || '').toUpperCase() === 'TN'
+                  return (
+                    <div key={emp.maNhanVien} draggable onDragStart={e => onDragStartPerson(e, emp)} title={`${emp.maNhanVien} · ${emp.toNhom || ''}`}
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, border: `1px solid ${isTN ? '#fde68a' : '#e2e8f0'}`, background: isTN ? '#fffbeb' : '#f8fafc', borderRadius: 999, padding: '4px 10px 4px 4px', fontSize: 12, fontWeight: 600, cursor: 'grab', userSelect: 'none', flexShrink: 0 }}>
+                      <span style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: isTN ? '#fde68a' : '#c7d2fe', color: isTN ? '#92400e' : '#4338ca', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {initials(emp.hoVaTen)}
+                      </span>
+                      {emp.hoVaTen}
+                    </div>
+                  )
+                })}
+              </div>
             )}
-          </div>
-        </div>
-
-        {/* Drag handle ngang */}
-        <div onMouseDown={e => { resizeDrag.current = { kind: 'col', startX: e.clientX, initW: leftW } }}
-          style={{ width: 12, flexShrink: 0, cursor: 'col-resize', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: 4, height: 48, borderRadius: 2, background: '#d1d5db' }} />
-        </div>
-
-        {/* ── ③ Right column ── */}
-        <div style={{ flex: 1, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
-          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', color: '#64748b', padding: '5px 10px 3px', textTransform: 'uppercase', flexShrink: 0 }}>
-            ③ Kế hoạch chi tiết — chọn ngày để xếp
           </div>
 
           {viewMode === 'viec' ? (
