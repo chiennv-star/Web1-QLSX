@@ -1592,8 +1592,10 @@ export default function DonHangPage() {
         {[
           { key: 'active',   label: '📋 Đơn Hàng',      count: displayData.length + (showHidden ? 0 : hiddenIds.size) },
           { key: 'done',     label: '🏆 Đã Hoàn Thành', count: completedData.length },
-          { key: 'trend',    label: '📊 Xu Hướng',       count: displayData.length },
-          { key: 'analysis', label: '🔬 Phân Tích',      count: displayData.length },
+          ...(canEdit ? [
+            { key: 'trend',    label: '📊 Xu Hướng',     count: displayData.length },
+            { key: 'analysis', label: '🔬 Phân Tích',    count: displayData.length },
+          ] : []),
         ].map(tab => (
           <div key={tab.key}
             onClick={() => { setActiveTab(tab.key); setSelectedRowKeys([]) }}
