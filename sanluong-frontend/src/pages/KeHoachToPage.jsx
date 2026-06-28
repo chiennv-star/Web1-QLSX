@@ -29,6 +29,8 @@ const SS_SOURCE    = 'kehoachto_planSource'
 const SS_TIME_MODE = 'kehoachto_timeMode'
 const SS_MONTH     = 'kehoachto_monthStart'
 const SS_ASSIGNS   = 'kehoachto_assigns'
+const SS_P1_OPEN   = 'kehoachto_p1Open'
+const SS_P2_OPEN   = 'kehoachto_p2Open'
 
 const TIME_MODES = [
   { key: 'week',  label: 'Tuần'   },
@@ -586,8 +588,8 @@ export default function KeHoachToPage() {
   // ── Panel resize ──────────────────────────────────────────────────────────
   const [leftW,  setLeftW]  = useState(300)
   const [splitY, setSplitY] = useState(320)
-  const [p1Open, setP1Open] = useState(true)
-  const [p2Open, setP2Open] = useState(true)
+  const [p1Open, setP1Open] = useState(() => sessionStorage.getItem(SS_P1_OPEN) !== 'true' ? false : true)
+  const [p2Open, setP2Open] = useState(() => sessionStorage.getItem(SS_P2_OPEN) !== 'true' ? false : true)
   const resizeDrag = useRef(null)
 
   useEffect(() => {
@@ -1163,7 +1165,7 @@ export default function KeHoachToPage() {
                   }}>{s.label}</button>
                 ))}
               </div>
-              <button onClick={() => setP1Open(v => !v)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', fontSize: 14, padding: '0 2px', lineHeight: 1 }}>
+              <button onClick={() => setP1Open(v => { const next = !v; sessionStorage.setItem(SS_P1_OPEN, next); return next })} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', fontSize: 14, padding: '0 2px', lineHeight: 1 }}>
                 {p1Open ? '▴' : '▾'}
               </button>
             </div>
@@ -1268,7 +1270,7 @@ export default function KeHoachToPage() {
                 ② Nhân viên trong tổ — kéo người
               </span>
               {p2Open && empTo && <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{displayEmps.length} người</span>}
-              <button onClick={() => setP2Open(v => !v)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', fontSize: 14, padding: '0 2px', lineHeight: 1 }}>
+              <button onClick={() => setP2Open(v => { const next = !v; sessionStorage.setItem(SS_P2_OPEN, next); return next })} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', fontSize: 14, padding: '0 2px', lineHeight: 1 }}>
                 {p2Open ? '▴' : '▾'}
               </button>
             </div>
