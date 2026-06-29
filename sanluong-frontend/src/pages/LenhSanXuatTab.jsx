@@ -771,8 +771,9 @@ export default function LenhSanXuatTab() {
   const [lichSuOpen,   setLichSuOpen]   = useState(false)
   const [lichSuRecord, setLichSuRecord] = useState(null)
   const [tableH, setTableH] = useState(500)
-  const [loaiSpMap,      setLoaiSpMap]      = useState({}) // maSp → { loaiSanPham, khoiLuong, mayMocPc, ... }
-  const [employeeCounts, setEmployeeCounts] = useState({})
+  const [loaiSpMap,        setLoaiSpMap]        = useState({}) // maSp → { loaiSanPham, khoiLuong, mayMocPc, ... }
+  const [employeeCounts,   setEmployeeCounts]   = useState({})
+  const [phanTichSubTab,   setPhanTichSubTab]   = useState('cong')
   const tableWrapRef = useRef(null)
   // useRef để lưu giá trị soLo — không gây re-render khi gõ, tránh input mất focus
   const soLoRef = useRef({})
@@ -1466,32 +1467,215 @@ export default function LenhSanXuatTab() {
         }
         const loaiKeyFn = raw => (raw || '').trim().toLowerCase().replace(/\s+/g, ' ') || '(chưa phân loại)'
 
-        const typeMap = {}
-        let totalSl = 0
+        const fmtCong = v => v > 0 ? Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) : '—'
+        const fmtH    = v => (v != null && v > 0) ? Number(v).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'
+        const fmtDays = v => (v != null && v > 0) ? Number(v).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'
+
+        // ── Summary stats ──
+        const totalSl    = trendData.reduce((s, r) => s + (Number(r.soLuong) || 0), 0)
+        const uniqueLoai = new Set(trendData.map(r => loaiKeyFn(r._pm.loaiSanPham))).size
+        const uniqueSku  = new Set(trendData.filter(r => r.maSp).map(r => r.maSp)).size
+
+        // ── Phân Tích Công — split PC by toThucHien (PCPL1/PCPL2) ──
+        const congMap = {}
         trendData.forEach(r => {
           const key  = loaiKeyFn(r._pm.loaiSanPham)
           const loai = normalizeLoai(r._pm.loaiSanPham) || '(Chưa phân loại)'
           const sl   = Number(r.soLuong) || 0
-          totalSl += sl
+          if (!congMap[key]) congMap[key] = { loai, skuSet: new Set(), congPcpl1: 0, congPcpl2: 0, congPl: 0, congDg: 0, congBbc1: 0 }
+          const s = congMap[key]
+          s.skuSet.add(r.maSp || '?')
+          const to   = r.toThucHien
+          const nsPc  = Number(r._pm.nangSuatPc)   || 0
+          const nsPl  = Number(r._pm.nangSuatPl)   || 0
+          const nsBbc = Number(r._pm.nangSuatBbc1) || 0
+          const nsDg  = Number(r._pm.nangSuatDg) > 0 ? Number(r._pm.nangSuatDg) : Number(r._pm.slTrungBinh) || 0
+          if (to === 'PCPL1' && nsPc  > 0) s.congPcpl1 += sl / nsPc
+          if (to === 'PCPL2' && nsPc  > 0) s.congPcpl2 += sl / nsPc
+          if (to === 'PCPL3' && nsPl  > 0) s.congPl    += sl / nsPl
+          if (to === 'ĐG'    && nsDg  > 0) s.congDg    += sl / nsDg
+          if (to === 'BBC1'  && nsBbc > 0) s.congBbc1  += sl / nsBbc
+        })
+        const congRows = Object.values(congMap).map(s => ({
+          ...s, sku: s.skuSet.size,
+          tongCong: s.congPcpl1 + s.congPcpl2 + s.congPl + s.congDg + s.congBbc1,
+        })).sort((a, b) => b.tongCong - a.tongCong)
+
+        // ── Thống kê theo loại SP ──
+        const typeMap = {}
+        let totalSlType = 0
+        trendData.forEach(r => {
+          const key  = loaiKeyFn(r._pm.loaiSanPham)
+          const loai = normalizeLoai(r._pm.loaiSanPham) || '(Chưa phân loại)'
+          const sl   = Number(r.soLuong) || 0
+          totalSlType += sl
           if (!typeMap[key]) typeMap[key] = { loai, soLenh: 0, skuSet: new Set(), totalSl: 0, congDg: 0, congPc: 0, congPl: 0 }
           const s = typeMap[key]
-          s.soLenh++
-          s.skuSet.add(r.maSp)
-          s.totalSl += sl
+          s.soLenh++; s.skuSet.add(r.maSp); s.totalSl += sl
           const nsDg = Number(r._pm.nangSuatDg) > 0 ? Number(r._pm.nangSuatDg) : (Number(r._pm.slTrungBinh) > 0 ? Number(r._pm.slTrungBinh) : 0)
-          if (nsDg   > 0) s.congDg += sl / nsDg
-          if (Number(r._pm.nangSuatPc)  > 0) s.congPc += sl / Number(r._pm.nangSuatPc)
-          if (Number(r._pm.nangSuatPl)  > 0) s.congPl += sl / Number(r._pm.nangSuatPl)
+          if (nsDg > 0) s.congDg += sl / nsDg
+          if (Number(r._pm.nangSuatPc) > 0) s.congPc += sl / Number(r._pm.nangSuatPc)
+          if (Number(r._pm.nangSuatPl) > 0) s.congPl += sl / Number(r._pm.nangSuatPl)
         })
         const typeRows = Object.values(typeMap)
-          .map(s => ({ ...s, sku: s.skuSet.size, tyLe: totalSl > 0 ? s.totalSl / totalSl * 100 : 0 }))
+          .map(s => ({ ...s, sku: s.skuSet.size, tyLe: totalSlType > 0 ? s.totalSl / totalSlType * 100 : 0 }))
           .sort((a, b) => b.totalSl - a.totalSl)
         const TYPE_COLORS = ['#1677ff','#52c41a','#fa8c16','#722ed1','#eb2f96','#13c2c2','#faad14','#f5222d','#a0d911','#2f54eb']
         const colorOf = loai => TYPE_COLORS[typeRows.findIndex(r => r.loai === loai) % TYPE_COLORS.length]
-        const fmtCong  = v => v > 0 ? Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) : '—'
-        const fmtH     = v => (v != null && v > 0) ? Number(v).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'
-        const fmtDays  = v => (v != null && v > 0) ? Number(v).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'
 
+        // ── Bottleneck per lệnh ──
+        const stageWorkers = {
+          PC:   (employeeCounts['PCPL1'] || 0) + (employeeCounts['PCPL2'] || 0),
+          PL:   employeeCounts['PCPL3'] || 0,
+          BBC1: employeeCounts['BBC1']  || 0,
+          DG:   employeeCounts['ĐG']   || 0,
+        }
+        const orderAnalysis = trendData.map(r => {
+          const sl   = Number(r.soLuong) || 0
+          const nsPc  = Number(r._pm.nangSuatPc)   || 0
+          const nsPl  = Number(r._pm.nangSuatPl)   || 0
+          const nsBbc = Number(r._pm.nangSuatBbc1) || 0
+          const nsDg  = Number(r._pm.nangSuatDg) > 0 ? Number(r._pm.nangSuatDg) : Number(r._pm.slTrungBinh) > 0 ? Number(r._pm.slTrungBinh) : 0
+          const tPc  = nsPc  > 0 ? sl / nsPc  : null
+          const tPl  = nsPl  > 0 ? sl / nsPl  : null
+          const tBbc = nsBbc > 0 ? sl / nsBbc : null
+          const tDg  = nsDg  > 0 ? sl / nsDg  : null
+          const times = [
+            tPc  != null ? { key: 'PC',   t: tPc  } : null,
+            tPl  != null ? { key: 'PL',   t: tPl  } : null,
+            tBbc != null ? { key: 'BBC1', t: tBbc } : null,
+            tDg  != null ? { key: 'DG',   t: tDg  } : null,
+          ].filter(Boolean)
+          const bottleneck = times.length > 0 ? times.reduce((a, b) => b.t > a.t ? b : a) : null
+          const total = times.reduce((s, x) => s + x.t, 0)
+          return { ...r, tPc, tPl, tBbc, tDg, total, bottleneck }
+        }).sort((a, b) => b.total - a.total)
+        const ordersWithData = orderAnalysis.filter(r => r.bottleneck)
+
+        const stageSummaryArr = [
+          { key: 'PC',   label: 'Pha Chế',   tField: 'tPc',  color: '#1e40af', bg: '#dbeafe' },
+          { key: 'PL',   label: 'Phân Liều', tField: 'tPl',  color: '#92400e', bg: '#fef3c7' },
+          { key: 'BBC1', label: 'VS BBC1',   tField: 'tBbc', color: '#991b1b', bg: '#fee2e2' },
+          { key: 'DG',   label: 'Đóng Gói', tField: 'tDg',  color: '#6d28d9', bg: '#f5f3ff' },
+        ].map(s => {
+          const vals    = ordersWithData.filter(r => r[s.tField] != null)
+          const totalH  = vals.reduce((sum, r) => sum + r[s.tField], 0)
+          const bnCount = ordersWithData.filter(r => r.bottleneck?.key === s.key).length
+          return { ...s, totalH, orderCount: vals.length, bnCount, soNguoi: stageWorkers[s.key] || 0 }
+        })
+        const maxStageH      = Math.max(...stageSummaryArr.map(s => s.totalH)) || 1
+        const bottleneckStage = stageSummaryArr.reduce((a, b) => b.totalH > a.totalH ? b : a)
+
+        // ── Tải máy ──
+        const STAGE_MACHINE_MAP = [
+          { stageKey: 'PC',   machineField: 'mayMocPc',   nsField: 'nangSuatPc'        },
+          { stageKey: 'PL',   machineField: 'mayMocPl',   nsField: 'nangSuatPl'        },
+          { stageKey: 'BBC1', machineField: 'mayMocBbc1', nsField: 'nangSuatBbc1'      },
+          { stageKey: 'DG',   machineField: 'mayMocDg',   nsField: 'nangSuatDg_or_slTB' },
+        ]
+        const resolveNs = (pm, nsField) =>
+          nsField === 'nangSuatDg_or_slTB'
+            ? (Number(pm.nangSuatDg) > 0 ? Number(pm.nangSuatDg) : Number(pm.slTrungBinh) || 0)
+            : Number(pm[nsField]) || 0
+
+        const machineLoad = {}
+        const machineToBravo = {}
+        trendData.forEach(r => {
+          const sl = Number(r.soLuong) || 0
+          STAGE_MACHINE_MAP.forEach(({ stageKey, machineField, nsField }) => {
+            const machine = r._pm[machineField]
+            const ns      = resolveNs(r._pm, nsField)
+            if (!machine || ns === 0) return
+            const key = `${stageKey}__${machine}`
+            if (!machineLoad[key]) machineLoad[key] = { machine, stageKey, hours: 0, orders: 0 }
+            machineLoad[key].hours  += sl / ns
+            machineLoad[key].orders += 1
+            if (!machineToBravo[key]) machineToBravo[key] = []
+            machineToBravo[key].push({ maSp: r.maSp, soLo: r.soLo, ten: r.tenSanPham || r.maSp, t: sl / ns })
+          })
+        })
+        const machineList = Object.values(machineLoad).sort((a, b) => b.hours - a.hours)
+        const maxHours    = machineList[0]?.hours || 1
+        const dgM   = machineList.filter(m => m.stageKey === 'DG')
+        const pcM   = machineList.filter(m => m.stageKey === 'PC')
+        const plM   = machineList.filter(m => m.stageKey === 'PL')
+        const bbc1M = machineList.filter(m => m.stageKey === 'BBC1')
+
+        const conflicts = Object.entries(machineToBravo)
+          .filter(([, orders]) => orders.length > 1)
+          .map(([key, orders]) => {
+            const [stageKey, machine] = key.split('__')
+            const totalH = orders.reduce((s, o) => s + o.t, 0)
+            return { machine, stageKey, orders: orders.sort((a, b) => b.t - a.t), totalH }
+          })
+          .sort((a, b) => b.totalH - a.totalH)
+
+        // ── UI helpers ──
+        const Callout = ({ color = 'green', children }) => {
+          const map = { green: ['#ecfdf5','#10b981'], amber: ['#fffbeb','#f59e0b'], blue: ['#eff6ff','#3b82f6'], red: ['#fef2f2','#dc2626'] }
+          const [bg, border] = map[color] || map.green
+          return <div style={{ background: bg, borderLeft: `4px solid ${border}`, padding: '12px 16px', borderRadius: '0 6px 6px 0', marginBottom: 14, fontSize: 13 }}>{children}</div>
+        }
+        const BarRow = ({ label, hours, maxH, color, orders }) => {
+          const pct = maxH > 0 ? Math.max(4, Math.round((hours / maxH) * 100)) : 4
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <div style={{ width: 210, fontSize: 12, color: '#374151', flexShrink: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={label}>{label}</div>
+              <div style={{ flex: 1, background: '#f1f3f5', borderRadius: 4, height: 24, overflow: 'hidden' }}>
+                <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 4, display: 'flex', alignItems: 'center', paddingLeft: 8 }}>
+                  <span style={{ color: '#fff', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtH(hours)} công{orders > 1 ? ` — ${orders} lệnh` : ''}</span>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        // ── Phân Tích Công columns ──
+        const PT_HEADER = { background: '#1e3a5f', color: '#fff', fontWeight: 700, fontSize: 11, padding: '8px 10px', textAlign: 'right', whiteSpace: 'nowrap', borderRight: '1px solid #2d4e7a' }
+        const PT_CELL   = (color) => ({ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color, fontSize: 13 })
+        const congColumns = [
+          { title: 'LOẠI SẢN PHẨM', dataIndex: 'loai', key: 'loai', width: 170,
+            render: v => <Tag color={colorOf(v)} style={{ fontWeight: 600, fontSize: 12 }}>{v}</Tag> },
+          { title: 'SỐ TP', dataIndex: 'sku', key: 'sku', width: 70, align: 'center',
+            render: v => <span style={{ fontWeight: 700, color: '#374151' }}>{v}</span> },
+          { title: 'CÔNG PC (PCPL1)', dataIndex: 'congPcpl1', key: 'cp1', width: 130, align: 'right',
+            sorter: (a,b) => a.congPcpl1 - b.congPcpl1,
+            render: v => v > 0 ? <span style={{ color: '#1d4ed8', fontWeight: 700 }}>{fmtCong(v)}</span> : <span style={{ color: '#d9d9d9' }}>0</span> },
+          { title: 'CÔNG PC (PCPL2)', dataIndex: 'congPcpl2', key: 'cp2', width: 130, align: 'right',
+            sorter: (a,b) => a.congPcpl2 - b.congPcpl2,
+            render: v => v > 0 ? <span style={{ color: '#0369a1', fontWeight: 700 }}>{fmtCong(v)}</span> : <span style={{ color: '#d9d9d9' }}>0</span> },
+          { title: 'CÔNG PL', dataIndex: 'congPl', key: 'cpl', width: 100, align: 'right',
+            sorter: (a,b) => a.congPl - b.congPl,
+            render: v => v > 0 ? <span style={{ color: '#0e7490', fontWeight: 700 }}>{fmtCong(v)}</span> : <span style={{ color: '#d9d9d9' }}>0</span> },
+          { title: 'CÔNG ĐG', dataIndex: 'congDg', key: 'cdg', width: 100, align: 'right',
+            sorter: (a,b) => a.congDg - b.congDg,
+            render: v => v > 0 ? <span style={{ color: '#7c3aed', fontWeight: 700 }}>{fmtCong(v)}</span> : <span style={{ color: '#d9d9d9' }}>0</span> },
+          { title: 'CÔNG BBC1', dataIndex: 'congBbc1', key: 'cb1', width: 100, align: 'right',
+            sorter: (a,b) => a.congBbc1 - b.congBbc1,
+            render: v => v > 0 ? <span style={{ color: '#991b1b', fontWeight: 700 }}>{fmtCong(v)}</span> : <span style={{ color: '#d9d9d9' }}>0</span> },
+          { title: 'TỔNG CÔNG', dataIndex: 'tongCong', key: 'tc', width: 110, align: 'right',
+            sorter: (a,b) => a.tongCong - b.tongCong,
+            render: v => <span style={{ fontWeight: 800, color: '#111827' }}>{fmtCong(v)}</span> },
+        ]
+        const congSummary = () => {
+          const tot = { cp1: 0, cp2: 0, cpl: 0, cdg: 0, cb1: 0 }
+          congRows.forEach(r => { tot.cp1 += r.congPcpl1; tot.cp2 += r.congPcpl2; tot.cpl += r.congPl; tot.cdg += r.congDg; tot.cb1 += r.congBbc1 })
+          const tongTat = tot.cp1 + tot.cp2 + tot.cpl + tot.cdg + tot.cb1
+          const tdS = { fontWeight: 700, background: '#f0f5ff', padding: '6px 8px', display: 'block' }
+          return (
+            <Table.Summary.Row>
+              <Table.Summary.Cell index={0} colSpan={2}><span style={tdS}>Tổng ({lenhData.length} lệnh)</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={1} align="right"><span style={{ ...tdS, color: '#1d4ed8' }}>{fmtCong(tot.cp1)}</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={2} align="right"><span style={{ ...tdS, color: '#0369a1' }}>{fmtCong(tot.cp2)}</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={3} align="right"><span style={{ ...tdS, color: '#0e7490' }}>{fmtCong(tot.cpl)}</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={4} align="right"><span style={{ ...tdS, color: '#7c3aed' }}>{fmtCong(tot.cdg)}</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={5} align="right"><span style={{ ...tdS, color: '#991b1b' }}>{fmtCong(tot.cb1)}</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={6} align="right"><span style={{ ...tdS, color: '#111827' }}>{fmtCong(tongTat)}</span></Table.Summary.Cell>
+            </Table.Summary.Row>
+          )
+        }
+
+        // ── Theo Loại SP columns ──
         const typeColumns = [
           { title: 'Loại Sản Phẩm', dataIndex: 'loai', key: 'loai', width: 160,
             render: v => <Tag color={colorOf(v)} style={{ fontWeight: 600, fontSize: 12 }}>{v}</Tag> },
@@ -1506,23 +1690,19 @@ export default function LenhSanXuatTab() {
             sorter: (a, b) => a.tyLe - b.tyLe,
             render: (v, r) => (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Progress percent={Math.round(v)} size="small" strokeColor={colorOf(r.loai)}
-                  style={{ flex: 1, marginBottom: 0 }} showInfo={false} />
+                <Progress percent={Math.round(v)} size="small" strokeColor={colorOf(r.loai)} style={{ flex: 1, marginBottom: 0 }} showInfo={false} />
                 <span style={{ fontWeight: 700, color: colorOf(r.loai), minWidth: 40 }}>{v.toFixed(1)}%</span>
               </div>
             ) },
           { title: 'Công ĐG', dataIndex: 'congDg', key: 'congDg', width: 100, align: 'right',
             sorter: (a, b) => a.congDg - b.congDg,
-            render: v => v > 0 ? <span style={{ color: '#7c3aed', fontWeight: 700 }}>{fmtCong(v)}</span>
-                               : <span style={{ color: '#d9d9d9' }}>—</span> },
+            render: v => v > 0 ? <span style={{ color: '#7c3aed', fontWeight: 700 }}>{fmtCong(v)}</span> : <span style={{ color: '#d9d9d9' }}>—</span> },
           { title: 'Công PC', dataIndex: 'congPc', key: 'congPc', width: 100, align: 'right',
             sorter: (a, b) => a.congPc - b.congPc,
-            render: v => v > 0 ? <span style={{ color: '#1d4ed8', fontWeight: 600 }}>{fmtCong(v)}</span>
-                               : <span style={{ color: '#d9d9d9' }}>—</span> },
+            render: v => v > 0 ? <span style={{ color: '#1d4ed8', fontWeight: 600 }}>{fmtCong(v)}</span> : <span style={{ color: '#d9d9d9' }}>—</span> },
           { title: 'Công PL', dataIndex: 'congPl', key: 'congPl', width: 100, align: 'right',
             sorter: (a, b) => a.congPl - b.congPl,
-            render: v => v > 0 ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{fmtCong(v)}</span>
-                               : <span style={{ color: '#d9d9d9' }}>—</span> },
+            render: v => v > 0 ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{fmtCong(v)}</span> : <span style={{ color: '#d9d9d9' }}>—</span> },
         ]
         const typeSummary = () => {
           const totSl  = typeRows.reduce((s, r) => s + r.totalSl, 0)
@@ -1544,171 +1724,135 @@ export default function LenhSanXuatTab() {
           )
         }
 
-        /* Bottleneck analysis per lệnh */
-        const stageWorkers = {
-          PC:   (employeeCounts['PCPL1'] || 0) + (employeeCounts['PCPL2'] || 0),
-          PL:   employeeCounts['PCPL3'] || 0,
-          BBC1: employeeCounts['BBC1']  || 0,
-          DG:   employeeCounts['ĐG']   || 0,
-        }
-        const orderAnalysis = trendData.map(r => {
-          const sl   = Number(r.soLuong) || 0
-          const nsPc  = Number(r._pm.nangSuatPc)  || 0
-          const nsPl  = Number(r._pm.nangSuatPl)  || 0
-          const nsBbc = Number(r._pm.nangSuatBbc1) || 0
-          const nsDg  = Number(r._pm.nangSuatDg) > 0 ? Number(r._pm.nangSuatDg)
-                      : Number(r._pm.slTrungBinh) > 0 ? Number(r._pm.slTrungBinh) : 0
-          const tPc  = nsPc  > 0 ? sl / nsPc  : null
-          const tPl  = nsPl  > 0 ? sl / nsPl  : null
-          const tBbc = nsBbc > 0 ? sl / nsBbc : null
-          const tDg  = nsDg  > 0 ? sl / nsDg  : null
-          const times = [
-            tPc  != null ? { key: 'PC',   t: tPc  } : null,
-            tPl  != null ? { key: 'PL',   t: tPl  } : null,
-            tBbc != null ? { key: 'BBC1', t: tBbc } : null,
-            tDg  != null ? { key: 'DG',   t: tDg  } : null,
-          ].filter(Boolean)
-          const bottleneck = times.length > 0 ? times.reduce((a, b) => b.t > a.t ? b : a) : null
-          const total = times.reduce((s, x) => s + x.t, 0)
-          return { ...r, tPc, tPl, tBbc, tDg, total, bottleneck }
-        }).sort((a, b) => b.total - a.total)
-
-        const ordersWithData = orderAnalysis.filter(r => r.bottleneck)
-
-        const stageSummary = [
-          { key: 'PC',   label: 'Pha Chế',   tField: 'tPc',  color: '#1e40af', bg: '#dbeafe' },
-          { key: 'PL',   label: 'Phân Liều', tField: 'tPl',  color: '#92400e', bg: '#fef3c7' },
-          { key: 'BBC1', label: 'VS BBC1',   tField: 'tBbc', color: '#991b1b', bg: '#fee2e2' },
-          { key: 'DG',   label: 'Đóng Gói', tField: 'tDg',  color: '#6d28d9', bg: '#f5f3ff' },
-        ].map(s => {
-          const vals   = ordersWithData.filter(r => r[s.tField] != null)
-          const totalH = vals.reduce((sum, r) => sum + r[s.tField], 0)
-          const bnCount = ordersWithData.filter(r => r.bottleneck?.key === s.key).length
-          const soNguoi = stageWorkers[s.key] || 0
-          return { ...s, totalH, orderCount: vals.length, bnCount, soNguoi }
-        })
-        const maxStageH = Math.max(...stageSummary.map(s => s.totalH)) || 1
-        const bottleneckStage = stageSummary.reduce((a, b) => b.totalH > a.totalH ? b : a)
-
-        /* Tải máy */
-        const STAGE_MACHINE_MAP = [
-          { stageKey: 'PC',   machineField: 'mayMocPc',   nsField: 'nangSuatPc'   },
-          { stageKey: 'PL',   machineField: 'mayMocPl',   nsField: 'nangSuatPl'   },
-          { stageKey: 'BBC1', machineField: 'mayMocBbc1', nsField: 'nangSuatBbc1' },
-          { stageKey: 'DG',   machineField: 'mayMocDg',   nsField: 'nangSuatDg_or_slTB' },
+        const PT_INNER_TABS = [
+          { key: 'cong',     label: 'Phân Tích Công' },
+          { key: 'theo_loai', label: 'Theo Loại SP'  },
+          { key: 'tai_may',  label: 'Tải Máy'        },
+          { key: 'nut_that', label: 'Nút Thắt'       },
+          { key: 'xung_dot', label: 'Xung Đột Máy'   },
         ]
-        const machineLoad = {}
-        trendData.forEach(r => {
-          const sl = Number(r.soLuong) || 0
-          STAGE_MACHINE_MAP.forEach(({ stageKey, machineField, nsField }) => {
-            const machine = r._pm[machineField]
-            const ns = nsField === 'nangSuatDg_or_slTB'
-              ? (Number(r._pm.nangSuatDg) > 0 ? Number(r._pm.nangSuatDg) : Number(r._pm.slTrungBinh) || 0)
-              : Number(r._pm[nsField]) || 0
-            if (!machine || ns === 0) return
-            const key = `${stageKey}__${machine}`
-            if (!machineLoad[key]) machineLoad[key] = { machine, stageKey, hours: 0, orders: 0 }
-            machineLoad[key].hours  += sl / ns
-            machineLoad[key].orders += 1
-          })
-        })
-        const machineList = Object.values(machineLoad).sort((a, b) => b.hours - a.hours)
-        const maxHours = machineList[0]?.hours || 1
-        const dgM   = machineList.filter(m => m.stageKey === 'DG')
-        const pcM   = machineList.filter(m => m.stageKey === 'PC')
-        const plM   = machineList.filter(m => m.stageKey === 'PL')
-        const bbc1M = machineList.filter(m => m.stageKey === 'BBC1')
-
-        /* Xung đột máy */
-        const machineToBravo = {}
-        trendData.forEach(r => {
-          const sl = Number(r.soLuong) || 0
-          STAGE_MACHINE_MAP.forEach(({ stageKey, machineField, nsField }) => {
-            const machine = r._pm[machineField]
-            const ns = nsField === 'nangSuatDg_or_slTB'
-              ? (Number(r._pm.nangSuatDg) > 0 ? Number(r._pm.nangSuatDg) : Number(r._pm.slTrungBinh) || 0)
-              : Number(r._pm[nsField]) || 0
-            if (!machine || ns === 0) return
-            const key = `${stageKey}__${machine}`
-            if (!machineToBravo[key]) machineToBravo[key] = []
-            machineToBravo[key].push({ maSp: r.maSp, soLo: r.soLo, ten: r.tenSanPham || r.maSp, t: sl / ns })
-          })
-        })
-        const conflicts = Object.entries(machineToBravo)
-          .filter(([, orders]) => orders.length > 1)
-          .map(([key, orders]) => {
-            const [stageKey, machine] = key.split('__')
-            const totalH = orders.reduce((s, o) => s + o.t, 0)
-            return { machine, stageKey, orders: orders.sort((a, b) => b.t - a.t), totalH }
-          })
-          .sort((a, b) => b.totalH - a.totalH)
-
-        const SecTitle = ({ n, title, sub }) => (
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, borderBottom: '2px solid #e5e7eb', paddingBottom: 8 }}>
-              <span style={{ fontSize: 15, fontWeight: 700, color: '#111827' }}>{n}. {title}</span>
-            </div>
-            {sub && <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>{sub}</div>}
-          </div>
-        )
-        const Callout = ({ color = 'green', children }) => {
-          const map = { green: ['#ecfdf5','#10b981'], amber: ['#fffbeb','#f59e0b'], blue: ['#eff6ff','#3b82f6'], red: ['#fef2f2','#dc2626'] }
-          const [bg, border] = map[color] || map.green
-          return <div style={{ background: bg, borderLeft: `4px solid ${border}`, padding: '12px 16px', borderRadius: '0 6px 6px 0', marginBottom: 14, fontSize: 13 }}>{children}</div>
-        }
-        const BarRow = ({ label, hours, maxH, color, orders }) => {
-          const pct = maxH > 0 ? Math.max(4, Math.round((hours / maxH) * 100)) : 4
-          return (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <div style={{ width: 210, fontSize: 12, color: '#374151', flexShrink: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={label}>{label}</div>
-              <div style={{ flex: 1, background: '#f1f3f5', borderRadius: 4, height: 24, overflow: 'hidden' }}>
-                <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 4, display: 'flex', alignItems: 'center', paddingLeft: 8 }}>
-                  <span style={{ color: '#fff', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtH(hours)} công{orders > 1 ? ` — ${orders} lệnh` : ''}</span>
-                </div>
-              </div>
-            </div>
-          )
-        }
 
         return (
-          <div style={{ padding: '20px 16px', maxWidth: 1100, background: '#fff' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#0f766e', marginBottom: 12 }}>🔬 Phân Tích Năng Suất &amp; Tải Máy — Lệnh Sản Xuất</div>
-            <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>
-              Phân tích {lenhData.length} lệnh sản xuất · {trendData.filter(r => r._pm.nangSuatPc || r._pm.slTrungBinh).length} lệnh có đủ dữ liệu NS
+          <div style={{ padding: '16px 16px 24px', background: '#fff' }}>
+
+            {/* ── Summary cards ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+              {[
+                { label: 'TỔNG BẢN GHI', value: lenhData.length.toLocaleString('vi-VN'), sub: 'lệnh sản xuất', bg: 'linear-gradient(135deg,#0f766e,#0891b2)', icon: '📋' },
+                { label: 'TỔNG SẢN LƯỢNG', value: totalSl.toLocaleString('vi-VN'), sub: 'đơn vị sản phẩm', bg: 'linear-gradient(135deg,#7c3aed,#a855f7)', icon: '📦' },
+                { label: 'LOẠI SẢN PHẨM', value: uniqueLoai, sub: 'loại', bg: 'linear-gradient(135deg,#0369a1,#0ea5e9)', icon: '🗂️' },
+                { label: 'SẢN PHẨM KHÁC NHAU', value: uniqueSku, sub: 'mã TP', bg: 'linear-gradient(135deg,#b45309,#f97316)', icon: '🏷️' },
+              ].map(c => (
+                <div key={c.label} style={{ background: c.bg, borderRadius: 10, padding: '14px 16px', color: '#fff' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.8, letterSpacing: 0.5, marginBottom: 4 }}>{c.label}</div>
+                  <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1.1 }}>{c.value}</div>
+                  <div style={{ fontSize: 11, opacity: 0.75, marginTop: 4 }}>{c.sub}</div>
+                </div>
+              ))}
             </div>
 
-            {/* ── Thống kê theo loại SP ── */}
-            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '14px 16px', marginBottom: 20 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: '#1e293b', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>📊</span><span>Thống Kê Theo Loại Sản Phẩm</span>
-                <span style={{ fontSize: 12, fontWeight: 400, color: '#64748b' }}>— Công = Cỡ Lô ÷ Năng Suất (sp/công)</span>
+            {/* ── Inner sub-tab bar ── */}
+            <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid #e5e7eb', marginBottom: 20 }}>
+              {PT_INNER_TABS.map(t => {
+                const isA = phanTichSubTab === t.key
+                const badge = t.key === 'xung_dot' && conflicts.length > 0
+                  ? <span style={{ marginLeft: 5, fontSize: 10, background: '#fbbf24', color: '#78350f', borderRadius: 8, padding: '1px 6px', fontWeight: 700 }}>{conflicts.length}</span>
+                  : null
+                return (
+                  <div key={t.key} onClick={() => setPhanTichSubTab(t.key)}
+                    style={{
+                      padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: isA ? 700 : 500,
+                      color: isA ? '#0f766e' : '#6b7280',
+                      borderBottom: isA ? '2px solid #0f766e' : '2px solid transparent',
+                      marginBottom: -2, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {t.label}{badge}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* ── Tab: Phân Tích Công ── */}
+            {phanTichSubTab === 'cong' && (
+              <div>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>
+                  Công = Cỡ Lô ÷ Năng Suất (sp/công). Cột PCPL1/PCPL2 tính từ lệnh được phân công cho tổ tương ứng.
+                </div>
+                <Table
+                  columns={congColumns}
+                  dataSource={congRows}
+                  rowKey="loai"
+                  size="small"
+                  pagination={false}
+                  loading={loading}
+                  scroll={{ x: 850 }}
+                  rowHoverable={false}
+                  summary={congSummary}
+                  locale={{ emptyText: <span style={{ color: '#d9d9d9' }}>Không có dữ liệu</span> }}
+                />
               </div>
-              <Table
-                columns={typeColumns}
-                dataSource={typeRows}
-                rowKey="loai"
-                size="small"
-                pagination={false}
-                loading={loading}
-                scroll={{ x: 900 }}
-                rowHoverable={false}
-                summary={typeSummary}
-                locale={{ emptyText: <span style={{ color: '#d9d9d9' }}>Không có dữ liệu</span> }}
-              />
-            </div>
+            )}
 
-            <Callout color="green">
-              <b>Nguyên tắc nút thắt (bottleneck):</b> Thời gian mỗi công đoạn = <b>Cỡ Lô ÷ Năng Suất (NS)</b>. Công đoạn nào lâu nhất chính là <b>nút thắt</b> — nó quyết định tiến độ hoàn thành lệnh.
-            </Callout>
+            {/* ── Tab: Theo Loại SP ── */}
+            {phanTichSubTab === 'theo_loai' && (
+              <div>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>
+                  Thống kê số lệnh, SKU, tổng sản lượng và tỷ lệ theo loại sản phẩm.
+                </div>
+                <Table
+                  columns={typeColumns}
+                  dataSource={typeRows}
+                  rowKey="loai"
+                  size="small"
+                  pagination={false}
+                  loading={loading}
+                  scroll={{ x: 900 }}
+                  rowHoverable={false}
+                  summary={typeSummary}
+                  locale={{ emptyText: <span style={{ color: '#d9d9d9' }}>Không có dữ liệu</span> }}
+                />
+              </div>
+            )}
 
-            {/* ── Section 1: Thời gian SX ── */}
-            <div style={{ marginBottom: 36 }}>
-              <SecTitle n="1" title="Thời gian sản xuất theo công đoạn (công)"
-                sub="t = Cỡ Lô ÷ NS (sp/công). Ngày HT = Tổng công ÷ Số người tổ. Nút thắt là công đoạn lâu nhất." />
+            {/* ── Tab: Tải Máy ── */}
+            {phanTichSubTab === 'tai_may' && (
+              <div>
+                {machineList.length > 0 ? (
+                  <>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>
+                      Tổng công tất cả lệnh phân bổ trên từng máy — máy nào nhiều công nhất sẽ là điểm nghẽn thiết bị.
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+                      {[
+                        { key: 'DG',   label: 'Đóng Gói (ĐG)', list: dgM,   color: '#6d28d9' },
+                        { key: 'PC',   label: 'Pha Chế (PC)',   list: pcM,   color: '#1e40af' },
+                        { key: 'PL',   label: 'Phân Liều (PL)', list: plM,   color: '#92400e' },
+                        { key: 'BBC1', label: 'VS BBC1',         list: bbc1M, color: '#991b1b' },
+                      ].filter(g => g.list.length > 0).map(g => (
+                        <div key={g.key} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '14px 16px' }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: g.color, marginBottom: 12 }}>{g.label}</div>
+                          {g.list.map(m => (
+                            <BarRow key={m.machine} label={m.machine} hours={m.hours} maxH={maxHours} color={g.color} orders={m.orders} />
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <Callout color="blue">Chưa có dữ liệu máy móc. Vào <b>Quản lý danh mục → Quản lý SP</b> để nhập máy móc cho từng sản phẩm.</Callout>
+                )}
+              </div>
+            )}
 
-              {ordersWithData.length > 0 && (
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>Tổng công toàn bộ lệnh theo từng công đoạn</div>
+            {/* ── Tab: Nút Thắt ── */}
+            {phanTichSubTab === 'nut_that' && (
+              <div>
+                <Callout color="green">
+                  <b>Nguyên tắc nút thắt (bottleneck):</b> Thời gian mỗi công đoạn = <b>Cỡ Lô ÷ Năng Suất (NS)</b>. Công đoạn nào lâu nhất chính là <b>nút thắt</b> — nó quyết định tiến độ hoàn thành lệnh.
+                </Callout>
+                {ordersWithData.length > 0 ? (
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, background: '#f8fafc', borderRadius: 8, overflow: 'hidden' }}>
                     <thead>
                       <tr style={{ background: '#e2e8f0' }}>
@@ -1718,7 +1862,7 @@ export default function LenhSanXuatTab() {
                       </tr>
                     </thead>
                     <tbody>
-                      {stageSummary.map((s, i) => {
+                      {stageSummaryArr.map((s, i) => {
                         const pct = maxStageH > 0 ? Math.round((s.totalH / maxStageH) * 100) : 0
                         const isBN = s.key === bottleneckStage.key
                         return (
@@ -1748,68 +1892,45 @@ export default function LenhSanXuatTab() {
                       })}
                     </tbody>
                   </table>
-                </div>
-              )}
-            </div>
+                ) : (
+                  <Callout color="blue">Chưa có dữ liệu năng suất trong ProductMaster. Vào <b>Quản lý danh mục → Quản lý SP</b> để nhập NS cho từng sản phẩm.</Callout>
+                )}
+              </div>
+            )}
 
-            {/* ── Section 2: Tải máy ── */}
-            {machineList.length > 0 && (
-              <div style={{ marginBottom: 36 }}>
-                <SecTitle n="2" title="Tải máy theo công đoạn (công)"
-                  sub="Tổng công tất cả lệnh phân bổ trên từng máy — máy nào nhiều công nhất sẽ là điểm nghẽn thiết bị." />
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
-                  {[
-                    { key: 'DG',   label: 'Đóng Gói (ĐG)', list: dgM,   color: '#6d28d9' },
-                    { key: 'PC',   label: 'Pha Chế (PC)',   list: pcM,   color: '#1e40af' },
-                    { key: 'PL',   label: 'Phân Liều (PL)', list: plM,   color: '#92400e' },
-                    { key: 'BBC1', label: 'VS BBC1',         list: bbc1M, color: '#991b1b' },
-                  ].filter(g => g.list.length > 0).map(g => (
-                    <div key={g.key} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '14px 16px' }}>
-                      <div style={{ fontWeight: 700, fontSize: 13, color: g.color, marginBottom: 12 }}>{g.label}</div>
-                      {g.list.map(m => (
-                        <BarRow key={m.machine} label={m.machine} hours={m.hours} maxH={maxHours} color={g.color} orders={m.orders} />
+            {/* ── Tab: Xung Đột Máy ── */}
+            {phanTichSubTab === 'xung_dot' && (
+              <div>
+                {conflicts.length > 0 ? (
+                  <>
+                    <Callout color="amber">
+                      <b>{conflicts.length} máy</b> đang phải phục vụ từ 2 lệnh trở lên. Cần lên lịch luân phiên hoặc bổ sung thiết bị.
+                    </Callout>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {conflicts.slice(0, 15).map((c, i) => (
+                        <div key={i} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 14px', background: '#fefce8' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                            <span style={{ fontWeight: 700, color: '#92400e', fontSize: 13 }}>⚠ {c.machine}</span>
+                            <span style={{ fontSize: 11, color: '#6b7280' }}>[{c.stageKey}]</span>
+                            <span style={{ fontSize: 11, background: '#fef3c7', color: '#92400e', borderRadius: 4, padding: '1px 6px' }}>
+                              {fmtH(c.totalH)} công tổng · {c.orders.length} lệnh
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {c.orders.map((o, j) => (
+                              <span key={j} style={{ fontSize: 11, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: '2px 8px', color: '#374151' }}>
+                                {o.soLo ? `[${o.soLo}] ` : ''}{o.ten} — {fmtH(o.t)} công
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       ))}
                     </div>
-                  ))}
-                </div>
+                  </>
+                ) : (
+                  <Callout color="green">Không có xung đột máy — mỗi máy chỉ phục vụ 1 lệnh hoặc chưa có dữ liệu máy móc.</Callout>
+                )}
               </div>
-            )}
-
-            {/* ── Section 3: Xung đột máy ── */}
-            {conflicts.length > 0 && (
-              <div style={{ marginBottom: 36 }}>
-                <SecTitle n="3" title="Xung đột máy"
-                  sub="Một máy phải phục vụ nhiều lệnh cùng lúc — cần lên lịch tránh chồng chéo." />
-                <Callout color="amber">
-                  <b>{conflicts.length} máy</b> đang phải phục vụ từ 2 lệnh trở lên. Cần lên lịch luân phiên hoặc bổ sung thiết bị.
-                </Callout>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {conflicts.slice(0, 10).map((c, i) => (
-                    <div key={i} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 14px', background: '#fefce8' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <span style={{ fontWeight: 700, color: '#92400e', fontSize: 13 }}>⚠ {c.machine}</span>
-                        <span style={{ fontSize: 11, color: '#6b7280' }}>[{c.stageKey}]</span>
-                        <span style={{ fontSize: 11, background: '#fef3c7', color: '#92400e', borderRadius: 4, padding: '1px 6px' }}>
-                          {fmtH(c.totalH)} công tổng · {c.orders.length} lệnh
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {c.orders.map((o, j) => (
-                          <span key={j} style={{ fontSize: 11, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: '2px 8px', color: '#374151' }}>
-                            {o.soLo ? `[${o.soLo}] ` : ''}{o.ten} — {fmtH(o.t)} công
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {ordersWithData.length === 0 && (
-              <Callout color="blue">
-                Chưa có dữ liệu năng suất trong ProductMaster. Vào <b>Quản lý danh mục → Quản lý SP</b> để nhập NS cho từng sản phẩm.
-              </Callout>
             )}
           </div>
         )
