@@ -12,7 +12,11 @@ import {
   SaveOutlined, FileTextOutlined, SwapOutlined, HistoryOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
+import isoWeek from 'dayjs/plugin/isoWeek'
 import api from '../api/axios'
+import { useAuth } from '../context/AuthContext'
+
+dayjs.extend(isoWeek)
 
 const { Option } = Select
 
@@ -744,6 +748,7 @@ function LenhDetailModal({ open, record, onClose, onSaved }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function LenhSanXuatTab() {
+  const { user } = useAuth()
   // LenhSanXuat records (tabs PCPL1..ĐG + hoàn thiện)
   const [lenhData,     setLenhData]     = useState([])
   // WorkSchedule PLAN records chưa có LenhSanXuat (tab Chưa xếp)
@@ -774,6 +779,7 @@ export default function LenhSanXuatTab() {
   const [loaiSpMap,        setLoaiSpMap]        = useState({}) // maSp → { loaiSanPham, khoiLuong, mayMocPc, ... }
   const [employeeCounts,   setEmployeeCounts]   = useState({})
   const [phanTichSubTab,   setPhanTichSubTab]   = useState('cong')
+  const [phanTichPeriod,   setPhanTichPeriod]   = useState('month')
   const tableWrapRef = useRef(null)
   // useRef để lưu giá trị soLo — không gây re-render khi gõ, tránh input mất focus
   const soLoRef = useRef({})
@@ -1292,7 +1298,7 @@ export default function LenhSanXuatTab() {
     { key: 'chua_xep',   label: `Chưa xếp (${tabCounts.chua_xep})`,                  warn: false },
     ...TO_LIST.map(t => ({ key: t, label: `${t} (${tabCounts[t]})`,                   warn: tabCounts[t] > 0 })),
     { key: 'hoan_thien', label: `Lệnh đã hoàn thiện (${tabCounts.hoan_thien})`,       warn: false },
-    { key: 'phan_tich',  label: `🔬 Phân tích`,                                        warn: false },
+    ...(user?.role === 'ADMIN' ? [{ key: 'phan_tich', label: `🔬 Phân tích`, warn: false }] : []),
   ]
 
   const isLoading = loading || pendingLoad
@@ -1458,7 +1464,18 @@ export default function LenhSanXuatTab() {
 
       {/* ── Phân tích tab ── */}
       {activeTab === 'phan_tich' && (() => {
-        const trendData = lenhData.map(r => ({ ...r, _pm: loaiSpMap[r.maSp] || {} }))
+        const now = dayjs()
+        const periodCutoff = {
+          week:   now.startOf('isoWeek'),
+          month:  now.startOf('month'),
+          '3m':   now.subtract(3, 'month').startOf('day'),
+          '6m':   now.subtract(6, 'month').startOf('day'),
+          year:   now.startOf('year'),
+          all:    null,
+        }[phanTichPeriod]
+        const trendData = lenhData
+          .filter(r => !periodCutoff || (r.ngayPhatLenh && r.ngayPhatLenh >= periodCutoff.format('YYYY-MM-DD')))
+          .map(r => ({ ...r, _pm: loaiSpMap[r.maSp] || {} }))
 
         const normalizeLoai = raw => {
           if (!raw) return null
@@ -1735,10 +1752,44 @@ export default function LenhSanXuatTab() {
         return (
           <div style={{ padding: '16px 16px 24px', background: '#fff' }}>
 
+            {/* ── Period selector ── */}
+            {(() => {
+              const periods = [
+                { key: 'week',  label: 'Tuần này' },
+                { key: 'month', label: 'Tháng này' },
+                { key: '3m',    label: '3 Tháng' },
+                { key: '6m',    label: '6 Tháng' },
+                { key: 'year',  label: 'Năm nay' },
+                { key: 'all',   label: 'Tất cả' },
+              ]
+              return (
+                <div style={{ display: 'flex', gap: 6, marginBottom: 16, alignItems: 'center' }}>
+                  <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginRight: 4 }}>Mốc thời gian:</span>
+                  {periods.map(p => {
+                    const isActive = phanTichPeriod === p.key
+                    return (
+                      <div key={p.key} onClick={() => setPhanTichPeriod(p.key)}
+                        style={{
+                          padding: '4px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 12, fontWeight: isActive ? 700 : 500,
+                          background: isActive ? '#0f766e' : '#f1f5f9',
+                          color: isActive ? '#fff' : '#374151',
+                          border: isActive ? '1px solid #0f766e' : '1px solid #e2e8f0',
+                          transition: 'all 0.15s',
+                        }}
+                      >{p.label}</div>
+                    )
+                  })}
+                  <span style={{ marginLeft: 8, fontSize: 11, color: '#94a3b8' }}>
+                    ({trendData.length} lệnh)
+                  </span>
+                </div>
+              )
+            })()}
+
             {/* ── Summary cards ── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
               {[
-                { label: 'TỔNG BẢN GHI', value: lenhData.length.toLocaleString('vi-VN'), sub: 'lệnh sản xuất', bg: 'linear-gradient(135deg,#0f766e,#0891b2)', icon: '📋' },
+                { label: 'TỔNG BẢN GHI', value: trendData.length.toLocaleString('vi-VN'), sub: 'lệnh sản xuất', bg: 'linear-gradient(135deg,#0f766e,#0891b2)', icon: '📋' },
                 { label: 'TỔNG SẢN LƯỢNG', value: totalSl.toLocaleString('vi-VN'), sub: 'đơn vị sản phẩm', bg: 'linear-gradient(135deg,#7c3aed,#a855f7)', icon: '📦' },
                 { label: 'LOẠI SẢN PHẨM', value: uniqueLoai, sub: 'loại', bg: 'linear-gradient(135deg,#0369a1,#0ea5e9)', icon: '🗂️' },
                 { label: 'SẢN PHẨM KHÁC NHAU', value: uniqueSku, sub: 'mã TP', bg: 'linear-gradient(135deg,#b45309,#f97316)', icon: '🏷️' },
