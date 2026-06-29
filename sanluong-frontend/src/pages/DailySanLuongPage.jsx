@@ -1448,6 +1448,8 @@ function TongHopTab() {
   const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs()])
   const [selectedDay, setSelectedDay] = useState(null)
   const [empCounts, setEmpCounts] = useState({})
+  const [machineMap, setMachineMap] = useState({})
+  const [innerTab, setInnerTab] = useState('pivot')
 
   const filterRef = useRef(null)
   const [filterH, setFilterH] = useState(0)
@@ -1477,6 +1479,12 @@ function TongHopTab() {
       if (range?.[1]) params.toDate   = range[1].format('YYYY-MM-DD')
       const { data: res } = await api.get('/work-schedule-session/daily-report', { params })
       setRaw(res)
+      const codes = [...new Set(res.map(r => r.maSp).filter(Boolean))]
+      if (codes.length > 0) {
+        api.get('/product-master/lookup-batch', { params: { codes } })
+          .then(({ data: bm }) => setMachineMap(bm))
+          .catch(() => {})
+      }
     } catch {
       message.error('Không thể tải dữ liệu tổng hợp')
     } finally {
@@ -1513,13 +1521,24 @@ function TongHopTab() {
         else cd = 'PCPL1'
       }
       if (cd === 'PCPL3') cd = 'PL'
-      if (!map[date][cd]) map[date][cd] = { sl: 0, cong: 0, soPhien: 0 }
+      if (!map[date][cd]) map[date][cd] = { sl: 0, cong: 0, soPhien: 0, _mm: new Set() }
       map[date][cd].sl      += Number(r.sanLuong      || 0)
       map[date][cd].cong    += Number(r.congThucHien  || 0)
       map[date][cd].soPhien += 1
+      const mkey = (cd === 'PCPL1' || cd === 'PCPL2') ? 'mayMocPc'
+        : cd === 'PL' ? 'mayMocPl' : cd === 'DG' ? 'mayMocDg'
+        : cd === 'BBC1' ? 'mayMocBbc1' : null
+      if (mkey && r.maSp && machineMap[r.maSp]?.[mkey]) map[date][cd]._mm.add(machineMap[r.maSp][mkey])
     })
-    return Object.values(map).sort((a, b) => b.ngay.localeCompare(a.ngay))
-  }, [raw])
+    const rows = Object.values(map)
+    rows.forEach(row => STAGES.forEach(s => {
+      if (row[s.key]) {
+        row[s.key].mayMoc = row[s.key]._mm.size > 0 ? [...row[s.key]._mm].join(', ') : null
+        delete row[s.key]._mm
+      }
+    }))
+    return rows.sort((a, b) => b.ngay.localeCompare(a.ngay))
+  }, [raw, machineMap])
 
   const kpi = useMemo(() => {
     const totals = {}
@@ -1587,6 +1606,23 @@ function TongHopTab() {
             return <span style={{ color: s.congColor, fontWeight: 600 }}>{fmtCong(val)}</span>
           },
         },
+        {
+          title: 'Máy',
+          key: `${s.key}_may`,
+          width: 110, align: 'left',
+          onHeaderCell: () => ({ style: { background: '#1e7a7a', color: '#ffffff', fontSize: 10 } }),
+          render: (_, r) => {
+            const mayMoc = r[s.key]?.mayMoc
+            if (!mayMoc) return <span style={{ color: '#d1d5db' }}>—</span>
+            return (
+              <Tooltip title={mayMoc}>
+                <span style={{ fontSize: 11, color: '#444', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                  {mayMoc}
+                </span>
+              </Tooltip>
+            )
+          },
+        },
       ],
     })),
     {
@@ -1645,8 +1681,28 @@ function TongHopTab() {
         </div>
       </div>
 
+      {/* Row 2: Inner tabs */}
+      <div style={{ padding: '4px 16px 6px', display: 'flex', gap: 6, borderTop: '1px solid rgba(0,0,0,0.12)' }}>
+        {[
+          { key: 'pivot',    label: '📊 Bảng Tổng Hợp' },
+          { key: 'phanTich', label: '📈 Phân Tích' },
+        ].map(t => (
+          <button key={t.key} onClick={() => setInnerTab(t.key)}
+            style={{
+              padding: '4px 14px', cursor: 'pointer', fontSize: 12, borderRadius: 6,
+              border: `1.5px solid ${innerTab === t.key ? '#5c2e00' : 'rgba(0,0,0,0.2)'}`,
+              color: innerTab === t.key ? '#5c2e00' : 'rgba(92,46,0,0.6)',
+              background: innerTab === t.key ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.18)',
+              fontWeight: innerTab === t.key ? 700 : 500,
+            }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       </div>{/* end sticky filter wrapper */}
 
+      {innerTab === 'pivot' && (<>
       <style>{`
         .tonghop-table .ant-table-thead > tr > th {
           background: #33CCCC !important;
@@ -1685,7 +1741,7 @@ function TongHopTab() {
         rowKey="ngay"
         loading={loading}
         size="small"
-        scroll={{ x: 1300 }}
+        scroll={{ x: 2200 }}
         sticky={{ offsetHeader: TAB_BAR_H + filterH }}
         onRow={record => ({
           onClick: () => setSelectedDay(record.ngay),
@@ -1715,17 +1771,18 @@ function TongHopTab() {
                   <strong style={{ color: '#fff', fontSize: 11, letterSpacing: 0.5 }}>TỔNG TRANG</strong>
                 </Table.Summary.Cell>
                 {STAGES.flatMap((s, i) => [
-                  <Table.Summary.Cell key={`sl${i}`} index={i * 2 + 1} align="right">
+                  <Table.Summary.Cell key={`sl${i}`} index={i * 3 + 1} align="right">
                     <strong style={{ color: '#fff' }}>{fmtSL(tot[s.key].sl)}</strong>
                   </Table.Summary.Cell>,
-                  <Table.Summary.Cell key={`cong${i}`} index={i * 2 + 2} align="right">
+                  <Table.Summary.Cell key={`cong${i}`} index={i * 3 + 2} align="right">
                     <strong style={{ color: 'rgba(255,255,255,0.85)' }}>{fmtCong(tot[s.key].cong, 2)}</strong>
                   </Table.Summary.Cell>,
+                  <Table.Summary.Cell key={`may${i}`} index={i * 3 + 3} />,
                 ])}
-                <Table.Summary.Cell index={11} align="right">
+                <Table.Summary.Cell index={19} align="right">
                   <strong style={{ color: '#fff', fontSize: 13 }}>{fmtSL(gSl)}</strong>
                 </Table.Summary.Cell>
-                <Table.Summary.Cell index={12} align="right">
+                <Table.Summary.Cell index={20} align="right">
                   <strong style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13 }}>{fmtCong(gCong, 2)}</strong>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
@@ -1740,6 +1797,124 @@ function TongHopTab() {
         rows={raw.filter(r => r.ngay === selectedDay && r.status !== 'PENDING' && r.status !== 'IN_PROGRESS')}
         onClose={() => setSelectedDay(null)}
       />
+      </>)}
+
+      {innerTab === 'phanTich' && (
+        <div style={{ padding: '12px 16px' }}>
+          {/* KPI cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10, marginBottom: 16 }}>
+            {[
+              { label: 'Tổng sản lượng', value: fmtSL(grandSL),   color: '#1e5fa3' },
+              { label: 'Tổng công',      value: fmtCong(grandCong, 2), color: '#6d28d9' },
+              { label: 'Số ngày',        value: pivotData.length,  color: '#b45309' },
+              { label: 'SL / ngày TB',   value: fmtSL(Math.round(grandSL / (pivotData.length || 1))), color: '#0e7490' },
+            ].map(c => (
+              <div key={c.label} style={{ background: '#f8f9fa', borderLeft: `4px solid ${c.color}`, padding: '12px 16px', borderRadius: 4 }}>
+                <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', marginBottom: 4 }}>{c.label}</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: c.color }}>{c.value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Charts */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div style={{ background: '#f8f9fa', borderRadius: 6, padding: 16 }}>
+              <div style={{ fontWeight: 600, marginBottom: 12, color: '#333', fontSize: 13 }}>Sản lượng theo Công đoạn</div>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={STAGES.map(s => ({ name: s.label, sl: kpi[s.key]?.sl || 0 }))}
+                  margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={{ fontSize: 12, fontWeight: 700 }} />
+                  <YAxis tickFormatter={v => v.toLocaleString('vi-VN')} tick={{ fontSize: 11 }} />
+                  <RcTooltip formatter={v => [v.toLocaleString('vi-VN'), 'Sản lượng']} />
+                  <Bar dataKey="sl" name="Sản lượng" radius={[4, 4, 0, 0]}>
+                    {STAGES.map(s => <Cell key={s.key} fill={s.slColor} />)}
+                    <LabelList dataKey="sl" position="top" formatter={v => v > 0 ? v.toLocaleString('vi-VN') : ''} style={{ fontSize: 10, fill: '#444' }} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div style={{ background: '#f8f9fa', borderRadius: 6, padding: 16 }}>
+              <div style={{ fontWeight: 600, marginBottom: 12, color: '#333', fontSize: 13 }}>Xu hướng sản lượng theo ngày</div>
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart
+                  data={[...pivotData].reverse().map(r => ({
+                    ngay: dayjs(r.ngay).format('DD/MM'),
+                    sl: STAGES.reduce((sum, s) => sum + (r[s.key]?.sl || 0), 0),
+                  }))}
+                  margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="ngay" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                  <YAxis tickFormatter={v => v.toLocaleString('vi-VN')} tick={{ fontSize: 11 }} />
+                  <RcTooltip formatter={v => [v.toLocaleString('vi-VN'), 'Tổng SL']} />
+                  <Line type="monotone" dataKey="sl" stroke="#1D4ED8" strokeWidth={2} dot={pivotData.length <= 14} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Bảng phân tích theo công đoạn + máy móc */}
+          <Table
+            size="small"
+            dataSource={STAGES.map(s => ({
+              key:      s.key,
+              label:    s.label,
+              sl:       kpi[s.key]?.sl      || 0,
+              cong:     kpi[s.key]?.cong    || 0,
+              soPhien:  kpi[s.key]?.soPhien || 0,
+              mayMoc:   [...new Set(
+                pivotData.flatMap(r => r[s.key]?.mayMoc ? r[s.key].mayMoc.split(', ') : [])
+              )].join(', '),
+            })).filter(r => r.sl > 0)}
+            pagination={false}
+            columns={[
+              {
+                title: 'Công đoạn', dataIndex: 'label', width: 100,
+                render: (v, r) => <Tag color={CONG_DOAN_COLOR[r.key] || 'default'} style={{ fontWeight: 700 }}>{v}</Tag>,
+              },
+              { title: 'Số phiên', dataIndex: 'soPhien', align: 'right', width: 90 },
+              {
+                title: 'Tổng SL', dataIndex: 'sl', align: 'right',
+                render: v => <span style={{ fontWeight: 700, color: '#1e5fa3' }}>{fmtSL(v)}</span>,
+              },
+              {
+                title: '% SL', dataIndex: 'sl', key: 'pct', align: 'right', width: 80,
+                render: v => `${grandSL > 0 ? ((v / grandSL) * 100).toFixed(1) : 0}%`,
+              },
+              {
+                title: 'Tổng Công', dataIndex: 'cong', align: 'right', width: 110,
+                render: v => <span style={{ color: '#6d28d9' }}>{fmtCong(v, 2)}</span>,
+              },
+              {
+                title: 'SL/Công', align: 'right', width: 90,
+                render: (_, r) => r.cong > 0
+                  ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{(r.sl / r.cong).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</span>
+                  : <span style={{ color: '#bbb' }}>—</span>,
+              },
+              {
+                title: 'Máy Móc', dataIndex: 'mayMoc', ellipsis: true,
+                render: v => v
+                  ? <Tooltip title={v}><span style={{ fontSize: 12, color: '#555' }}>{v}</span></Tooltip>
+                  : <span style={{ color: '#bbb' }}>—</span>,
+              },
+            ]}
+            summary={() => (
+              <Table.Summary.Row style={{ background: '#f0fdf4', fontWeight: 700 }}>
+                <Table.Summary.Cell index={0}>TỔNG</Table.Summary.Cell>
+                <Table.Summary.Cell index={1} align="right">{STAGES.reduce((s, st) => s + (kpi[st.key]?.soPhien || 0), 0)}</Table.Summary.Cell>
+                <Table.Summary.Cell index={2} align="right"><span style={{ color: '#1e5fa3' }}>{fmtSL(grandSL)}</span></Table.Summary.Cell>
+                <Table.Summary.Cell index={3} align="right">100%</Table.Summary.Cell>
+                <Table.Summary.Cell index={4} align="right"><span style={{ color: '#6d28d9' }}>{fmtCong(grandCong, 2)}</span></Table.Summary.Cell>
+                <Table.Summary.Cell index={5} align="right">
+                  {grandCong > 0 ? <span style={{ color: '#0e7490' }}>{(grandSL / grandCong).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</span> : '—'}
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={6} />
+              </Table.Summary.Row>
+            )}
+          />
+        </div>
+      )}
     </>
   )
 }
