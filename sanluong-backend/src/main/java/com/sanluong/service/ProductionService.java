@@ -150,8 +150,13 @@ public class ProductionService {
                 isEmpty(trangThai) ? null : trangThai
         );
         if (hoanThanh != null) {
+            enrichPcplStatus(all); // phải enrich trước để pcpl1/pcpl2TrangThai không null khi filter
             all = all.stream().filter(r -> {
-                boolean done = "done".equals(r.getPcTrangThai())
+                // PC done nếu bất kỳ PCPL1 hoặc PCPL2 done (OR logic)
+                boolean pcDone = "done".equals(r.getPcTrangThai())
+                        || "done".equals(r.getPcpl1TrangThai())
+                        || "done".equals(r.getPcpl2TrangThai());
+                boolean done = pcDone
                         && "done".equals(r.getPlTrangThai())
                         && "done".equals(r.getDgTrangThai())
                         && "done".equals(r.getBbc1TrangThai());
