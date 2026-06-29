@@ -1605,7 +1605,11 @@ export default function LenhSanXuatTab() {
           all:    null,
         }[phanTichPeriod]
         const trendData = lenhData
-          .filter(r => !periodCutoff || (r.ngayPhatLenh && r.ngayPhatLenh >= periodCutoff.format('YYYY-MM-DD')))
+          .filter(r => {
+            if (!periodCutoff) return true
+            const effectiveDate = r.ngayThucHien || r.ngayPhatLenh
+            return effectiveDate && effectiveDate >= periodCutoff.format('YYYY-MM-DD')
+          })
           .map(r => ({ ...r, _pm: loaiSpMap[r.maSp] || {} }))
 
         const normalizeLoai = raw => {
