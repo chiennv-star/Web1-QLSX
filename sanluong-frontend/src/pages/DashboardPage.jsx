@@ -2722,7 +2722,7 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
       key: 'sl_group',
       onHeaderCell: hc(),
       children: [
-        { title: 'SL PC',   dataIndex: 'slPc',        key: 'slPc',  width: 76, align: 'center', onHeaderCell: hc(), render: v => v ?? '—' },
+        { title: 'SL PC',   dataIndex: 'slPc',        key: 'slPc',  width: 76, align: 'center', onHeaderCell: hc(), render: (v, r) => v ?? r.soLuong ?? '—' },
         { title: 'SL PL',   dataIndex: 'pcPl',        key: 'pcPl',  width: 76, align: 'center', onHeaderCell: hc(), render: v => v ?? '—' },
         { title: 'SL ĐG',   dataIndex: 'dg2',         key: 'dg2',   width: 76, align: 'center', onHeaderCell: hc(), render: v => v ?? '—' },
         { title: 'SL BBC1', dataIndex: 'bbc1_2',      key: 'bbc12', width: 80, align: 'center', onHeaderCell: hc(), render: v => v ?? '—' },
