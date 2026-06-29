@@ -1,5 +1,5 @@
 ﻿import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Table, Button, Space, Typography, message, Select, DatePicker,
   Tooltip, Modal, Input, Badge, Tag, Tabs, Popconfirm, Popover
@@ -9,7 +9,7 @@ import {
   SearchOutlined, ReloadOutlined, BarChartOutlined,
   CheckOutlined, CloseOutlined, ClockCircleOutlined,
   RiseOutlined, TeamOutlined, FundOutlined, DeleteOutlined, ExclamationCircleOutlined,
-  FullscreenOutlined, FullscreenExitOutlined,
+  FullscreenOutlined, FullscreenExitOutlined, ArrowRightOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import api from '../api/axios'
@@ -608,6 +608,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
 
 function DailyDetailTab() {
   const { isAdmin, isAdminKH, getLockedCongDoan } = useAuth()
+  const navigate = useNavigate()
   const canApprove = isAdmin() || isAdminKH()
   const lockedCongDoan = getLockedCongDoan()
 
@@ -955,6 +956,27 @@ function DailyDetailTab() {
             <Tag color={dat ? 'success' : 'error'} style={{ marginRight: 0, fontWeight: 700 }}>
               {dat ? '✓ Đạt' : '✗ Không đạt'}
             </Tag>
+          </Tooltip>
+        )
+      },
+    },
+    {
+      title: 'Lịch SX', key: 'goToSchedule', width: 68, fixed: 'right', align: 'center',
+      render: (_, r) => {
+        const stage = resolveCongDoan(r)
+        if (!stage || !r.tenTrinh) return <span style={{ color: '#d9d9d9' }}>—</span>
+        return (
+          <Tooltip title={`Xem trong Lịch sản xuất ${stage}`}>
+            <Button
+              size="small"
+              type="link"
+              icon={<ArrowRightOutlined />}
+              style={{ color: '#1677ff', padding: '0 4px' }}
+              onClick={e => {
+                e.stopPropagation()
+                navigate('/work-schedule', { state: { jumpTo: { stage, tienTrinh: r.tenTrinh, soLo: r.soLo, maSp: r.maSp } } })
+              }}
+            />
           </Tooltip>
         )
       },
