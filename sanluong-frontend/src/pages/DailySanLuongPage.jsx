@@ -1919,6 +1919,454 @@ function TongHopTab() {
   )
 }
 
+// ─── Tab: Tổng hợp Chi tiết (grouped by SP+lô) ───────────────────────────────
+function TongHopChiTietTab() {
+  const [raw, setRaw]             = useState([])
+  const [loading, setLoading]     = useState(false)
+  const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs()])
+  const [machineMap, setMachineMap] = useState({})
+  const [search, setSearch]       = useState('')
+  const filterRef = useRef(null)
+  const [filterH, setFilterH]     = useState(0)
+  useEffect(() => {
+    if (!filterRef.current) return
+    const obs = new ResizeObserver(() => setFilterH(filterRef.current?.offsetHeight || 0))
+    obs.observe(filterRef.current)
+    return () => obs.disconnect()
+  }, [])
+
+  const fetchData = useCallback(async (range = dateRange) => {
+    setLoading(true)
+    try {
+      const params = {}
+      if (range?.[0]) params.fromDate = range[0].format('YYYY-MM-DD')
+      if (range?.[1]) params.toDate   = range[1].format('YYYY-MM-DD')
+      const { data: res } = await api.get('/work-schedule-session/daily-report', { params })
+      const done = res.filter(r => r.status !== 'PENDING' && r.status !== 'IN_PROGRESS')
+      setRaw(done)
+      const codes = [...new Set(done.map(r => r.maSp).filter(Boolean))]
+      if (codes.length > 0) {
+        api.get('/product-master/lookup-batch', { params: { codes } })
+          .then(({ data: bm }) => setMachineMap(bm))
+          .catch(() => {})
+      }
+    } catch { message.error('Không thể tải dữ liệu chi tiết') }
+    finally { setLoading(false) }
+  }, [dateRange])
+
+  useEffect(() => { fetchData() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const groupedData = useMemo(() => {
+    const map = {}
+    raw.forEach(r => {
+      const key = `${r.maSp || ''}|${r.soLo || ''}`
+      if (!map[key]) {
+        map[key] = { key, maSp: r.maSp, tenTrinh: r.tenTrinh, soLo: r.soLo, coLo: r.coLo }
+        STAGES.forEach(s => { map[key][s.key] = { sl: 0, cong: 0, soPhien: 0, _mm: new Set() } })
+      }
+      let cd = r.congDoan?.toUpperCase()
+      if (!cd) return
+      if (cd === 'PC') {
+        const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
+        if (nhom === 'PCPL1') cd = 'PCPL1'
+        else if (nhom === 'PCPL2') cd = 'PCPL2'
+        else if (nhom === 'PCPL3' || nhom === 'PL') cd = 'PL'
+        else cd = 'PCPL1'
+      }
+      if (cd === 'PCPL3') cd = 'PL'
+      if (!map[key][cd]) return
+      map[key][cd].sl      += Number(r.sanLuong     || 0)
+      map[key][cd].cong    += Number(r.congThucHien || 0)
+      map[key][cd].soPhien += 1
+      const mkey = (cd === 'PCPL1' || cd === 'PCPL2') ? 'mayMocPc'
+        : cd === 'PL' ? 'mayMocPl' : cd === 'DG' ? 'mayMocDg'
+        : cd === 'BBC1' ? 'mayMocBbc1' : null
+      if (mkey && r.maSp && machineMap[r.maSp]?.[mkey]) map[key][cd]._mm.add(machineMap[r.maSp][mkey])
+    })
+    const rows = Object.values(map)
+    rows.forEach(row => STAGES.forEach(s => {
+      if (row[s.key]) {
+        row[s.key].mayMoc = row[s.key]._mm.size > 0 ? [...row[s.key]._mm].join(', ') : null
+        delete row[s.key]._mm
+      }
+    }))
+    return rows.sort((a, b) => {
+      const sa = STAGES.reduce((sum, st) => sum + (a[st.key]?.sl || 0), 0)
+      const sb = STAGES.reduce((sum, st) => sum + (b[st.key]?.sl || 0), 0)
+      return sb - sa
+    })
+  }, [raw, machineMap])
+
+  const displayData = useMemo(() => {
+    if (!search.trim()) return groupedData
+    const q = search.trim().toLowerCase()
+    return groupedData.filter(r =>
+      (r.maSp || '').toLowerCase().includes(q) ||
+      (r.tenTrinh || '').toLowerCase().includes(q) ||
+      (r.soLo || '').toLowerCase().includes(q)
+    )
+  }, [groupedData, search])
+
+  const grandSL   = displayData.reduce((s, r) => s + STAGES.reduce((ss, st) => ss + (r[st.key]?.sl || 0), 0), 0)
+  const grandCong = displayData.reduce((s, r) => s + STAGES.reduce((ss, st) => ss + (r[st.key]?.cong || 0), 0), 0)
+
+  const columns = [
+    { title: 'STT', key: 'stt', width: 46, align: 'center', fixed: 'left',
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff', fontSize: 11 } }),
+      render: (_, __, idx) => <span style={{ color: '#64748b', fontSize: 11 }}>{idx + 1}</span> },
+    { title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 100, fixed: 'left',
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
+      render: v => <b style={{ color: '#1d4ed8' }}>{v || '—'}</b> },
+    { title: 'Tên SP', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 200, fixed: 'left', ellipsis: true,
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }) },
+    { title: 'Số Lô', dataIndex: 'soLo', key: 'soLo', width: 90, align: 'center',
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
+      render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v || '—'}</span> },
+    { title: 'Cỡ Lô', dataIndex: 'coLo', key: 'coLo', width: 80, align: 'right',
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
+      render: v => v != null ? Number(v).toLocaleString('vi-VN') : '—' },
+    ...STAGES.map(s => ({
+      title: <span style={{ fontWeight: 800, fontSize: 12 }}>{s.label}</span>,
+      key: s.key,
+      align: 'center',
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff', textAlign: 'center', borderLeft: '2px solid rgba(255,255,255,0.2)' } }),
+      children: [
+        {
+          title: 'SL', key: `${s.key}_sl`, width: 90, align: 'right',
+          onHeaderCell: () => ({ style: { background: '#29a3a3', color: '#fff', fontSize: 10 } }),
+          render: (_, r) => {
+            const val = r[s.key]?.sl
+            if (!val) return <span style={{ color: '#d1d5db' }}>—</span>
+            return (
+              <Tooltip title={`${r[s.key]?.soPhien || 0} phiên`}>
+                <span style={{ fontWeight: 700, color: s.slColor }}>{fmtSL(val)}</span>
+              </Tooltip>
+            )
+          },
+        },
+        {
+          title: 'Công', key: `${s.key}_cong`, width: 80, align: 'right',
+          onHeaderCell: () => ({ style: { background: '#29a3a3', color: '#fff', fontSize: 10 } }),
+          render: (_, r) => {
+            const val = r[s.key]?.cong
+            if (!val) return <span style={{ color: '#d1d5db' }}>—</span>
+            return <span style={{ color: s.congColor, fontWeight: 600 }}>{fmtCong(val)}</span>
+          },
+        },
+        {
+          title: 'Máy', key: `${s.key}_may`, width: 110, align: 'left',
+          onHeaderCell: () => ({ style: { background: '#1e7a7a', color: '#fff', fontSize: 10 } }),
+          render: (_, r) => {
+            const mm = r[s.key]?.mayMoc
+            if (!mm) return <span style={{ color: '#d1d5db' }}>—</span>
+            return (
+              <Tooltip title={mm}>
+                <span style={{ fontSize: 11, color: '#444', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{mm}</span>
+              </Tooltip>
+            )
+          },
+        },
+      ],
+    })),
+    { title: 'TỔNG SL', key: 'grandSl', width: 100, align: 'right', fixed: 'right',
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff', fontSize: 11 } }),
+      render: (_, r) => {
+        const total = STAGES.reduce((s, st) => s + (r[st.key]?.sl || 0), 0)
+        return total ? <span style={{ color: '#1d4ed8', fontWeight: 700, fontSize: 13 }}>{fmtSL(total)}</span>
+          : <span style={{ color: '#d1d5db' }}>—</span>
+      },
+    },
+    { title: 'TỔNG CÔNG', key: 'grandCong', width: 110, align: 'right', fixed: 'right',
+      onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff', fontSize: 11 } }),
+      render: (_, r) => {
+        const total = STAGES.reduce((s, st) => s + (r[st.key]?.cong || 0), 0)
+        return total ? <span style={{ color: '#6d28d9', fontWeight: 600 }}>{fmtCong(total, 2)}</span>
+          : <span style={{ color: '#d1d5db' }}>—</span>
+      },
+    },
+  ]
+
+  return (
+    <>
+      <style>{`
+        .chitet-table .ant-table-thead > tr > th { background: #006666 !important; color: #fff !important; font-size: 11px !important; font-weight: 700 !important; padding: 6px 6px !important; text-align: center !important; border-right: 1px solid rgba(255,255,255,0.35) !important; }
+        .chitet-table .ant-table-thead > tr > th::before { display: none !important; }
+        .chitet-table .ant-table-tbody > tr > td { border-right: 1px solid #e2e8f0 !important; border-bottom: 1px solid #e8edf3 !important; }
+        .chitet-table .ant-table-tbody > tr:nth-child(even) > td { background: #f8fffe !important; }
+        .chitet-table .ant-table-tbody > tr:hover > td { background: #e0f7fa !important; }
+        .chitet-table .ant-table-summary > tr > td { background: #e6f7f7 !important; font-weight: 700; border-right: 1px solid #b2dfdb !important; }
+      `}</style>
+
+      <div ref={filterRef} style={{ position: 'sticky', top: TAB_BAR_H, zIndex: 9, background: 'linear-gradient(135deg, #006666 0%, #008080 100%)', borderBottom: '3px solid #004d4d', boxShadow: '0 3px 12px rgba(0,80,80,0.25)' }}>
+        <div style={{ padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 800, fontSize: 14, color: '#fff', whiteSpace: 'nowrap' }}>
+            <FundOutlined style={{ marginRight: 6 }} />Tổng Hợp Chi Tiết
+          </span>
+          <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.3)' }} />
+          <RangePicker size="small" value={dateRange} onChange={setDateRange} format="DD/MM/YYYY" allowClear placeholder={['Từ ngày', 'Đến ngày']} />
+          <Button size="small" type="primary" icon={<SearchOutlined />}
+            style={{ background: '#1D4ED8', borderColor: '#1D4ED8', fontWeight: 600 }}
+            onClick={() => fetchData()}>Truy xuất</Button>
+          <Button size="small" icon={<ReloadOutlined />}
+            onClick={() => { const def = [dayjs().startOf('month'), dayjs()]; setDateRange(def); fetchData(def) }}
+            style={{ background: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.4)', color: '#fff' }} />
+          <Input size="small" placeholder="Tìm mã SP / tên SP / số lô…" allowClear value={search}
+            onChange={e => setSearch(e.target.value)} prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+            style={{ width: 230 }} />
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>
+              <strong style={{ color: '#fff' }}>{displayData.length}</strong> sản phẩm/lô
+            </span>
+            <span style={{ fontSize: 13, color: '#fff', fontWeight: 700 }}>SL: <strong>{fmtSL(grandSL)}</strong></span>
+            <span style={{ fontSize: 13, color: '#fff', fontWeight: 700 }}>Công: <strong>{fmtCong(grandCong, 2)}</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <Table
+        className="chitet-table"
+        columns={columns}
+        dataSource={displayData}
+        rowKey="key"
+        loading={loading}
+        size="small"
+        bordered
+        rowHoverable={false}
+        scroll={{ x: 2200 }}
+        sticky={{ offsetHeader: TAB_BAR_H + filterH }}
+        pagination={{ pageSize: 500, showSizeChanger: true, pageSizeOptions: ['100', '500', '1000'], showTotal: t => `Tổng ${t} sản phẩm`, size: 'small' }}
+        summary={() => (
+          <Table.Summary.Row>
+            <Table.Summary.Cell index={0} colSpan={5} align="center">
+              <b style={{ color: '#0d7377' }}>TỔNG CỘNG</b>
+            </Table.Summary.Cell>
+            {STAGES.flatMap((s, i) => [
+              <Table.Summary.Cell key={`sl${i}`} index={5 + i * 3} align="right">
+                <span style={{ fontWeight: 700, color: s.slColor }}>{fmtSL(displayData.reduce((sum, r) => sum + (r[s.key]?.sl || 0), 0))}</span>
+              </Table.Summary.Cell>,
+              <Table.Summary.Cell key={`cong${i}`} index={6 + i * 3} align="right">
+                <span style={{ color: s.congColor, fontWeight: 600 }}>{fmtCong(displayData.reduce((sum, r) => sum + (r[s.key]?.cong || 0), 0), 2)}</span>
+              </Table.Summary.Cell>,
+              <Table.Summary.Cell key={`may${i}`} index={7 + i * 3} />,
+            ])}
+            <Table.Summary.Cell index={5 + STAGES.length * 3} align="right">
+              <span style={{ fontWeight: 700, color: '#1d4ed8' }}>{fmtSL(grandSL)}</span>
+            </Table.Summary.Cell>
+            <Table.Summary.Cell index={5 + STAGES.length * 3 + 1} align="right">
+              <span style={{ fontWeight: 600, color: '#6d28d9' }}>{fmtCong(grandCong, 2)}</span>
+            </Table.Summary.Cell>
+          </Table.Summary.Row>
+        )}
+      />
+    </>
+  )
+}
+
+// ─── Tab: Phân Tích Chi Tiết ─────────────────────────────────────────────────
+function PhanTichChiTietTab() {
+  const [raw, setRaw]             = useState([])
+  const [loading, setLoading]     = useState(false)
+  const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs()])
+  const [machineMap, setMachineMap] = useState({})
+
+  const fetchData = useCallback(async (range = dateRange) => {
+    setLoading(true)
+    try {
+      const params = {}
+      if (range?.[0]) params.fromDate = range[0].format('YYYY-MM-DD')
+      if (range?.[1]) params.toDate   = range[1].format('YYYY-MM-DD')
+      const { data: res } = await api.get('/work-schedule-session/daily-report', { params })
+      const done = res.filter(r => r.status !== 'PENDING' && r.status !== 'IN_PROGRESS')
+      setRaw(done)
+      const codes = [...new Set(done.map(r => r.maSp).filter(Boolean))]
+      if (codes.length > 0) {
+        api.get('/product-master/lookup-batch', { params: { codes } })
+          .then(({ data: bm }) => setMachineMap(bm))
+          .catch(() => {})
+      }
+    } catch { message.error('Không thể tải dữ liệu phân tích chi tiết') }
+    finally { setLoading(false) }
+  }, [dateRange])
+
+  useEffect(() => { fetchData() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const groupedData = useMemo(() => {
+    const map = {}
+    raw.forEach(r => {
+      const key = `${r.maSp || ''}|${r.soLo || ''}`
+      if (!map[key]) {
+        map[key] = { key, maSp: r.maSp, tenTrinh: r.tenTrinh, soLo: r.soLo, coLo: r.coLo }
+        STAGES.forEach(s => { map[key][s.key] = { sl: 0, cong: 0, soPhien: 0, _mm: new Set() } })
+      }
+      let cd = r.congDoan?.toUpperCase()
+      if (!cd) return
+      if (cd === 'PC') {
+        const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
+        if (nhom === 'PCPL1') cd = 'PCPL1'
+        else if (nhom === 'PCPL2') cd = 'PCPL2'
+        else if (nhom === 'PCPL3' || nhom === 'PL') cd = 'PL'
+        else cd = 'PCPL1'
+      }
+      if (cd === 'PCPL3') cd = 'PL'
+      if (!map[key][cd]) return
+      map[key][cd].sl      += Number(r.sanLuong     || 0)
+      map[key][cd].cong    += Number(r.congThucHien || 0)
+      map[key][cd].soPhien += 1
+      const mkey = (cd === 'PCPL1' || cd === 'PCPL2') ? 'mayMocPc'
+        : cd === 'PL' ? 'mayMocPl' : cd === 'DG' ? 'mayMocDg'
+        : cd === 'BBC1' ? 'mayMocBbc1' : null
+      if (mkey && r.maSp && machineMap[r.maSp]?.[mkey]) map[key][cd]._mm.add(machineMap[r.maSp][mkey])
+    })
+    const rows = Object.values(map)
+    rows.forEach(row => STAGES.forEach(s => {
+      if (row[s.key]) {
+        row[s.key].mayMoc = row[s.key]._mm.size > 0 ? [...row[s.key]._mm].join(', ') : null
+        delete row[s.key]._mm
+      }
+    }))
+    return rows
+  }, [raw, machineMap])
+
+  const grandSL   = groupedData.reduce((s, r) => s + STAGES.reduce((ss, st) => ss + (r[st.key]?.sl || 0), 0), 0)
+  const grandCong = groupedData.reduce((s, r) => s + STAGES.reduce((ss, st) => ss + (r[st.key]?.cong || 0), 0), 0)
+
+  const stageStats = useMemo(() =>
+    STAGES.map(s => ({
+      key:     s.key,
+      label:   s.label,
+      slColor: s.slColor,
+      congColor: s.congColor,
+      sl:      groupedData.reduce((sum, r) => sum + (r[s.key]?.sl   || 0), 0),
+      cong:    groupedData.reduce((sum, r) => sum + (r[s.key]?.cong || 0), 0),
+      soSp:    groupedData.filter(r => (r[s.key]?.sl || 0) > 0).length,
+      mayMoc:  [...new Set(groupedData.flatMap(r => r[s.key]?.mayMoc ? r[s.key].mayMoc.split(', ') : []))].join(', '),
+    })).filter(s => s.sl > 0),
+  [groupedData])
+
+  const top15 = useMemo(() =>
+    [...groupedData]
+      .map(r => ({
+        name: r.maSp || '?',
+        sl: STAGES.reduce((s, st) => s + (r[st.key]?.sl || 0), 0),
+      }))
+      .sort((a, b) => b.sl - a.sl)
+      .slice(0, 15)
+      .reverse(),
+  [groupedData])
+
+  return (
+    <>
+      <div style={{ position: 'sticky', top: TAB_BAR_H, zIndex: 9, background: 'linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 100%)', borderBottom: '3px solid #1e3a5f', boxShadow: '0 3px 12px rgba(30,58,95,0.3)', padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ fontWeight: 800, fontSize: 14, color: '#fff', whiteSpace: 'nowrap' }}>
+          <BarChartOutlined style={{ marginRight: 6 }} />Phân Tích Chi Tiết
+        </span>
+        <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.3)' }} />
+        <RangePicker size="small" value={dateRange} onChange={setDateRange} format="DD/MM/YYYY" allowClear placeholder={['Từ ngày', 'Đến ngày']} />
+        <Button size="small" type="primary" icon={<SearchOutlined />}
+          style={{ background: '#0891b2', borderColor: '#0891b2', fontWeight: 600 }}
+          loading={loading}
+          onClick={() => fetchData()}>Truy xuất</Button>
+        <Button size="small" icon={<ReloadOutlined />}
+          onClick={() => { const def = [dayjs().startOf('month'), dayjs()]; setDateRange(def); fetchData(def) }}
+          style={{ background: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.4)', color: '#fff' }} />
+      </div>
+
+      <div style={{ padding: '12px 16px' }}>
+        {/* KPI cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10, marginBottom: 16 }}>
+          {[
+            { label: 'Số sản phẩm / lô', value: groupedData.length,     color: '#1d4ed8' },
+            { label: 'Tổng sản lượng',   value: fmtSL(grandSL),         color: '#1e5fa3' },
+            { label: 'Tổng công',        value: fmtCong(grandCong, 2),   color: '#6d28d9' },
+            { label: 'SL / Công TB',     value: grandCong > 0 ? (grandSL / grandCong).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) : '—', color: '#0e7490' },
+          ].map(c => (
+            <div key={c.label} style={{ background: '#f8f9fa', borderLeft: `4px solid ${c.color}`, padding: '12px 16px', borderRadius: 4 }}>
+              <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', marginBottom: 4 }}>{c.label}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: c.color }}>{c.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Charts */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+          <div style={{ background: '#f8f9fa', borderRadius: 6, padding: 16 }}>
+            <div style={{ fontWeight: 600, marginBottom: 12, color: '#333', fontSize: 13 }}>Sản lượng theo Công đoạn</div>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={stageStats} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="label" tick={{ fontSize: 12, fontWeight: 700 }} />
+                <YAxis tickFormatter={v => v.toLocaleString('vi-VN')} tick={{ fontSize: 11 }} />
+                <RcTooltip formatter={v => [v.toLocaleString('vi-VN'), 'Sản lượng']} />
+                <Bar dataKey="sl" radius={[4, 4, 0, 0]}>
+                  {stageStats.map(s => <Cell key={s.key} fill={s.slColor} />)}
+                  <LabelList dataKey="sl" position="top" formatter={v => v > 0 ? v.toLocaleString('vi-VN') : ''} style={{ fontSize: 10, fill: '#444' }} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div style={{ background: '#f8f9fa', borderRadius: 6, padding: 16 }}>
+            <div style={{ fontWeight: 600, marginBottom: 12, color: '#333', fontSize: 13 }}>
+              Top {top15.length} sản phẩm theo sản lượng
+            </div>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={top15} layout="vertical" margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" tickFormatter={v => v.toLocaleString('vi-VN')} tick={{ fontSize: 10 }} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={70} />
+                <RcTooltip formatter={v => [v.toLocaleString('vi-VN'), 'Sản lượng']} />
+                <Bar dataKey="sl" fill="#1D4ED8" radius={[0, 4, 4, 0]}>
+                  <LabelList dataKey="sl" position="right" formatter={v => v.toLocaleString('vi-VN')} style={{ fontSize: 10, fill: '#444' }} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Per-stage analysis table */}
+        <Table
+          size="small"
+          dataSource={stageStats}
+          pagination={false}
+          columns={[
+            { title: 'Công đoạn', dataIndex: 'label', width: 100,
+              render: (v, r) => <Tag color={CONG_DOAN_COLOR[r.key] || 'default'} style={{ fontWeight: 700 }}>{v}</Tag> },
+            { title: 'Số SP/lô', dataIndex: 'soSp', align: 'right', width: 90,
+              render: v => <span style={{ color: '#374151' }}>{v}</span> },
+            { title: 'Tổng SL', dataIndex: 'sl', align: 'right',
+              render: (v, r) => <span style={{ fontWeight: 700, color: r.slColor }}>{fmtSL(v)}</span> },
+            { title: '% SL', dataIndex: 'sl', key: 'pct', align: 'right', width: 80,
+              render: v => `${grandSL > 0 ? ((v / grandSL) * 100).toFixed(1) : 0}%` },
+            { title: 'Tổng Công', dataIndex: 'cong', align: 'right', width: 110,
+              render: (v, r) => <span style={{ color: r.congColor, fontWeight: 600 }}>{fmtCong(v, 2)}</span> },
+            { title: 'SL/Công', align: 'right', width: 90,
+              render: (_, r) => r.cong > 0
+                ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{(r.sl / r.cong).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</span>
+                : <span style={{ color: '#bbb' }}>—</span> },
+            { title: 'Máy Móc', dataIndex: 'mayMoc', ellipsis: true,
+              render: v => v
+                ? <Tooltip title={v}><span style={{ fontSize: 12, color: '#555' }}>{v}</span></Tooltip>
+                : <span style={{ color: '#bbb' }}>—</span> },
+          ]}
+          summary={() => (
+            <Table.Summary.Row style={{ background: '#f0fdf4', fontWeight: 700 }}>
+              <Table.Summary.Cell index={0}>TỔNG</Table.Summary.Cell>
+              <Table.Summary.Cell index={1} align="right">{groupedData.length}</Table.Summary.Cell>
+              <Table.Summary.Cell index={2} align="right"><span style={{ color: '#1e5fa3' }}>{fmtSL(grandSL)}</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={3} align="right">100%</Table.Summary.Cell>
+              <Table.Summary.Cell index={4} align="right"><span style={{ color: '#6d28d9' }}>{fmtCong(grandCong, 2)}</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={5} align="right">
+                {grandCong > 0 ? <span style={{ color: '#0e7490' }}>{(grandSL / grandCong).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</span> : '—'}
+              </Table.Summary.Cell>
+              <Table.Summary.Cell index={6} />
+            </Table.Summary.Row>
+          )}
+        />
+      </div>
+    </>
+  )
+}
+
 // ─── Tab 3: Báo cáo tổng hợp ngày ───────────────────────────────────────────
 
 function BaoCaoTab() {
@@ -3166,6 +3614,26 @@ export default function DailySanLuongPage() {
         </span>
       ),
       children: <TongHopTab />,
+    }] : []),
+    ...(!manHinh ? [{
+      key: 'tonghop_chitet',
+      label: (
+        <span>
+          <FundOutlined style={{ marginRight: 5 }} />
+          Tổng hợp Chi tiết
+        </span>
+      ),
+      children: <TongHopChiTietTab />,
+    }] : []),
+    ...(!manHinh ? [{
+      key: 'phantich_chitet',
+      label: (
+        <span>
+          <BarChartOutlined style={{ marginRight: 5 }} />
+          Phân Tích Chi Tiết
+        </span>
+      ),
+      children: <PhanTichChiTietTab />,
     }] : []),
     {
       key: 'baocao',
