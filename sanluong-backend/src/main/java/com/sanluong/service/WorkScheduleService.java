@@ -507,7 +507,8 @@ public class WorkScheduleService {
                 case "PC", "PCPL2" -> {
                     if (w.getSlPc()   != null) r.setSlPc(String.valueOf(w.getSlPc().intValue()));
                     if (w.getCongPc() != null) r.setPcChiPhi(w.getCongPc());
-                    r.setPcTrangThai(trangThai);
+                    // OR logic: done nếu bất kỳ PCPL1 hoặc PCPL2 nào đã done
+                    if ("done".equals(trangThai) || !"done".equals(r.getPcTrangThai())) r.setPcTrangThai(trangThai);
                 }
                 case "BBC1" -> {
                     if (w.getCongBbc1() != null) r.setBbc1_3(w.getCongBbc1());
@@ -518,7 +519,8 @@ public class WorkScheduleService {
                     // PCPL1 đồng vai trò PC trong bảng sản lượng + QA như PL
                     if (w.getSlPc()   != null) r.setSlPc(String.valueOf(w.getSlPc().intValue()));
                     if (w.getCongPc() != null) r.setPcChiPhi(w.getCongPc());
-                    r.setPcTrangThai(trangThai);
+                    // OR logic: done nếu bất kỳ PCPL1 hoặc PCPL2 nào đã done
+                    if ("done".equals(trangThai) || !"done".equals(r.getPcTrangThai())) r.setPcTrangThai(trangThai);
                     r.setPlQaLayMau(w.getQaLayMau());
                     int plPcpl1 = r.getPlQaLayMau() != null ? r.getPlQaLayMau() : 0;
                     int dgPcpl1 = r.getDgQaLayMau() != null ? r.getDgQaLayMau() : 0;
@@ -751,7 +753,7 @@ public class WorkScheduleService {
         java.math.BigDecimal coLo = w.getCoLo();
         if (coLo == null || coLo.compareTo(java.math.BigDecimal.ZERO) <= 0) return;
         switch (stage) {
-            case "PC" -> {
+            case "PC", "PCPL1", "PCPL2" -> {
                 if (w.getSlPc() != null && w.getSlPc().compareTo(coLo) >= 0)
                     w.setTinhTrang("done");
             }
