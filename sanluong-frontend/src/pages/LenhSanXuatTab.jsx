@@ -1499,35 +1499,39 @@ export default function LenhSanXuatTab() {
 
           <span style={{ flex: 1 }} />
 
-          <Button
-            icon={<SyncOutlined />} size="small"
-            onClick={async () => {
-              try {
-                const { data: r } = await api.post('/lenh-san-xuat/sync-san-luong')
-                message.success(`Đã đồng bộ ${r.created} lệnh`)
-                fetchAll()
-              } catch { message.error('Đồng bộ thất bại') }
-            }}
-            style={{ fontSize: 11 }}
-          >
-            Đồng bộ SL
-          </Button>
-          <Badge count={missingLichSxCount} size="small" offset={[-4, 4]}>
+          {user?.role === 'ADMIN' && (
             <Button
               icon={<SyncOutlined />} size="small"
               onClick={async () => {
                 try {
-                  const { data: r } = await api.post('/lenh-san-xuat/sync-lich-sx')
-                  message.success(`Đã tạo ${r.created} bản ghi Lịch SX còn thiếu`)
-                  setMissingLichSxCount(0)
+                  const { data: r } = await api.post('/lenh-san-xuat/sync-san-luong')
+                  message.success(`Đã đồng bộ ${r.created} lệnh`)
                   fetchAll()
-                } catch { message.error('Đồng bộ Lịch SX thất bại') }
+                } catch { message.error('Đồng bộ thất bại') }
               }}
               style={{ fontSize: 11 }}
             >
-              Đồng bộ Lịch SX
+              Đồng bộ SL
             </Button>
-          </Badge>
+          )}
+          {user?.role === 'ADMIN' && (
+            <Badge count={missingLichSxCount} size="small" offset={[-4, 4]}>
+              <Button
+                icon={<SyncOutlined />} size="small"
+                onClick={async () => {
+                  try {
+                    const { data: r } = await api.post('/lenh-san-xuat/sync-lich-sx')
+                    message.success(`Đã tạo ${r.created} bản ghi Lịch SX còn thiếu`)
+                    setMissingLichSxCount(0)
+                    fetchAll()
+                  } catch { message.error('Đồng bộ Lịch SX thất bại') }
+                }}
+                style={{ fontSize: 11 }}
+              >
+                Đồng bộ Lịch SX
+              </Button>
+            </Badge>
+          )}
           <Button
             type="primary" icon={<PlusOutlined />} size="small"
             onClick={() => { setEditItem(null); setModalOpen(true) }}
@@ -2231,14 +2235,16 @@ export default function LenhSanXuatTab() {
               Ban hành ({selectedIds.length})
             </Button>
           )}
-          <Button
-            size="small" icon={<SyncOutlined />}
-            loading={bulkLoading === 'lichsx'}
-            onClick={handleBulkLichSX}
-            style={{ background: '#0891b2', borderColor: '#0891b2', color: '#fff', fontSize: 12 }}
-          >
-            Đồng bộ Lịch SX ({selectedIds.length})
-          </Button>
+          {user?.role === 'ADMIN' && (
+            <Button
+              size="small" icon={<SyncOutlined />}
+              loading={bulkLoading === 'lichsx'}
+              onClick={handleBulkLichSX}
+              style={{ background: '#0891b2', borderColor: '#0891b2', color: '#fff', fontSize: 12 }}
+            >
+              Đồng bộ Lịch SX ({selectedIds.length})
+            </Button>
+          )}
           <Button
             size="small" icon={<DeleteOutlined />}
             loading={bulkLoading === 'delete'}
