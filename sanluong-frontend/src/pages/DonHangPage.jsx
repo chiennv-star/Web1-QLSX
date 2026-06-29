@@ -2874,7 +2874,7 @@ export default function DonHangPage() {
                                 <th style={thTd(accent, border)}>Mã Đơn Hàng</th>
                                 <th style={thTdR(accent, border)}>SL Còn Lại</th>
                                 <th style={thTdR(accent, border)}>{nsLabel}</th>
-                                <th style={thTdR(accent, border)}>TG Hoàn Thành</th>
+                                <th style={thTdR(accent, border)}>Công Hoàn Thành</th>
                               </tr>
                             </thead>
                             <tbody>
