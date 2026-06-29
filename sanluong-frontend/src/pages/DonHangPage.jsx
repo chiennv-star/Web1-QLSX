@@ -2822,6 +2822,7 @@ export default function DonHangPage() {
                   sodon: g.orders.length,
                   totSl: g.orders.reduce((s, r) => s + (Number(r.soLuongConLai) || 0), 0),
                   totCong: g.orders.reduce((s, r) => s + (r[congKey] || 0), 0),
+                  orders: [...g.orders].sort((a, b) => (b[congKey] || 0) - (a[congKey] || 0)),
                 })).sort((a, b) => b.totCong - a.totCong)
               }
 
@@ -2830,83 +2831,97 @@ export default function DonHangPage() {
               const maxPcCong = pcGroups.length > 0 ? Math.max(...pcGroups.map(g => g.totCong)) : 1
               const maxPlCong = plGroups.length > 0 ? Math.max(...plGroups.map(g => g.totCong)) : 1
 
-              const MachinePanel = ({ groups, maxCong, accent, bg, border, label }) => (
-                <div style={{ flex: 1, minWidth: 400, border: `1px solid ${border}`, borderRadius: 8, overflow: 'hidden' }}>
+              const thTd = (accent, border) => ({ padding: '6px 10px', textAlign: 'left', color: accent, fontWeight: 700, borderBottom: `1px solid ${border}`, background: 'transparent', fontSize: 11, whiteSpace: 'nowrap' })
+              const thTdR = (accent, border) => ({ ...thTd(accent, border), textAlign: 'right' })
+              const thTdC = (accent, border) => ({ ...thTd(accent, border), textAlign: 'center' })
+
+              const MachinePanel = ({ groups, maxCong, accent, bg, border, congKey, nsKey, nsLabel }) => (
+                <div style={{ flex: 1, minWidth: 560, border: `1px solid ${border}`, borderRadius: 8, overflow: 'hidden' }}>
                   <div style={{ background: bg, padding: '10px 16px', borderBottom: `1px solid ${border}`, display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{ fontWeight: 700, color: accent, fontSize: 14 }}>⚙ {label}</span>
+                    <span style={{ fontWeight: 700, color: accent, fontSize: 14 }}>⚙ {nsLabel === 'NS PC' ? 'Tải Máy Pha Chế (PC)' : 'Tải Máy Phân Liều (PL)'}</span>
                     <span style={{ fontSize: 12, color: '#6b7280' }}>
                       {groups.length} loại máy · {groups.reduce((s, g) => s + g.sodon, 0)} đơn · {fmtH2(groups.reduce((s, g) => s + g.totCong, 0))} h
                     </span>
                   </div>
                   {groups.length === 0 ? (
                     <div style={{ padding: 24, textAlign: 'center', color: '#d1d5db', fontSize: 13 }}>Không có dữ liệu</div>
-                  ) : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                      <thead>
-                        <tr style={{ background: bg }}>
-                          <th style={{ padding: '7px 12px', textAlign: 'left', color: accent, fontWeight: 700, borderBottom: `1px solid ${border}` }}>Tên Máy</th>
-                          <th style={{ padding: '7px 12px', textAlign: 'center', color: accent, fontWeight: 700, borderBottom: `1px solid ${border}`, width: 65 }}>Đơn</th>
-                          <th style={{ padding: '7px 12px', textAlign: 'right', color: accent, fontWeight: 700, borderBottom: `1px solid ${border}`, width: 120 }}>SL Còn Lại</th>
-                          <th style={{ padding: '7px 12px', textAlign: 'right', color: accent, fontWeight: 700, borderBottom: `1px solid ${border}`, width: 95 }}>Công (h)</th>
-                          <th style={{ padding: '7px 12px', textAlign: 'left', color: accent, fontWeight: 700, borderBottom: `1px solid ${border}`, width: 130 }}>Tải máy</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {groups.map((g, gi) => {
-                          const pct = maxCong > 0 ? Math.round((g.totCong / maxCong) * 100) : 0
-                          return (
-                            <React.Fragment key={g.machine}>
-                              <tr style={{ background: gi % 2 === 0 ? '#fff' : '#f9fafb' }}>
-                                <td style={{ padding: '7px 12px', fontWeight: 600 }}>{g.machine}</td>
-                                <td style={{ padding: '7px 12px', textAlign: 'center', color: '#374151' }}>{g.sodon}</td>
-                                <td style={{ padding: '7px 12px', textAlign: 'right', fontWeight: 600, color: '#374151' }}>{g.totSl.toLocaleString('vi-VN')}</td>
-                                <td style={{ padding: '7px 12px', textAlign: 'right', fontWeight: 700, color: accent }}>{fmtH2(g.totCong)}</td>
-                                <td style={{ padding: '7px 12px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <div style={{ flex: 1, background: '#e5e7eb', borderRadius: 4, height: 8, overflow: 'hidden' }}>
-                                      <div style={{ width: `${pct}%`, background: accent, height: '100%', borderRadius: 4, transition: 'width 0.3s' }} />
-                                    </div>
-                                    <span style={{ fontSize: 11, color: '#6b7280', minWidth: 30, textAlign: 'right' }}>{pct}%</span>
-                                  </div>
-                                </td>
+                  ) : groups.map((g, gi) => {
+                    const pct = maxCong > 0 ? Math.round((g.totCong / maxCong) * 100) : 0
+                    return (
+                      <div key={g.machine} style={{ borderBottom: gi < groups.length - 1 ? `1px solid ${border}` : 'none' }}>
+                        {/* Machine header row */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: gi % 2 === 0 ? '#fff' : '#f9fafb' }}>
+                          <span style={{ fontWeight: 700, color: accent, fontSize: 13, minWidth: 180 }}>{g.machine}</span>
+                          <span style={{ fontSize: 12, color: '#6b7280' }}>{g.sodon} đơn</span>
+                          <span style={{ fontSize: 12, color: '#374151', marginLeft: 8 }}>SL: <b>{g.totSl.toLocaleString('vi-VN')}</b></span>
+                          <span style={{ fontSize: 12, color: accent, marginLeft: 8, fontWeight: 700 }}>{fmtH2(g.totCong)} h</span>
+                          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8 }}>
+                            <div style={{ flex: 1, background: '#e5e7eb', borderRadius: 4, height: 7, overflow: 'hidden', maxWidth: 160 }}>
+                              <div style={{ width: `${pct}%`, background: accent, height: '100%', borderRadius: 4 }} />
+                            </div>
+                            <span style={{ fontSize: 11, color: '#6b7280' }}>{pct}%</span>
+                          </div>
+                        </div>
+                        {/* Detail table */}
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                            <thead>
+                              <tr style={{ background: `${bg}cc` }}>
+                                <th style={{ ...thTdC(accent, border), width: 30 }}>#</th>
+                                <th style={thTd(accent, border)}>Mã Bravo</th>
+                                <th style={thTd(accent, border)}>Tên Sản Phẩm</th>
+                                <th style={thTd(accent, border)}>Số Lô</th>
+                                <th style={thTd(accent, border)}>Mã Đơn Hàng</th>
+                                <th style={thTdR(accent, border)}>SL Còn Lại</th>
+                                <th style={thTdR(accent, border)}>{nsLabel}</th>
+                                <th style={thTdR(accent, border)}>TG Hoàn Thành</th>
                               </tr>
-                              <tr style={{ background: gi % 2 === 0 ? '#fafafa' : '#f4f5f7', borderBottom: '1px solid #e5e7eb' }}>
-                                <td colSpan={5} style={{ padding: '3px 12px 8px 24px' }}>
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                                    {g.orders.map(r => (
-                                      <span
-                                        key={r.id}
-                                        onClick={() => openDetail(r)}
-                                        title={r.tenSanPham}
-                                        style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: 4, padding: '2px 7px', fontSize: 11, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                                      >
-                                        <span style={{ color: '#1677ff', fontWeight: 600 }}>{r.maBravo}</span>
-                                        <span style={{ color: '#6b7280' }}>{r.tenSanPham?.length > 28 ? r.tenSanPham.slice(0, 28) + '…' : r.tenSanPham || '—'}</span>
-                                      </span>
-                                    ))}
-                                  </div>
-                                </td>
+                            </thead>
+                            <tbody>
+                              {g.orders.map((r, ri) => (
+                                <tr
+                                  key={r.id}
+                                  style={{ background: ri % 2 === 0 ? '#fff' : '#f8fafc', cursor: 'pointer' }}
+                                  onClick={() => openDetail(r)}
+                                >
+                                  <td style={{ padding: '5px 10px', textAlign: 'center', color: '#9ca3af' }}>{ri + 1}</td>
+                                  <td style={{ padding: '5px 10px', color: '#1677ff', fontWeight: 600, whiteSpace: 'nowrap' }}>{r.maBravo || '—'}</td>
+                                  <td style={{ padding: '5px 10px', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.tenSanPham}>{r.tenSanPham || '—'}</td>
+                                  <td style={{ padding: '5px 10px', whiteSpace: 'nowrap', color: '#374151' }}>{r.soLo || '—'}</td>
+                                  <td style={{ padding: '5px 10px', whiteSpace: 'nowrap', color: '#374151' }}>{r.maDonHang || '—'}</td>
+                                  <td style={{ padding: '5px 10px', textAlign: 'right', fontWeight: 600 }}>{Number(r.soLuongConLai || 0).toLocaleString('vi-VN')}</td>
+                                  <td style={{ padding: '5px 10px', textAlign: 'right', color: '#6b7280' }}>{fmtNS2(r._pm[nsKey])}</td>
+                                  <td style={{ padding: '5px 10px', textAlign: 'right', fontWeight: 700, color: r[congKey] > 0 ? accent : '#d1d5db' }}>
+                                    {r[congKey] > 0 ? `${fmtH2(r[congKey])} h` : '—'}
+                                  </td>
+                                </tr>
+                              ))}
+                              <tr style={{ background: bg, borderTop: `1px solid ${border}` }}>
+                                <td colSpan={5} style={{ padding: '5px 10px', fontWeight: 700, color: accent, fontSize: 11 }}>Tổng ({g.sodon} đơn)</td>
+                                <td style={{ padding: '5px 10px', textAlign: 'right', fontWeight: 700, color: accent }}>{g.totSl.toLocaleString('vi-VN')}</td>
+                                <td />
+                                <td style={{ padding: '5px 10px', textAlign: 'right', fontWeight: 700, color: accent }}>{fmtH2(g.totCong)} h</td>
                               </tr>
-                            </React.Fragment>
-                          )
-                        })}
-                        <tr style={{ background: `${bg}`, borderTop: `2px solid ${border}` }}>
-                          <td style={{ padding: '7px 12px', fontWeight: 700, color: accent }}>Tổng</td>
-                          <td style={{ padding: '7px 12px', textAlign: 'center', fontWeight: 700, color: accent }}>{groups.reduce((s, g) => s + g.sodon, 0)}</td>
-                          <td style={{ padding: '7px 12px', textAlign: 'right', fontWeight: 700, color: accent }}>{groups.reduce((s, g) => s + g.totSl, 0).toLocaleString('vi-VN')}</td>
-                          <td style={{ padding: '7px 12px', textAlign: 'right', fontWeight: 700, color: accent }}>{fmtH2(groups.reduce((s, g) => s + g.totCong, 0))}</td>
-                          <td />
-                        </tr>
-                      </tbody>
-                    </table>
-                  )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {/* Grand total */}
+                  <div style={{ background: bg, borderTop: `2px solid ${border}`, padding: '8px 12px', display: 'flex', gap: 24 }}>
+                    <span style={{ fontWeight: 700, color: accent }}>Tổng cộng</span>
+                    <span style={{ color: '#374151' }}>{groups.reduce((s, g) => s + g.sodon, 0)} đơn</span>
+                    <span style={{ color: '#374151' }}>SL: <b>{groups.reduce((s, g) => s + g.totSl, 0).toLocaleString('vi-VN')}</b></span>
+                    <span style={{ color: accent, fontWeight: 700 }}>{fmtH2(groups.reduce((s, g) => s + g.totCong, 0))} h</span>
+                  </div>
                 </div>
               )
 
               return (
                 <div style={{ padding: '16px 16px 20px', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                  <MachinePanel groups={pcGroups} maxCong={maxPcCong} accent="#1e40af" bg="#eff6ff" border="#dbeafe" label="Tải Máy Pha Chế (PC)" />
-                  <MachinePanel groups={plGroups} maxCong={maxPlCong} accent="#92400e" bg="#fffbeb" border="#fde68a" label="Tải Máy Phân Liều (PL)" />
+                  <MachinePanel groups={pcGroups} maxCong={maxPcCong} accent="#1e40af" bg="#eff6ff" border="#dbeafe" congKey="congPc" nsKey="nangSuatPc" nsLabel="NS PC" />
+                  <MachinePanel groups={plGroups} maxCong={maxPlCong} accent="#92400e" bg="#fffbeb" border="#fde68a" congKey="congPl" nsKey="nangSuatPl" nsLabel="NS PL" />
                 </div>
               )
             })()}
