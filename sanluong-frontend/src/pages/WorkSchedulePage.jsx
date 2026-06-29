@@ -348,7 +348,18 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       setIsInfoEditing(false)
       setIsDirty(false)
       setLookupStatus(null)
-      onSaved()
+      if (dirtyRowKeys.size > 0) {
+        Modal.confirm({
+          title: 'Có dòng nhân viên chưa lưu',
+          content: `${dirtyRowKeys.size} dòng đã chỉnh sửa nhưng chưa nhấn "Cập nhật" (nút đỏ). Thoát sẽ mất các thay đổi đó.`,
+          okText: 'Thoát không lưu',
+          okType: 'danger',
+          cancelText: 'Quay lại để lưu',
+          onOk: () => { setDirtyRowKeys(new Set()); onSaved() },
+        })
+      } else {
+        onSaved()
+      }
     } catch (err) {
       if (err?.response) message.error(err.response.data?.message || 'Lưu thất bại')
     } finally { setInfoSaving(false) }
