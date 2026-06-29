@@ -129,6 +129,10 @@ public class WorkSchedule {
     @Transient
     private boolean hasLsx = false;
 
+    /** Transient — tpNhapKho lấy từ ProductionRecord (enrich khi list ĐG) */
+    @Transient
+    private Integer tpNhapKho;
+
     public WorkSchedule() {}
 
     @PrePersist
@@ -209,6 +213,8 @@ public class WorkSchedule {
     public void setPlanned(boolean isPlanned) { this.isPlanned = isPlanned; }
     public boolean isHasLsx() { return hasLsx; }
     public void setHasLsx(boolean hasLsx) { this.hasLsx = hasLsx; }
+    public Integer getTpNhapKho() { return tpNhapKho; }
+    public void setTpNhapKho(Integer tpNhapKho) { this.tpNhapKho = tpNhapKho; }
     public boolean isHidden() { return hidden; }
     public void setHidden(boolean hidden) { this.hidden = hidden; }
     public LocalDateTime getDeletedAt() { return deletedAt; }

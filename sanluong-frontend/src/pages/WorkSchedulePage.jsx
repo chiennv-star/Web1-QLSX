@@ -148,10 +148,15 @@ const STAGE_CONFIG = {
   DG: {
     label: 'Lịch sản xuất ĐG',
     extraTableCols: [
+      { title: 'TP NKHO', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 88, align: 'center',
+        render: v => v != null
+          ? <span style={{ fontWeight: 700, color: '#15803d' }}>{Number(v).toLocaleString('vi-VN')}</span>
+          : <span style={{ color: '#d9d9d9' }}>—</span> },
       { title: 'SL ĐG', dataIndex: 'slDg', key: 'slDg', width: 90, align: 'center', render: slExceedRender },
       { title: 'Công ĐG', dataIndex: 'congDg', key: 'congDg', width: 82, align: 'center', render: fmtNum }
     ],
     extraFormFields: [
+      { name: 'tpNhapKho', label: 'TP NKHO' },
       { name: 'slDg', label: 'SL ĐG' },
       { name: 'congDg', label: 'Công ĐG' }
     ]
@@ -344,6 +349,13 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
         congDoan: schedule.congDoan,
         source: 'SCHEDULE',
       })
+      // Riêng tpNhapKho: cập nhật ProductionRecord qua patch-field (transient field, không lưu trong PUT)
+      if (schedule.congDoan === 'DG') {
+        const newTpNk = values.tpNhapKho ?? null
+        if (newTpNk !== (schedule.tpNhapKho ?? null)) {
+          await api.patch(`/work-schedule/${schedule.id}/patch-field`, { field: 'tpNhapKho', value: newTpNk })
+        }
+      }
       message.success('Đã lưu thông tin')
       setIsInfoEditing(false)
       setIsDirty(false)
@@ -2076,6 +2088,21 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                         style={{ width: '100%', fontWeight: 700 }} placeholder="0" />
                     </Form.Item>
                   </VC>
+
+                  {schedule?.congDoan === 'DG' && (
+                    <>
+                      <LC accent="#15803d">📦 TP NKHO</LC>
+                      <VC span={7} style={{ borderRight: 'none' }}>
+                        <Form.Item name="tpNhapKho" noStyle>
+                          <InputNumber size="small" min={0} step={1} disabled={!isInfoEditing}
+                            formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
+                            parser={v => v ? v.replace(/[^\d]/g, '') : 0}
+                            style={{ width: 200, fontWeight: 700, color: '#15803d' }} placeholder="0" />
+                        </Form.Item>
+                        <span style={{ marginLeft: 8, fontSize: 11, color: '#6b7280' }}>thành phẩm nhập kho</span>
+                      </VC>
+                    </>
+                  )}
                 </div>
               </div>
             )

@@ -56,6 +56,20 @@ public class WorkScheduleService {
         this.donHangService = donHangService;
     }
 
+    /** Enrich tpNhapKho từ ProductionRecord cho các bản ghi DG */
+    private void enrichTpNhapKho(List<WorkSchedule> list) {
+        for (WorkSchedule w : list) {
+            if (!"DG".equalsIgnoreCase(w.getCongDoan())) continue;
+            if (w.getMaSp() == null || w.getMaSp().isBlank()) continue;
+            String tt  = (w.getTenTrinh() == null || w.getTenTrinh().isBlank()) ? null : w.getTenTrinh();
+            String lsx = (w.getSoLo()     == null || w.getSoLo().isBlank())     ? null : w.getSoLo();
+            List<com.sanluong.entity.ProductionRecord> records = productionRepo.findByTriplet(w.getMaSp(), tt, lsx);
+            if (!records.isEmpty()) {
+                w.setTpNhapKho(records.get(0).getTpNhapKho());
+            }
+        }
+    }
+
     /** Enrich hasLsx: đánh dấu các bản ghi có ProductionRecord.lsx = soLo */
     private void enrichHasLsx(List<WorkSchedule> list) {
         List<String> soLos = list.stream()
@@ -116,6 +130,7 @@ public class WorkScheduleService {
         List<WorkSchedule> content = start < all.size() ? new ArrayList<>(all.subList(start, end)) : new ArrayList<>();
         enrichMaBravo(content);
         enrichHasLsx(content);
+        enrichTpNhapKho(content);
         return new PageImpl<>(content, PageRequest.of(page, size), all.size());
     }
 
@@ -159,7 +174,9 @@ public class WorkScheduleService {
                 isEmpty(source) ? null : source,
                 isEmpty(toNhom) ? null : toNhom,
                 pageable);
-        enrichMaBravo(new ArrayList<>(result.getContent()));
+        List<WorkSchedule> enriched = new ArrayList<>(result.getContent());
+        enrichMaBravo(enriched);
+        enrichTpNhapKho(enriched);
         return result;
     }
 
@@ -555,6 +572,18 @@ public class WorkScheduleService {
     @org.springframework.transaction.annotation.Transactional
     public void patchField(Long id, String field, java.math.BigDecimal value) {
         WorkSchedule w = getById(id);
+        if ("tpNhapKho".equals(field)) {
+            if (w.getMaSp() != null && !w.getMaSp().isBlank()) {
+                String tt  = (w.getTenTrinh() == null || w.getTenTrinh().isBlank()) ? null : w.getTenTrinh();
+                String lsx = (w.getSoLo()     == null || w.getSoLo().isBlank())     ? null : w.getSoLo();
+                List<com.sanluong.entity.ProductionRecord> records = productionRepo.findByTriplet(w.getMaSp(), tt, lsx);
+                Integer intVal = value == null ? null : value.intValue();
+                records.forEach(r -> r.setTpNhapKho(intVal));
+                productionRepo.saveAll(records);
+            }
+            eventPublisher.publishKhoachUpdated();
+            return;
+        }
         switch (field) {
             case "congPc"   -> w.setCongPc(value);
             case "congBbc1" -> w.setCongBbc1(value);
