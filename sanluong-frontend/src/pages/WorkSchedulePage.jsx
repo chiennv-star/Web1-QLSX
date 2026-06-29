@@ -348,10 +348,14 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       setIsInfoEditing(false)
       setIsDirty(false)
       setLookupStatus(null)
-      if (dirtyRowKeys.size > 0) {
+      const hasUnsavedSl = Object.entries(daySlMap).some(([k, v]) => v !== '' && !savedSlKeys.has(k))
+      if (dirtyRowKeys.size > 0 || hasUnsavedSl) {
+        const parts = []
+        if (dirtyRowKeys.size > 0) parts.push(`${dirtyRowKeys.size} dòng nhân viên chưa nhấn "Cập nhật" (nút đỏ)`)
+        if (hasUnsavedSl) parts.push('SL ngày chưa được lưu')
         Modal.confirm({
-          title: 'Có dòng nhân viên chưa lưu',
-          content: `${dirtyRowKeys.size} dòng đã chỉnh sửa nhưng chưa nhấn "Cập nhật" (nút đỏ). Thoát sẽ mất các thay đổi đó.`,
+          title: 'Có thay đổi chưa lưu',
+          content: `${parts.join(' và ')}. Thoát sẽ mất các thay đổi đó.`,
           okText: 'Thoát không lưu',
           okType: 'danger',
           cancelText: 'Quay lại để lưu',
@@ -1739,12 +1743,15 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const handleDrawerClose = () => {
     const hasUnsavedRows = sessions.some(s => !s.id && s._tempId)
     const hasDirtyRows   = dirtyRowKeys.size > 0
-    if (isDirty || hasUnsavedRows || hasDirtyRows) {
+    const hasUnsavedSl   = Object.entries(daySlMap).some(([k, v]) => v !== '' && !savedSlKeys.has(k))
+    if (isDirty || hasUnsavedRows || hasDirtyRows || hasUnsavedSl) {
       Modal.confirm({
         title: 'Có thay đổi chưa lưu',
         content: isDirty
           ? 'Bạn chưa nhấn "Cập nhật". Thoát sẽ mất các thay đổi vừa nhập.'
-          : 'Có dòng nhân viên đã chỉnh sửa nhưng chưa nhấn "Cập nhật". Thoát sẽ mất dữ liệu.',
+          : hasUnsavedSl
+            ? 'Có SL ngày chưa được lưu. Thoát sẽ mất dữ liệu sản lượng.'
+            : 'Có dòng nhân viên đã chỉnh sửa nhưng chưa nhấn "Cập nhật". Thoát sẽ mất dữ liệu.',
         okText: 'Thoát không lưu',
         okType: 'danger',
         cancelText: 'Quay lại',
