@@ -630,9 +630,11 @@ public class WorkScheduleSessionService {
         }
 
         // ── 4. Nhóm sessions theo (workScheduleId, ngay) ─────────────────
+        // Dùng ngayThucHien làm fallback khi ngay = null để tránh sessions bị "mất" ngày
         Map<String, List<WorkScheduleSession>> grouped = new java.util.LinkedHashMap<>();
         for (WorkScheduleSession s : allSessions) {
-            String key = s.getWorkScheduleId() + "|" + (s.getNgay() != null ? s.getNgay() : "");
+            java.time.LocalDate effectiveDate = s.getNgay() != null ? s.getNgay() : s.getNgayThucHien();
+            String key = s.getWorkScheduleId() + "|" + (effectiveDate != null ? effectiveDate : "");
             grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(s);
         }
 
@@ -659,7 +661,8 @@ public class WorkScheduleSessionService {
                 }
             }
 
-            String ngayStr = rep.getNgay() != null ? rep.getNgay().toString() : null;
+            java.time.LocalDate effectiveNgay = rep.getNgay() != null ? rep.getNgay() : rep.getNgayThucHien();
+            String ngayStr = effectiveNgay != null ? effectiveNgay.toString() : null;
             String pendingKey = rep.getWorkScheduleId() + "|" + ngayStr;
 
             // Tổng công thực hiện

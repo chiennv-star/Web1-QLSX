@@ -1981,6 +1981,7 @@ function TongHopChiTietTab() {
   const groupedData = useMemo(() => {
     const map = {}
     raw.forEach(r => {
+      if (!r.ngay) return  // bỏ qua session không có ngày (nhất quán với TongHopTab)
       const key = `${r.maSp || ''}|${r.soLo || ''}`
       if (!map[key]) {
         map[key] = { key, maSp: r.maSp, tenTrinh: r.tenTrinh, soLo: r.soLo, coLo: r.coLo }
@@ -2216,6 +2217,7 @@ function PhanTichChiTietTab() {
   const groupedData = useMemo(() => {
     const map = {}
     raw.forEach(r => {
+      if (!r.ngay) return  // nhất quán với TongHopTab
       const key = `${r.maSp || ''}|${r.soLo || ''}`
       if (!map[key]) {
         map[key] = { key, maSp: r.maSp, tenTrinh: r.tenTrinh, soLo: r.soLo, coLo: r.coLo }
@@ -3444,6 +3446,7 @@ function PhanTichSanLuongTab() {
   const stageData = useMemo(() => {
     const map = {}
     raw.forEach(r => {
+      if (!r.ngay) return  // nhất quán với TongHopTab
       const cd = resolveCongDoan(r)
       if (!cd) return
       if (stageFilter && cd !== stageFilter) return
