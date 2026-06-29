@@ -1,6 +1,7 @@
 package com.sanluong.service;
 
 import com.sanluong.entity.ProductMaster;
+import com.sanluong.entity.ProductionRecord;
 import com.sanluong.entity.SanLuongTongHop;
 import com.sanluong.repository.ProductMasterRepository;
 import com.sanluong.repository.SanLuongTongHopRepository;
@@ -84,6 +85,53 @@ public class SanLuongTongHopService {
         e.setMoTa(body.getMoTa());
         e.setGhiChuHieuSuat(body.getGhiChuHieuSuat());
         return repo.save(e);
+    }
+
+    /**
+     * Tự động tạo bản ghi Tổng hợp SL từ ProductionRecord khi lô hoàn thành.
+     * Idempotent: bỏ qua nếu bản ghi đã tồn tại (maBravo + lsx + maDonHang).
+     */
+    public void createFromProductionIfAbsent(ProductionRecord r, String createdBy) {
+        String maBravo   = r.getMaBravo();
+        String lsx       = r.getLsx();
+        String maDonHang = r.getMaDonHang();
+
+        boolean exists = (maDonHang == null || maDonHang.isBlank())
+                ? repo.existsByMaBravoAndLsxAndMaDonHangIsNull(maBravo, lsx)
+                : repo.existsByMaBravoAndLsxAndMaDonHang(maBravo, lsx, maDonHang);
+        if (exists) return;
+
+        SanLuongTongHop e = new SanLuongTongHop();
+        e.setMaBravo(maBravo);
+        e.setMaTp(r.getMaTp());
+        e.setTienTrinh(r.getTienTrinh());
+        e.setLsx(lsx);
+        e.setSoLuong(r.getSoLuong());
+        e.setMaDonHang((maDonHang == null || maDonHang.isBlank()) ? null : maDonHang);
+        e.setPcTrangThai("done");
+        e.setPlTrangThai("done");
+        e.setDgTrangThai("done");
+        e.setBbc1TrangThai("done");
+        e.setSlPc(r.getSlPc());
+        e.setPcPl(r.getPcPl());
+        e.setDg2(r.getDg2());
+        e.setBbc1_2(r.getBbc1_2());
+        e.setSpTrungGian(r.getSpTrungGian());
+        e.setTpNhapKho(r.getTpNhapKho());
+        e.setBbc1_3(r.getBbc1_3());
+        e.setPcChiPhi(r.getPcChiPhi());
+        e.setPlChiPhi(r.getPlChiPhi());
+        e.setDgChiPhi(r.getDgChiPhi());
+        e.setCcChiPhi(r.getCcChiPhi());
+        e.setTemDb(r.getTemDb());
+        e.setSlTrungBinh(r.getSlTrungBinh());
+        e.setPlQaLayMau(r.getPlQaLayMau());
+        e.setDgQaLayMau(r.getDgQaLayMau());
+        e.setMoTa(r.getMoTa());
+        e.setGhiChuHieuSuat(r.getGhiChuHieuSuat());
+        e.setCreatedBy("auto:" + createdBy);
+        e.setUpdatedBy("auto:" + createdBy);
+        repo.save(e);
     }
 
     public void delete(Long id) {

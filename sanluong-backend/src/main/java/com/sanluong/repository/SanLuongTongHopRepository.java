@@ -9,6 +9,9 @@ import org.springframework.data.repository.query.Param;
 
 public interface SanLuongTongHopRepository extends JpaRepository<SanLuongTongHop, Long> {
 
+    @Query("SELECT COUNT(s) > 0 FROM SanLuongTongHop s WHERE s.maBravo = :maBravo AND s.lsx = :lsx AND s.maDonHang IS NULL")
+    boolean existsByMaBravoAndLsxAndMaDonHangIsNull(@Param("maBravo") String maBravo, @Param("lsx") String lsx);
+
     @Query(value = """
         SELECT s.* FROM san_luong_tong_hop s
         LEFT JOIN product_master pm ON UPPER(pm.ma_tp) = UPPER(s.ma_tp)

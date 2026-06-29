@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Table, Input, Select, Tag, Tooltip, message, Button, Badge, Progress,
-  Modal, Form, DatePicker, InputNumber, Divider, AutoComplete, Spin,
+  Modal, Form, DatePicker, InputNumber, Divider, AutoComplete, Spin, Dropdown,
 } from 'antd'
 import { Rnd } from 'react-rnd'
 import SkeletonTable from '../components/SkeletonTable'
@@ -10,10 +10,13 @@ import {
   ReloadOutlined, EditOutlined, CheckOutlined, FileAddOutlined,
   DeleteOutlined, ThunderboltOutlined, CloseOutlined,
   SaveOutlined, FileTextOutlined, SwapOutlined, HistoryOutlined,
+  DownloadOutlined, FileExcelOutlined, FileImageOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
 import api from '../api/axios'
+import * as XLSX from 'xlsx'
+import { toPng } from 'html-to-image'
 import { useAuth } from '../context/AuthContext'
 
 dayjs.extend(isoWeek)
@@ -780,7 +783,9 @@ export default function LenhSanXuatTab() {
   const [employeeCounts,   setEmployeeCounts]   = useState({})
   const [phanTichSubTab,   setPhanTichSubTab]   = useState('cong')
   const [phanTichPeriod,   setPhanTichPeriod]   = useState('month')
-  const tableWrapRef = useRef(null)
+  const [exportLoading,    setExportLoading]    = useState(false)
+  const tableWrapRef  = useRef(null)
+  const phanTichRef   = useRef(null)
   // useRef để lưu giá trị soLo — không gây re-render khi gõ, tránh input mất focus
   const soLoRef = useRef({})
 
@@ -1026,6 +1031,116 @@ export default function LenhSanXuatTab() {
   }
 
   // ── Shared column definitions ──────────────────────────────────────────────
+  // ── Export helpers ───────────────────────────────────────────────────────────
+  const exportMainExcel = useCallback(() => {
+    const colDefs = [
+      ['Phát hành', r => r.isFromKhoach ? 'Chờ tạo lệnh' : r.daBanHanh ? 'Đã phát hành' : 'Chưa phát hành'],
+      ['Ngày TH', r => r.ngayThucHien ? dayjs(r.ngayThucHien).format('DD/MM/YYYY') : ''],
+      ['Ngày PL', r => r.ngayPhatLenh ? dayjs(r.ngayPhatLenh).format('DD/MM/YYYY') : ''],
+      ['Mã Bravo', r => r.maBravo || ''],
+      ['Mã SP', r => r.maSp || ''],
+      ['Loại SP', r => loaiSpMap[r.maSp]?.loaiSanPham || ''],
+      ['Tên sản phẩm', r => r.tenSanPham || ''],
+      ['Số lô', r => r.soLo || ''],
+      ['Mã đơn hàng', r => r.maDonHang || ''],
+      ['Cỡ lô', r => r.soLuong != null ? Number(r.soLuong) : ''],
+      ['Tình trạng', r => {
+        if (r.tinhTrang === 'rat_gap') return 'Rất gấp'
+        if (r.tinhTrang === 'gap') return 'Gấp'
+        if (r.daBanHanh) return 'Hoàn thành'
+        return ''
+      }],
+      ['Phòng TH', r => r.phongThucHien || ''],
+      ['Tổ TH', r => r.toThucHien || ''],
+    ]
+    if (activeTab === 'tat_ca') {
+      colDefs.push(
+        ['KL/ĐV (G)', r => loaiSpMap[r.maSp]?.khoiLuong != null ? Number(loaiSpMap[r.maSp].khoiLuong) : ''],
+        ['NS TB (ĐG)', r => { const v = Number(loaiSpMap[r.maSp]?.nangSuatDg); return v > 1 ? v : '' }],
+        ['NS PC', r => { const v = Number(loaiSpMap[r.maSp]?.nangSuatPc); return v > 1 ? v : '' }],
+        ['NS PL', r => { const v = Number(loaiSpMap[r.maSp]?.nangSuatPl); return v > 1 ? v : '' }],
+        ['NS BBC1', r => { const v = Number(loaiSpMap[r.maSp]?.nangSuatBbc1); return v > 1 ? v : '' }],
+        ['Máy móc PC', r => loaiSpMap[r.maSp]?.mayMocPc || ''],
+        ['Máy móc PL', r => loaiSpMap[r.maSp]?.mayMocPl || ''],
+        ['Máy móc BBC1', r => loaiSpMap[r.maSp]?.mayMocBbc1 || ''],
+        ['Máy móc ĐG', r => loaiSpMap[r.maSp]?.mayMocDg || ''],
+      )
+    }
+    const header = colDefs.map(([h]) => h)
+    const wsData = [header, ...rows.map(r => colDefs.map(([, fn]) => fn(r)))]
+    const ws = XLSX.utils.aoa_to_sheet(wsData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Lệnh SX')
+    XLSX.writeFile(wb, `lenh-san-xuat-${dayjs().format('YYYYMMDD-HHmm')}.xlsx`)
+  }, [rows, activeTab, loaiSpMap])
+
+  const exportMainImage = useCallback(async () => {
+    if (!tableWrapRef.current) return
+    setExportLoading(true)
+    try {
+      const url = await toPng(tableWrapRef.current, { backgroundColor: '#fff', pixelRatio: 2 })
+      const a = document.createElement('a')
+      a.href = url; a.download = `lenh-san-xuat-${dayjs().format('YYYYMMDD-HHmm')}.png`; a.click()
+    } catch { message.error('Xuất ảnh thất bại') }
+    finally { setExportLoading(false) }
+  }, [])
+
+  const exportPhanTichExcel = useCallback((subTab, { congRows, typeRows, machineList, conflicts, orderAnalysis }) => {
+    let aoa
+    if (subTab === 'cong') {
+      aoa = [
+        ['Loại SP', 'Số TP', 'Công PCPL1', 'Công PCPL2', 'Công PL', 'Công ĐG', 'Công BBC1', 'Tổng Công'],
+        ...(congRows || []).map(r => [r.loai, r.sku, +r.congPcpl1.toFixed(2), +r.congPcpl2.toFixed(2), +r.congPl.toFixed(2), +r.congDg.toFixed(2), +r.congBbc1.toFixed(2), +r.tongCong.toFixed(2)]),
+      ]
+    } else if (subTab === 'theo_loai') {
+      aoa = [
+        ['Loại SP', 'Số lệnh', 'Số SKU', 'Tổng SL', 'Tỉ lệ %', 'Công ĐG', 'Công PC', 'Công PL'],
+        ...(typeRows || []).map(r => [r.loai, r.soLenh, r.sku, r.totalSl, +r.tyLe.toFixed(1), +r.congDg.toFixed(2), +r.congPc.toFixed(2), +r.congPl.toFixed(2)]),
+      ]
+    } else if (subTab === 'tai_may') {
+      aoa = [
+        ['Máy móc', 'Công đoạn', 'Số công (h)', 'Số lệnh'],
+        ...(machineList || []).map(m => [m.machine, m.stageKey, +m.hours.toFixed(2), m.orders]),
+      ]
+    } else if (subTab === 'nut_that') {
+      aoa = [
+        ['Mã SP', 'Số lô', 'Tên SP', 'Công PC', 'Công PL', 'Công BBC1', 'Công ĐG', 'Tổng', 'Nút thắt'],
+        ...(orderAnalysis || []).filter(r => r.bottleneck).map(r => [
+          r.maSp, r.soLo, r.tenSanPham,
+          r.tPc != null ? +r.tPc.toFixed(2) : '',
+          r.tPl != null ? +r.tPl.toFixed(2) : '',
+          r.tBbc != null ? +r.tBbc.toFixed(2) : '',
+          r.tDg != null ? +r.tDg.toFixed(2) : '',
+          +r.total.toFixed(2), r.bottleneck?.key || '',
+        ]),
+      ]
+    } else if (subTab === 'xung_dot') {
+      const xRows = []
+      ;(conflicts || []).forEach(c => {
+        c.orders.forEach((o, i) => {
+          xRows.push([i === 0 ? c.machine : '', i === 0 ? c.stageKey : '', o.maSp, o.soLo, o.ten, +o.t.toFixed(2), i === 0 ? +c.totalH.toFixed(2) : ''])
+        })
+      })
+      aoa = [['Máy móc', 'Công đoạn', 'Mã SP', 'Số lô', 'Tên SP', 'Công (h)', 'Tổng tải'], ...xRows]
+    }
+    if (!aoa) return
+    const ws = XLSX.utils.aoa_to_sheet(aoa)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, subTab)
+    XLSX.writeFile(wb, `phan-tich-${subTab}-${dayjs().format('YYYYMMDD-HHmm')}.xlsx`)
+  }, [])
+
+  const exportPhanTichImage = useCallback(async () => {
+    if (!phanTichRef.current) return
+    setExportLoading(true)
+    try {
+      const url = await toPng(phanTichRef.current, { backgroundColor: '#fff', pixelRatio: 2 })
+      const a = document.createElement('a')
+      a.href = url; a.download = `phan-tich-${dayjs().format('YYYYMMDD-HHmm')}.png`; a.click()
+    } catch { message.error('Xuất ảnh thất bại') }
+    finally { setExportLoading(false) }
+  }, [])
+
   const baseColumns = [
     {
       title: '#', width: 44, align: 'center',
@@ -1420,6 +1535,22 @@ export default function LenhSanXuatTab() {
           >
             Thêm lệnh
           </Button>
+          {activeTab !== 'phan_tich' && (
+            <Dropdown
+              menu={{
+                items: [
+                  { key: 'excel', label: 'Xuất Excel (.xlsx)', icon: <FileExcelOutlined style={{ color: '#217346' }} /> },
+                  { key: 'image', label: 'Xuất ảnh PNG', icon: <FileImageOutlined style={{ color: '#0284c7' }} /> },
+                ],
+                onClick: ({ key }) => key === 'excel' ? exportMainExcel() : exportMainImage(),
+              }}
+              placement="bottomRight"
+            >
+              <Button icon={<DownloadOutlined />} size="small" loading={exportLoading} style={{ fontSize: 11 }}>
+                Xuất
+              </Button>
+            </Dropdown>
+          )}
           <span style={{ color: '#94a3b8', fontSize: 11, marginLeft: 4 }}>
             {rows.length} lệnh
           </span>
@@ -1750,7 +1881,7 @@ export default function LenhSanXuatTab() {
         ]
 
         return (
-          <div style={{ padding: '16px 16px 24px', background: '#fff' }}>
+          <div ref={phanTichRef} style={{ padding: '16px 16px 24px', background: '#fff' }}>
 
             {/* ── Period selector ── */}
             {(() => {
@@ -1763,7 +1894,7 @@ export default function LenhSanXuatTab() {
                 { key: 'all',   label: 'Tất cả' },
               ]
               return (
-                <div style={{ display: 'flex', gap: 6, marginBottom: 16, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginRight: 4 }}>Mốc thời gian:</span>
                   {periods.map(p => {
                     const isActive = phanTichPeriod === p.key
@@ -1782,6 +1913,24 @@ export default function LenhSanXuatTab() {
                   <span style={{ marginLeft: 8, fontSize: 11, color: '#94a3b8' }}>
                     ({trendData.length} lệnh)
                   </span>
+                  <span style={{ flex: 1 }} />
+                  <Dropdown
+                    menu={{
+                      items: [
+                        { key: 'excel', label: 'Xuất Excel (.xlsx)', icon: <FileExcelOutlined style={{ color: '#217346' }} /> },
+                        { key: 'image', label: 'Xuất ảnh PNG', icon: <FileImageOutlined style={{ color: '#0284c7' }} /> },
+                      ],
+                      onClick: ({ key }) => {
+                        if (key === 'excel') exportPhanTichExcel(phanTichSubTab, { congRows, typeRows, machineList, conflicts, orderAnalysis })
+                        else exportPhanTichImage()
+                      },
+                    }}
+                    placement="bottomRight"
+                  >
+                    <Button icon={<DownloadOutlined />} size="small" loading={exportLoading} style={{ fontSize: 11 }}>
+                      Xuất
+                    </Button>
+                  </Dropdown>
                 </div>
               )
             })()}

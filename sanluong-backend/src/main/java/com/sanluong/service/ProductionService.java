@@ -38,6 +38,7 @@ public class ProductionService {
     private final ProductionEditHistoryRepository historyRepository;
     private final NotificationService notificationService;
     private final KhoachEventPublisher khoachEventPublisher;
+    private final SanLuongTongHopService sanLuongTongHopService;
 
     public ProductionService(ProductionRecordRepository repository,
                              ProductMasterRepository productMasterRepository,
@@ -46,7 +47,8 @@ public class ProductionService {
                              WorkScheduleService workScheduleService,
                              ProductionEditHistoryRepository historyRepository,
                              NotificationService notificationService,
-                             KhoachEventPublisher khoachEventPublisher) {
+                             KhoachEventPublisher khoachEventPublisher,
+                             SanLuongTongHopService sanLuongTongHopService) {
         this.repository = repository;
         this.productMasterRepository = productMasterRepository;
         this.lenhSanXuatRepository = lenhSanXuatRepository;
@@ -55,6 +57,7 @@ public class ProductionService {
         this.historyRepository = historyRepository;
         this.notificationService = notificationService;
         this.khoachEventPublisher = khoachEventPublisher;
+        this.sanLuongTongHopService = sanLuongTongHopService;
     }
 
     // Tên hiển thị tiếng Việt của từng trường
@@ -255,6 +258,15 @@ public class ProductionService {
         ProductionRecord saved = repository.save(old);
 
         if (!changes.isEmpty()) historyRepository.saveAll(changes);
+
+        boolean nowDone = "done".equals(saved.getPcTrangThai())
+                && "done".equals(saved.getPlTrangThai())
+                && "done".equals(saved.getDgTrangThai())
+                && "done".equals(saved.getBbc1TrangThai());
+        if (nowDone) {
+            sanLuongTongHopService.createFromProductionIfAbsent(saved, username);
+        }
+
         return saved;
     }
 
