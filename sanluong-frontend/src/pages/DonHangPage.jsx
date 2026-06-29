@@ -1105,7 +1105,7 @@ export default function DonHangPage() {
   }, [employeeCounts])
 
   useEffect(() => {
-    if (activeTab === 'trend' || activeTab === 'analysis') {
+    if (activeTab === 'trend' || activeTab === 'analysis' || activeTab === 'pc-pl') {
       loadProductMaster({ force: true })
       loadEmployeeCounts()
     }
@@ -1657,6 +1657,7 @@ export default function DonHangPage() {
           ...(isAdmin() ? [
             { key: 'trend',    label: '📊 Xu Hướng',     count: displayData.length },
             { key: 'analysis', label: '🔬 Phân Tích',    count: displayData.length },
+            { key: 'pc-pl',    label: '⚙ Chi Tiết PC/PL', count: displayData.length },
           ] : []),
         ].map(tab => (
           <div key={tab.key}
@@ -1681,7 +1682,7 @@ export default function DonHangPage() {
             </span>
           </div>
         ))}
-        {(activeTab === 'trend' || activeTab === 'analysis') && (
+        {(activeTab === 'trend' || activeTab === 'analysis' || activeTab === 'pc-pl') && (
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', paddingRight: 12 }}>
             <Tooltip title="Tải lại dữ liệu Năng Suất & Loại SP từ Danh Mục TP">
               <Button
@@ -2566,6 +2567,246 @@ export default function DonHangPage() {
             {innerContent}
           </div>
         ) : innerContent
+      })()
+      ) : activeTab === 'pc-pl' ? (
+      /* ── Tab: Chi Tiết PC/PL ── */
+      (() => {
+        const fmtNS2 = v => (v != null && v > 0) ? Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 0 }) : '—'
+        const fmtH2  = v => (v != null && v > 0) ? Number(v).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'
+        const fmtD   = v => (v != null && v > 0) ? Number(v).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'
+
+        const workersPc = (employeeCounts['PCPL1'] || 0) + (employeeCounts['PCPL2'] || 0)
+        const workersPl = employeeCounts['PCPL3'] || 0
+
+        const pcPlData = displayData
+          .map(r => {
+            const pm    = productMasterMap[r.maBravo] || {}
+            const sl    = Number(r.soLuongConLai) || 0
+            const nsPc  = Number(pm.nangSuatPc) || 0
+            const nsPl  = Number(pm.nangSuatPl) || 0
+            const congPc = nsPc > 0 ? sl / nsPc : null
+            const congPl = nsPl > 0 ? sl / nsPl : null
+            let bottleneck = null
+            if (congPc != null && congPl != null) bottleneck = congPc >= congPl ? 'PC' : 'PL'
+            else if (congPc != null) bottleneck = 'PC'
+            else if (congPl != null) bottleneck = 'PL'
+            const bnWorkers = bottleneck === 'PC' ? workersPc : bottleneck === 'PL' ? workersPl : 0
+            const maxCong   = Math.max(congPc || 0, congPl || 0)
+            const ngayHt    = bnWorkers > 0 && maxCong > 0 ? maxCong / bnWorkers : null
+            return { ...r, _pm: pm, congPc, congPl, bottleneck, ngayHt }
+          })
+          .filter(r => r._pm.nangSuatPc || r._pm.nangSuatPl || r._pm.mayMocPc || r._pm.mayMocPl)
+          .sort((a, b) => (b.congPc || 0) + (b.congPl || 0) - ((a.congPc || 0) + (a.congPl || 0)))
+
+        const BN_PC = { bg: '#dbeafe', color: '#1e40af', label: 'Pha Chế' }
+        const BN_PL = { bg: '#fef3c7', color: '#92400e', label: 'Phân Liều' }
+
+        const totSlDat  = pcPlData.reduce((s, r) => s + (Number(r.soLuongDatHang) || 0), 0)
+        const totSlCon  = pcPlData.reduce((s, r) => s + (Number(r.soLuongConLai)  || 0), 0)
+        const totCongPc = pcPlData.reduce((s, r) => s + (r.congPc || 0), 0)
+        const totCongPl = pcPlData.reduce((s, r) => s + (r.congPl || 0), 0)
+
+        const pcPlCols = [
+          {
+            title: '#', key: 'stt', width: 44, fixed: 'left', align: 'center',
+            render: (_, __, i) => <span style={{ fontSize: 11, color: '#94a3b8' }}>{i + 1}</span>,
+          },
+          {
+            title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 115, fixed: 'left', align: 'center',
+            render: v => v
+              ? <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', fontSize: 12 }}>{v}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          {
+            title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 80, align: 'center',
+            render: v => v ? <Tag color="blue" style={{ marginRight: 0, fontWeight: 600 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          {
+            title: 'Tên Sản Phẩm', dataIndex: 'tenSanPham', key: 'tenSanPham', width: 200, fixed: 'left', ellipsis: true,
+            render: v => <span style={{ fontSize: 13, color: '#1e293b', fontWeight: 500 }}>{v || <span style={{ color: '#d9d9d9' }}>—</span>}</span>,
+          },
+          {
+            title: 'Loại SP', key: 'loaiSp', width: 110,
+            render: (_, r) => r._pm.loaiSanPham
+              ? <span style={{ fontSize: 12, color: '#374151' }}>{r._pm.loaiSanPham}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          {
+            title: 'Mã Đơn Hàng', dataIndex: 'maDonHang', key: 'maDonHang', width: 115, align: 'center',
+            render: v => v
+              ? <span style={{ fontFamily: 'monospace', color: 'rgb(0,0,205)', fontWeight: 600, fontSize: 12 }}>{v}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          {
+            title: 'SL Đặt', dataIndex: 'soLuongDatHang', key: 'slDat', width: 95, align: 'right',
+            sorter: (a, b) => (Number(a.soLuongDatHang) || 0) - (Number(b.soLuongDatHang) || 0),
+            render: v => <span style={{ fontWeight: 700, color: '#374151' }}>{fmtNum(v)}</span>,
+          },
+          {
+            title: 'SL Còn Lại', dataIndex: 'soLuongConLai', key: 'slCon', width: 100, align: 'right',
+            sorter: (a, b) => (Number(a.soLuongConLai) || 0) - (Number(b.soLuongConLai) || 0),
+            render: v => {
+              const n = Number(v) || 0
+              return <span style={{ fontWeight: 700, color: n > 0 ? '#cf1322' : '#389e0d' }}>{fmtNum(v)}</span>
+            },
+          },
+          {
+            title: 'Tình Trạng', key: 'ttSx', width: 120, align: 'center',
+            render: (_, r) => {
+              const cfg = TINH_TRANG_SX[r.tinhTrangSx]
+              if (!cfg) return <span style={{ color: '#94a3b8', fontSize: 11 }}>Chưa bắt đầu</span>
+              return <Badge status={r.tinhTrangSx === 'done' ? 'success' : 'processing'} text={<span style={{ fontWeight: 600, color: cfg.color, fontSize: 11 }}>{cfg.label}</span>} />
+            },
+          },
+          {
+            title: 'KL/ĐV (g)', key: 'khoiLuong', width: 90, align: 'right',
+            render: (_, r) => <span style={{ color: '#0369a1', fontWeight: 600 }}>{fmtNum(r._pm.khoiLuong)}</span>,
+          },
+          /* ── Nhóm PC ── */
+          {
+            title: <span style={{ color: '#1e40af' }}>NS PC (sp/công)</span>,
+            key: 'nsPc', width: 120, align: 'right',
+            sorter: (a, b) => (Number(a._pm.nangSuatPc) || 0) - (Number(b._pm.nangSuatPc) || 0),
+            render: (_, r) => r._pm.nangSuatPc
+              ? <span style={{ color: '#1d4ed8', fontWeight: 600 }}>{fmtNS2(r._pm.nangSuatPc)}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          {
+            title: <span style={{ color: '#1e40af' }}>Máy Móc PC</span>,
+            key: 'mmPc', width: 175,
+            render: (_, r) => r._pm.mayMocPc
+              ? <span style={{ fontSize: 12, color: '#374151' }}>{r._pm.mayMocPc}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          {
+            title: <span style={{ color: '#1e40af' }}>Công PC (h)</span>,
+            key: 'congPc', width: 110, align: 'right',
+            sorter: (a, b) => (a.congPc || 0) - (b.congPc || 0),
+            render: (_, r) => r.congPc != null
+              ? <span style={{ fontWeight: r.bottleneck === 'PC' ? 700 : 400, color: r.bottleneck === 'PC' ? '#1e40af' : '#374151' }}>{fmtH2(r.congPc)}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          /* ── Nhóm PL ── */
+          {
+            title: <span style={{ color: '#92400e' }}>NS PL (sp/công)</span>,
+            key: 'nsPl', width: 120, align: 'right',
+            sorter: (a, b) => (Number(a._pm.nangSuatPl) || 0) - (Number(b._pm.nangSuatPl) || 0),
+            render: (_, r) => r._pm.nangSuatPl
+              ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{fmtNS2(r._pm.nangSuatPl)}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          {
+            title: <span style={{ color: '#92400e' }}>Máy Móc PL</span>,
+            key: 'mmPl', width: 175,
+            render: (_, r) => r._pm.mayMocPl
+              ? <span style={{ fontSize: 12, color: '#374151' }}>{r._pm.mayMocPl}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          {
+            title: <span style={{ color: '#92400e' }}>Công PL (h)</span>,
+            key: 'congPl', width: 110, align: 'right',
+            sorter: (a, b) => (a.congPl || 0) - (b.congPl || 0),
+            render: (_, r) => r.congPl != null
+              ? <span style={{ fontWeight: r.bottleneck === 'PL' ? 700 : 400, color: r.bottleneck === 'PL' ? '#92400e' : '#374151' }}>{fmtH2(r.congPl)}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>,
+          },
+          /* ── Phân tích ── */
+          {
+            title: 'Nút Thắt', key: 'bn', width: 110, align: 'center',
+            filters: [{ text: 'Pha Chế', value: 'PC' }, { text: 'Phân Liều', value: 'PL' }, { text: 'Chưa có', value: '' }],
+            onFilter: (val, r) => val === '' ? !r.bottleneck : r.bottleneck === val,
+            render: (_, r) => {
+              if (!r.bottleneck) return <span style={{ color: '#d9d9d9', fontSize: 11 }}>—</span>
+              const cfg = r.bottleneck === 'PC' ? BN_PC : BN_PL
+              return <span style={{ background: cfg.bg, color: cfg.color, fontWeight: 600, padding: '2px 8px', borderRadius: 4, fontSize: 12, whiteSpace: 'nowrap' }}>{cfg.label}</span>
+            },
+          },
+          {
+            title: 'Ngày HT (dự tính)',
+            key: 'ngayHt', width: 130, align: 'right',
+            sorter: (a, b) => (a.ngayHt || 0) - (b.ngayHt || 0),
+            render: (_, r) => r.ngayHt != null
+              ? <span style={{ fontWeight: 700, color: '#0f766e' }}>{fmtD(r.ngayHt)} <span style={{ fontWeight: 400, fontSize: 11 }}>ngày</span></span>
+              : <span style={{ color: '#d9d9d9', fontSize: 11 }}>—</span>,
+          },
+        ]
+
+        const summaryPcPl = () => {
+          const s = { fontWeight: 700, background: '#f0f5ff', padding: '6px 8px' }
+          return (
+            <Table.Summary fixed="bottom">
+              <Table.Summary.Row>
+                <Table.Summary.Cell index={0} colSpan={4}><span style={{ ...s, display: 'block' }}>Tổng ({pcPlData.length} đơn)</span></Table.Summary.Cell>
+                <Table.Summary.Cell index={4} />
+                <Table.Summary.Cell index={5} />
+                <Table.Summary.Cell index={6} align="right"><span style={s}>{totSlDat.toLocaleString('vi-VN')}</span></Table.Summary.Cell>
+                <Table.Summary.Cell index={7} align="right"><span style={{ ...s, color: '#cf1322' }}>{totSlCon.toLocaleString('vi-VN')}</span></Table.Summary.Cell>
+                <Table.Summary.Cell index={8} colSpan={2} />
+                <Table.Summary.Cell index={10} />
+                <Table.Summary.Cell index={11} />
+                <Table.Summary.Cell index={12} align="right"><span style={{ ...s, color: '#1d4ed8' }}>{fmtH2(totCongPc)}</span></Table.Summary.Cell>
+                <Table.Summary.Cell index={13} />
+                <Table.Summary.Cell index={14} />
+                <Table.Summary.Cell index={15} align="right"><span style={{ ...s, color: '#0e7490' }}>{fmtH2(totCongPl)}</span></Table.Summary.Cell>
+                <Table.Summary.Cell index={16} colSpan={2} />
+              </Table.Summary.Row>
+            </Table.Summary>
+          )
+        }
+
+        const noBnCount = pcPlData.filter(r => !r.bottleneck).length
+
+        return (
+          <div>
+            {/* KPI bar */}
+            <div style={{ display: 'flex', gap: 12, padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flex: 1 }}>
+                {[
+                  { label: 'Đơn có PC/PL', val: pcPlData.length, color: '#1677ff' },
+                  { label: 'SL Còn Lại', val: totSlCon.toLocaleString('vi-VN'), color: '#cf1322' },
+                  { label: 'Tổng Công PC', val: `${fmtH2(totCongPc)} h`, color: '#1e40af' },
+                  { label: 'Tổng Công PL', val: `${fmtH2(totCongPl)} h`, color: '#92400e' },
+                  { label: 'Nút thắt PC', val: pcPlData.filter(r => r.bottleneck === 'PC').length, color: '#1e40af' },
+                  { label: 'Nút thắt PL', val: pcPlData.filter(r => r.bottleneck === 'PL').length, color: '#92400e' },
+                  workersPc > 0 ? { label: 'Ngày HT PC (ước)', val: `${fmtD(totCongPc / workersPc)} ngày`, color: '#1d4ed8' } : null,
+                  workersPl > 0 ? { label: 'Ngày HT PL (ước)', val: `${fmtD(totCongPl / workersPl)} ngày`, color: '#0e7490' } : null,
+                ].filter(Boolean).map(k => (
+                  <div key={k.label} style={{ background: '#fff', border: `1px solid ${k.color}33`, borderRadius: 8, padding: '6px 14px', minWidth: 110 }}>
+                    <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 2 }}>{k.label}</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: k.color }}>{k.val}</div>
+                  </div>
+                ))}
+              </div>
+              {noBnCount > 0 && (
+                <div style={{ fontSize: 12, color: '#92400e', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 6, padding: '4px 12px' }}>
+                  ⚠ {noBnCount} đơn chưa đủ NS để tính nút thắt
+                </div>
+              )}
+            </div>
+
+            <Table
+              className="dh-table"
+              columns={pcPlCols}
+              dataSource={pcPlData}
+              rowKey="id"
+              loading={loading || loadingMaster}
+              size="small"
+              scroll={{ x: 1980 }}
+              sticky={{ offsetHeader: headerOffset }}
+              rowHoverable={false}
+              rowClassName={rowClassName}
+              onRow={r => ({ onClick: () => openDetail(r), style: { cursor: 'pointer' } })}
+              pagination={{
+                defaultPageSize: 50,
+                pageSizeOptions: ['20', '50', '100'],
+                showSizeChanger: true,
+                showTotal: t => `${t} đơn hàng`,
+              }}
+              summary={summaryPcPl}
+              locale={{ emptyText: <span style={{ color: '#d9d9d9' }}>Không có đơn hàng nào có dữ liệu PC/PL</span> }}
+            />
+          </div>
+        )
       })()
       ) : null}
 
