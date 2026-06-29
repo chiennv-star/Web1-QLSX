@@ -780,7 +780,8 @@ export default function KeHoachToPage() {
                 }
               })
             })
-            return { ...assign, caShifts: newCaShifts }
+            const noteFromBe = group.find(s => s.ghiChu)?.ghiChu ?? assign.note
+            return { ...assign, caShifts: newCaShifts, note: noteFromBe }
           })
         })
 
@@ -829,7 +830,7 @@ export default function KeHoachToPage() {
             ngay,
             ngayFull:      first.ngay,
             caShifts,
-            note:          '',
+            note:          group.find(s => s.ghiChu)?.ghiChu || '',
           }
           if (!updated[toKey]) updated[toKey] = []
           updated[toKey] = [...updated[toKey], newAssign]
@@ -994,6 +995,7 @@ export default function KeHoachToPage() {
               nhomThucHien:   employees.find(e => e.maNhanVien === ma)?.toNhom || a.toNhom || null,
               caSanXuat:      caSession,
               loaiSession:    'KH_TO',
+              ghiChu:         a.note || null,
             }).catch(err => { if (err.response?.status !== 409) throw err })
           )
         })
