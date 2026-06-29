@@ -2190,6 +2190,7 @@ function PhanTichChiTietTab() {
   const [loading, setLoading]     = useState(false)
   const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs()])
   const [machineMap, setMachineMap] = useState({})
+  const [subTab, setSubTab]       = useState('tonghop')
 
   const fetchData = useCallback(async (range = dateRange) => {
     setLoading(true)
@@ -2267,14 +2268,387 @@ function PhanTichChiTietTab() {
 
   const top15 = useMemo(() =>
     [...groupedData]
-      .map(r => ({
-        name: r.maSp || '?',
-        sl: STAGES.reduce((s, st) => s + (r[st.key]?.sl || 0), 0),
-      }))
-      .sort((a, b) => b.sl - a.sl)
-      .slice(0, 15)
-      .reverse(),
+      .map(r => ({ name: r.maSp || '?', lo: r.soLo || '', sl: STAGES.reduce((s, st) => s + (r[st.key]?.sl || 0), 0) }))
+      .sort((a, b) => b.sl - a.sl).slice(0, 15).reverse(),
   [groupedData])
+
+  // ── Theo Thời Gian ──
+  const timeData = useMemo(() => {
+    const map = {}
+    raw.forEach(r => {
+      if (!r.ngay) return
+      const cd = resolveCongDoan(r)
+      if (!map[r.ngay]) { map[r.ngay] = { date: r.ngay }; STAGES.forEach(s => { map[r.ngay][s.key] = 0 }) }
+      if (map[r.ngay][cd] !== undefined) map[r.ngay][cd] += Number(r.sanLuong || 0)
+    })
+    return Object.values(map).sort((a, b) => a.date.localeCompare(b.date))
+  }, [raw])
+
+  // ── Theo Loại SP ──
+  const loaiSpData = useMemo(() => {
+    const map = {}
+    let totalSl = 0
+    raw.forEach(r => {
+      const loai = machineMap[r.maSp]?.loaiSanPham || '(Chưa phân loại)'
+      const cd = resolveCongDoan(r)
+      const sl = Number(r.sanLuong || 0)
+      if (!map[loai]) { map[loai] = { loai, spSet: new Set(), sl: 0 }; STAGES.forEach(s => { map[loai][s.key] = 0 }) }
+      map[loai].spSet.add(r.maSp)
+      map[loai].sl += sl
+      totalSl += sl
+      if (map[loai][cd] !== undefined) map[loai][cd] += sl
+    })
+    return Object.values(map)
+      .map(r => ({ ...r, soTp: r.spSet.size, tyLe: totalSl > 0 ? r.sl / totalSl * 100 : 0 }))
+      .sort((a, b) => b.sl - a.sl)
+  }, [raw, machineMap])
+
+  // ── Phân Tích Công thực tế ──
+  const congByLoai = useMemo(() => {
+    const map = {}
+    raw.forEach(r => {
+      const loai = machineMap[r.maSp]?.loaiSanPham || '(Chưa phân loại)'
+      const cd = resolveCongDoan(r)
+      const cong = Number(r.congThucHien || 0)
+      if (!map[loai]) map[loai] = { loai, spSet: new Set(), congPcpl1: 0, congPcpl2: 0, congPl: 0, congDg: 0, congBbc1: 0 }
+      map[loai].spSet.add(r.maSp)
+      if (cd === 'PCPL1')      map[loai].congPcpl1 += cong
+      else if (cd === 'PCPL2') map[loai].congPcpl2 += cong
+      else if (cd === 'PL')    map[loai].congPl    += cong
+      else if (cd === 'DG')    map[loai].congDg    += cong
+      else if (cd === 'BBC1')  map[loai].congBbc1  += cong
+    })
+    return Object.values(map)
+      .map(r => ({ ...r, soTp: r.spSet.size, tongCong: r.congPcpl1 + r.congPcpl2 + r.congPl + r.congDg + r.congBbc1 }))
+      .sort((a, b) => b.tongCong - a.tongCong)
+  }, [raw, machineMap])
+
+  const congTotals = useMemo(() =>
+    congByLoai.reduce((t, r) => ({
+      cp1: t.cp1 + r.congPcpl1, cp2: t.cp2 + r.congPcpl2,
+      cpl: t.cpl + r.congPl,   cdg: t.cdg + r.congDg,
+      cb1: t.cb1 + r.congBbc1, tt:  t.tt  + r.tongCong,
+    }), { cp1: 0, cp2: 0, cpl: 0, cdg: 0, cb1: 0, tt: 0 }),
+  [congByLoai])
+
+  // ── Theo Máy Móc ──
+  const machineData = useMemo(() => {
+    const map = {}
+    raw.forEach(r => {
+      const cd = resolveCongDoan(r)
+      const mkey = (cd === 'PCPL1' || cd === 'PCPL2') ? 'mayMocPc'
+        : cd === 'PL' ? 'mayMocPl' : cd === 'DG' ? 'mayMocDg'
+        : cd === 'BBC1' ? 'mayMocBbc1' : null
+      if (!mkey || !r.maSp) return
+      const machine = machineMap[r.maSp]?.[mkey]
+      if (!machine) return
+      const key = `${cd}__${machine}`
+      if (!map[key]) map[key] = { machine, stage: cd, soPhien: 0, totalSl: 0, totalCong: 0, spSet: new Set() }
+      map[key].soPhien++
+      map[key].totalSl   += Number(r.sanLuong || 0)
+      map[key].totalCong += Number(r.congThucHien || 0)
+      map[key].spSet.add(r.maSp)
+    })
+    return Object.values(map).map(r => ({ ...r, soTp: r.spSet.size })).sort((a, b) => b.totalSl - a.totalSl)
+  }, [raw, machineMap])
+
+  const TYPE_COLORS = ['#1677ff','#52c41a','#fa8c16','#722ed1','#eb2f96','#13c2c2','#faad14','#f5222d','#a0d911','#2f54eb']
+  const colorOf = loai => TYPE_COLORS[loaiSpData.findIndex(r => r.loai === loai) % TYPE_COLORS.length] || '#888'
+  const fmtC1 = v => (v || 0).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+
+  const subTabItems = [
+    {
+      key: 'tonghop',
+      label: 'Tổng Hợp',
+      children: (
+        <div style={{ padding: '12px 0' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div style={{ background: '#f8f9fa', borderRadius: 6, padding: 16 }}>
+              <div style={{ fontWeight: 600, marginBottom: 12, color: '#333', fontSize: 13 }}>Sản lượng theo Công đoạn</div>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={stageStats} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="label" tick={{ fontSize: 12, fontWeight: 700 }} />
+                  <YAxis tickFormatter={v => v.toLocaleString('vi-VN')} tick={{ fontSize: 11 }} />
+                  <RcTooltip formatter={v => [v.toLocaleString('vi-VN'), 'Sản lượng']} />
+                  <Bar dataKey="sl" radius={[4, 4, 0, 0]}>
+                    {stageStats.map(s => <Cell key={s.key} fill={s.slColor} />)}
+                    <LabelList dataKey="sl" position="top" formatter={v => v > 0 ? v.toLocaleString('vi-VN') : ''} style={{ fontSize: 10, fill: '#444' }} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={{ background: '#f8f9fa', borderRadius: 6, padding: 16 }}>
+              <div style={{ fontWeight: 600, marginBottom: 12, color: '#333', fontSize: 13 }}>Tổng Công theo Công đoạn</div>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={stageStats} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="label" tick={{ fontSize: 12, fontWeight: 700 }} />
+                  <YAxis tickFormatter={v => v.toLocaleString('vi-VN')} tick={{ fontSize: 11 }} />
+                  <RcTooltip formatter={v => [fmtC1(v), 'Tổng Công']} />
+                  <Bar dataKey="cong" radius={[4, 4, 0, 0]}>
+                    {stageStats.map(s => <Cell key={s.key} fill={s.congColor} />)}
+                    <LabelList dataKey="cong" position="top" formatter={v => v > 0 ? fmtC1(v) : ''} style={{ fontSize: 10, fill: '#444' }} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+          <Table size="small" dataSource={stageStats} pagination={false}
+            columns={[
+              { title: 'Công đoạn', dataIndex: 'label', width: 100,
+                render: (v, r) => <Tag color={CONG_DOAN_COLOR[r.key] || 'default'} style={{ fontWeight: 700 }}>{v}</Tag> },
+              { title: 'Số SP/lô', dataIndex: 'soSp', align: 'right', width: 90,
+                render: v => <span style={{ color: '#374151' }}>{v}</span> },
+              { title: 'Tổng SL', dataIndex: 'sl', align: 'right',
+                render: (v, r) => <span style={{ fontWeight: 700, color: r.slColor }}>{fmtSL(v)}</span> },
+              { title: '% SL', dataIndex: 'sl', key: 'pct', align: 'right', width: 80,
+                render: v => `${grandSL > 0 ? ((v / grandSL) * 100).toFixed(1) : 0}%` },
+              { title: 'Tổng Công', dataIndex: 'cong', align: 'right', width: 110,
+                render: (v, r) => <span style={{ color: r.congColor, fontWeight: 600 }}>{fmtCong(v, 2)}</span> },
+              { title: 'SL/Công', align: 'right', width: 90,
+                render: (_, r) => r.cong > 0
+                  ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{(r.sl / r.cong).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</span>
+                  : <span style={{ color: '#bbb' }}>—</span> },
+              { title: 'Máy Móc', dataIndex: 'mayMoc', ellipsis: true,
+                render: v => v ? <Tooltip title={v}><span style={{ fontSize: 12, color: '#555' }}>{v}</span></Tooltip>
+                  : <span style={{ color: '#bbb' }}>—</span> },
+            ]}
+            summary={() => (
+              <Table.Summary.Row style={{ background: '#f0fdf4', fontWeight: 700 }}>
+                <Table.Summary.Cell index={0}>TỔNG</Table.Summary.Cell>
+                <Table.Summary.Cell index={1} align="right">{groupedData.length}</Table.Summary.Cell>
+                <Table.Summary.Cell index={2} align="right"><span style={{ color: '#1e5fa3' }}>{fmtSL(grandSL)}</span></Table.Summary.Cell>
+                <Table.Summary.Cell index={3} align="right">100%</Table.Summary.Cell>
+                <Table.Summary.Cell index={4} align="right"><span style={{ color: '#6d28d9' }}>{fmtCong(grandCong, 2)}</span></Table.Summary.Cell>
+                <Table.Summary.Cell index={5} align="right">
+                  {grandCong > 0 ? <span style={{ color: '#0e7490' }}>{(grandSL / grandCong).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</span> : '—'}
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={6} />
+              </Table.Summary.Row>
+            )}
+          />
+        </div>
+      ),
+    },
+    {
+      key: 'thoigian',
+      label: 'Theo Thời Gian',
+      children: (
+        <div style={{ padding: '12px 0' }}>
+          <div style={{ background: '#f8f9fa', borderRadius: 6, padding: 16, marginBottom: 16 }}>
+            <div style={{ fontWeight: 600, marginBottom: 12, color: '#333', fontSize: 13 }}>Sản lượng theo ngày (phân theo công đoạn)</div>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={timeData} margin={{ top: 10, right: 20, left: 10, bottom: 50 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} angle={-45} textAnchor="end" interval={0}
+                  tickFormatter={v => dayjs(v).format('DD/MM')} />
+                <YAxis tickFormatter={v => v.toLocaleString('vi-VN')} tick={{ fontSize: 11 }} />
+                <RcTooltip formatter={(v, name) => [v.toLocaleString('vi-VN'), name]} labelFormatter={v => dayjs(v).format('DD/MM/YYYY')} />
+                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+                {STAGES.map(s => <Bar key={s.key} dataKey={s.key} name={s.label} stackId="a" fill={s.slColor} />)}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <Table size="small" dataSource={timeData} rowKey="date"
+            pagination={{ pageSize: 14, showSizeChanger: false, showTotal: t => `${t} ngày` }}
+            columns={[
+              { title: 'Ngày', dataIndex: 'date', width: 110, fixed: 'left',
+                render: v => <span style={{ fontWeight: 700, color: '#1677ff' }}>{dayjs(v).format('DD/MM/YYYY')}</span> },
+              ...STAGES.map(s => ({
+                title: s.label, dataIndex: s.key, align: 'right', width: 90,
+                render: v => v > 0 ? <span style={{ color: s.slColor, fontWeight: 600 }}>{fmtSL(v)}</span>
+                  : <span style={{ color: '#d9d9d9' }}>—</span>,
+              })),
+              { title: 'Tổng SL', align: 'right', width: 110,
+                render: (_, r) => {
+                  const t = STAGES.reduce((s, st) => s + (r[st.key] || 0), 0)
+                  return <strong style={{ color: '#389e0d' }}>{fmtSL(t)}</strong>
+                }},
+            ]}
+          />
+        </div>
+      ),
+    },
+    {
+      key: 'loaisp',
+      label: 'Theo Loại SP',
+      children: (
+        <div style={{ padding: '12px 0' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div style={{ background: '#f8f9fa', borderRadius: 6, padding: 16 }}>
+              <div style={{ fontWeight: 600, marginBottom: 8, color: '#333', fontSize: 13 }}>SL theo Loại SP</div>
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={loaiSpData} margin={{ top: 5, right: 20, left: 10, bottom: 70 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="loai" tick={{ fontSize: 10 }} angle={-35} textAnchor="end" interval={0} />
+                  <YAxis tickFormatter={v => v.toLocaleString('vi-VN')} tick={{ fontSize: 11 }} />
+                  <RcTooltip formatter={v => [v.toLocaleString('vi-VN'), 'SL']} />
+                  <Bar dataKey="sl" radius={[4, 4, 0, 0]}>
+                    {loaiSpData.map(r => <Cell key={r.loai} fill={colorOf(r.loai)} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={{ background: '#f8f9fa', borderRadius: 6, padding: 16 }}>
+              <div style={{ fontWeight: 600, marginBottom: 12, color: '#333', fontSize: 13 }}>Tỷ lệ % sản lượng</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                {loaiSpData.map(r => (
+                  <div key={r.loai} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 120, fontSize: 12, color: '#374151', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.loai}>{r.loai}</div>
+                    <div style={{ flex: 1, background: '#e5e7eb', borderRadius: 4, height: 20, overflow: 'hidden' }}>
+                      <div style={{ width: `${Math.max(2, r.tyLe)}%`, height: '100%', background: colorOf(r.loai), borderRadius: 4, display: 'flex', alignItems: 'center', paddingLeft: 6 }}>
+                        <span style={{ color: '#fff', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>{r.tyLe.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 11, color: '#888', minWidth: 70, textAlign: 'right' }}>{fmtSL(r.sl)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <Table size="small" dataSource={loaiSpData} rowKey="loai" pagination={false}
+            columns={[
+              { title: 'Loại Sản Phẩm', dataIndex: 'loai', width: 160,
+                render: v => <Tag color={colorOf(v)} style={{ fontWeight: 600, fontSize: 12 }}>{v}</Tag> },
+              { title: 'Số TP', dataIndex: 'soTp', align: 'center', width: 70,
+                render: v => <span style={{ fontWeight: 700, color: '#374151' }}>{v}</span> },
+              { title: 'Tổng SL', dataIndex: 'sl', align: 'right', width: 110,
+                sorter: (a, b) => a.sl - b.sl,
+                render: (v, r) => <span style={{ fontWeight: 700, color: colorOf(r.loai) }}>{fmtSL(v)}</span> },
+              { title: 'Tỷ Lệ', dataIndex: 'tyLe', align: 'right', width: 75,
+                render: v => `${v.toFixed(1)}%` },
+              ...STAGES.map(s => ({
+                title: s.label, dataIndex: s.key, align: 'right', width: 85,
+                render: v => v > 0 ? <span style={{ color: s.slColor }}>{fmtSL(v)}</span>
+                  : <span style={{ color: '#d9d9d9' }}>—</span>,
+              })),
+            ]}
+            summary={() => {
+              const totalSl = loaiSpData.reduce((s, r) => s + r.sl, 0)
+              return (
+                <Table.Summary.Row style={{ fontWeight: 700, background: '#f0f9ff' }}>
+                  <Table.Summary.Cell index={0}>TỔNG</Table.Summary.Cell>
+                  <Table.Summary.Cell index={1} align="center">{loaiSpData.reduce((s, r) => s + r.soTp, 0)}</Table.Summary.Cell>
+                  <Table.Summary.Cell index={2} align="right"><span style={{ color: '#1e5fa3' }}>{fmtSL(totalSl)}</span></Table.Summary.Cell>
+                  <Table.Summary.Cell index={3} align="right">100%</Table.Summary.Cell>
+                  {STAGES.map((s, i) => (
+                    <Table.Summary.Cell key={s.key} index={4 + i} align="right">
+                      <span style={{ color: s.slColor }}>{fmtSL(loaiSpData.reduce((sum, r) => sum + (r[s.key] || 0), 0))}</span>
+                    </Table.Summary.Cell>
+                  ))}
+                </Table.Summary.Row>
+              )
+            }}
+          />
+        </div>
+      ),
+    },
+    {
+      key: 'cong',
+      label: 'Phân Tích Công',
+      children: (
+        <div style={{ padding: '12px 0' }}>
+          <div style={{ marginBottom: 10, padding: '8px 12px', background: '#eff6ff', borderRadius: 6, border: '1px solid #bfdbfe', fontSize: 12, color: '#1e40af' }}>
+            Công thực tế được tổng hợp từ dữ liệu đã nhập trong kỳ — không phải ước tính từ năng suất.
+          </div>
+          <Table size="small" dataSource={congByLoai} rowKey="loai" pagination={false}
+            columns={[
+              { title: 'LOẠI SẢN PHẨM', dataIndex: 'loai', width: 160,
+                render: v => <Tag color={colorOf(v)} style={{ fontWeight: 600, fontSize: 12 }}>{v}</Tag> },
+              { title: 'SỐ TP', dataIndex: 'soTp', align: 'center', width: 70,
+                render: v => <span style={{ fontWeight: 700, color: '#374151' }}>{v}</span> },
+              { title: 'CÔNG PC (PCPL1)', dataIndex: 'congPcpl1', align: 'right', width: 135,
+                sorter: (a, b) => a.congPcpl1 - b.congPcpl1,
+                render: v => v > 0 ? <span style={{ color: '#1d4ed8', fontWeight: 700 }}>{fmtC1(v)}</span>
+                  : <span style={{ color: '#d9d9d9' }}>0</span> },
+              { title: 'CÔNG PC (PCPL2)', dataIndex: 'congPcpl2', align: 'right', width: 135,
+                sorter: (a, b) => a.congPcpl2 - b.congPcpl2,
+                render: v => v > 0 ? <span style={{ color: '#0369a1', fontWeight: 700 }}>{fmtC1(v)}</span>
+                  : <span style={{ color: '#d9d9d9' }}>0</span> },
+              { title: 'CÔNG PL', dataIndex: 'congPl', align: 'right', width: 100,
+                sorter: (a, b) => a.congPl - b.congPl,
+                render: v => v > 0 ? <span style={{ color: '#0e7490', fontWeight: 700 }}>{fmtC1(v)}</span>
+                  : <span style={{ color: '#d9d9d9' }}>0</span> },
+              { title: 'CÔNG ĐG', dataIndex: 'congDg', align: 'right', width: 100,
+                sorter: (a, b) => a.congDg - b.congDg,
+                render: v => v > 0 ? <span style={{ color: '#7c3aed', fontWeight: 700 }}>{fmtC1(v)}</span>
+                  : <span style={{ color: '#d9d9d9' }}>0</span> },
+              { title: 'CÔNG BBC1', dataIndex: 'congBbc1', align: 'right', width: 105,
+                sorter: (a, b) => a.congBbc1 - b.congBbc1,
+                render: v => v > 0 ? <span style={{ color: '#991b1b', fontWeight: 700 }}>{fmtC1(v)}</span>
+                  : <span style={{ color: '#d9d9d9' }}>0</span> },
+              { title: 'TỔNG CÔNG', dataIndex: 'tongCong', align: 'right', width: 115,
+                sorter: (a, b) => a.tongCong - b.tongCong,
+                render: v => <span style={{ fontWeight: 800, color: '#111827' }}>{fmtC1(v)}</span> },
+            ]}
+            summary={() => (
+              <Table.Summary.Row style={{ fontWeight: 700, background: '#f0f5ff' }}>
+                <Table.Summary.Cell index={0} colSpan={2}>Tổng ({raw.length} phiên)</Table.Summary.Cell>
+                <Table.Summary.Cell index={1} align="right"><span style={{ color: '#1d4ed8' }}>{fmtC1(congTotals.cp1)}</span></Table.Summary.Cell>
+                <Table.Summary.Cell index={2} align="right"><span style={{ color: '#0369a1' }}>{fmtC1(congTotals.cp2)}</span></Table.Summary.Cell>
+                <Table.Summary.Cell index={3} align="right"><span style={{ color: '#0e7490' }}>{fmtC1(congTotals.cpl)}</span></Table.Summary.Cell>
+                <Table.Summary.Cell index={4} align="right"><span style={{ color: '#7c3aed' }}>{fmtC1(congTotals.cdg)}</span></Table.Summary.Cell>
+                <Table.Summary.Cell index={5} align="right"><span style={{ color: '#991b1b' }}>{fmtC1(congTotals.cb1)}</span></Table.Summary.Cell>
+                <Table.Summary.Cell index={6} align="right"><span style={{ color: '#111827' }}>{fmtC1(congTotals.tt)}</span></Table.Summary.Cell>
+              </Table.Summary.Row>
+            )}
+          />
+        </div>
+      ),
+    },
+    {
+      key: 'top15',
+      label: 'Top 15 SP',
+      children: (
+        <div style={{ padding: '12px 0' }}>
+          <div style={{ fontWeight: 600, marginBottom: 12, color: '#333', fontSize: 13 }}>Top {top15.length} sản phẩm / lô theo sản lượng</div>
+          <ResponsiveContainer width="100%" height={Math.max(300, top15.length * 30)}>
+            <BarChart data={top15} layout="vertical" margin={{ top: 5, right: 80, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis type="number" tickFormatter={v => v.toLocaleString('vi-VN')} tick={{ fontSize: 10 }} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={80} />
+              <RcTooltip formatter={(v, _, p) => [v.toLocaleString('vi-VN'), `${p.payload?.name} — Lô ${p.payload?.lo || '—'}`]} />
+              <Bar dataKey="sl" fill="#1D4ED8" radius={[0, 4, 4, 0]}>
+                <LabelList dataKey="sl" position="right" formatter={v => v.toLocaleString('vi-VN')} style={{ fontSize: 11, fill: '#444' }} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      ),
+    },
+    {
+      key: 'maymoc',
+      label: 'Theo Máy Móc',
+      children: (
+        <div style={{ padding: '12px 0' }}>
+          <Table size="small" dataSource={machineData} rowKey={r => `${r.stage}__${r.machine}`}
+            pagination={{ pageSize: 20, showSizeChanger: false, showTotal: t => `${t} máy` }}
+            columns={[
+              { title: 'Máy Móc', dataIndex: 'machine', width: 200,
+                render: v => <span style={{ fontWeight: 600, color: '#1e40af' }}>{v}</span> },
+              { title: 'Công đoạn', dataIndex: 'stage', width: 100, align: 'center',
+                render: v => <Tag color={CONG_DOAN_COLOR[v] || 'default'} style={{ fontWeight: 700, marginRight: 0 }}>{v}</Tag> },
+              { title: 'Số SP', dataIndex: 'soTp', align: 'center', width: 70,
+                render: v => <span style={{ fontWeight: 700 }}>{v}</span> },
+              { title: 'Số Phiên', dataIndex: 'soPhien', align: 'center', width: 80,
+                render: v => <span style={{ color: '#0369a1' }}>{v}</span> },
+              { title: 'Tổng SL', dataIndex: 'totalSl', align: 'right', width: 110,
+                sorter: (a, b) => a.totalSl - b.totalSl,
+                render: v => <span style={{ fontWeight: 700, color: '#1e5fa3' }}>{fmtSL(v)}</span> },
+              { title: 'Tổng Công', dataIndex: 'totalCong', align: 'right', width: 110,
+                sorter: (a, b) => a.totalCong - b.totalCong,
+                render: v => <span style={{ fontWeight: 600, color: '#6d28d9' }}>{fmtC1(v)}</span> },
+              { title: 'SL/Công', align: 'right', width: 90,
+                render: (_, r) => r.totalCong > 0
+                  ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{(r.totalSl / r.totalCong).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</span>
+                  : <span style={{ color: '#bbb' }}>—</span> },
+            ]}
+          />
+        </div>
+      ),
+    },
+  ]
 
   return (
     <>
@@ -2291,99 +2665,29 @@ function PhanTichChiTietTab() {
         <Button size="small" icon={<ReloadOutlined />}
           onClick={() => { const def = [dayjs().startOf('month'), dayjs()]; setDateRange(def); fetchData(def) }}
           style={{ background: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.4)', color: '#fff' }} />
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ color: '#bfdbfe', fontSize: 12 }}>Phiên: <strong style={{ color: '#fff' }}>{raw.length}</strong></span>
+          <span style={{ color: '#bfdbfe', fontSize: 12 }}>SL: <strong style={{ color: '#fff' }}>{fmtSL(grandSL)}</strong></span>
+          <span style={{ color: '#bfdbfe', fontSize: 12 }}>Công: <strong style={{ color: '#fff' }}>{fmtCong(grandCong, 1)}</strong></span>
+        </div>
       </div>
 
-      <div style={{ padding: '12px 16px' }}>
-        {/* KPI cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10, marginBottom: 16 }}>
+      <div style={{ padding: '12px 16px 0' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10, marginBottom: 14 }}>
           {[
-            { label: 'Số sản phẩm / lô', value: groupedData.length,     color: '#1d4ed8' },
-            { label: 'Tổng sản lượng',   value: fmtSL(grandSL),         color: '#1e5fa3' },
-            { label: 'Tổng công',        value: fmtCong(grandCong, 2),   color: '#6d28d9' },
-            { label: 'SL / Công TB',     value: grandCong > 0 ? (grandSL / grandCong).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) : '—', color: '#0e7490' },
+            { label: 'Số sản phẩm / lô', value: groupedData.length,    color: '#1d4ed8' },
+            { label: 'Tổng sản lượng',   value: fmtSL(grandSL),        color: '#1e5fa3' },
+            { label: 'Tổng công',        value: fmtCong(grandCong, 1),  color: '#6d28d9' },
+            { label: 'SL / Công TB', value: grandCong > 0 ? (grandSL / grandCong).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) : '—', color: '#0e7490' },
           ].map(c => (
-            <div key={c.label} style={{ background: '#f8f9fa', borderLeft: `4px solid ${c.color}`, padding: '12px 16px', borderRadius: 4 }}>
+            <div key={c.label} style={{ background: '#f8f9fa', borderLeft: `4px solid ${c.color}`, padding: '10px 14px', borderRadius: 4 }}>
               <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', marginBottom: 4 }}>{c.label}</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: c.color }}>{c.value}</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: c.color }}>{c.value}</div>
             </div>
           ))}
         </div>
-
-        {/* Charts */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-          <div style={{ background: '#f8f9fa', borderRadius: 6, padding: 16 }}>
-            <div style={{ fontWeight: 600, marginBottom: 12, color: '#333', fontSize: 13 }}>Sản lượng theo Công đoạn</div>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={stageStats} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="label" tick={{ fontSize: 12, fontWeight: 700 }} />
-                <YAxis tickFormatter={v => v.toLocaleString('vi-VN')} tick={{ fontSize: 11 }} />
-                <RcTooltip formatter={v => [v.toLocaleString('vi-VN'), 'Sản lượng']} />
-                <Bar dataKey="sl" radius={[4, 4, 0, 0]}>
-                  {stageStats.map(s => <Cell key={s.key} fill={s.slColor} />)}
-                  <LabelList dataKey="sl" position="top" formatter={v => v > 0 ? v.toLocaleString('vi-VN') : ''} style={{ fontSize: 10, fill: '#444' }} />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div style={{ background: '#f8f9fa', borderRadius: 6, padding: 16 }}>
-            <div style={{ fontWeight: 600, marginBottom: 12, color: '#333', fontSize: 13 }}>
-              Top {top15.length} sản phẩm theo sản lượng
-            </div>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={top15} layout="vertical" margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" tickFormatter={v => v.toLocaleString('vi-VN')} tick={{ fontSize: 10 }} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={70} />
-                <RcTooltip formatter={v => [v.toLocaleString('vi-VN'), 'Sản lượng']} />
-                <Bar dataKey="sl" fill="#1D4ED8" radius={[0, 4, 4, 0]}>
-                  <LabelList dataKey="sl" position="right" formatter={v => v.toLocaleString('vi-VN')} style={{ fontSize: 10, fill: '#444' }} />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Per-stage analysis table */}
-        <Table
-          size="small"
-          dataSource={stageStats}
-          pagination={false}
-          columns={[
-            { title: 'Công đoạn', dataIndex: 'label', width: 100,
-              render: (v, r) => <Tag color={CONG_DOAN_COLOR[r.key] || 'default'} style={{ fontWeight: 700 }}>{v}</Tag> },
-            { title: 'Số SP/lô', dataIndex: 'soSp', align: 'right', width: 90,
-              render: v => <span style={{ color: '#374151' }}>{v}</span> },
-            { title: 'Tổng SL', dataIndex: 'sl', align: 'right',
-              render: (v, r) => <span style={{ fontWeight: 700, color: r.slColor }}>{fmtSL(v)}</span> },
-            { title: '% SL', dataIndex: 'sl', key: 'pct', align: 'right', width: 80,
-              render: v => `${grandSL > 0 ? ((v / grandSL) * 100).toFixed(1) : 0}%` },
-            { title: 'Tổng Công', dataIndex: 'cong', align: 'right', width: 110,
-              render: (v, r) => <span style={{ color: r.congColor, fontWeight: 600 }}>{fmtCong(v, 2)}</span> },
-            { title: 'SL/Công', align: 'right', width: 90,
-              render: (_, r) => r.cong > 0
-                ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{(r.sl / r.cong).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</span>
-                : <span style={{ color: '#bbb' }}>—</span> },
-            { title: 'Máy Móc', dataIndex: 'mayMoc', ellipsis: true,
-              render: v => v
-                ? <Tooltip title={v}><span style={{ fontSize: 12, color: '#555' }}>{v}</span></Tooltip>
-                : <span style={{ color: '#bbb' }}>—</span> },
-          ]}
-          summary={() => (
-            <Table.Summary.Row style={{ background: '#f0fdf4', fontWeight: 700 }}>
-              <Table.Summary.Cell index={0}>TỔNG</Table.Summary.Cell>
-              <Table.Summary.Cell index={1} align="right">{groupedData.length}</Table.Summary.Cell>
-              <Table.Summary.Cell index={2} align="right"><span style={{ color: '#1e5fa3' }}>{fmtSL(grandSL)}</span></Table.Summary.Cell>
-              <Table.Summary.Cell index={3} align="right">100%</Table.Summary.Cell>
-              <Table.Summary.Cell index={4} align="right"><span style={{ color: '#6d28d9' }}>{fmtCong(grandCong, 2)}</span></Table.Summary.Cell>
-              <Table.Summary.Cell index={5} align="right">
-                {grandCong > 0 ? <span style={{ color: '#0e7490' }}>{(grandSL / grandCong).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</span> : '—'}
-              </Table.Summary.Cell>
-              <Table.Summary.Cell index={6} />
-            </Table.Summary.Row>
-          )}
-        />
+        <Tabs activeKey={subTab} onChange={setSubTab} size="small" items={subTabItems}
+          tabBarStyle={{ borderBottom: '2px solid #e2e8f0', marginBottom: 0 }} />
       </div>
     </>
   )
