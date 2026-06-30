@@ -47,7 +47,7 @@ public class WorkScheduleSessionController {
             if ("ROLE_NHAN_VIEN_BBC1".equals(role)  && "BBC1".equals(congDoan)) return;
             if ("ROLE_NHAN_VIEN_DG".equals(role)    && "DG".equals(congDoan))   return;
             if ("ROLE_ADMIN_PC".equals(role) && Set.of("PC","PCPL1","PCPL2","CC").contains(congDoan)) return;
-            if ("ROLE_ADMIN_PCPL1".equals(role) && Set.of("PC","PCPL1").contains(congDoan)) return;
+            if ("ROLE_ADMIN_PCPL1".equals(role) && Set.of("PC","PCPL1","PL").contains(congDoan)) return;
             if ("ROLE_ADMIN_PCPL2".equals(role) && Set.of("PC","PCPL2","CC").contains(congDoan)) return;
             if ("ROLE_ADMIN_PCPL3".equals(role) && "PL".equals(congDoan)) return;
             if (congDoan != null && ("ROLE_ADMIN_" + congDoan).equals(role)) return;
