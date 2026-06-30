@@ -2473,8 +2473,16 @@ function EmployeeTab() {
       render: v => v ? <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{v}</span> : '—' },
     { title: 'Họ Tên', dataIndex: 'hoVaTen', key: 'hoVaTen', width: 180, fixed: 'left',
       render: v => <span style={{ fontWeight: 600 }}>{v || '—'}</span> },
-    ...(activeGroup === 'ALL' ? [{ title: 'Tổ / Nhóm', dataIndex: 'toNhom', key: 'toNhom', width: 100, align: 'center',
-      render: v => v ? <Tag color={GROUP_COLORS[v] || 'default'} style={{ marginRight: 0 }}>{v}</Tag> : '—' }] : []),
+    ...(activeGroup === 'ALL' ? [{ title: 'Tổ / Nhóm', key: 'toNhom', width: 120, align: 'center',
+      render: (_, r) => (
+        <Space size={2} wrap>
+          {r.toNhom ? <Tag color={GROUP_COLORS[r.toNhom] || 'default'} style={{ marginRight: 0 }}>{r.toNhom}</Tag> : '—'}
+          {r.toNhom2 ? <Tag color={GROUP_COLORS[r.toNhom2] || 'default'} style={{ marginRight: 0 }}>{r.toNhom2}</Tag> : null}
+        </Space>
+      ) }] : [
+      { title: 'Tổ Phụ', key: 'toNhom2', width: 90, align: 'center',
+        render: (_, r) => r.toNhom2 ? <Tag color={GROUP_COLORS[r.toNhom2] || 'default'} style={{ marginRight: 0 }}>{r.toNhom2}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span> }
+    ]),
     { title: 'Nhóm', dataIndex: 'nhom', key: 'nhom', width: 110, align: 'center',
       render: (v, record) => {
         if (record.toNhom !== 'ĐG') return <span style={{ color: '#d9d9d9' }}>—</span>
@@ -2658,6 +2666,15 @@ function EmployeeTab() {
                 <Select allowClear={!allowedGroups} placeholder="Chọn tổ..."
                   disabled={allowedGroups?.length === 1}>
                   {(allowedGroups || Object.keys(GROUP_COLORS)).map(k => (
+                    <Option key={k} value={k}><Tag color={GROUP_COLORS[k]}>{k}</Tag></Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="Tổ Phụ (nếu có)" name="toNhom2">
+                <Select allowClear placeholder="Chọn tổ phụ...">
+                  {Object.keys(GROUP_COLORS).map(k => (
                     <Option key={k} value={k}><Tag color={GROUP_COLORS[k]}>{k}</Tag></Option>
                   ))}
                 </Select>

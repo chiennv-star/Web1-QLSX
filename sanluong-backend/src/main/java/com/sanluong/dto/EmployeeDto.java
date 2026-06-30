@@ -18,6 +18,8 @@ public class EmployeeDto {
     @NotBlank(message = "Tổ/Nhóm không được để trống")
     private String toNhom;
 
+    private String toNhom2;
+
     private String nhom;
 
     private LocalDate ngaySinh;
@@ -44,6 +46,8 @@ public class EmployeeDto {
     public void setHocVan(String hocVan) { this.hocVan = hocVan; }
     public String getToNhom() { return toNhom; }
     public void setToNhom(String toNhom) { this.toNhom = toNhom; }
+    public String getToNhom2() { return toNhom2; }
+    public void setToNhom2(String toNhom2) { this.toNhom2 = toNhom2; }
     public String getNhom() { return nhom; }
     public void setNhom(String nhom) { this.nhom = nhom; }
     public LocalDate getNgaySinh() { return ngaySinh; }

@@ -88,8 +88,9 @@ function SidebarInner({ collapsed, location, menuItems, onNavigate, selectedKeys
         .nav-menu.ant-menu-dark .ant-menu-submenu-open > .ant-menu-submenu-title { color: #e0ffff !important; }
         .nav-menu.ant-menu-dark .ant-menu-submenu-open > .ant-menu-submenu-title .anticon { color: #e0ffff !important; }
         .nav-menu.ant-menu-dark .ant-menu-sub { background: rgba(0,0,0,0.18) !important; }
-        .nav-menu.ant-menu-dark .ant-menu-sub .ant-menu-item { font-size: 12.5px; font-weight: 400; text-transform: none !important; letter-spacing: 0; padding-left: 36px !important; color: #94a3b8 !important; border-left: 3px solid transparent; }
-        .nav-menu.ant-menu-dark .ant-menu-sub .ant-menu-item .ant-menu-title-content { color: inherit !important; }
+        .nav-menu.ant-menu-dark .ant-menu-sub .ant-menu-item { font-size: 12px; font-weight: 600; text-transform: none !important; letter-spacing: 0; padding-left: 0 !important; padding-right: 0 !important; color: #cce0f5 !important; border-left: 3px solid transparent; height: 24px !important; line-height: 24px !important; display: flex !important; align-items: center !important; justify-content: flex-start !important; }
+        .nav-menu.ant-menu-dark .ant-menu-sub .ant-menu-item .ant-menu-title-content { color: inherit !important; display: flex !important; align-items: center !important; width: 100%; }
+        .nav-menu.ant-menu-dark .ant-menu-sub .ant-menu-item .ant-menu-title-content::before { content: "•"; width: 33.33%; text-align: center; flex-shrink: 0; font-size: 12px; opacity: 0.75; }
         .nav-menu.ant-menu-dark .ant-menu-sub .ant-menu-item:hover { color: #e2e8f0 !important; background: rgba(255,255,255,0.07) !important; border-left-color: rgba(20,184,166,0.5) !important; }
         .nav-menu.ant-menu-dark .ant-menu-sub .ant-menu-item-selected { background: rgba(20,184,166,0.12) !important; color: #ffffff !important; border-left: 3px solid #14b8a6 !important; font-weight: 600 !important; }
         .nav-menu.ant-menu-dark .ant-menu-sub .ant-menu-item-selected .ant-menu-title-content { color: #ffffff !important; }

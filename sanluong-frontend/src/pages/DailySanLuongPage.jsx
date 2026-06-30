@@ -1281,7 +1281,8 @@ function DayDetailModal({ open, date, rows, onClose }) {
       open={open}
       onCancel={onClose}
       footer={null}
-      width={1100}
+      width="95vw"
+      style={{ top: 16, maxWidth: 1800 }}
       destroyOnHidden
       styles={{ body: { padding: 0, background: '#f4f6f9' } }}
       title={
@@ -1336,28 +1337,28 @@ function DayDetailModal({ open, date, rows, onClose }) {
           const miniCols = [
             { title: 'Mã SP', dataIndex: 'maSp', width: 75, align: 'center',
               render: v => <Tag color="blue" style={{ marginRight: 0, fontSize: 11 }}>{v || '—'}</Tag> },
-            { title: 'Tên SP / Tiến trình', dataIndex: 'tenTrinh', ellipsis: true,
-              render: v => <span style={{ fontSize: 11 }}>{v || '—'}</span> },
+            { title: 'Tên SP / Tiến trình', dataIndex: 'tenTrinh',
+              render: v => <span style={{ fontSize: 11, wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.4 }}>{v || '—'}</span> },
             { title: 'Số lô', dataIndex: 'soLo', width: 72, align: 'center',
               render: v => <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{v || '—'}</span> },
             { title: 'Ca', dataIndex: 'caSanXuat', width: 58, align: 'center',
               render: v => v ? <Tag color="orange" style={{ marginRight: 0, fontSize: 10 }}>{v}</Tag> : '—' },
-            { title: 'Người TH', key: 'nguoi', width: 120, ellipsis: true,
-              render: (_, r) => { const t = r.nguoiThucHienList || r.nguoiThucHien; return <Tooltip title={t}><span style={{ fontSize: 11 }}>{t || '—'}</span></Tooltip> } },
+            { title: 'Người TH', key: 'nguoi', width: 160,
+              render: (_, r) => { const t = r.nguoiThucHienList || r.nguoiThucHien; return <span style={{ fontSize: 11, wordBreak: 'break-word', whiteSpace: 'normal' }}>{t || '—'}</span> } },
             { title: 'Công', dataIndex: 'congThucHien', width: 68, align: 'center',
               render: v => <span style={{ color: '#1d4ed8', fontWeight: 600, fontFamily: 'monospace', fontSize: 11 }}>{v != null ? fmtCong(v) : '—'}</span> },
             { title: 'SL', dataIndex: 'sanLuong', width: 75, align: 'center',
               render: v => <span style={{ color: s.slColor, fontWeight: 700, fontSize: 12 }}>{v != null ? fmtSL(Number(v)) : '—'}</span> },
           ]
           const popContent = (
-            <div style={{ width: 640 }}>
+            <div style={{ width: 'min(860px, 80vw)' }}>
               <Table
                 size="small"
                 columns={miniCols}
                 dataSource={stageRows}
                 rowKey={r => r.sessionId || r.requestId || Math.random()}
                 pagination={false}
-                scroll={{ y: 280 }}
+                scroll={{ y: 320 }}
                 style={{ fontSize: 11 }}
                 summary={() => (
                   <Table.Summary fixed="bottom">
@@ -1384,7 +1385,7 @@ function DayDetailModal({ open, date, rows, onClose }) {
               title={<span style={{ fontWeight: 700, color: s.slColor }}>Chi tiết {s.label} — {stageRows.length} phiên</span>}
               trigger="click"
               placement="bottomLeft"
-              overlayStyle={{ maxWidth: 680 }}
+              overlayStyle={{ maxWidth: 'min(900px, 85vw)' }}
             >
               <div style={{
                 background: s.bg, border: `1.5px solid ${s.border}`,
@@ -1438,7 +1439,7 @@ function DayDetailModal({ open, date, rows, onClose }) {
           dataSource={rows}
           rowKey={r => r.sessionId || r.requestId || Math.random()}
           size="small"
-          scroll={{ x: 1050 }}
+          scroll={{ x: 1200 }}
           pagination={false}
           summary={() => (
             <Table.Summary fixed="bottom">
@@ -1677,29 +1678,29 @@ function TongHopTab() {
       {/* Bộ lọc + KPI (sticky wrapper) */}
       <div ref={filterRef} style={{
         position: 'sticky', top: TAB_BAR_H, zIndex: 9,
-        background: 'linear-gradient(135deg, #FF9933 0%, #FFBB55 100%)',
-        borderBottom: '3px solid #e07800',
-        boxShadow: '0 3px 12px rgba(200,100,0,0.25)',
+        background: '#BBBBBB',
+        borderBottom: '3px solid #999999',
+        boxShadow: '0 3px 12px rgba(0,0,0,0.15)',
       }}>
 
       {/* Row 1: Tiêu đề + filter + tổng */}
       <div style={{ padding: '9px 16px 8px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <span style={{ fontWeight: 800, fontSize: 14, color: '#5c2e00', whiteSpace: 'nowrap', letterSpacing: 0.3 }}>
+        <span style={{ fontWeight: 800, fontSize: 14, color: '#222222', whiteSpace: 'nowrap', letterSpacing: 0.3 }}>
           <FundOutlined style={{ marginRight: 6 }} />Tổng Hợp Sản Lượng
         </span>
         <div style={{ width: 1, height: 20, background: 'rgba(0,0,0,0.15)' }} />
         <RangePicker size="small" value={dateRange} onChange={setDateRange}
           format="DD/MM/YYYY" allowClear placeholder={['Từ ngày', 'Đến ngày']} />
         <Button size="small" type="primary" icon={<SearchOutlined />}
-          style={{ background: '#d45f00', borderColor: '#d45f00', fontWeight: 600 }}
+          style={{ background: '#555555', borderColor: '#444444', fontWeight: 600 }}
           onClick={() => fetchData()}>Truy xuất</Button>
         <Button size="small" icon={<ReloadOutlined />} onClick={handleReset}
-          style={{ background: 'rgba(255,255,255,0.25)', borderColor: 'rgba(0,0,0,0.2)', color: '#5c2e00' }} />
+          style={{ background: 'rgba(255,255,255,0.35)', borderColor: 'rgba(0,0,0,0.25)', color: '#222222' }} />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: '#7a3900' }}><strong style={{ color: '#5c2e00' }}>{pivotData.length}</strong> ngày</span>
-          <span style={{ fontSize: 12, color: '#7a3900' }}>Nhân sự: <strong style={{ color: '#5c2e00' }}>{Object.values(empCounts).reduce((a, b) => a + b, 0) || '...'}</strong></span>
-          <span style={{ fontSize: 13, color: '#5c2e00', fontWeight: 700 }}>SL: <strong style={{ color: '#5c2e00', fontSize: 15 }}>{fmtSL(grandSL)}</strong></span>
-          <span style={{ fontSize: 13, color: '#5c2e00', fontWeight: 700 }}>Công: <strong style={{ color: '#5c2e00', fontSize: 15 }}>{fmtCong(grandCong, 2)}</strong></span>
+          <span style={{ fontSize: 12, color: '#444444' }}><strong style={{ color: '#222222' }}>{pivotData.length}</strong> ngày</span>
+          <span style={{ fontSize: 12, color: '#444444' }}>Nhân sự: <strong style={{ color: '#222222' }}>{Object.values(empCounts).reduce((a, b) => a + b, 0) || '...'}</strong></span>
+          <span style={{ fontSize: 13, color: '#222222', fontWeight: 700 }}>SL: <strong style={{ color: '#222222', fontSize: 15 }}>{fmtSL(grandSL)}</strong></span>
+          <span style={{ fontSize: 13, color: '#222222', fontWeight: 700 }}>Công: <strong style={{ color: '#222222', fontSize: 15 }}>{fmtCong(grandCong, 2)}</strong></span>
         </div>
       </div>
 
@@ -1712,8 +1713,8 @@ function TongHopTab() {
           <button key={t.key} onClick={() => setInnerTab(t.key)}
             style={{
               padding: '4px 14px', cursor: 'pointer', fontSize: 12, borderRadius: 6,
-              border: `1.5px solid ${innerTab === t.key ? '#5c2e00' : 'rgba(0,0,0,0.2)'}`,
-              color: innerTab === t.key ? '#5c2e00' : 'rgba(92,46,0,0.6)',
+              border: `1.5px solid ${innerTab === t.key ? '#333333' : 'rgba(0,0,0,0.2)'}`,
+              color: innerTab === t.key ? '#111111' : 'rgba(0,0,0,0.55)',
               background: innerTab === t.key ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.18)',
               fontWeight: innerTab === t.key ? 700 : 500,
             }}>
@@ -4009,10 +4010,10 @@ export default function DailySanLuongPage() {
           padding: 9px 18px !important; font-size: 13px; margin: 0 2px !important;
           border-radius: 6px 6px 0 0 !important; transition: all 0.2s;
         }
-        .sl-page-tabs > .ant-tabs-nav .ant-tabs-tab:hover { color: #99ffe8 !important; background: rgba(0,204,153,0.12) !important; }
-        .sl-page-tabs > .ant-tabs-nav .ant-tabs-tab-active { color: #fff !important; background: rgba(0,204,153,0.18) !important; font-weight: 700; box-shadow: 0 -3px 0 #00CC99 inset; }
-        .sl-page-tabs > .ant-tabs-nav .ant-tabs-tab-active .ant-tabs-tab-btn { color: #fff !important; }
-        .sl-page-tabs > .ant-tabs-nav .ant-tabs-ink-bar { background: #00CC99 !important; height: 3px !important; border-radius: 2px; }
+        .sl-page-tabs > .ant-tabs-nav .ant-tabs-tab:hover { color: #e0ffff !important; background: rgba(255,255,255,0.15) !important; }
+        .sl-page-tabs > .ant-tabs-nav .ant-tabs-tab-active { color: #0e7490 !important; background: #ffffff !important; font-weight: 700; border-radius: 6px 6px 0 0 !important; }
+        .sl-page-tabs > .ant-tabs-nav .ant-tabs-tab-active .ant-tabs-tab-btn { color: #0e7490 !important; }
+        .sl-page-tabs > .ant-tabs-nav .ant-tabs-ink-bar { background: #0e7490 !important; height: 3px !important; border-radius: 2px; }
         .sl-page-tabs > .ant-tabs-nav::before { border-bottom: none !important; }
         .sl-page-tabs > .ant-tabs-nav .ant-tabs-nav-more { color: #ffffff !important; }
         .sl-page-tabs > .ant-tabs-content-holder { padding-top: 0; }

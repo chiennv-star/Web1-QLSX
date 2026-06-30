@@ -17,7 +17,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
                OR e.hoVaTen LIKE %:search%
                OR e.toNhom LIKE %:search%
                OR e.viTri LIKE %:search%)
-        AND (:toNhom IS NULL OR e.toNhom = :toNhom)
+        AND (:toNhom IS NULL OR e.toNhom = :toNhom OR e.toNhom2 = :toNhom)
         AND (:tinhTrang IS NULL OR e.tinhTrang = :tinhTrang)
         AND (:excludeTinhTrang IS NULL OR e.tinhTrang IS NULL OR e.tinhTrang <> :excludeTinhTrang)
         ORDER BY e.toNhom, e.hoVaTen

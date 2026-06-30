@@ -11,7 +11,7 @@ import {
   SyncOutlined, CheckCircleOutlined, EyeOutlined, LinkOutlined,
   CheckOutlined, CloseOutlined, EyeInvisibleOutlined,
   EyeTwoTone, SettingOutlined, DownOutlined, FilterOutlined, UsergroupAddOutlined,
-  PrinterOutlined
+  PrinterOutlined, ClockCircleOutlined
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import api from '../api/axios'
@@ -1414,8 +1414,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                 </div>
               </div>
 
-              {/* ── Thời gian không tạo ra sản phẩm ── */}
-              {(() => {
+              {/* ── Thời gian không tạo ra sản phẩm — chỉ ADMIN ── */}
+              {isAdmin() && (() => {
                 const dayEntries = nonprodEntries[k] || []
                 const totalMin = dayEntries.reduce((sum, e) => sum + (parseInt(e.min) || 0), 0)
                 const isNpOpen = nonprodOpenDays.has(k)
@@ -2851,7 +2851,7 @@ function MobileScheduleCard({ record, congDoan, nsMap, onClick }) {
 // ── StageTab ──────────────────────────────────────────────────────────────────
 function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved, jumpTarget }) {
   const navigate = useNavigate()
-  const { canEditStage, getAllowedNhom, isNhanVien, canDeleteSchedule, user } = useAuth()
+  const { canEditStage, getAllowedNhom, isNhanVien, canDeleteSchedule, user, isAdmin } = useAuth()
   const allowedNhom = forcedNhom || (congDoan === 'PC' ? getAllowedNhom() : null)
   const AUTO_DEFAULT_NHOM = { DG: 'ĐG', BBC1: 'BBC1' }
   const defaultModalNhom = allowedNhom || AUTO_DEFAULT_NHOM[congDoan] || null
@@ -2893,6 +2893,17 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const [hiddenCount, setHiddenCount] = useState(0)
   const [doneCount, setDoneCount] = useState(0)
   const [filterPanelOpen, setFilterPanelOpen] = useState(false)
+  // ── Không SX state (chỉ ADMIN) ──
+  const LS_NONPROD = `nonprod_stage_${congDoan}`
+  const [nonprodData, setNonprodData] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(`nonprod_stage_${congDoan}`)) || [] } catch { return [] }
+  })
+  const [npForm, setNpForm] = useState(null) // null=đóng, object=form đang mở
+  const [npEmployees, setNpEmployees] = useState([]) // danh sách nhân sự cho tab Không SX
+  const saveNpData = (arr) => {
+    setNonprodData(arr)
+    try { localStorage.setItem(LS_NONPROD, JSON.stringify(arr)) } catch {}
+  }
   const jumpApplied    = useRef(false)
   const detailRestored = useRef(false)
   const controlsRef    = useRef(null)
@@ -3008,6 +3019,15 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchData(0) }, [congDoan])
+
+  // Fetch employees cho tab Không SX khi cần
+  useEffect(() => {
+    if (innerTab !== 'nonprod' || !isAdmin()) return
+    if (npEmployees.length > 0) return
+    api.get('/employees', { params: { page: 0, size: 500, excludeTinhTrang: 'tam_nghi' } })
+      .then(r => setNpEmployees(r.data?.content || []))
+      .catch(() => {})
+  }, [innerTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Khôi phục detail drawer sau khi data load lần đầu
   useEffect(() => {
@@ -3599,7 +3619,20 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                   )}
                 </span>
               )
-            }
+            },
+            ...(isAdmin() ? [{
+              key: 'nonprod',
+              color: '#d97706',
+              label: (
+                <span>
+                  <ClockCircleOutlined style={{ marginRight: 5, color: '#d97706' }} />
+                  Không SX
+                  {nonprodData.length > 0 && (
+                    <Badge count={nonprodData.length} size="small" color="#d97706" style={{ marginLeft: 5 }} />
+                  )}
+                </span>
+              )
+            }] : [])
           ].map(tab => (
             <div
               key={tab.key}
@@ -3864,6 +3897,171 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
           onCountChange={setHiddenCount}
         />
       )}
+
+      {/* ── Tab: Không SX — chỉ ADMIN ── */}
+      {innerTab === 'nonprod' && isAdmin() && (() => {
+        const NP_TO_LIST = ['PCPL1', 'PCPL2', 'PL', 'BBC1', 'ĐG', 'KT']
+        const npFilteredEmps = npForm?.to
+          ? npEmployees.filter(e => {
+              const g = (e.toNhom || '').toUpperCase()
+              const t = npForm.to.toUpperCase()
+              return g === t || (t === 'PL' && (g === 'PCPL3' || g === 'PL'))
+            })
+          : npEmployees
+        const totalGio = nonprodData.reduce((s, e) => s + (parseFloat(e.gio) || 0), 0)
+        const totalCong = nonprodData.reduce((s, e) => s + (parseFloat(e.cong) || 0), 0)
+        return (
+          <div style={{ padding: '14px 14px' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700, fontSize: 14, color: '#92400e' }}>⏱ Thời gian không tạo sản phẩm</span>
+              <span style={{ fontSize: 11, color: '#9ca3af' }}>Lưu cục bộ (localStorage)</span>
+              <Button size="small" type="primary" icon={<PlusOutlined />} style={{ marginLeft: 'auto', background: '#d97706', borderColor: '#d97706' }}
+                onClick={() => setNpForm({ date: dayjs().format('YYYY-MM-DD'), act: '', to: '', person: '', gio: '', cong: '' })}>
+                Thêm mới
+              </Button>
+              {nonprodData.length > 0 && (
+                <Popconfirm title="Xóa toàn bộ dữ liệu không SX?" okType="danger" okText="Xóa hết" cancelText="Hủy"
+                  onConfirm={() => saveNpData([])}>
+                  <Button size="small" danger>Xóa tất cả</Button>
+                </Popconfirm>
+              )}
+            </div>
+
+            {/* Form thêm mới */}
+            {npForm && (
+              <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8, padding: '10px 14px', marginBottom: 14, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                {/* Ngày */}
+                <div>
+                  <div style={{ fontSize: 11, color: '#92400e', fontWeight: 600, marginBottom: 3 }}>Ngày *</div>
+                  <input type="date" value={npForm.date || ''} onChange={e => setNpForm(f => ({ ...f, date: e.target.value }))}
+                    style={{ border: '1px solid #fcd34d', borderRadius: 5, padding: '5px 8px', fontSize: 12 }} />
+                </div>
+                {/* Hoạt động — datalist, gõ tự do hoặc chọn preset */}
+                <div style={{ flex: 2, minWidth: 200 }}>
+                  <div style={{ fontSize: 11, color: '#92400e', fontWeight: 600, marginBottom: 3 }}>Hoạt động / Ghi chú *</div>
+                  <input
+                    list="np-act-list"
+                    value={npForm.act || ''}
+                    onChange={e => setNpForm(f => ({ ...f, act: e.target.value }))}
+                    placeholder="Nhập hoặc chọn hoạt động..."
+                    style={{ border: '1px solid #fcd34d', borderRadius: 5, padding: '5px 8px', fontSize: 12, width: '100%', background: '#fff' }}
+                  />
+                  <datalist id="np-act-list">
+                    {NONPROD_ACTS.map(a => <option key={a.name} value={a.name} />)}
+                  </datalist>
+                </div>
+                {/* Tổ thực hiện */}
+                <div>
+                  <div style={{ fontSize: 11, color: '#92400e', fontWeight: 600, marginBottom: 3 }}>Tổ TH</div>
+                  <select value={npForm.to || ''} onChange={e => setNpForm(f => ({ ...f, to: e.target.value, person: '' }))}
+                    style={{ border: '1px solid #fcd34d', borderRadius: 5, padding: '5px 8px', fontSize: 12, background: '#fff', minWidth: 90 }}>
+                    <option value="">-- Tổ --</option>
+                    {NP_TO_LIST.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                {/* Người thực hiện — select từ danh sách nhân sự */}
+                <div style={{ minWidth: 160 }}>
+                  <div style={{ fontSize: 11, color: '#92400e', fontWeight: 600, marginBottom: 3 }}>Người thực hiện</div>
+                  <select value={npForm.person || ''} onChange={e => setNpForm(f => ({ ...f, person: e.target.value }))}
+                    style={{ border: '1px solid #fcd34d', borderRadius: 5, padding: '5px 8px', fontSize: 12, background: '#fff', width: '100%' }}>
+                    <option value="">-- Chọn người --</option>
+                    {npFilteredEmps.map(emp => <option key={emp.id} value={emp.hoVaTen}>{emp.hoVaTen}</option>)}
+                  </select>
+                </div>
+                {/* Giờ */}
+                <div>
+                  <div style={{ fontSize: 11, color: '#92400e', fontWeight: 600, marginBottom: 3 }}>Giờ</div>
+                  <input type="number" min="0" step="0.5" value={npForm.gio || ''}
+                    onChange={e => {
+                      const g = parseFloat(e.target.value) || 0
+                      setNpForm(f => ({ ...f, gio: e.target.value, cong: g > 0 ? (g / 8).toFixed(3) : '' }))
+                    }}
+                    placeholder="0"
+                    style={{ border: '1px solid #fcd34d', borderRadius: 5, padding: '5px 8px', fontSize: 12, width: 72, textAlign: 'right', background: '#fff' }} />
+                </div>
+                {/* Công (auto) */}
+                <div>
+                  <div style={{ fontSize: 11, color: '#92400e', fontWeight: 600, marginBottom: 3 }}>Công (tự tính)</div>
+                  <input readOnly value={npForm.cong || '0'}
+                    style={{ border: '1px solid #e5e7eb', borderRadius: 5, padding: '5px 8px', fontSize: 12, width: 72, textAlign: 'right', background: '#fef9c3', color: '#92400e', fontWeight: 700 }} />
+                </div>
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <Button size="small" type="primary" style={{ background: '#d97706', borderColor: '#d97706' }}
+                    onClick={() => {
+                      if (!npForm.date || !npForm.act) { message.warning('Vui lòng nhập Ngày và Hoạt động'); return }
+                      const g = parseFloat(npForm.gio) || 0
+                      const entry = {
+                        _id: `np_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+                        date: npForm.date, act: npForm.act,
+                        to: npForm.to, person: npForm.person,
+                        gio: g, cong: g > 0 ? parseFloat((g / 8).toFixed(3)) : 0,
+                      }
+                      saveNpData([...nonprodData, entry])
+                      // giữ ngày + tổ để tiếp tục nhập
+                      setNpForm(f => ({ ...f, act: '', person: '', gio: '', cong: '' }))
+                    }}>Lưu & tiếp</Button>
+                  <Button size="small" onClick={() => setNpForm(null)}>Đóng</Button>
+                </div>
+              </div>
+            )}
+
+            {/* Bảng dữ liệu */}
+            {nonprodData.length === 0 ? (
+              <div style={{ textAlign: 'center', color: '#9ca3af', padding: '40px 0', fontSize: 13, background: '#fafafa', borderRadius: 8, border: '1px dashed #e5e7eb' }}>
+                Chưa có dữ liệu. Nhấn "Thêm mới" để bắt đầu.
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: '#fef3c7' }}>
+                      {[
+                        { label: 'Ngày', align: 'left' },
+                        { label: 'Hoạt động / Ghi chú', align: 'left' },
+                        { label: 'Tổ', align: 'center' },
+                        { label: 'Người TH', align: 'left' },
+                        { label: 'Giờ', align: 'right' },
+                        { label: 'Công', align: 'right' },
+                        { label: '', align: 'center' },
+                      ].map((h, i) => (
+                        <th key={i} style={{ padding: '7px 10px', borderBottom: '2px solid #fcd34d', textAlign: h.align, whiteSpace: 'nowrap', fontWeight: 700, color: '#92400e' }}>{h.label}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...nonprodData].sort((a, b) => (a.date || '').localeCompare(b.date || '')).map((entry, idx) => (
+                      <tr key={entry._id} style={{ background: idx % 2 === 0 ? '#fff' : '#fffbf0', borderBottom: '1px solid #fef3c7' }}>
+                        <td style={{ padding: '5px 10px', whiteSpace: 'nowrap', fontWeight: 600 }}>{entry.date ? dayjs(entry.date).format('DD/MM/YYYY') : '—'}</td>
+                        <td style={{ padding: '5px 10px' }}>{entry.act || '—'}</td>
+                        <td style={{ padding: '5px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          {entry.to ? <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>{entry.to}</Tag> : '—'}
+                        </td>
+                        <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{entry.person || '—'}</td>
+                        <td style={{ padding: '5px 10px', textAlign: 'right', fontFamily: 'monospace' }}>{entry.gio || 0}</td>
+                        <td style={{ padding: '5px 10px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: '#d97706' }}>{entry.cong || 0}</td>
+                        <td style={{ padding: '5px 10px', textAlign: 'center' }}>
+                          <button onClick={() => saveNpData(nonprodData.filter(e => e._id !== entry._id))}
+                            style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 17, lineHeight: 1, padding: '0 4px' }} title="Xóa">×</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ background: '#fef3c7', fontWeight: 700 }}>
+                      <td colSpan={4} style={{ padding: '6px 10px', textAlign: 'right', color: '#92400e' }}>Tổng cộng:</td>
+                      <td style={{ padding: '6px 10px', textAlign: 'right', fontFamily: 'monospace', color: '#374151' }}>{totalGio.toFixed(1)} giờ</td>
+                      <td style={{ padding: '6px 10px', textAlign: 'right', fontFamily: 'monospace', color: '#d97706', fontSize: 13 }}>{totalCong.toFixed(3)} công</td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       <WorkDetailDrawer
         open={detailOpen}
