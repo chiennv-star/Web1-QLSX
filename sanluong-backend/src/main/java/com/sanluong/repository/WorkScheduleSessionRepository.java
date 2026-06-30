@@ -77,6 +77,13 @@ public interface WorkScheduleSessionRepository extends JpaRepository<WorkSchedul
             @Param("maNv") String maNhanVien,
             @Param("ca") String caSanXuat);
 
+    // Tìm KH_TO theo wsId+maNhanVien+ca (không lọc ngày) — dùng khi xóa regular session cần cascade xóa KH_TO dù khác ngày
+    @Query("SELECT s FROM WorkScheduleSession s WHERE s.workScheduleId = :wsId AND s.maNhanVien = :maNv AND s.caSanXuat = :ca AND s.loaiSession = 'KH_TO'")
+    List<WorkScheduleSession> findKhToByWsIdMaNvCa(
+            @Param("wsId") Long workScheduleId,
+            @Param("maNv") String maNhanVien,
+            @Param("ca") String caSanXuat);
+
     @Query("SELECT s FROM WorkScheduleSession s WHERE s.workScheduleId = :wsId AND s.ngay = :ngay AND s.maNhanVien = :maNv AND s.caSanXuat = :ca AND (s.loaiSession IS NULL OR s.loaiSession <> 'KH_TO')")
     List<WorkScheduleSession> findRegularByWsIdNgayMaNvCa(
             @Param("wsId") Long workScheduleId,

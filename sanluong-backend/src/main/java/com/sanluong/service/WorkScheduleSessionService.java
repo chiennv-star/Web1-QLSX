@@ -161,10 +161,10 @@ public class WorkScheduleSessionService {
         if (!"KH_TO".equals(loai)) {
             syncAggregates(workScheduleId);
             recalculateEfficiency(maNv);
-            // Xóa KH_TO session tương ứng khi xóa session gốc
-            if (workScheduleId != null && maNv != null && ngay != null && ca != null) {
+            // Xóa KH_TO session tương ứng khi xóa session gốc (tìm theo wsId+maNv+ca, không lọc ngày vì KH_TO có thể ở ngày khác)
+            if (workScheduleId != null && maNv != null && ca != null) {
                 String caKhTo = "Hành Chính".equalsIgnoreCase(ca) ? "HC" : ca;
-                List<WorkScheduleSession> khToList = repository.findKhToByWsIdNgayMaNvCa(workScheduleId, ngay, maNv, caKhTo);
+                List<WorkScheduleSession> khToList = repository.findKhToByWsIdMaNvCa(workScheduleId, maNv, caKhTo);
                 if (!khToList.isEmpty()) repository.deleteAll(khToList);
             }
         } else {
