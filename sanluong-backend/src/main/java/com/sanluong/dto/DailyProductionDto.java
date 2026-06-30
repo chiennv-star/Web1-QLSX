@@ -8,6 +8,7 @@ public class DailyProductionDto {
     private String ngay;
     private String congDoan;
     private String maSp;
+    private String maBravo;
     private String tenTrinh;
     private String soLo;
     private java.math.BigDecimal coLo;
@@ -40,6 +41,8 @@ public class DailyProductionDto {
     public void setCongDoan(String congDoan) { this.congDoan = congDoan; }
     public String getMaSp() { return maSp; }
     public void setMaSp(String maSp) { this.maSp = maSp; }
+    public String getMaBravo() { return maBravo; }
+    public void setMaBravo(String maBravo) { this.maBravo = maBravo; }
     public String getTenTrinh() { return tenTrinh; }
     public void setTenTrinh(String tenTrinh) { this.tenTrinh = tenTrinh; }
     public String getSoLo() { return soLo; }

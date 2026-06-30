@@ -830,7 +830,7 @@ function DailyDetailTab() {
       },
     },
     {
-      title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 90, align: 'center',
+      title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 100, align: 'center',
       render: v => v ? <Tag color="blue" style={{ marginRight: 0 }}>{v}</Tag> : <span style={{ color: '#bbb' }}>—</span>,
     },
     {

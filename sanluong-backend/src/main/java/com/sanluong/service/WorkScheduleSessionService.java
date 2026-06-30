@@ -699,6 +699,7 @@ public class WorkScheduleSessionService {
             dto.setNgay(ngayStr);
             dto.setCongDoan(effectiveCd);
             dto.setMaSp(w.getMaSp());
+            dto.setMaBravo(w.getMaBravo());
             dto.setTenTrinh(w.getTenTrinh());
             dto.setSoLo(w.getSoLo());
             dto.setCoLo(w.getCoLo());
