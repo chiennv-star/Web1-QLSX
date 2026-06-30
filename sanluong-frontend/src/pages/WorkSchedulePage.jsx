@@ -1179,6 +1179,15 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                         </Button>
                       </Tooltip>
                     )}
+                    {!isPending && rows.some(r => dirtyRowKeys.has(r.id || r._tempId) || !r.id) && (
+                      <Button
+                        size="small" type="primary" icon={<CheckOutlined />}
+                        loading={batchSaving.has(k)}
+                        onClick={() => saveAllForDay(k)}
+                        style={{ fontSize: 12, background: '#f97316', borderColor: '#ea580c' }}>
+                        Lưu tất cả
+                      </Button>
+                    )}
                     {!isPending && (
                       <Popconfirm
                         title={`Xóa toàn bộ dữ liệu ngày ${dayjs(k).isValid() ? dayjs(k).format('DD/MM/YYYY') : k}?`}
@@ -1219,7 +1228,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                       <tr>
                         {['Người thực hiện', 'Mã NV', 'Nhóm/tổ', 'Ca SX', 'Thời gian (giờ)', 'Công thực hiện',
                           <span key="vt">Vai trò{canEditDetail && <SettingOutlined onClick={() => setVaiTroModalOpen(true)} style={{ marginLeft: 5, cursor: 'pointer', color: '#1677ff', fontSize: 10 }} />}</span>,
-                          ''].map((h, i) => (
+                          canEditDetail ? '' : null].filter(h => h !== null).map((h, i) => (
                           <th key={i} style={{ ...subHeadStyle, background: '#fdf6e3' }}>{h}</th>
                         ))}
                       </tr>
@@ -1236,6 +1245,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                         return (
                           <tr key={rowKey}
                             className={!s.id ? 'ws-row-new' : ''}
+                            style={dirtyRowKeys.has(rowKey) ? { background: '#fff7ed' } : undefined}
                             onContextMenu={canEditDetail ? e => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, s, ngayKey: k }) } : undefined}>
                             <td style={{ ...cellStyle, minWidth: 150 }}>
                               <select style={{ ...inputStyle, cursor: 'pointer' }} value={s.nguoiThucHien}
@@ -1310,22 +1320,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                                 value={s.vaiTro} placeholder="Chọn hoặc nhập..." onChange={e => updateLocal(rowKey, 'vaiTro', e.target.value)} />
                               <datalist id={`vaitro-list-${rowKey}`}>{vaiTroOptions.map(v => <option key={v} value={v} />)}</datalist>
                             </td>
-                            <td style={{ ...cellStyle, width: 90, textAlign: 'center', whiteSpace: 'nowrap' }}>
-                              {(() => {
-                                const isDirtyRow = dirtyRowKeys.has(rowKey) || !s.id
-                                return (
-                                  <Button size="small" icon={<CheckOutlined />}
-                                    loading={isSavingRow}
-                                    onClick={() => {
-                                      const latest = sessionsRef.current.find(r => r.id ? r.id === rowKey : r._tempId === rowKey)
-                                      if (latest) saveRow(latest)
-                                    }}
-                                    style={{ fontSize: 11, marginRight: 4, padding: '0 6px', color: '#fff', border: '1px solid',
-                                      ...(isDirtyRow ? { background: '#f97316', borderColor: '#ea580c', boxShadow: '0 0 0 2px #fed7aa' } : { background: '#52c41a', borderColor: '#389e0d' }) }}>
-                                    Cập nhật
-                                  </Button>
-                                )
-                              })()}
+                            <td style={{ ...cellStyle, width: 40, textAlign: 'center', whiteSpace: 'nowrap' }}>
                               <Button size="small" type="text" danger icon={<DeleteOutlined />}
                                 onClick={() => deleteRow(s)} style={{ padding: '0 4px', color: '#cbd5e1', fontSize: 15 }} />
                             </td>
@@ -1487,7 +1482,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
               <tr>
                 {['Người Thực hiện', 'Mã NV', 'Nhóm/tổ', 'Ca SX', 'Thời gian thực hiện', 'Công thực hiện',
                   <span key="vaitro-hdr">Vai Trò{canEditDetail && <SettingOutlined onClick={() => setVaiTroModalOpen(true)} style={{ marginLeft: 5, cursor: 'pointer', color: '#1677ff', fontSize: 11 }} title="Quản lý danh sách vai trò" />}</span>,
-                  'Ghi Chú', ''].map((h, i) => (
+                  'Ghi Chú', canEditDetail ? '' : null].filter(h => h !== null).map((h, i) => (
                   <th key={i} style={subHeadStyle}>{h}</th>
                 ))}
               </tr>
@@ -1670,22 +1665,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                       <input style={inputStyle} value={s.ghiChu}
                         onChange={e => updateLocal(key, 'ghiChu', e.target.value)} />
                     </td>
-                    <td style={{ ...cellStyle, width: 90, textAlign: 'center', whiteSpace: 'nowrap' }}>
-                      {(() => {
-                        const isDirtyRow = dirtyRowKeys.has(key) || !s.id
-                        return (
-                          <Button size="small" icon={<CheckOutlined />}
-                            loading={isSaving}
-                            onClick={() => {
-                              const latest = sessionsRef.current.find(r => r.id ? r.id === key : r._tempId === key)
-                              if (latest) saveRow(latest)
-                            }}
-                            style={{ fontSize: 11, marginRight: 4, padding: '0 6px', color: '#fff', border: '1px solid',
-                              ...(isDirtyRow ? { background: '#f97316', borderColor: '#ea580c', boxShadow: '0 0 0 2px #fed7aa' } : { background: '#52c41a', borderColor: '#389e0d' }) }}>
-                            Cập nhật
-                          </Button>
-                        )
-                      })()}
+                    <td style={{ ...cellStyle, width: 40, textAlign: 'center', whiteSpace: 'nowrap' }}>
                       <Button size="small" type="text" danger icon={<DeleteOutlined />}
                         onClick={() => deleteRow(s)} style={{ padding: '0 4px', color: '#cbd5e1', fontSize: 15 }} />
                     </td>

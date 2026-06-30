@@ -1600,20 +1600,26 @@ export default function LenhSanXuatTab() {
       {/* ── Phân tích tab ── */}
       {activeTab === 'phan_tich' && (() => {
         const now = dayjs()
-        const periodCutoff = {
-          week:   now.startOf('isoWeek'),
-          month:  now.startOf('month'),
-          '3m':   now.subtract(3, 'month').startOf('day'),
-          '6m':   now.subtract(6, 'month').startOf('day'),
-          year:   now.startOf('year'),
-          all:    null,
-        }[phanTichPeriod]
+        const periodRange = ({
+          prev_week: { from: now.subtract(1, 'week').startOf('isoWeek'), to: now.subtract(1, 'week').endOf('isoWeek') },
+          week:      { from: now.startOf('isoWeek'), to: now.endOf('isoWeek') },
+          next_week: { from: now.add(1, 'week').startOf('isoWeek'), to: now.add(1, 'week').endOf('isoWeek') },
+          month:     { from: now.startOf('month'), to: null },
+          '3m':      { from: now.subtract(3, 'month').startOf('day'), to: null },
+          '6m':      { from: now.subtract(6, 'month').startOf('day'), to: null },
+          year:      { from: now.startOf('year'), to: null },
+          all:       { from: null, to: null },
+        })[phanTichPeriod] || { from: null, to: null }
         const _seenDh = new Set()
         const trendData = lenhData
           .filter(r => {
-            if (!periodCutoff) return true
+            const { from, to } = periodRange
+            if (!from && !to) return true
             const effectiveDate = r.ngayThucHien || r.ngayPhatLenh
-            return effectiveDate && effectiveDate >= periodCutoff.format('YYYY-MM-DD')
+            if (!effectiveDate) return false
+            if (from && effectiveDate < from.format('YYYY-MM-DD')) return false
+            if (to && effectiveDate > to.format('YYYY-MM-DD')) return false
+            return true
           })
           .filter(r => {
             // Cùng mã đơn hàng chỉ tính 1 lần
@@ -1902,12 +1908,14 @@ export default function LenhSanXuatTab() {
             {/* ── Period selector ── */}
             {(() => {
               const periods = [
-                { key: 'week',  label: 'Tuần này' },
-                { key: 'month', label: 'Tháng này' },
-                { key: '3m',    label: '3 Tháng' },
-                { key: '6m',    label: '6 Tháng' },
-                { key: 'year',  label: 'Năm nay' },
-                { key: 'all',   label: 'Tất cả' },
+                { key: 'prev_week', label: 'Tuần trước' },
+                { key: 'week',      label: 'Tuần này' },
+                { key: 'next_week', label: 'Tuần sau' },
+                { key: 'month',     label: 'Tháng này' },
+                { key: '3m',        label: '3 Tháng' },
+                { key: '6m',        label: '6 Tháng' },
+                { key: 'year',      label: 'Năm nay' },
+                { key: 'all',       label: 'Tất cả' },
               ]
               return (
                 <div style={{ display: 'flex', gap: 6, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
