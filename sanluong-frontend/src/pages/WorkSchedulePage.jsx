@@ -191,6 +191,24 @@ const SL_FIELD_MAP     = { PC: 'slPc',   PCPL1: 'slPc',   PCPL2: 'slPc',  BBC1: 
 const NS_LOOKUP_FIELD  = { PC: 'nangSuatPc', PCPL1: 'nangSuatPc', PCPL2: 'nangSuatPc', PL: 'nangSuatPl', BBC1: 'nangSuatBbc1', DG: 'slTrungBinh', CC: 'slTrungBinh' }
 const CA_SORT_ORDER    = { 'Ca 1': 0, 'HC': 1, 'Ca 2': 2 }
 
+const NONPROD_ACTS = [
+  { name: 'Vệ sinh thiết bị, dụng cụ', cat: 'Vệ sinh' },
+  { name: 'Vệ sinh khu vực / 5S', cat: 'Vệ sinh' },
+  { name: 'Setup / Chuyển đổi sản phẩm', cat: 'Chuyển đổi' },
+  { name: 'Chờ nguyên liệu', cat: 'Chờ' },
+  { name: 'Chờ BTP', cat: 'Chờ' },
+  { name: 'Chờ lệnh / kế hoạch', cat: 'Chờ' },
+  { name: 'Sửa chữa / Bảo trì máy', cat: 'Sự cố' },
+  { name: 'Máy hỏng / Dừng máy', cat: 'Sự cố' },
+  { name: 'Họp / Đào tạo', cat: 'Hành chính' },
+  { name: 'Kiểm kê / Kiểm đếm', cat: 'Hành chính' },
+  { name: 'Việc khác', cat: 'Khác' },
+]
+const NONPROD_CAT_COLOR = {
+  'Vệ sinh': '#0891b2', 'Chuyển đổi': '#7c3aed', 'Chờ': '#d97706',
+  'Sự cố': '#dc2626', 'Hành chính': '#059669', 'Khác': '#6b7280',
+}
+
 function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const { isAdmin, isAdminKH, isStageAdmin, canEditStage, canDeleteSchedule } = useAuth()
   const canEditDetail = canEditStage(schedule?.congDoan)
@@ -209,6 +227,9 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const [syncKhLoadingDays, setSyncKhLoadingDays] = useState(new Set())
   const [syncToKhLoading, setSyncToKhLoading] = useState(false)
   const [khToExists, setKhToExists] = useState(false)
+  const [nonprodEntries, setNonprodEntries] = useState({})   // ngayKey → [{_id, act, cat, person, min, note}]
+  const [nonprodOpenDays, setNonprodOpenDays] = useState(new Set())
+  const [nonprodAddingAct, setNonprodAddingAct] = useState(null) // ngayKey đang mở dropdown chọn hoạt động
 
   const [renamingDay, setRenamingDay] = useState(null)   // ngayKey đang đổi ngày
   const [renameDayVal, setRenameDayVal] = useState('')   // giá trị ngày mới
@@ -279,6 +300,12 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     setBatchSaving(new Set())
     setSavedSlKeys(new Set())
     setKhToExists(false)
+    setNonprodOpenDays(new Set())
+    setNonprodAddingAct(null)
+    try {
+      const saved = localStorage.getItem(`nonprod_ws_${schedule.id}`)
+      setNonprodEntries(saved ? JSON.parse(saved) : {})
+    } catch { setNonprodEntries({}) }
     pendingSlRef.current = {}
     fetchSessions()
     api.get(`/product-master/lookup/${encodeURIComponent(schedule.maSp || '')}`)
@@ -441,6 +468,27 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const tongCong = sessions.reduce((acc, r) => acc + (parseFloat(r.congThucHien) || 0), 0)
   const tongSanLuong = Object.values(daySlMap).reduce((acc, v) => acc + (parseFloat(v) || 0), 0)
   const ngayKeys = [...new Set(sessions.map(s => s.ngay || 'unknown'))].sort()
+
+  // ── Non-productive time helpers ─────────────────────────────────────────────
+  const saveNonprod = (entries) => {
+    setNonprodEntries(entries)
+    try { localStorage.setItem(`nonprod_ws_${schedule?.id}`, JSON.stringify(entries)) } catch {}
+  }
+  const addNonprodEntry = (ngayKey, act, cat, person = '') => {
+    const entry = { _id: `np_${Date.now()}_${Math.random().toString(36).slice(2)}`, act, cat, person, min: 0, note: '' }
+    const prev = nonprodEntries[ngayKey] || []
+    saveNonprod({ ...nonprodEntries, [ngayKey]: [...prev, entry] })
+  }
+  const updateNonprodEntry = (ngayKey, _id, patch) => {
+    saveNonprod({
+      ...nonprodEntries,
+      [ngayKey]: (nonprodEntries[ngayKey] || []).map(e => e._id === _id ? { ...e, ...patch } : e),
+    })
+  }
+  const removeNonprodEntry = (ngayKey, _id) => {
+    const next = (nonprodEntries[ngayKey] || []).filter(e => e._id !== _id)
+    saveNonprod({ ...nonprodEntries, [ngayKey]: next })
+  }
 
   const openDetail = (ngayKey) => {
     setOpenTabs(prev => prev.includes(ngayKey) ? prev : [...prev, ngayKey])
@@ -1365,6 +1413,124 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                   </table>
                 </div>
               </div>
+
+              {/* ── Thời gian không tạo ra sản phẩm ── */}
+              {(() => {
+                const dayEntries = nonprodEntries[k] || []
+                const totalMin = dayEntries.reduce((sum, e) => sum + (parseInt(e.min) || 0), 0)
+                const isNpOpen = nonprodOpenDays.has(k)
+                const actGroups = {}
+                dayEntries.forEach(e => {
+                  if (!actGroups[e.act]) actGroups[e.act] = { cat: e.cat, entries: [] }
+                  actGroups[e.act].entries.push(e)
+                })
+                return (
+                  <div style={{ borderTop: '1px solid #e8f5e9' }}>
+                    {/* Toggle header */}
+                    <div
+                      onClick={() => setNonprodOpenDays(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n })}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px',
+                        cursor: 'pointer', fontSize: 12, userSelect: 'none',
+                        background: totalMin > 0 ? '#fffbeb' : '#f8fafc',
+                        color: totalMin > 0 ? '#92400e' : '#6b7280',
+                      }}
+                    >
+                      <span>⏱</span>
+                      <span style={{ fontWeight: 600 }}>Thời gian không tạo sản phẩm</span>
+                      {totalMin > 0 && <Tag color="orange" style={{ margin: 0, fontSize: 11 }}>{totalMin} phút</Tag>}
+                      <span style={{ marginLeft: 'auto', fontSize: 11, color: '#9ca3af' }}>{isNpOpen ? '▲ Thu gọn' : '▼ Xem / Nhập'}</span>
+                    </div>
+                    {/* Panel content */}
+                    {isNpOpen && (
+                      <div style={{ padding: '8px 14px 12px', background: '#fffef7' }}>
+                        {/* Activity groups */}
+                        {Object.entries(actGroups).map(([act, { cat, entries: actEntries }]) => {
+                          const cc = NONPROD_CAT_COLOR[cat] || '#6b7280'
+                          const actTotal = actEntries.reduce((s, e) => s + (parseInt(e.min) || 0), 0)
+                          return (
+                            <div key={act} style={{ marginBottom: 8, border: `1px solid ${cc}30`, borderRadius: 8, overflow: 'hidden' }}>
+                              {/* Activity header */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', background: cc + '10', fontSize: 12 }}>
+                                <span style={{ fontWeight: 700, flex: 1 }}>{act}</span>
+                                <span style={{ fontSize: 10, fontWeight: 600, color: cc, background: cc + '20', border: `1px solid ${cc}40`, borderRadius: 10, padding: '1px 7px' }}>{cat}</span>
+                                <span style={{ fontFamily: 'monospace', fontWeight: 700, color: cc, marginLeft: 8 }}>{actTotal} p</span>
+                              </div>
+                              {/* Entries */}
+                              {actEntries.map(entry => (
+                                <div key={entry._id} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderTop: `1px solid ${cc}20`, fontSize: 12 }}>
+                                  <select
+                                    style={{ flex: 2, border: '1px solid #e5e7eb', borderRadius: 5, padding: '2px 5px', fontSize: 11, background: '#fff' }}
+                                    value={entry.person}
+                                    onChange={ev => updateNonprodEntry(k, entry._id, { person: ev.target.value })}
+                                  >
+                                    <option value="">-- Chọn người --</option>
+                                    {employees.map(emp => <option key={emp.id} value={emp.hoVaTen}>{emp.hoVaTen}</option>)}
+                                    {entry.person && !employees.find(e => e.hoVaTen === entry.person) && (
+                                      <option value={entry.person}>{entry.person}</option>
+                                    )}
+                                  </select>
+                                  <input
+                                    type="number" min="0" step="5"
+                                    style={{ width: 58, border: '1px solid #e5e7eb', borderRadius: 5, padding: '2px 5px', fontSize: 11, textAlign: 'right' }}
+                                    value={entry.min || ''}
+                                    onChange={ev => updateNonprodEntry(k, entry._id, { min: parseInt(ev.target.value) || 0 })}
+                                    placeholder="phút"
+                                  />
+                                  <span style={{ fontSize: 11, color: '#6b7280' }}>p</span>
+                                  <input
+                                    style={{ flex: 3, border: '1px solid #e5e7eb', borderRadius: 5, padding: '2px 5px', fontSize: 11 }}
+                                    value={entry.note || ''}
+                                    onChange={ev => updateNonprodEntry(k, entry._id, { note: ev.target.value })}
+                                    placeholder="Ghi chú..."
+                                  />
+                                  <button
+                                    onClick={() => removeNonprodEntry(k, entry._id)}
+                                    style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 15, padding: '0 3px', lineHeight: 1 }}
+                                  >×</button>
+                                </div>
+                              ))}
+                              {/* + người */}
+                              <div style={{ padding: '3px 10px', borderTop: `1px solid ${cc}20` }}>
+                                <Button size="small" type="text" icon={<PlusOutlined />}
+                                  style={{ fontSize: 11, color: cc, padding: '0 4px' }}
+                                  onClick={() => addNonprodEntry(k, act, cat)}>
+                                  + người
+                                </Button>
+                              </div>
+                            </div>
+                          )
+                        })}
+                        {/* + Hoạt động */}
+                        {nonprodAddingAct === k ? (
+                          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center', padding: '4px 0' }}>
+                            {NONPROD_ACTS.filter(a => !actGroups[a.name]).map(a => {
+                              const cc = NONPROD_CAT_COLOR[a.cat] || '#6b7280'
+                              return (
+                                <button key={a.name}
+                                  onClick={() => { addNonprodEntry(k, a.name, a.cat); setNonprodAddingAct(null) }}
+                                  style={{ border: `1px solid ${cc}50`, background: cc + '10', color: cc, borderRadius: 20, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
+                                  {a.name}
+                                </button>
+                              )
+                            })}
+                            <button onClick={() => setNonprodAddingAct(null)}
+                              style={{ border: '1px solid #e5e7eb', background: '#f9fafb', borderRadius: 20, padding: '3px 10px', fontSize: 11, cursor: 'pointer', color: '#6b7280' }}>
+                              Hủy
+                            </button>
+                          </div>
+                        ) : (
+                          <Button size="small" type="dashed" icon={<PlusOutlined />}
+                            style={{ fontSize: 11, marginTop: Object.keys(actGroups).length > 0 ? 4 : 0 }}
+                            onClick={() => setNonprodAddingAct(k)}>
+                            + Hoạt động
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           )
         })}
@@ -1773,6 +1939,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
        editingKeys, batchEditDays, batchSaving, saving, savingDay,
        nsTrungBinh, employees, vaiTroOptions, canEditDetail, multiAddModal, maNvErrorKeys,
        tongCong, tongSanLuong, ngayKeys, renamingDay, renameDayVal, renameSaving,
+       nonprodEntries, nonprodOpenDays, nonprodAddingAct,
        schedule, contextMenu])
 
   const handleDrawerClose = () => {
