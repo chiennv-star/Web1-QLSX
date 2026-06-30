@@ -63,6 +63,15 @@ const TINH_TRANG_OPTIONS = [
   { value: 'doing', label: 'Doing', status: 'processing' },
 ]
 
+const NHOM_TAG_COLOR = {
+  PCPL1: 'blue',
+  PCPL2: 'purple',
+  PCPL3: 'volcano',
+  PL:    'volcano',
+  ĐG:    'green',
+  BBC1:  'cyan',
+}
+
 const TO_NHOM_OPTIONS = {
   PC:    ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
   PCPL1: ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
@@ -3110,7 +3119,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
             style={{ cursor: canEdit ? 'pointer' : 'default' }}
           >
             {v
-              ? <Tag color="blue" style={{ marginRight: 0, cursor: canEdit ? 'pointer' : 'default' }}>{v}</Tag>
+              ? <Tag color={NHOM_TAG_COLOR[v] || 'blue'} style={{ marginRight: 0, cursor: canEdit ? 'pointer' : 'default' }}>{v}</Tag>
               : canEdit
                 ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0, cursor: 'pointer' }}>Chọn nhóm</Tag>
                 : <span style={{ color: '#d9d9d9' }}>—</span>}
