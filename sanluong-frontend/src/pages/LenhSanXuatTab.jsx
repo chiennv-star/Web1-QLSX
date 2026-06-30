@@ -1608,11 +1608,19 @@ export default function LenhSanXuatTab() {
           year:   now.startOf('year'),
           all:    null,
         }[phanTichPeriod]
+        const _seenDh = new Set()
         const trendData = lenhData
           .filter(r => {
             if (!periodCutoff) return true
             const effectiveDate = r.ngayThucHien || r.ngayPhatLenh
             return effectiveDate && effectiveDate >= periodCutoff.format('YYYY-MM-DD')
+          })
+          .filter(r => {
+            // Cùng mã đơn hàng chỉ tính 1 lần
+            if (!r.maDonHang) return true
+            if (_seenDh.has(r.maDonHang)) return false
+            _seenDh.add(r.maDonHang)
+            return true
           })
           .map(r => ({ ...r, _pm: loaiSpMap[r.maSp] || {} }))
 
