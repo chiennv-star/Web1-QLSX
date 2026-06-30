@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   Table, Button, Space, Typography, Input, Select, DatePicker,
-  Modal, Form, InputNumber, Tag, Popconfirm, message,
+  Modal, Form, InputNumber, Tag, Popconfirm, message, notification,
   Row, Col, Card, Tabs, Badge, Tooltip, Divider, Drawer, Spin, Dropdown, AutoComplete
 } from 'antd'
 import SkeletonTable from '../components/SkeletonTable'
@@ -365,7 +365,12 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
           await api.patch(`/work-schedule/${schedule.id}/patch-field`, { field: 'tpNhapKho', value: newTpNk })
         }
       }
-      message.success('Đã lưu thông tin')
+      notification.success({
+        message: 'Lưu thành công',
+        description: 'Thông tin lệnh sản xuất đã được cập nhật.',
+        placement: 'topRight',
+        duration: 3,
+      })
       setIsInfoEditing(false)
       setIsDirty(false)
       setLookupStatus(null)
@@ -524,7 +529,14 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       })
       onRefresh?.()
     }
-    if (failed.length > 0) {
+    if (saved.length > 0 && failed.length === 0) {
+      notification.success({
+        message: 'Thêm thành công',
+        description: `Đã thêm ${saved.length} nhân viên vào ca sản xuất.`,
+        placement: 'topRight',
+        duration: 3,
+      })
+    } else if (failed.length > 0) {
       message.error(`Lưu thất bại: ${failed.join(', ')}`)
     }
   }
@@ -805,7 +817,12 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       setEditingKeys(prev => { const next = new Set(prev); next.delete(key); return next })
       setDirtyRowKeys(prev => { const n = new Set(prev); n.delete(key); return n })
       onRefresh?.()
-      message.success('Đã lưu')
+      notification.success({
+        message: 'Lưu thành công',
+        description: `Đã lưu: ${s.nguoiThucHien || resolvedMaNv}`,
+        placement: 'topRight',
+        duration: 3,
+      })
       // Đồng bộ KH_TO nếu Ca vừa đổi
       const caChange = caChangedRef.current[key]
       if (caChange) {
@@ -874,12 +891,23 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     onRefresh?.()
     setBatchSaving(prev => { const n = new Set(prev); n.delete(ngayKey); return n })
     if (hasError) {
-      message.warning('Một số dòng lưu thất bại hoặc thiếu Mã NV')
+      notification.warning({
+        message: 'Lưu chưa hoàn toàn',
+        description: 'Một số dòng lưu thất bại hoặc thiếu Mã NV. Kiểm tra các dòng bôi đỏ.',
+        placement: 'topRight',
+        duration: 5,
+      })
     } else {
       setBatchEditDays(prev => { const n = new Set(prev); n.delete(ngayKey); return n })
       const dayRowKeys = rows.map(s => s.id || s._tempId)
       setDirtyRowKeys(prev => { const n = new Set(prev); dayRowKeys.forEach(k => n.delete(k)); return n })
-      message.success('Đã lưu tất cả')
+      const ngayLabel = dayjs(ngayKey).isValid() ? dayjs(ngayKey).format('DD/MM/YYYY') : ngayKey
+      notification.success({
+        message: 'Lưu thành công',
+        description: `Đã lưu ${rows.length} dòng ngày ${ngayLabel}.`,
+        placement: 'topRight',
+        duration: 3,
+      })
     }
     // Đồng bộ KH_TO cho các row có Ca thay đổi
     const caChanges = Object.values(caChangedRef.current).filter(c => c.ngay === ngayKey)
@@ -986,7 +1014,13 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       }))
       delete pendingSlRef.current[ngayKey]
       onRefresh?.()
-      message.success('Đã lưu sản lượng')
+      const ngayLabel = dayjs(ngayKey).isValid() ? dayjs(ngayKey).format('DD/MM/YYYY') : ngayKey
+      notification.success({
+        message: 'Lưu sản lượng thành công',
+        description: `Sản lượng ngày ${ngayLabel}: ${Number(parsed).toLocaleString('vi-VN')}`,
+        placement: 'topRight',
+        duration: 3,
+      })
     } catch (err) {
       message.error(err?.response?.data?.message || err?.message || 'Lưu sản lượng thất bại')
     }
