@@ -1070,11 +1070,18 @@ export default function DonHangPage() {
     return true
   }
   // Active table: not done, not hidden (or show hidden toggle)
-  const displayData = data.filter(r =>
-    r.tinhTrangSx !== 'done' &&
-    (showHidden || !hiddenIds.has(r.id)) &&
-    baseFilter(r)
-  )
+  // Chưa xếp tổ (hasKhoach=false) lên trên, đã xếp xuống dưới
+  const displayData = data
+    .filter(r =>
+      r.tinhTrangSx !== 'done' &&
+      (showHidden || !hiddenIds.has(r.id)) &&
+      baseFilter(r)
+    )
+    .sort((a, b) => {
+      const aXep = a.hasKhoach ? 1 : 0
+      const bXep = b.hasKhoach ? 1 : 0
+      return aXep - bXep
+    })
   // Completed table: tinhTrangSx === 'done' (always from full data, no hidden filter)
   const completedData = data.filter(r => r.tinhTrangSx === 'done' && baseFilter(r))
 

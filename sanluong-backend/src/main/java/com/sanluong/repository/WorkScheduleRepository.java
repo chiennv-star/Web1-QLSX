@@ -240,6 +240,22 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
     @Query(value = "SELECT COUNT(*) FROM work_schedule WHERE ma_don_hang = :maDonHang AND so_lo = :soLo AND deleted_at IS NULL", nativeQuery = true)
     long countByMaDonHangAndSoLoNative(@Param("maDonHang") String maDonHang, @Param("soLo") String soLo);
 
+    /** Tất cả WorkSchedule cùng maSp + tenTrinh + soLo thuộc các công đoạn cho trước — dùng để cộng dồn QA */
+    @Query("""
+        SELECT w FROM WorkSchedule w
+        WHERE w.maSp = :maSp
+          AND (:tenTrinh IS NULL OR w.tenTrinh = :tenTrinh)
+          AND (:soLo IS NULL OR w.soLo = :soLo)
+          AND w.congDoan IN :congDoans
+          AND w.deletedAt IS NULL
+        """)
+    List<com.sanluong.entity.WorkSchedule> findByTripletAndCongDoans(
+            @Param("maSp") String maSp,
+            @Param("tenTrinh") String tenTrinh,
+            @Param("soLo") String soLo,
+            @Param("congDoans") java.util.List<String> congDoans
+    );
+
     // Cascade update soLo toàn bộ kế hoạch cùng maDonHang + lô cũ (native SQL)
     @Modifying
     @Transactional

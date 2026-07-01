@@ -538,37 +538,19 @@ public class WorkScheduleService {
                     if (w.getCongPc() != null) r.setPcChiPhi(w.getCongPc());
                     // OR logic: done nếu bất kỳ PCPL1 hoặc PCPL2 nào đã done
                     if ("done".equals(trangThai) || !"done".equals(r.getPcTrangThai())) r.setPcTrangThai(trangThai);
-                    r.setPlQaLayMau(w.getQaLayMau());
-                    r.setPlQaKiemNghiem(w.getQaKiemNghiem());
-                    r.setPlQaLuuMau(w.getQaLuuMau());
-                    r.setPlQaKhac(w.getQaKhac());
-                    int plPcpl1 = r.getPlQaLayMau() != null ? r.getPlQaLayMau() : 0;
-                    int dgPcpl1 = r.getDgQaLayMau() != null ? r.getDgQaLayMau() : 0;
-                    r.setQaLayMau(plPcpl1 + dgPcpl1 > 0 ? plPcpl1 + dgPcpl1 : null);
+                    applyPlQaSum(r, lsx, w.getMaSp(), tienTrinh);
                 }
                 case "PL" -> {
                     if (w.getCongPl() != null) r.setPlChiPhi(w.getCongPl());
                     if (w.getSlPl()   != null) r.setPcPl(String.valueOf(w.getSlPl().intValue()));
                     r.setPlTrangThai(trangThai);
-                    r.setPlQaLayMau(w.getQaLayMau());
-                    r.setPlQaKiemNghiem(w.getQaKiemNghiem());
-                    r.setPlQaLuuMau(w.getQaLuuMau());
-                    r.setPlQaKhac(w.getQaKhac());
-                    int plPl = r.getPlQaLayMau() != null ? r.getPlQaLayMau() : 0;
-                    int dgPl = r.getDgQaLayMau() != null ? r.getDgQaLayMau() : 0;
-                    r.setQaLayMau(plPl + dgPl > 0 ? plPl + dgPl : null);
+                    applyPlQaSum(r, lsx, w.getMaSp(), tienTrinh);
                 }
                 case "DG" -> {
                     if (w.getCongDg() != null) r.setDgChiPhi(w.getCongDg());
                     if (w.getSlDg()   != null) r.setDg2(String.valueOf(w.getSlDg().intValue()));
                     r.setDgTrangThai(trangThai);
-                    r.setDgQaLayMau(w.getQaLayMau());
-                    r.setDgQaKiemNghiem(w.getQaKiemNghiem());
-                    r.setDgQaLuuMau(w.getQaLuuMau());
-                    r.setDgQaKhac(w.getQaKhac());
-                    int plDg = r.getPlQaLayMau() != null ? r.getPlQaLayMau() : 0;
-                    int dgDg = r.getDgQaLayMau() != null ? r.getDgQaLayMau() : 0;
-                    r.setQaLayMau(plDg + dgDg > 0 ? plDg + dgDg : null);
+                    applyDgQaSum(r, lsx, w.getMaSp(), tienTrinh);
                 }
                 case "CC" -> {
                     if (w.getCongCc() != null) r.setCcChiPhi(w.getCongCc());
@@ -576,6 +558,38 @@ public class WorkScheduleService {
             }
         }
         productionRepo.saveAll(records);
+    }
+
+    /** Cộng dồn QA PL từ tất cả WorkSchedule PCPL1 + PL cùng triplet vào ProductionRecord */
+    private void applyPlQaSum(com.sanluong.entity.ProductionRecord r, String soLo, String maSp, String tenTrinh) {
+        List<com.sanluong.entity.WorkSchedule> plAll = repository.findByTripletAndCongDoans(
+                maSp, tenTrinh, soLo, java.util.List.of("PCPL1", "PL"));
+        int kn = plAll.stream().mapToInt(x -> x.getQaKiemNghiem() != null ? x.getQaKiemNghiem() : 0).sum();
+        int lm = plAll.stream().mapToInt(x -> x.getQaLuuMau()     != null ? x.getQaLuuMau()     : 0).sum();
+        int kh = plAll.stream().mapToInt(x -> x.getQaKhac()       != null ? x.getQaKhac()       : 0).sum();
+        int total = kn + lm + kh;
+        r.setPlQaKiemNghiem(kn > 0 ? kn : null);
+        r.setPlQaLuuMau(lm > 0 ? lm : null);
+        r.setPlQaKhac(kh > 0 ? kh : null);
+        r.setPlQaLayMau(total > 0 ? total : null);
+        int dg = r.getDgQaLayMau() != null ? r.getDgQaLayMau() : 0;
+        r.setQaLayMau(total + dg > 0 ? total + dg : null);
+    }
+
+    /** Cộng dồn QA ĐG từ tất cả WorkSchedule DG cùng triplet vào ProductionRecord */
+    private void applyDgQaSum(com.sanluong.entity.ProductionRecord r, String soLo, String maSp, String tenTrinh) {
+        List<com.sanluong.entity.WorkSchedule> dgAll = repository.findByTripletAndCongDoans(
+                maSp, tenTrinh, soLo, java.util.List.of("DG"));
+        int kn = dgAll.stream().mapToInt(x -> x.getQaKiemNghiem() != null ? x.getQaKiemNghiem() : 0).sum();
+        int lm = dgAll.stream().mapToInt(x -> x.getQaLuuMau()     != null ? x.getQaLuuMau()     : 0).sum();
+        int kh = dgAll.stream().mapToInt(x -> x.getQaKhac()       != null ? x.getQaKhac()       : 0).sum();
+        int total = kn + lm + kh;
+        r.setDgQaKiemNghiem(kn > 0 ? kn : null);
+        r.setDgQaLuuMau(lm > 0 ? lm : null);
+        r.setDgQaKhac(kh > 0 ? kh : null);
+        r.setDgQaLayMau(total > 0 ? total : null);
+        int pl = r.getPlQaLayMau() != null ? r.getPlQaLayMau() : 0;
+        r.setQaLayMau(pl + total > 0 ? pl + total : null);
     }
 
     @org.springframework.transaction.annotation.Transactional

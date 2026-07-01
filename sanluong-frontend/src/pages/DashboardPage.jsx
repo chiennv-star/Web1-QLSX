@@ -1797,19 +1797,34 @@ export default function DashboardPage() {
       onHeaderCell: () => ({ style: { cursor: 'default' } }),
       children: [
         {
-          title: 'PL', key: 'qa_pl', width: 70, align: 'center',
-          render: (_, r) => r.plQaLayMau != null
-            ? <span style={{ color: '#0891b2' }}>{Number(r.plQaLayMau).toLocaleString('vi-VN')}</span>
-            : <span style={{ color: '#d9d9d9' }}>—</span>,
+          title: 'Kiểm nghiệm', key: 'qa_kn', width: 80, align: 'center',
+          render: (_, r) => {
+            const v = (r.plQaKiemNghiem || 0) + (r.dgQaKiemNghiem || 0)
+            return v > 0
+              ? <span style={{ color: '#0891b2' }}>{v.toLocaleString('vi-VN')}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>
+          },
         },
         {
-          title: 'ĐG', key: 'qa_dg', width: 70, align: 'center',
-          render: (_, r) => r.dgQaLayMau != null
-            ? <span style={{ color: '#0891b2' }}>{Number(r.dgQaLayMau).toLocaleString('vi-VN')}</span>
-            : <span style={{ color: '#d9d9d9' }}>—</span>,
+          title: 'Lưu mẫu', key: 'qa_lm', width: 72, align: 'center',
+          render: (_, r) => {
+            const v = (r.plQaLuuMau || 0) + (r.dgQaLuuMau || 0)
+            return v > 0
+              ? <span style={{ color: '#0891b2' }}>{v.toLocaleString('vi-VN')}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>
+          },
         },
         {
-          title: 'Tổng', key: 'qa_tong', width: 76, align: 'center',
+          title: 'Khác', key: 'qa_khac', width: 60, align: 'center',
+          render: (_, r) => {
+            const v = (r.plQaKhac || 0) + (r.dgQaKhac || 0)
+            return v > 0
+              ? <span style={{ color: '#0891b2' }}>{v.toLocaleString('vi-VN')}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span>
+          },
+        },
+        {
+          title: 'Tổng', key: 'qa_tong', width: 72, align: 'center',
           render: (_, r) => {
             const total = (r.plQaLayMau || 0) + (r.dgQaLayMau || 0)
             return total > 0
