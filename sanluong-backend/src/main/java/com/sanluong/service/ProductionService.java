@@ -469,6 +469,10 @@ public class ProductionService {
     public ProductionRecord updateNhapKho(Long id, java.util.Map<String, String> body, String username) {
         ProductionRecord r = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));
+        if (body.containsKey("tpNhapKho")) {
+            String v = body.get("tpNhapKho");
+            r.setTpNhapKho(v != null && !v.isBlank() ? Integer.parseInt(v) : null);
+        }
         if (body.containsKey("ngayXuatKho")) {
             String v = body.get("ngayXuatKho");
             r.setNgayXuatKho(v != null && !v.isBlank() ? java.time.LocalDate.parse(v) : null);

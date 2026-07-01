@@ -2,14 +2,15 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Table, Button, Space, Typography, message, Select, DatePicker,
-  Tooltip, Modal, Input, Badge, Tag, Tabs, Popconfirm, Popover
+  Tooltip, Modal, Input, Badge, Tag, Tabs, Popconfirm, Popover,
+  AutoComplete, Drawer, InputNumber, Spin, Divider,
 } from 'antd'
 import SkeletonTable from '../components/SkeletonTable'
 import {
   SearchOutlined, ReloadOutlined, BarChartOutlined,
   CheckOutlined, CloseOutlined, ClockCircleOutlined,
   RiseOutlined, TeamOutlined, FundOutlined, DeleteOutlined, ExclamationCircleOutlined,
-  FullscreenOutlined, FullscreenExitOutlined, ArrowRightOutlined,
+  FullscreenOutlined, FullscreenExitOutlined, ArrowRightOutlined, PlusOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import api from '../api/axios'
@@ -3886,12 +3887,184 @@ function PhanTichSanLuongTab() {
 
 const TINH_TRANG_NK_OPTIONS = ['Done', 'Chốt']
 
+// ─── Modal thêm sản phẩm nhập kho ────────────────────────────────────────────
+
+function AddNhapKhoModal({ open, onClose, onAdded }) {
+  const [searchVal, setSearchVal] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [options,   setOptions]   = useState([])
+  const [selected,  setSelected]  = useState(null)
+  const [slNK,      setSlNK]      = useState(null)
+  const [ngayXuat,  setNgayXuat]  = useState(null)
+  const [tinhTrang, setTinhTrang] = useState(undefined)
+  const [tenNth,    setTenNth]    = useState('')
+  const [saving,    setSaving]    = useState(false)
+  const debounceRef = useRef(null)
+
+  const doSearch = useCallback((query) => {
+    if (!query.trim()) { setOptions([]); return }
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true)
+      try {
+        const [r1, r2] = await Promise.allSettled([
+          api.get('/production', { params: { maBravo: query, size: 15 } }),
+          api.get('/production', { params: { tienTrinh: query, size: 15 } }),
+        ])
+        const items = [
+          ...(r1.status === 'fulfilled' ? r1.value.data.content : []),
+          ...(r2.status === 'fulfilled' ? r2.value.data.content : []),
+        ]
+        const seen = new Set()
+        const unique = items.filter(item => { if (seen.has(item.id)) return false; seen.add(item.id); return true })
+        setOptions(unique.map(item => ({
+          value: String(item.id),
+          label: (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 460 }}>
+              <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', minWidth: 72 }}>{item.maBravo}</span>
+              <Tag style={{ marginRight: 0, fontSize: 11, lineHeight: '16px' }}>{item.maTp}</Tag>
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, color: '#374151' }}>{item.tienTrinh}</span>
+              <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#9ca3af', whiteSpace: 'nowrap' }}>Lô: {item.lsx}</span>
+            </div>
+          ),
+          record: item,
+        })))
+      } catch { /* silent */ }
+      finally { setSearching(false) }
+    }, 300)
+  }, [])
+
+  const handleSelect = (_val, option) => {
+    const rec = option.record
+    setSelected(rec)
+    setSearchVal(`${rec.maBravo} — ${rec.tienTrinh}`)
+    if (rec.tpNhapKho   != null) setSlNK(rec.tpNhapKho)
+    if (rec.ngayXuatKho != null) setNgayXuat(dayjs(rec.ngayXuatKho))
+    if (rec.tinhTrangNhapKho)    setTinhTrang(rec.tinhTrangNhapKho)
+    if (rec.tenNthNhapKho)       setTenNth(rec.tenNthNhapKho)
+  }
+
+  const handleSave = async () => {
+    if (!selected) return message.warning('Chưa chọn sản phẩm')
+    if (slNK == null) return message.warning('Nhập SL Nhập Kho')
+    setSaving(true)
+    try {
+      const body = {
+        tpNhapKho:        String(slNK),
+        ngayXuatKho:      ngayXuat ? ngayXuat.format('YYYY-MM-DD') : '',
+        tinhTrangNhapKho: tinhTrang || '',
+        tenNthNhapKho:    tenNth.trim(),
+      }
+      const { data: updated } = await api.patch(`/production/${selected.id}/nhap-kho`, body)
+      message.success('Đã thêm vào nhập kho')
+      onAdded(updated)
+      doClose()
+    } catch { message.error('Lưu thất bại') }
+    finally { setSaving(false) }
+  }
+
+  const doClose = () => {
+    setSearchVal(''); setOptions([]); setSelected(null)
+    setSlNK(null); setNgayXuat(null); setTinhTrang(undefined); setTenNth('')
+    onClose()
+  }
+
+  return (
+    <Modal
+      title="Thêm sản phẩm nhập kho"
+      open={open}
+      onCancel={doClose}
+      onOk={handleSave}
+      okText="Lưu"
+      okButtonProps={{ loading: saving, disabled: !selected || slNK == null }}
+      width={540}
+      destroyOnClose
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 4 }}>
+        <div>
+          <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Tìm sản phẩm <span style={{ color: '#ef4444' }}>*</span></div>
+          <AutoComplete
+            style={{ width: '100%' }}
+            options={options}
+            value={searchVal}
+            onChange={val => { setSearchVal(val); setSelected(null); doSearch(val) }}
+            onSelect={handleSelect}
+            placeholder="Gõ Mã Bravo hoặc Tên sản phẩm..."
+            notFoundContent={searching ? <Spin size="small" /> : searchVal ? 'Không tìm thấy' : null}
+            popupMatchSelectWidth={500}
+          />
+        </div>
+
+        {selected && (
+          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, padding: '8px 12px', fontSize: 12, color: '#374151', display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div>
+              <strong>Mã Bravo:</strong>{' '}
+              <span style={{ fontFamily: 'monospace', color: '#1677ff', fontWeight: 700 }}>{selected.maBravo}</span>
+              <span style={{ margin: '0 8px', color: '#d1d5db' }}>|</span>
+              <strong>Mã SP:</strong> {selected.maTp}
+            </div>
+            <div><strong>Tên SP:</strong> {selected.tienTrinh}</div>
+            <div>
+              <strong>Số lô:</strong> {selected.lsx}
+              <span style={{ margin: '0 8px', color: '#d1d5db' }}>|</span>
+              <strong>SL kế hoạch:</strong> {selected.soLuong?.toLocaleString('vi-VN')}
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13 }}>SL Nhập Kho <span style={{ color: '#ef4444' }}>*</span></div>
+            <InputNumber
+              style={{ width: '100%' }} min={0} step={1}
+              value={slNK} onChange={setSlNK}
+              formatter={val => val != null ? Number(val).toLocaleString('vi-VN') : ''}
+              parser={val => val ? val.replace(/[^\d]/g, '') : ''}
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Ngày xuất</div>
+            <DatePicker
+              style={{ width: '100%' }} format="DD/MM/YYYY"
+              value={ngayXuat} onChange={setNgayXuat}
+              placeholder="Chọn ngày"
+            />
+          </div>
+          <div>
+            <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Tình trạng</div>
+            <Select
+              style={{ width: '100%' }} value={tinhTrang} onChange={setTinhTrang}
+              placeholder="— Chọn —" allowClear
+              options={TINH_TRANG_NK_OPTIONS.map(o => ({ value: o, label: o }))}
+            />
+          </div>
+          <div>
+            <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Tên NTH</div>
+            <Input
+              value={tenNth} onChange={e => setTenNth(e.target.value)}
+              placeholder="Nhập tên NTH"
+              onPressEnter={handleSave}
+            />
+          </div>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+// ─── NhapKhoTab ───────────────────────────────────────────────────────────────
+
 function NhapKhoTab() {
-  const [data,       setData]       = useState([])
-  const [loading,    setLoading]    = useState(false)
-  const [saving,     setSaving]     = useState({}) // { id: fieldKey }
-  const [dateRange,  setDateRange]  = useState([null, null])
-  const [editCell,   setEditCell]   = useState(null) // { id, field }
+  const [data,          setData]          = useState([])
+  const [loading,       setLoading]       = useState(false)
+  const [saving,        setSaving]        = useState({}) // { `${id}_${field}`: true }
+  const [dateRange,     setDateRange]     = useState([null, null])
+  const [editCell,      setEditCell]      = useState(null) // { id, field }
+  const [addModalOpen,  setAddModalOpen]  = useState(false)
+  const [drawerRecId,   setDrawerRecId]   = useState(null) // id of row to show in drawer
+
+  const drawerRecord = drawerRecId != null ? data.find(r => r.id === drawerRecId) ?? null : null
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -3918,9 +4091,14 @@ function NhapKhoTab() {
     finally { setSaving(s => { const n = { ...s }; delete n[`${id}_${field}`]; return n }) }
   }
 
-  const fmtN = v => v != null ? Number(v).toLocaleString('vi-VN') : '—'
+  const handleAdded = (updated) => {
+    setData(prev => {
+      const exists = prev.find(r => r.id === updated.id)
+      return exists ? prev.map(r => r.id === updated.id ? { ...r, ...updated } : r) : [updated, ...prev]
+    })
+  }
 
-  const tinhTrangColor = v => v === 'Done' ? '#16a34a' : v === 'Chốt' ? '#d46b08' : '#bbb'
+  const fmtN = v => v != null ? Number(v).toLocaleString('vi-VN') : '—'
 
   const columns = [
     {
@@ -3944,8 +4122,41 @@ function NhapKhoTab() {
       render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v || '—'}</span>,
     },
     {
-      title: 'SL Nhập Kho', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 110, align: 'right',
-      render: v => <span style={{ fontWeight: 700, color: '#15803d' }}>{fmtN(v)}</span>,
+      title: 'SL Nhập Kho', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 120, align: 'right',
+      render: (v, r) => {
+        const isEditing = editCell?.id === r.id && editCell?.field === 'tpNhapKho'
+        if (isEditing) {
+          return (
+            <InputNumber
+              size="small" autoFocus min={0} step={1} style={{ width: 100 }}
+              defaultValue={v ?? undefined}
+              formatter={val => val != null && val !== '' ? Number(val).toLocaleString('vi-VN') : ''}
+              parser={val => val ? val.replace(/[^\d]/g, '') : ''}
+              onClick={e => e.stopPropagation()}
+              onPressEnter={e => {
+                const num = e.target.value ? parseInt(e.target.value.replace(/[^\d]/g, ''), 10) : null
+                saveField(r.id, 'tpNhapKho', isNaN(num) ? null : num)
+              }}
+              onBlur={e => {
+                if (!saving[`${r.id}_tpNhapKho`]) {
+                  const num = e.target.value ? parseInt(e.target.value.replace(/[^\d]/g, ''), 10) : null
+                  saveField(r.id, 'tpNhapKho', isNaN(num) ? null : num)
+                }
+              }}
+            />
+          )
+        }
+        return (
+          <div
+            onClick={e => { e.stopPropagation(); setEditCell({ id: r.id, field: 'tpNhapKho' }) }}
+            style={{ cursor: 'pointer', textAlign: 'right' }}
+          >
+            {v != null
+              ? <span style={{ fontWeight: 700, color: '#15803d' }}>{Number(v).toLocaleString('vi-VN')}</span>
+              : <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0, cursor: 'pointer' }}>Nhập</Tag>}
+          </div>
+        )
+      },
     },
     {
       title: 'Ngày xuất', dataIndex: 'ngayXuatKho', key: 'ngayXuatKho', width: 120, align: 'center',
@@ -4035,9 +4246,9 @@ function NhapKhoTab() {
     },
   ]
 
-  const totalSl = data.reduce((s, r) => s + (r.tpNhapKho || 0), 0)
-  const doneCount = data.filter(r => r.tinhTrangNhapKho === 'Done').length
-  const chotCount = data.filter(r => r.tinhTrangNhapKho === 'Chốt').length
+  const totalSl    = data.reduce((s, r) => s + (r.tpNhapKho || 0), 0)
+  const doneCount  = data.filter(r => r.tinhTrangNhapKho === 'Done').length
+  const chotCount  = data.filter(r => r.tinhTrangNhapKho === 'Chốt').length
 
   return (
     <div style={{ padding: '12px 16px' }}>
@@ -4053,6 +4264,9 @@ function NhapKhoTab() {
           style={{ width: 260 }}
         />
         <Button size="small" icon={<ReloadOutlined />} onClick={load} loading={loading}>Tải lại</Button>
+        <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
+          Thêm sản phẩm
+        </Button>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center', fontSize: 13 }}>
           <span>Tổng: <strong style={{ color: '#15803d' }}>{fmtN(totalSl)}</strong></span>
           <Tag color="success">Done: {doneCount}</Tag>
@@ -4070,8 +4284,15 @@ function NhapKhoTab() {
         scroll={{ x: 1100 }}
         sticky={{ offsetHeader: TAB_BAR_H }}
         pagination={{ pageSize: 200, showSizeChanger: true, pageSizeOptions: ['100', '200', '500'], showTotal: t => `Tổng ${t} lô`, size: 'small' }}
-        rowHoverable={false}
-        onRow={() => ({})}
+        rowHoverable
+        rowClassName={() => 'nhapkho-row'}
+        onRow={record => ({
+          onClick: () => {
+            if (editCell?.id === record.id) return
+            setDrawerRecId(record.id)
+          },
+          style: { cursor: 'pointer' },
+        })}
         summary={() => (
           <Table.Summary fixed="bottom">
             <Table.Summary.Row style={{ background: '#f0fdf4' }}>
@@ -4086,6 +4307,129 @@ function NhapKhoTab() {
           </Table.Summary>
         )}
       />
+
+      {/* Modal thêm */}
+      <AddNhapKhoModal
+        open={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        onAdded={handleAdded}
+      />
+
+      {/* Drawer chi tiết */}
+      <Drawer
+        title={
+          drawerRecord
+            ? <span>
+                <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{drawerRecord.maBravo}</span>
+                {' '}<Tag style={{ marginLeft: 4 }}>{drawerRecord.maTp}</Tag>
+              </span>
+            : 'Chi tiết nhập kho'
+        }
+        open={drawerRecId != null}
+        onClose={() => { setDrawerRecId(null); setEditCell(null) }}
+        width={400}
+        destroyOnClose={false}
+      >
+        {drawerRecord && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Thông tin cơ bản */}
+            <div style={{ background: '#f9fafb', borderRadius: 6, padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+              <div><span style={{ color: '#6b7280', minWidth: 110, display: 'inline-block' }}>Tên sản phẩm:</span> <strong>{drawerRecord.tienTrinh || '—'}</strong></div>
+              <div><span style={{ color: '#6b7280', minWidth: 110, display: 'inline-block' }}>Số lô:</span> <span style={{ fontFamily: 'monospace' }}>{drawerRecord.lsx || '—'}</span></div>
+              <div><span style={{ color: '#6b7280', minWidth: 110, display: 'inline-block' }}>SL kế hoạch:</span> {drawerRecord.soLuong?.toLocaleString('vi-VN') || '—'}</div>
+            </div>
+
+            <Divider style={{ margin: '0' }}>Thông tin nhập kho</Divider>
+
+            {/* SL Nhập Kho */}
+            <div>
+              <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13, color: '#374151' }}>SL Nhập Kho</div>
+              {editCell?.id === drawerRecord.id && editCell?.field === 'tpNhapKho_drawer' ? (
+                <InputNumber
+                  autoFocus min={0} step={1} style={{ width: '100%' }}
+                  defaultValue={drawerRecord.tpNhapKho ?? undefined}
+                  formatter={val => val != null && val !== '' ? Number(val).toLocaleString('vi-VN') : ''}
+                  parser={val => val ? val.replace(/[^\d]/g, '') : ''}
+                  onPressEnter={e => {
+                    const num = e.target.value ? parseInt(e.target.value.replace(/[^\d]/g, ''), 10) : null
+                    saveField(drawerRecord.id, 'tpNhapKho', isNaN(num) ? null : num)
+                  }}
+                  onBlur={e => {
+                    if (!saving[`${drawerRecord.id}_tpNhapKho`]) {
+                      const num = e.target.value ? parseInt(e.target.value.replace(/[^\d]/g, ''), 10) : null
+                      saveField(drawerRecord.id, 'tpNhapKho', isNaN(num) ? null : num)
+                    }
+                  }}
+                />
+              ) : (
+                <div
+                  onClick={() => setEditCell({ id: drawerRecord.id, field: 'tpNhapKho_drawer' })}
+                  style={{ cursor: 'pointer', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 32, display: 'flex', alignItems: 'center' }}
+                >
+                  {drawerRecord.tpNhapKho != null
+                    ? <span style={{ fontWeight: 700, color: '#15803d', fontSize: 15 }}>{drawerRecord.tpNhapKho.toLocaleString('vi-VN')}</span>
+                    : <span style={{ color: '#bbb' }}>Nhấn để nhập...</span>}
+                </div>
+              )}
+            </div>
+
+            {/* Ngày xuất */}
+            <div>
+              <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13, color: '#374151' }}>Ngày xuất</div>
+              {editCell?.id === drawerRecord.id && editCell?.field === 'ngayXuatKho_drawer' ? (
+                <DatePicker
+                  autoFocus style={{ width: '100%' }} format="DD/MM/YYYY"
+                  defaultValue={drawerRecord.ngayXuatKho ? dayjs(drawerRecord.ngayXuatKho) : undefined}
+                  onChange={d => saveField(drawerRecord.id, 'ngayXuatKho', d ? d.format('YYYY-MM-DD') : '')}
+                  onBlur={() => !saving[`${drawerRecord.id}_ngayXuatKho`] && setEditCell(null)}
+                />
+              ) : (
+                <div
+                  onClick={() => setEditCell({ id: drawerRecord.id, field: 'ngayXuatKho_drawer' })}
+                  style={{ cursor: 'pointer', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 32, display: 'flex', alignItems: 'center' }}
+                >
+                  {drawerRecord.ngayXuatKho
+                    ? <span style={{ color: '#374151' }}>{dayjs(drawerRecord.ngayXuatKho).format('DD/MM/YYYY')}</span>
+                    : <span style={{ color: '#bbb' }}>Nhấn để chọn ngày...</span>}
+                </div>
+              )}
+            </div>
+
+            {/* Tình trạng */}
+            <div>
+              <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13, color: '#374151' }}>Tình trạng</div>
+              <Select
+                style={{ width: '100%' }}
+                value={drawerRecord.tinhTrangNhapKho || undefined}
+                placeholder="— Chọn —" allowClear
+                onChange={val => saveField(drawerRecord.id, 'tinhTrangNhapKho', val || '')}
+                options={TINH_TRANG_NK_OPTIONS.map(o => ({ value: o, label: o }))}
+              />
+            </div>
+
+            {/* Tên NTH */}
+            <div>
+              <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13, color: '#374151' }}>Tên NTH</div>
+              {editCell?.id === drawerRecord.id && editCell?.field === 'tenNthNhapKho_drawer' ? (
+                <Input
+                  autoFocus defaultValue={drawerRecord.tenNthNhapKho || ''}
+                  onPressEnter={e => saveField(drawerRecord.id, 'tenNthNhapKho', e.target.value.trim())}
+                  onBlur={e => { if (!saving[`${drawerRecord.id}_tenNthNhapKho`]) saveField(drawerRecord.id, 'tenNthNhapKho', e.target.value.trim()) }}
+                />
+              ) : (
+                <div
+                  onClick={() => setEditCell({ id: drawerRecord.id, field: 'tenNthNhapKho_drawer' })}
+                  style={{ cursor: 'pointer', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 32, display: 'flex', alignItems: 'center' }}
+                >
+                  {drawerRecord.tenNthNhapKho
+                    ? <span style={{ color: '#374151' }}>{drawerRecord.tenNthNhapKho}</span>
+                    : <span style={{ color: '#bbb' }}>Nhấn để nhập...</span>}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </Drawer>
     </div>
   )
 }
