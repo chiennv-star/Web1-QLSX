@@ -3882,6 +3882,214 @@ function PhanTichSanLuongTab() {
   )
 }
 
+// ─── Tab: Nhập Kho ───────────────────────────────────────────────────────────
+
+const TINH_TRANG_NK_OPTIONS = ['Done', 'Chốt']
+
+function NhapKhoTab() {
+  const [data,       setData]       = useState([])
+  const [loading,    setLoading]    = useState(false)
+  const [saving,     setSaving]     = useState({}) // { id: fieldKey }
+  const [dateRange,  setDateRange]  = useState([null, null])
+  const [editCell,   setEditCell]   = useState(null) // { id, field }
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = {}
+      if (dateRange[0]) params.fromDate = dateRange[0].format('YYYY-MM-DD')
+      if (dateRange[1]) params.toDate   = dateRange[1].format('YYYY-MM-DD')
+      const { data: res } = await api.get('/production/nhap-kho', { params })
+      setData(res)
+    } catch { message.error('Không tải được danh sách nhập kho') }
+    finally { setLoading(false) }
+  }, [dateRange])
+
+  useEffect(() => { load() }, [load])
+
+  const saveField = async (id, field, value) => {
+    setSaving(s => ({ ...s, [`${id}_${field}`]: true }))
+    try {
+      const body = { [field]: value != null ? String(value) : '' }
+      const { data: updated } = await api.patch(`/production/${id}/nhap-kho`, body)
+      setData(prev => prev.map(r => r.id === id ? { ...r, ...updated } : r))
+      setEditCell(null)
+    } catch { message.error('Cập nhật thất bại') }
+    finally { setSaving(s => { const n = { ...s }; delete n[`${id}_${field}`]; return n }) }
+  }
+
+  const fmtN = v => v != null ? Number(v).toLocaleString('vi-VN') : '—'
+
+  const tinhTrangColor = v => v === 'Done' ? '#16a34a' : v === 'Chốt' ? '#d46b08' : '#bbb'
+
+  const columns = [
+    {
+      title: '#', key: 'stt', width: 46, align: 'center', fixed: 'left',
+      render: (_, __, i) => <span style={{ color: '#bbb', fontSize: 11 }}>{i + 1}</span>,
+    },
+    {
+      title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 100, fixed: 'left',
+      render: v => <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{v || '—'}</span>,
+    },
+    {
+      title: 'Mã SP', dataIndex: 'maTp', key: 'maTp', width: 80, align: 'center',
+      render: v => v ? <Tag style={{ marginRight: 0 }}>{v}</Tag> : '—',
+    },
+    {
+      title: 'Tên sản phẩm', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 240, ellipsis: true,
+      render: v => <Tooltip title={v}><span>{v || '—'}</span></Tooltip>,
+    },
+    {
+      title: 'Số lô', dataIndex: 'lsx', key: 'lsx', width: 90, align: 'center',
+      render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v || '—'}</span>,
+    },
+    {
+      title: 'SL Nhập Kho', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 110, align: 'right',
+      render: v => <span style={{ fontWeight: 700, color: '#15803d' }}>{fmtN(v)}</span>,
+    },
+    {
+      title: 'Ngày xuất', dataIndex: 'ngayXuatKho', key: 'ngayXuatKho', width: 120, align: 'center',
+      render: (v, r) => {
+        const isEditing = editCell?.id === r.id && editCell?.field === 'ngayXuatKho'
+        const isSaving  = saving[`${r.id}_ngayXuatKho`]
+        if (isEditing) {
+          return (
+            <DatePicker
+              size="small" autoFocus style={{ width: 108 }}
+              defaultValue={v ? dayjs(v) : undefined}
+              format="DD/MM/YYYY"
+              onClick={e => e.stopPropagation()}
+              onChange={d => saveField(r.id, 'ngayXuatKho', d ? d.format('YYYY-MM-DD') : '')}
+              onBlur={() => !isSaving && setEditCell(null)}
+            />
+          )
+        }
+        return (
+          <div
+            onClick={e => { e.stopPropagation(); setEditCell({ id: r.id, field: 'ngayXuatKho' }) }}
+            style={{ cursor: 'pointer', color: v ? '#374151' : '#d9d9d9', textAlign: 'center' }}
+          >
+            {v ? dayjs(v).format('DD/MM/YYYY') : <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0 }}>Chọn ngày</Tag>}
+          </div>
+        )
+      },
+    },
+    {
+      title: 'Tình trạng', dataIndex: 'tinhTrangNhapKho', key: 'tinhTrangNhapKho', width: 110, align: 'center',
+      render: (v, r) => {
+        const isEditing = editCell?.id === r.id && editCell?.field === 'tinhTrangNhapKho'
+        if (isEditing) {
+          return (
+            <Select
+              size="small" autoFocus open style={{ width: 100 }}
+              defaultValue={v || undefined}
+              placeholder="Chọn..."
+              onClick={e => e.stopPropagation()}
+              onChange={val => saveField(r.id, 'tinhTrangNhapKho', val || '')}
+              onBlur={() => setEditCell(null)}
+              options={[
+                { value: '', label: '—' },
+                ...TINH_TRANG_NK_OPTIONS.map(o => ({ value: o, label: o })),
+              ]}
+            />
+          )
+        }
+        return (
+          <div
+            onClick={e => { e.stopPropagation(); setEditCell({ id: r.id, field: 'tinhTrangNhapKho' }) }}
+            style={{ cursor: 'pointer' }}
+          >
+            {v
+              ? <Tag color={v === 'Done' ? 'success' : 'warning'} style={{ marginRight: 0, fontWeight: 700 }}>{v}</Tag>
+              : <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0 }}>—</Tag>}
+          </div>
+        )
+      },
+    },
+    {
+      title: 'Tên NTH', dataIndex: 'tenNthNhapKho', key: 'tenNthNhapKho', width: 160, align: 'center',
+      render: (v, r) => {
+        const isEditing = editCell?.id === r.id && editCell?.field === 'tenNthNhapKho'
+        if (isEditing) {
+          return (
+            <Input
+              size="small" autoFocus style={{ width: 140 }}
+              defaultValue={v || ''}
+              onClick={e => e.stopPropagation()}
+              onPressEnter={e => saveField(r.id, 'tenNthNhapKho', e.target.value.trim())}
+              onBlur={e => { if (!saving[`${r.id}_tenNthNhapKho`]) saveField(r.id, 'tenNthNhapKho', e.target.value.trim()) }}
+            />
+          )
+        }
+        return (
+          <div
+            onClick={e => { e.stopPropagation(); setEditCell({ id: r.id, field: 'tenNthNhapKho' }) }}
+            style={{ cursor: 'pointer' }}
+          >
+            {v
+              ? <span style={{ color: '#374151' }}>{v}</span>
+              : <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0 }}>—</Tag>}
+          </div>
+        )
+      },
+    },
+  ]
+
+  const totalSl = data.reduce((s, r) => s + (r.tpNhapKho || 0), 0)
+  const doneCount = data.filter(r => r.tinhTrangNhapKho === 'Done').length
+  const chotCount = data.filter(r => r.tinhTrangNhapKho === 'Chốt').length
+
+  return (
+    <div style={{ padding: '12px 16px' }}>
+      {/* Filter bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+        <span style={{ fontWeight: 700, color: '#006666', fontSize: 14 }}>📦 Nhập Kho Thành Phẩm</span>
+        <RangePicker
+          size="small" format="DD/MM/YYYY"
+          value={dateRange}
+          onChange={r => setDateRange(r || [null, null])}
+          placeholder={['Từ ngày xuất', 'Đến ngày']}
+          allowEmpty={[true, true]}
+          style={{ width: 260 }}
+        />
+        <Button size="small" icon={<ReloadOutlined />} onClick={load} loading={loading}>Tải lại</Button>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center', fontSize: 13 }}>
+          <span>Tổng: <strong style={{ color: '#15803d' }}>{fmtN(totalSl)}</strong></span>
+          <Tag color="success">Done: {doneCount}</Tag>
+          <Tag color="warning">Chốt: {chotCount}</Tag>
+          <span style={{ color: '#bbb' }}>Chưa: {data.length - doneCount - chotCount}</span>
+        </div>
+      </div>
+
+      <Table
+        size="small"
+        rowKey="id"
+        columns={columns}
+        dataSource={data}
+        loading={loading}
+        scroll={{ x: 1100 }}
+        sticky={{ offsetHeader: TAB_BAR_H }}
+        pagination={{ pageSize: 200, showSizeChanger: true, pageSizeOptions: ['100', '200', '500'], showTotal: t => `Tổng ${t} lô`, size: 'small' }}
+        rowHoverable={false}
+        onRow={() => ({})}
+        summary={() => (
+          <Table.Summary fixed="bottom">
+            <Table.Summary.Row style={{ background: '#f0fdf4' }}>
+              <Table.Summary.Cell colSpan={5} align="right">
+                <strong style={{ color: '#374151' }}>Tổng ({data.length} lô)</strong>
+              </Table.Summary.Cell>
+              <Table.Summary.Cell align="right">
+                <strong style={{ color: '#15803d' }}>{fmtN(totalSl)}</strong>
+              </Table.Summary.Cell>
+              <Table.Summary.Cell colSpan={3} />
+            </Table.Summary.Row>
+          </Table.Summary>
+        )}
+      />
+    </div>
+  )
+}
+
 // ─── Page chính: wrapper Tabs ─────────────────────────────────────────────────
 
 export default function DailySanLuongPage() {
@@ -3994,6 +4202,15 @@ export default function DailySanLuongPage() {
         </span>
       ),
       children: <PhanTichSanLuongTab />,
+    }] : []),
+    ...(!manHinh ? [{
+      key: 'nhapkho',
+      label: (
+        <span>
+          📦 Nhập Kho
+        </span>
+      ),
+      children: <NhapKhoTab />,
     }] : []),
   ]
 

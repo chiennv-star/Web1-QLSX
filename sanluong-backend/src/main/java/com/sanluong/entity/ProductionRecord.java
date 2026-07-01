@@ -163,6 +163,15 @@ public class ProductionRecord {
     @Column(name = "dg_qa_khac")
     private Integer dgQaKhac;
 
+    @Column(name = "ngay_xuat_kho")
+    private java.time.LocalDate ngayXuatKho;
+
+    @Column(name = "tinh_trang_nhap_kho", length = 20)
+    private String tinhTrangNhapKho;
+
+    @Column(name = "ten_nth_nhap_kho", length = 200)
+    private String tenNthNhapKho;
+
     @Column(name = "phat_lenh")
     private Boolean phatLenh;
 
@@ -356,6 +365,12 @@ public class ProductionRecord {
     public void setDgQaLuuMau(Integer dgQaLuuMau) { this.dgQaLuuMau = dgQaLuuMau; }
     public Integer getDgQaKhac() { return dgQaKhac; }
     public void setDgQaKhac(Integer dgQaKhac) { this.dgQaKhac = dgQaKhac; }
+    public java.time.LocalDate getNgayXuatKho() { return ngayXuatKho; }
+    public void setNgayXuatKho(java.time.LocalDate ngayXuatKho) { this.ngayXuatKho = ngayXuatKho; }
+    public String getTinhTrangNhapKho() { return tinhTrangNhapKho; }
+    public void setTinhTrangNhapKho(String tinhTrangNhapKho) { this.tinhTrangNhapKho = tinhTrangNhapKho; }
+    public String getTenNthNhapKho() { return tenNthNhapKho; }
+    public void setTenNthNhapKho(String tenNthNhapKho) { this.tenNthNhapKho = tenNthNhapKho; }
     public Boolean getPhatLenh() { return phatLenh; }
     public void setPhatLenh(Boolean phatLenh) { this.phatLenh = phatLenh; }
     public Boolean getHidden() { return hidden; }

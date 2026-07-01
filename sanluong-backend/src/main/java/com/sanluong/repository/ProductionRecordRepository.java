@@ -231,4 +231,18 @@ public interface ProductionRecordRepository extends JpaRepository<ProductionReco
             @Param("maDonHang") String maDonHang,
             @Param("now")       LocalDateTime now,
             @Param("username")  String username);
+
+    /** Danh sách bản ghi có tpNhapKho, lọc theo ngayXuatKho nếu cung cấp */
+    @Query("""
+        SELECT r FROM ProductionRecord r
+        WHERE r.deletedAt IS NULL
+          AND (r.hidden IS NULL OR r.hidden = false)
+          AND r.tpNhapKho IS NOT NULL
+          AND (:fromDate IS NULL OR r.ngayXuatKho IS NULL OR r.ngayXuatKho >= :fromDate)
+          AND (:toDate   IS NULL OR r.ngayXuatKho IS NULL OR r.ngayXuatKho <= :toDate)
+        ORDER BY r.ngayXuatKho DESC NULLS LAST, r.id DESC
+        """)
+    List<ProductionRecord> findNhapKho(
+            @Param("fromDate") java.time.LocalDate fromDate,
+            @Param("toDate")   java.time.LocalDate toDate);
 }

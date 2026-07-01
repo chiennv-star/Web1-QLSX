@@ -186,6 +186,23 @@ public class ProductionController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/nhap-kho")
+    public ResponseEntity<List<ProductionRecord>> getNhapKho(
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate) {
+        java.time.LocalDate from = fromDate != null && !fromDate.isBlank() ? java.time.LocalDate.parse(fromDate) : null;
+        java.time.LocalDate to   = toDate   != null && !toDate.isBlank()   ? java.time.LocalDate.parse(toDate)   : null;
+        return ResponseEntity.ok(productionService.getNhapKho(from, to));
+    }
+
+    @PatchMapping("/{id}/nhap-kho")
+    public ResponseEntity<ProductionRecord> updateNhapKho(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body,
+            Authentication auth) {
+        return ResponseEntity.ok(productionService.updateNhapKho(id, body, auth.getName()));
+    }
+
     @GetMapping("/export")
     public ResponseEntity<byte[]> exportExcel(
             @RequestParam(required = false) String maTp,

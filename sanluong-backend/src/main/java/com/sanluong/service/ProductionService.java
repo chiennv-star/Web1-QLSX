@@ -462,6 +462,29 @@ public class ProductionService {
         repository.save(r);
     }
 
+    public List<ProductionRecord> getNhapKho(java.time.LocalDate fromDate, java.time.LocalDate toDate) {
+        return repository.findNhapKho(fromDate, toDate);
+    }
+
+    public ProductionRecord updateNhapKho(Long id, java.util.Map<String, String> body, String username) {
+        ProductionRecord r = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));
+        if (body.containsKey("ngayXuatKho")) {
+            String v = body.get("ngayXuatKho");
+            r.setNgayXuatKho(v != null && !v.isBlank() ? java.time.LocalDate.parse(v) : null);
+        }
+        if (body.containsKey("tinhTrangNhapKho")) {
+            String v = body.get("tinhTrangNhapKho");
+            r.setTinhTrangNhapKho(v != null && !v.isBlank() ? v : null);
+        }
+        if (body.containsKey("tenNthNhapKho")) {
+            String v = body.get("tenNthNhapKho");
+            r.setTenNthNhapKho(v != null && !v.isBlank() ? v : null);
+        }
+        r.setUpdatedBy(username);
+        return repository.save(r);
+    }
+
     public ProductionRecord updateGhiChuHieuSuat(Long id, String ghiChu) {
         ProductionRecord r = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));
