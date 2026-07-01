@@ -3177,6 +3177,23 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         await api.patch(`/work-schedule/${id}/phong-thuc-hien`, { phongThucHien: val || null })
       } else if (field === 'qaLayMau') {
         await api.patch(`/work-schedule/${id}/patch-field`, { field: 'qaLayMau', value: val ?? null })
+      } else if (field === 'qaKiemNghiem' || field === 'qaLuuMau' || field === 'qaKhac') {
+        await api.patch(`/work-schedule/${id}/patch-field`, { field, value: val ?? null })
+        setData(prev => prev.map(r => {
+          if (r.id !== id) return r
+          const updated = { ...r, [field]: val ?? null }
+          updated.qaLayMau = (updated.qaKiemNghiem || 0) + (updated.qaLuuMau || 0) + (updated.qaKhac || 0)
+          return updated
+        }))
+        setDetailSchedule(prev => {
+          if (prev?.id !== id) return prev
+          const updated = { ...prev, [field]: val ?? null }
+          updated.qaLayMau = (updated.qaKiemNghiem || 0) + (updated.qaLuuMau || 0) + (updated.qaKhac || 0)
+          return updated
+        })
+        setInlineEdit(null)
+        parentOnSaved?.()
+        return
       } else if (field === 'tpNhapKho') {
         await api.patch(`/work-schedule/${id}/patch-field`, { field: 'tpNhapKho', value: val ?? null })
       }
@@ -3422,28 +3439,36 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         )
       }
     },
-    {
-      title: 'QA Lấy mẫu', dataIndex: 'qaLayMau', key: 'qaLayMau', width: 96, align: 'center',
+    ...[
+      { title: 'KN', fieldKey: 'qaKiemNghiem', label: 'KN' },
+      { title: 'Lưu mẫu', fieldKey: 'qaLuuMau', label: 'LM' },
+      { title: 'Khác', fieldKey: 'qaKhac', label: 'KH' },
+    ].map(({ title, fieldKey, label }) => ({
+      title,
+      dataIndex: fieldKey,
+      key: fieldKey,
+      width: 88,
+      align: 'center',
       render: (v, record) => {
         const canEdit = canEditStage(congDoan)
-        const isEditing = inlineEdit?.id === record.id && inlineEdit?.field === 'qaLayMau'
+        const isEditing = inlineEdit?.id === record.id && inlineEdit?.field === fieldKey
         if (isEditing) {
           return (
             <InputNumber
               size="small" autoFocus min={0} step={1}
               defaultValue={v ?? undefined}
-              style={{ width: 80 }}
+              style={{ width: 72 }}
               formatter={val => (val != null && val !== '') ? Number(val).toLocaleString('vi-VN') : ''}
               parser={val => val ? val.replace(/[^\d]/g, '') : ''}
               onClick={e => e.stopPropagation()}
               onPressEnter={e => {
                 const num = e.target.value ? parseInt(e.target.value.replace(/[^\d]/g, ''), 10) : null
-                saveInlineEdit(record.id, 'qaLayMau', isNaN(num) ? null : num)
+                saveInlineEdit(record.id, fieldKey, isNaN(num) ? null : num)
               }}
               onBlur={e => {
                 if (!inlineSaving) {
                   const num = e.target.value ? parseInt(e.target.value.replace(/[^\d]/g, ''), 10) : null
-                  saveInlineEdit(record.id, 'qaLayMau', isNaN(num) ? null : num)
+                  saveInlineEdit(record.id, fieldKey, isNaN(num) ? null : num)
                 }
               }}
             />
@@ -3451,17 +3476,23 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         }
         return (
           <div
-            onClick={canEdit ? e => { e.stopPropagation(); setInlineEdit({ id: record.id, field: 'qaLayMau' }) } : undefined}
+            onClick={canEdit ? e => { e.stopPropagation(); setInlineEdit({ id: record.id, field: fieldKey }) } : undefined}
             style={{ cursor: canEdit ? 'pointer' : 'default', textAlign: 'right' }}
           >
             {v != null
               ? <span style={{ fontWeight: 600, color: '#0891b2' }}>{Number(v).toLocaleString('vi-VN')}</span>
               : canEdit
-                ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0, cursor: 'pointer' }}>Nhập QA</Tag>
+                ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0, cursor: 'pointer' }}>{label}</Tag>
                 : <span style={{ color: '#d9d9d9' }}>—</span>}
           </div>
         )
       },
+    })),
+    {
+      title: 'Tổng QA', dataIndex: 'qaLayMau', key: 'qaLayMau', width: 80, align: 'center',
+      render: v => v != null
+        ? <span style={{ fontWeight: 700, color: '#0891b2' }}>{Number(v).toLocaleString('vi-VN')}</span>
+        : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
     {
       title: 'SL Nhập Kho', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 100, align: 'center',

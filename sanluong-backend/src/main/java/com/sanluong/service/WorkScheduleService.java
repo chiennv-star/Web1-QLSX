@@ -539,6 +539,9 @@ public class WorkScheduleService {
                     // OR logic: done nếu bất kỳ PCPL1 hoặc PCPL2 nào đã done
                     if ("done".equals(trangThai) || !"done".equals(r.getPcTrangThai())) r.setPcTrangThai(trangThai);
                     r.setPlQaLayMau(w.getQaLayMau());
+                    r.setPlQaKiemNghiem(w.getQaKiemNghiem());
+                    r.setPlQaLuuMau(w.getQaLuuMau());
+                    r.setPlQaKhac(w.getQaKhac());
                     int plPcpl1 = r.getPlQaLayMau() != null ? r.getPlQaLayMau() : 0;
                     int dgPcpl1 = r.getDgQaLayMau() != null ? r.getDgQaLayMau() : 0;
                     r.setQaLayMau(plPcpl1 + dgPcpl1 > 0 ? plPcpl1 + dgPcpl1 : null);
@@ -548,6 +551,9 @@ public class WorkScheduleService {
                     if (w.getSlPl()   != null) r.setPcPl(String.valueOf(w.getSlPl().intValue()));
                     r.setPlTrangThai(trangThai);
                     r.setPlQaLayMau(w.getQaLayMau());
+                    r.setPlQaKiemNghiem(w.getQaKiemNghiem());
+                    r.setPlQaLuuMau(w.getQaLuuMau());
+                    r.setPlQaKhac(w.getQaKhac());
                     int plPl = r.getPlQaLayMau() != null ? r.getPlQaLayMau() : 0;
                     int dgPl = r.getDgQaLayMau() != null ? r.getDgQaLayMau() : 0;
                     r.setQaLayMau(plPl + dgPl > 0 ? plPl + dgPl : null);
@@ -557,6 +563,9 @@ public class WorkScheduleService {
                     if (w.getSlDg()   != null) r.setDg2(String.valueOf(w.getSlDg().intValue()));
                     r.setDgTrangThai(trangThai);
                     r.setDgQaLayMau(w.getQaLayMau());
+                    r.setDgQaKiemNghiem(w.getQaKiemNghiem());
+                    r.setDgQaLuuMau(w.getQaLuuMau());
+                    r.setDgQaKhac(w.getQaKhac());
                     int plDg = r.getPlQaLayMau() != null ? r.getPlQaLayMau() : 0;
                     int dgDg = r.getDgQaLayMau() != null ? r.getDgQaLayMau() : 0;
                     r.setQaLayMau(plDg + dgDg > 0 ? plDg + dgDg : null);
@@ -596,6 +605,27 @@ public class WorkScheduleService {
             case "slDg"     -> w.setSlDg(value);
             case "slCc"     -> w.setSlCc(value);
             case "qaLayMau" -> w.setQaLayMau(value == null ? null : value.intValue());
+            case "qaKiemNghiem" -> {
+                w.setQaKiemNghiem(value != null ? value.intValue() : null);
+                int kn = w.getQaKiemNghiem() != null ? w.getQaKiemNghiem() : 0;
+                int lm = w.getQaLuuMau()     != null ? w.getQaLuuMau()     : 0;
+                int kh = w.getQaKhac()       != null ? w.getQaKhac()       : 0;
+                w.setQaLayMau(kn + lm + kh);
+            }
+            case "qaLuuMau" -> {
+                w.setQaLuuMau(value != null ? value.intValue() : null);
+                int kn = w.getQaKiemNghiem() != null ? w.getQaKiemNghiem() : 0;
+                int lm = w.getQaLuuMau()     != null ? w.getQaLuuMau()     : 0;
+                int kh = w.getQaKhac()       != null ? w.getQaKhac()       : 0;
+                w.setQaLayMau(kn + lm + kh);
+            }
+            case "qaKhac" -> {
+                w.setQaKhac(value != null ? value.intValue() : null);
+                int kn = w.getQaKiemNghiem() != null ? w.getQaKiemNghiem() : 0;
+                int lm = w.getQaLuuMau()     != null ? w.getQaLuuMau()     : 0;
+                int kh = w.getQaKhac()       != null ? w.getQaKhac()       : 0;
+                w.setQaLayMau(kn + lm + kh);
+            }
             default -> throw new IllegalArgumentException("Unknown patchable field: " + field);
         }
         autoApplyDone(w);

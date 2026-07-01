@@ -142,8 +142,26 @@ public class ProductionRecord {
     @Column(name = "pl_qa_lay_mau")
     private Integer plQaLayMau;
 
+    @Column(name = "pl_qa_kiem_nghiem")
+    private Integer plQaKiemNghiem;
+
+    @Column(name = "pl_qa_luu_mau")
+    private Integer plQaLuuMau;
+
+    @Column(name = "pl_qa_khac")
+    private Integer plQaKhac;
+
     @Column(name = "dg_qa_lay_mau")
     private Integer dgQaLayMau;
+
+    @Column(name = "dg_qa_kiem_nghiem")
+    private Integer dgQaKiemNghiem;
+
+    @Column(name = "dg_qa_luu_mau")
+    private Integer dgQaLuuMau;
+
+    @Column(name = "dg_qa_khac")
+    private Integer dgQaKhac;
 
     @Column(name = "phat_lenh")
     private Boolean phatLenh;
@@ -324,8 +342,20 @@ public class ProductionRecord {
     public void setQaLayMau(Integer qaLayMau) { this.qaLayMau = qaLayMau; }
     public Integer getPlQaLayMau() { return plQaLayMau; }
     public void setPlQaLayMau(Integer plQaLayMau) { this.plQaLayMau = plQaLayMau; }
+    public Integer getPlQaKiemNghiem() { return plQaKiemNghiem; }
+    public void setPlQaKiemNghiem(Integer plQaKiemNghiem) { this.plQaKiemNghiem = plQaKiemNghiem; }
+    public Integer getPlQaLuuMau() { return plQaLuuMau; }
+    public void setPlQaLuuMau(Integer plQaLuuMau) { this.plQaLuuMau = plQaLuuMau; }
+    public Integer getPlQaKhac() { return plQaKhac; }
+    public void setPlQaKhac(Integer plQaKhac) { this.plQaKhac = plQaKhac; }
     public Integer getDgQaLayMau() { return dgQaLayMau; }
     public void setDgQaLayMau(Integer dgQaLayMau) { this.dgQaLayMau = dgQaLayMau; }
+    public Integer getDgQaKiemNghiem() { return dgQaKiemNghiem; }
+    public void setDgQaKiemNghiem(Integer dgQaKiemNghiem) { this.dgQaKiemNghiem = dgQaKiemNghiem; }
+    public Integer getDgQaLuuMau() { return dgQaLuuMau; }
+    public void setDgQaLuuMau(Integer dgQaLuuMau) { this.dgQaLuuMau = dgQaLuuMau; }
+    public Integer getDgQaKhac() { return dgQaKhac; }
+    public void setDgQaKhac(Integer dgQaKhac) { this.dgQaKhac = dgQaKhac; }
     public Boolean getPhatLenh() { return phatLenh; }
     public void setPhatLenh(Boolean phatLenh) { this.phatLenh = phatLenh; }
     public Boolean getHidden() { return hidden; }
