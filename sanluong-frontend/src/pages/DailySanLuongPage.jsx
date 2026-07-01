@@ -3890,18 +3890,22 @@ const TINH_TRANG_NK_OPTIONS = ['Done', 'Chốt']
 // ─── Modal thêm sản phẩm nhập kho ────────────────────────────────────────────
 
 function AddNhapKhoModal({ open, onClose, onAdded }) {
-  const [searchVal, setSearchVal] = useState('')
-  const [searching, setSearching] = useState(false)
-  const [options,   setOptions]   = useState([])
-  const [selected,  setSelected]  = useState(null)
-  const [slNK,      setSlNK]      = useState(null)
-  const [ngayXuat,  setNgayXuat]  = useState(null)
-  const [tinhTrang, setTinhTrang] = useState(undefined)
-  const [tenNth,    setTenNth]    = useState('')
-  const [ghiChu,    setGhiChu]    = useState('')
-  const [saving,    setSaving]    = useState(false)
+  const [searchVal,   setSearchVal]   = useState('')
+  const [searching,   setSearching]   = useState(false)
+  const [options,     setOptions]     = useState([])
+  const [selProduct,  setSelProduct]  = useState(null)   // { maBravo, maTp, tienTrinh }
+  const [lots,        setLots]        = useState([])
+  const [lotsLoading, setLotsLoading] = useState(false)
+  const [selected,    setSelected]    = useState(null)   // ProductionRecord đã chọn lô
+  const [slNK,        setSlNK]        = useState(null)
+  const [ngayXuat,    setNgayXuat]    = useState(null)
+  const [tinhTrang,   setTinhTrang]   = useState(undefined)
+  const [tenNth,      setTenNth]      = useState('')
+  const [ghiChu,      setGhiChu]      = useState('')
+  const [saving,      setSaving]      = useState(false)
   const debounceRef = useRef(null)
 
+  // Bước 1: tìm sản phẩm — deduplicate theo maBravo
   const doSearch = useCallback((query) => {
     if (!query.trim()) { setOptions([]); return }
     clearTimeout(debounceRef.current)
@@ -3909,23 +3913,22 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
       setSearching(true)
       try {
         const [r1, r2] = await Promise.allSettled([
-          api.get('/production', { params: { maBravo: query, size: 15 } }),
-          api.get('/production', { params: { tienTrinh: query, size: 15 } }),
+          api.get('/production', { params: { maBravo: query, size: 30 } }),
+          api.get('/production', { params: { tienTrinh: query, size: 30 } }),
         ])
         const items = [
           ...(r1.status === 'fulfilled' ? r1.value.data.content : []),
           ...(r2.status === 'fulfilled' ? r2.value.data.content : []),
         ]
-        const seen = new Set()
-        const unique = items.filter(item => { if (seen.has(item.id)) return false; seen.add(item.id); return true })
-        setOptions(unique.map(item => ({
-          value: String(item.id),
+        const seen = new Map()
+        items.forEach(item => { if (!seen.has(item.maBravo)) seen.set(item.maBravo, item) })
+        setOptions([...seen.values()].map(item => ({
+          value: item.maBravo,
           label: (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 460 }}>
               <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', minWidth: 72 }}>{item.maBravo}</span>
               <Tag style={{ marginRight: 0, fontSize: 11, lineHeight: '16px' }}>{item.maTp}</Tag>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, color: '#374151' }}>{item.tienTrinh}</span>
-              <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#9ca3af', whiteSpace: 'nowrap' }}>Lô: {item.lsx}</span>
             </div>
           ),
           record: item,
@@ -3935,10 +3938,27 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
     }, 300)
   }, [])
 
-  const handleSelect = (_val, option) => {
+  // Bước 1 → chọn sản phẩm → tải danh sách lô
+  const handleSelectProduct = (_val, option) => {
     const rec = option.record
-    setSelected(rec)
+    setSelProduct({ maBravo: rec.maBravo, maTp: rec.maTp, tienTrinh: rec.tienTrinh })
     setSearchVal(`${rec.maBravo} — ${rec.tienTrinh}`)
+    setSelected(null)
+    setLots([])
+    setSlNK(null); setNgayXuat(null); setTinhTrang(undefined); setTenNth(''); setGhiChu('')
+    // Tải tất cả lô của sản phẩm này
+    setLotsLoading(true)
+    api.get('/production', { params: { maBravo: rec.maBravo, size: 200 } })
+      .then(({ data: res }) => setLots(res.content || []))
+      .catch(() => {})
+      .finally(() => setLotsLoading(false))
+  }
+
+  // Bước 2 → chọn lô → điền form
+  const handleSelectLot = (lotId) => {
+    const rec = lots.find(r => String(r.id) === String(lotId))
+    if (!rec) return
+    setSelected(rec)
     if (rec.tpNhapKho   != null) setSlNK(rec.tpNhapKho)
     if (rec.ngayXuatKho != null) setNgayXuat(dayjs(rec.ngayXuatKho))
     if (rec.tinhTrangNhapKho)    setTinhTrang(rec.tinhTrangNhapKho)
@@ -3947,7 +3967,7 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
   }
 
   const handleSave = async () => {
-    if (!selected) return message.warning('Chưa chọn sản phẩm')
+    if (!selected) return message.warning('Chưa chọn số lô')
     if (slNK == null) return message.warning('Nhập SL Nhập Kho')
     setSaving(true)
     try {
@@ -3967,7 +3987,7 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
   }
 
   const doClose = () => {
-    setSearchVal(''); setOptions([]); setSelected(null)
+    setSearchVal(''); setOptions([]); setSelProduct(null); setLots([]); setSelected(null)
     setSlNK(null); setNgayXuat(null); setTinhTrang(undefined); setTenNth(''); setGhiChu('')
     onClose()
   }
@@ -3984,20 +4004,70 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
       destroyOnClose
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 4 }}>
+
+        {/* Bước 1: Tìm sản phẩm */}
         <div>
-          <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Tìm sản phẩm <span style={{ color: '#ef4444' }}>*</span></div>
+          <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
+            <span style={{ background: '#1677ff', color: '#fff', borderRadius: '50%', width: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, marginRight: 6 }}>1</span>
+            Tìm sản phẩm <span style={{ color: '#ef4444' }}>*</span>
+          </div>
           <AutoComplete
             style={{ width: '100%' }}
             options={options}
             value={searchVal}
-            onChange={val => { setSearchVal(val); setSelected(null); doSearch(val) }}
-            onSelect={handleSelect}
+            onChange={val => {
+              setSearchVal(val)
+              setSelProduct(null); setLots([]); setSelected(null)
+              setSlNK(null); setNgayXuat(null); setTinhTrang(undefined); setTenNth(''); setGhiChu('')
+              doSearch(val)
+            }}
+            onSelect={handleSelectProduct}
             placeholder="Gõ Mã Bravo hoặc Tên sản phẩm..."
             notFoundContent={searching ? <Spin size="small" /> : searchVal ? 'Không tìm thấy' : null}
             popupMatchSelectWidth={500}
           />
         </div>
 
+        {/* Bước 2: Chọn số lô */}
+        {selProduct && (
+          <div>
+            <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
+              <span style={{ background: lots.length ? '#1677ff' : '#d1d5db', color: '#fff', borderRadius: '50%', width: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, marginRight: 6 }}>2</span>
+              Chọn số lô <span style={{ color: '#ef4444' }}>*</span>
+              {lots.length > 0 && <span style={{ fontWeight: 400, color: '#6b7280', marginLeft: 6, fontSize: 12 }}>({lots.length} lô)</span>}
+            </div>
+            <Select
+              style={{ width: '100%' }}
+              placeholder={lotsLoading ? 'Đang tải lô...' : 'Chọn số lô...'}
+              loading={lotsLoading}
+              value={selected ? String(selected.id) : undefined}
+              onChange={handleSelectLot}
+              showSearch
+              optionFilterProp="label"
+              notFoundContent={lotsLoading ? <Spin size="small" /> : 'Không có lô nào'}
+              options={lots.map(r => ({
+                value: String(r.id),
+                label: `Lô ${r.lsx}`,
+                render: r,
+              }))}
+              optionRender={opt => {
+                const r = opt.data.render
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 700, minWidth: 70 }}>Lô {r.lsx}</span>
+                    <span style={{ color: '#6b7280' }}>KH: {r.soLuong?.toLocaleString('vi-VN') ?? '—'}</span>
+                    {r.tpNhapKho != null
+                      ? <Tag color="green" style={{ marginLeft: 'auto', fontSize: 11 }}>Đã NK: {r.tpNhapKho.toLocaleString('vi-VN')}</Tag>
+                      : <Tag color="default" style={{ marginLeft: 'auto', fontSize: 11 }}>Chưa NK</Tag>
+                    }
+                  </div>
+                )
+              }}
+            />
+          </div>
+        )}
+
+        {/* Thông tin lô đã chọn */}
         {selected && (
           <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, padding: '8px 12px', fontSize: 12, color: '#374151', display: 'flex', flexDirection: 'column', gap: 2 }}>
             <div>
@@ -4015,49 +4085,53 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div>
-            <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13 }}>SL Nhập Kho <span style={{ color: '#ef4444' }}>*</span></div>
-            <InputNumber
-              style={{ width: '100%' }} min={0} step={1}
-              value={slNK} onChange={setSlNK}
-              formatter={val => val != null ? Number(val).toLocaleString('vi-VN') : ''}
-              parser={val => val ? val.replace(/[^\d]/g, '') : ''}
-              placeholder="0"
-            />
+        {/* Bước 3: Nhập thông tin nhập kho */}
+        {selected && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13 }}>SL Nhập Kho <span style={{ color: '#ef4444' }}>*</span></div>
+              <InputNumber
+                style={{ width: '100%' }} min={0} step={1}
+                value={slNK} onChange={setSlNK}
+                formatter={val => val != null ? Number(val).toLocaleString('vi-VN') : ''}
+                parser={val => val ? val.replace(/[^\d]/g, '') : ''}
+                placeholder="0"
+                autoFocus
+              />
+            </div>
+            <div>
+              <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Ngày xuất</div>
+              <DatePicker
+                style={{ width: '100%' }} format="DD/MM/YYYY"
+                value={ngayXuat} onChange={setNgayXuat}
+                placeholder="Chọn ngày"
+              />
+            </div>
+            <div>
+              <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Tình trạng</div>
+              <Select
+                style={{ width: '100%' }} value={tinhTrang} onChange={setTinhTrang}
+                placeholder="— Chọn —" allowClear
+                options={TINH_TRANG_NK_OPTIONS.map(o => ({ value: o, label: o }))}
+              />
+            </div>
+            <div>
+              <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Tên NTH</div>
+              <Input
+                value={tenNth} onChange={e => setTenNth(e.target.value)}
+                placeholder="Nhập tên NTH"
+                onPressEnter={handleSave}
+              />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Ghi chú</div>
+              <Input.TextArea
+                rows={2} value={ghiChu} onChange={e => setGhiChu(e.target.value)}
+                placeholder="Ghi chú thêm nếu cần..."
+              />
+            </div>
           </div>
-          <div>
-            <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Ngày xuất</div>
-            <DatePicker
-              style={{ width: '100%' }} format="DD/MM/YYYY"
-              value={ngayXuat} onChange={setNgayXuat}
-              placeholder="Chọn ngày"
-            />
-          </div>
-          <div>
-            <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Tình trạng</div>
-            <Select
-              style={{ width: '100%' }} value={tinhTrang} onChange={setTinhTrang}
-              placeholder="— Chọn —" allowClear
-              options={TINH_TRANG_NK_OPTIONS.map(o => ({ value: o, label: o }))}
-            />
-          </div>
-          <div>
-            <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Tên NTH</div>
-            <Input
-              value={tenNth} onChange={e => setTenNth(e.target.value)}
-              placeholder="Nhập tên NTH"
-              onPressEnter={handleSave}
-            />
-          </div>
-          <div style={{ gridColumn: '1 / -1' }}>
-            <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Ghi chú</div>
-            <Input.TextArea
-              rows={2} value={ghiChu} onChange={e => setGhiChu(e.target.value)}
-              placeholder="Ghi chú thêm nếu cần..."
-            />
-          </div>
-        </div>
+        )}
       </div>
     </Modal>
   )
