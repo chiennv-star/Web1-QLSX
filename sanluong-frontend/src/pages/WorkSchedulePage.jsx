@@ -157,10 +157,6 @@ const STAGE_CONFIG = {
   DG: {
     label: 'Lịch sản xuất ĐG',
     extraTableCols: [
-      { title: 'TP NKHO', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 88, align: 'center',
-        render: v => v != null
-          ? <span style={{ fontWeight: 700, color: '#15803d' }}>{Number(v).toLocaleString('vi-VN')}</span>
-          : <span style={{ color: '#d9d9d9' }}>—</span> },
       { title: 'SL ĐG', dataIndex: 'slDg', key: 'slDg', width: 90, align: 'center', render: slExceedRender },
       { title: 'Công ĐG', dataIndex: 'congDg', key: 'congDg', width: 82, align: 'center', render: fmtNum }
     ],
@@ -1093,6 +1089,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
           <thead>
             <tr>
               {['Mã Bravo', 'Mã sản phẩm', 'Mã ĐH', 'Tiến Trình', 'Số Lô', 'Số Lượng', 'Sản Lượng', 'Tổng Công', 'Năng Suất', 'NS Trung Bình',
+                ...(schedule?.congDoan === 'DG' ? ['SL Nhập Kho'] : []),
                 'Ngày Bắt đầu', 'Ngày Kết thúc', 'Tổng Số Ngày TH'].map(h => (
                 <th key={h} style={headStyle}>{h}</th>
               ))}
@@ -1121,6 +1118,11 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
               <td style={{ ...cellStyle, textAlign: 'right', fontWeight: 700, color: '#722ed1' }}>
                 {nsTrungBinh != null ? Math.round(nsTrungBinh).toLocaleString('vi-VN') : '—'}
               </td>
+              {schedule?.congDoan === 'DG' && (
+                <td style={{ ...cellStyle, textAlign: 'right', fontWeight: 700, color: '#15803d' }}>
+                  {schedule?.tpNhapKho != null ? Number(schedule.tpNhapKho).toLocaleString('vi-VN') : '—'}
+                </td>
+              )}
               <td style={{ ...cellStyle, textAlign: 'center', color: '#1677ff', fontWeight: 600 }}>
                 {ngayBatDau ? ngayBatDau.format('DD/MM/YYYY') : '—'}
               </td>
@@ -3175,8 +3177,11 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         await api.patch(`/work-schedule/${id}/phong-thuc-hien`, { phongThucHien: val || null })
       } else if (field === 'qaLayMau') {
         await api.patch(`/work-schedule/${id}/patch-field`, { field: 'qaLayMau', value: val ?? null })
+      } else if (field === 'tpNhapKho') {
+        await api.patch(`/work-schedule/${id}/patch-field`, { field: 'tpNhapKho', value: val ?? null })
       }
       setData(prev => prev.map(r => r.id === id ? { ...r, [field]: val ?? null } : r))
+      setDetailSchedule(prev => prev?.id === id ? { ...prev, [field]: val ?? null } : prev)
       setInlineEdit(null)
       parentOnSaved?.()
     } catch {
@@ -3453,6 +3458,48 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
               ? <span style={{ fontWeight: 600, color: '#0891b2' }}>{Number(v).toLocaleString('vi-VN')}</span>
               : canEdit
                 ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0, cursor: 'pointer' }}>Nhập QA</Tag>
+                : <span style={{ color: '#d9d9d9' }}>—</span>}
+          </div>
+        )
+      },
+    },
+    {
+      title: 'SL Nhập Kho', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 100, align: 'center',
+      hidden: congDoan !== 'DG',
+      render: (v, record) => {
+        const canEdit = canEditStage(congDoan)
+        const isEditing = inlineEdit?.id === record.id && inlineEdit?.field === 'tpNhapKho'
+        if (isEditing) {
+          return (
+            <InputNumber
+              size="small" autoFocus min={0} step={1}
+              defaultValue={v ?? undefined}
+              style={{ width: 80 }}
+              formatter={val => (val != null && val !== '') ? Number(val).toLocaleString('vi-VN') : ''}
+              parser={val => val ? val.replace(/[^\d]/g, '') : ''}
+              onClick={e => e.stopPropagation()}
+              onPressEnter={e => {
+                const num = e.target.value ? parseInt(e.target.value.replace(/[^\d]/g, ''), 10) : null
+                saveInlineEdit(record.id, 'tpNhapKho', isNaN(num) ? null : num)
+              }}
+              onBlur={e => {
+                if (!inlineSaving) {
+                  const num = e.target.value ? parseInt(e.target.value.replace(/[^\d]/g, ''), 10) : null
+                  saveInlineEdit(record.id, 'tpNhapKho', isNaN(num) ? null : num)
+                }
+              }}
+            />
+          )
+        }
+        return (
+          <div
+            onClick={canEdit ? e => { e.stopPropagation(); setInlineEdit({ id: record.id, field: 'tpNhapKho' }) } : undefined}
+            style={{ cursor: canEdit ? 'pointer' : 'default', textAlign: 'right' }}
+          >
+            {v != null
+              ? <span style={{ fontWeight: 700, color: '#15803d' }}>{Number(v).toLocaleString('vi-VN')}</span>
+              : canEdit
+                ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0, cursor: 'pointer' }}>Nhập NK</Tag>
                 : <span style={{ color: '#d9d9d9' }}>—</span>}
           </div>
         )
