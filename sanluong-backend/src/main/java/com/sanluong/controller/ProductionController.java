@@ -186,6 +186,23 @@ public class ProductionController {
         return ResponseEntity.ok(result);
     }
 
+    /** Tạo bản ghi nhập kho mới bằng cách clone thông tin sản phẩm từ bản ghi nguồn */
+    @PostMapping("/{sourceId}/nhap-kho-entry")
+    public ResponseEntity<ProductionRecord> createNhapKhoEntry(
+            @PathVariable Long sourceId,
+            @RequestBody Map<String, String> body,
+            Authentication auth) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(productionService.createNhapKhoEntry(sourceId, body, auth.getName()));
+    }
+
+    /** Xóa hàng khỏi danh sách nhập kho (xóa mềm nếu là bản ghi nhập kho đơn thuần, ngược lại chỉ xóa các trường NK) */
+    @DeleteMapping("/{id}/nhap-kho")
+    public ResponseEntity<Void> removeFromNhapKho(@PathVariable Long id, Authentication auth) {
+        productionService.removeFromNhapKho(id, auth.getName());
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/nhap-kho")
     public ResponseEntity<List<ProductionRecord>> getNhapKho(
             @RequestParam(required = false) String fromDate,

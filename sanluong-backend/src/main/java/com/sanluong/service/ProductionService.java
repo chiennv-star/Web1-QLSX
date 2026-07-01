@@ -466,6 +466,64 @@ public class ProductionService {
         return repository.findNhapKho(fromDate, toDate);
     }
 
+    public ProductionRecord createNhapKhoEntry(Long sourceId, java.util.Map<String, String> body, String username) {
+        ProductionRecord src = repository.findById(sourceId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + sourceId));
+        ProductionRecord clone = new ProductionRecord();
+        clone.setMaBravo(src.getMaBravo());
+        clone.setMaTp(src.getMaTp());
+        clone.setTienTrinh(src.getTienTrinh());
+        clone.setLsx(src.getLsx());
+        clone.setSoLuong(src.getSoLuong());
+        clone.setMaDonHang(src.getMaDonHang());
+        clone.setCreatedAt(java.time.LocalDateTime.now());
+        clone.setCreatedBy(username);
+        applyNhapKhoFields(clone, body);
+        return repository.save(clone);
+    }
+
+    public void removeFromNhapKho(Long id, String username) {
+        ProductionRecord r = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));
+        boolean isNhapKhoOnly = r.getPhatLenh() == null || !r.getPhatLenh();
+        boolean hasNoSlData = r.getSlPc() == null && r.getDgTrangThai() == null && r.getPcTrangThai() == null;
+        if (isNhapKhoOnly && hasNoSlData) {
+            r.setDeletedAt(java.time.LocalDateTime.now());
+            r.setDeletedBy(username);
+        } else {
+            r.setTpNhapKho(null);
+            r.setNgayXuatKho(null);
+            r.setTinhTrangNhapKho(null);
+            r.setTenNthNhapKho(null);
+            r.setGhiChuNhapKho(null);
+            r.setUpdatedBy(username);
+        }
+        repository.save(r);
+    }
+
+    private void applyNhapKhoFields(ProductionRecord r, java.util.Map<String, String> body) {
+        if (body.containsKey("tpNhapKho")) {
+            String v = body.get("tpNhapKho");
+            r.setTpNhapKho(v != null && !v.isBlank() ? Integer.parseInt(v) : null);
+        }
+        if (body.containsKey("ngayXuatKho")) {
+            String v = body.get("ngayXuatKho");
+            r.setNgayXuatKho(v != null && !v.isBlank() ? java.time.LocalDate.parse(v) : null);
+        }
+        if (body.containsKey("tinhTrangNhapKho")) {
+            String v = body.get("tinhTrangNhapKho");
+            r.setTinhTrangNhapKho(v != null && !v.isBlank() ? v : null);
+        }
+        if (body.containsKey("tenNthNhapKho")) {
+            String v = body.get("tenNthNhapKho");
+            r.setTenNthNhapKho(v != null && !v.isBlank() ? v : null);
+        }
+        if (body.containsKey("ghiChuNhapKho")) {
+            String v = body.get("ghiChuNhapKho");
+            r.setGhiChuNhapKho(v != null && !v.isBlank() ? v : null);
+        }
+    }
+
     public ProductionRecord updateNhapKho(Long id, java.util.Map<String, String> body, String username) {
         ProductionRecord r = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));

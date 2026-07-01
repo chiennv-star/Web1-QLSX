@@ -3978,8 +3978,18 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
         tenNthNhapKho:    tenNth.trim(),
         ghiChuNhapKho:    ghiChu.trim(),
       }
-      const { data: updated } = await api.patch(`/production/${selected.id}/nhap-kho`, body)
-      message.success('Đã thêm vào nhập kho')
+      // Nếu lô đã có nhập kho trước đó VÀ ngày khác → tạo bản ghi mới
+      const existingDate = selected.ngayXuatKho ? dayjs(selected.ngayXuatKho) : null
+      const isNewEntry = selected.tpNhapKho != null
+        && existingDate != null
+        && ngayXuat != null
+        && !existingDate.isSame(ngayXuat, 'day')
+
+      const { data: updated } = isNewEntry
+        ? await api.post(`/production/${selected.id}/nhap-kho-entry`, body)
+        : await api.patch(`/production/${selected.id}/nhap-kho`, body)
+
+      message.success(isNewEntry ? 'Đã thêm lần nhập kho mới' : 'Đã lưu nhập kho')
       onAdded(updated)
       doClose()
     } catch { message.error('Lưu thất bại') }
@@ -4300,8 +4310,17 @@ function NhapKhoTab() {
   const [summaryData,   setSummaryData]   = useState([])
   const [summaryLoading,setSummaryLoading]= useState(false)
   const [mucTieu,       setMucTieu]       = useState(() => parseInt(localStorage.getItem('nhapkho_muctieu') || '0', 10))
+  const [ctxMenu,       setCtxMenu]       = useState(null)   // { x, y, record }
 
   const drawerRecord = drawerRecId != null ? data.find(r => r.id === drawerRecId) ?? null : null
+
+  // Đóng context menu khi click ra ngoài
+  useEffect(() => {
+    if (!ctxMenu) return
+    const close = () => setCtxMenu(null)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [ctxMenu])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -4351,6 +4370,15 @@ function NhapKhoTab() {
       const exists = prev.find(r => r.id === updated.id)
       return exists ? prev.map(r => r.id === updated.id ? { ...r, ...updated } : r) : [updated, ...prev]
     })
+  }
+
+  const removeRow = async (record) => {
+    try {
+      await api.delete(`/production/${record.id}/nhap-kho`)
+      setData(prev => prev.filter(r => r.id !== record.id))
+      if (drawerRecId === record.id) setDrawerRecId(null)
+      message.success('Đã xóa khỏi danh sách nhập kho')
+    } catch { message.error('Xóa thất bại') }
   }
 
   const fmtN = v => v != null ? Number(v).toLocaleString('vi-VN') : '—'
@@ -4614,6 +4642,10 @@ function NhapKhoTab() {
             if (editCell?.id === record.id) return
             setDrawerRecId(record.id)
           },
+          onContextMenu: (e) => {
+            e.preventDefault()
+            setCtxMenu({ x: e.clientX, y: e.clientY, record })
+          },
           style: { cursor: 'pointer' },
         })}
         summary={() => (
@@ -4630,6 +4662,45 @@ function NhapKhoTab() {
           </Table.Summary>
         )}
       />
+      )}
+
+      {/* Context menu chuột phải */}
+      {ctxMenu && (
+        <div
+          style={{
+            position: 'fixed', zIndex: 9999,
+            top: ctxMenu.y, left: ctxMenu.x,
+            background: '#fff', borderRadius: 6,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+            border: '1px solid #f0f0f0',
+            minWidth: 180, overflow: 'hidden',
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          <div style={{ padding: '6px 0', fontSize: 12, color: '#6b7280', borderBottom: '1px solid #f3f4f6', paddingLeft: 12, paddingBottom: 6 }}>
+            <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{ctxMenu.record.maBravo}</span>
+            {' '}Lô {ctxMenu.record.lsx}
+          </div>
+          <Popconfirm
+            title="Xóa khỏi Nhập Kho?"
+            description="Hàng này sẽ bị xóa khỏi danh sách nhập kho."
+            onConfirm={() => { removeRow(ctxMenu.record); setCtxMenu(null) }}
+            onCancel={() => setCtxMenu(null)}
+            okText="Xóa" cancelText="Thôi"
+            okButtonProps={{ danger: true }}
+          >
+            <div style={{
+              padding: '8px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+              color: '#ef4444', fontWeight: 500,
+              transition: 'background .15s',
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              🗑 Xóa khỏi Nhập Kho
+            </div>
+          </Popconfirm>
+        </div>
       )}
 
       {/* Modal thêm */}
