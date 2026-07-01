@@ -3411,6 +3411,48 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
     },
     ...config.extraTableCols,
     {
+      title: 'SL Nhập Kho', dataIndex: 'tpNhapKho', key: 'tpNhapKho_top', width: 100, align: 'center',
+      hidden: congDoan !== 'DG',
+      render: (v, record) => {
+        const canEdit = canEditStage(congDoan)
+        const isEditing = inlineEdit?.id === record.id && inlineEdit?.field === 'tpNhapKho'
+        if (isEditing) {
+          return (
+            <InputNumber
+              size="small" autoFocus min={0} step={1}
+              defaultValue={v ?? undefined}
+              style={{ width: 80 }}
+              formatter={val => (val != null && val !== '') ? Number(val).toLocaleString('vi-VN') : ''}
+              parser={val => val ? val.replace(/[^\d]/g, '') : ''}
+              onClick={e => e.stopPropagation()}
+              onPressEnter={e => {
+                const num = e.target.value ? parseInt(e.target.value.replace(/[^\d]/g, ''), 10) : null
+                saveInlineEdit(record.id, 'tpNhapKho', isNaN(num) ? null : num)
+              }}
+              onBlur={e => {
+                if (!inlineSaving) {
+                  const num = e.target.value ? parseInt(e.target.value.replace(/[^\d]/g, ''), 10) : null
+                  saveInlineEdit(record.id, 'tpNhapKho', isNaN(num) ? null : num)
+                }
+              }}
+            />
+          )
+        }
+        return (
+          <div
+            onClick={canEdit ? e => { e.stopPropagation(); setInlineEdit({ id: record.id, field: 'tpNhapKho' }) } : undefined}
+            style={{ cursor: canEdit ? 'pointer' : 'default', textAlign: 'right' }}
+          >
+            {v != null
+              ? <span style={{ fontWeight: 700, color: '#15803d' }}>{Number(v).toLocaleString('vi-VN')}</span>
+              : canEdit
+                ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0, cursor: 'pointer' }}>Nhập NK</Tag>
+                : <span style={{ color: '#d9d9d9' }}>—</span>}
+          </div>
+        )
+      },
+    },
+    {
       title: 'Năng suất', key: 'ns', width: 165, align: 'right',
       render: (_, record) => {
         const slField = SL_FIELD_MAP[congDoan]
@@ -3493,48 +3535,6 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       render: v => v != null
         ? <span style={{ fontWeight: 700, color: '#0891b2' }}>{Number(v).toLocaleString('vi-VN')}</span>
         : <span style={{ color: '#d9d9d9' }}>—</span>,
-    },
-    {
-      title: 'SL Nhập Kho', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 100, align: 'center',
-      hidden: congDoan !== 'DG',
-      render: (v, record) => {
-        const canEdit = canEditStage(congDoan)
-        const isEditing = inlineEdit?.id === record.id && inlineEdit?.field === 'tpNhapKho'
-        if (isEditing) {
-          return (
-            <InputNumber
-              size="small" autoFocus min={0} step={1}
-              defaultValue={v ?? undefined}
-              style={{ width: 80 }}
-              formatter={val => (val != null && val !== '') ? Number(val).toLocaleString('vi-VN') : ''}
-              parser={val => val ? val.replace(/[^\d]/g, '') : ''}
-              onClick={e => e.stopPropagation()}
-              onPressEnter={e => {
-                const num = e.target.value ? parseInt(e.target.value.replace(/[^\d]/g, ''), 10) : null
-                saveInlineEdit(record.id, 'tpNhapKho', isNaN(num) ? null : num)
-              }}
-              onBlur={e => {
-                if (!inlineSaving) {
-                  const num = e.target.value ? parseInt(e.target.value.replace(/[^\d]/g, ''), 10) : null
-                  saveInlineEdit(record.id, 'tpNhapKho', isNaN(num) ? null : num)
-                }
-              }}
-            />
-          )
-        }
-        return (
-          <div
-            onClick={canEdit ? e => { e.stopPropagation(); setInlineEdit({ id: record.id, field: 'tpNhapKho' }) } : undefined}
-            style={{ cursor: canEdit ? 'pointer' : 'default', textAlign: 'right' }}
-          >
-            {v != null
-              ? <span style={{ fontWeight: 700, color: '#15803d' }}>{Number(v).toLocaleString('vi-VN')}</span>
-              : canEdit
-                ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0, cursor: 'pointer' }}>Nhập NK</Tag>
-                : <span style={{ color: '#d9d9d9' }}>—</span>}
-          </div>
-        )
-      },
     },
     {
       title: 'Trưởng ca', dataIndex: 'truongCa', key: 'truongCa', width: 110, ellipsis: true,
