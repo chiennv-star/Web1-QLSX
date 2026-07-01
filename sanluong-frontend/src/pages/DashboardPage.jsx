@@ -2771,8 +2771,30 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
       key: 'qa_group',
       onHeaderCell: hc(),
       children: [
-        { title: 'PL', dataIndex: 'plQaLayMau', key: 'qa_pl', width: 68, align: 'center', onHeaderCell: hc(), render: qaRender },
-        { title: 'ĐG', dataIndex: 'dgQaLayMau', key: 'qa_dg', width: 68, align: 'center', onHeaderCell: hc(), render: qaRender },
+        { title: 'KN', key: 'qa_kn', width: 55, align: 'center', onHeaderCell: hc(),
+          render: (_, r) => {
+            const v = (r.plQaKiemNghiem || 0) + (r.dgQaKiemNghiem || 0)
+            return v ? <span style={{ color: '#0369a1', fontWeight: 600 }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+          }
+        },
+        { title: 'LM', key: 'qa_lm', width: 55, align: 'center', onHeaderCell: hc(),
+          render: (_, r) => {
+            const v = (r.plQaLuuMau || 0) + (r.dgQaLuuMau || 0)
+            return v ? <span style={{ color: '#0369a1', fontWeight: 600 }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+          }
+        },
+        { title: 'Khác', key: 'qa_khac', width: 55, align: 'center', onHeaderCell: hc(),
+          render: (_, r) => {
+            const v = (r.plQaKhac || 0) + (r.dgQaKhac || 0)
+            return v ? <span style={{ color: '#0369a1', fontWeight: 600 }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+          }
+        },
+        { title: 'Tổng', key: 'qa_tong', width: 60, align: 'center', onHeaderCell: hc(),
+          render: (_, r) => {
+            const v = (r.plQaLayMau || 0) + (r.dgQaLayMau || 0)
+            return v ? <span style={{ color: '#0369a1', fontWeight: 700 }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+          }
+        },
       ]
     },
     { title: 'SL TB',      dataIndex: 'slTrungBinh',   key: 'slTB',   width: 76, align: 'center', onHeaderCell: hc(), render: v => v ?? '—' },
@@ -3051,8 +3073,14 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
 
               {sectionTitle('QA Lấy mẫu', '#4c1d95')}
               <Descriptions size="small" column={2} bordered labelStyle={labelStyle}>
-                <Descriptions.Item label="PL">{editMode ? EInt('plQaLayMau') : fmtQA(r.plQaLayMau)}</Descriptions.Item>
-                <Descriptions.Item label="ĐG">{editMode ? EInt('dgQaLayMau') : fmtQA(r.dgQaLayMau)}</Descriptions.Item>
+                <Descriptions.Item label="PL Tổng">{editMode ? EInt('plQaLayMau') : fmtQA(r.plQaLayMau)}</Descriptions.Item>
+                <Descriptions.Item label="ĐG Tổng">{editMode ? EInt('dgQaLayMau') : fmtQA(r.dgQaLayMau)}</Descriptions.Item>
+                <Descriptions.Item label="PL Kiểm nghiệm">{editMode ? EInt('plQaKiemNghiem') : fmtQA(r.plQaKiemNghiem)}</Descriptions.Item>
+                <Descriptions.Item label="PL Lưu mẫu">{editMode ? EInt('plQaLuuMau') : fmtQA(r.plQaLuuMau)}</Descriptions.Item>
+                <Descriptions.Item label="PL Khác">{editMode ? EInt('plQaKhac') : fmtQA(r.plQaKhac)}</Descriptions.Item>
+                <Descriptions.Item label="ĐG Kiểm nghiệm">{editMode ? EInt('dgQaKiemNghiem') : fmtQA(r.dgQaKiemNghiem)}</Descriptions.Item>
+                <Descriptions.Item label="ĐG Lưu mẫu">{editMode ? EInt('dgQaLuuMau') : fmtQA(r.dgQaLuuMau)}</Descriptions.Item>
+                <Descriptions.Item label="ĐG Khác">{editMode ? EInt('dgQaKhac') : fmtQA(r.dgQaKhac)}</Descriptions.Item>
               </Descriptions>
 
               {sectionTitle('Ghi chú', '#374151')}

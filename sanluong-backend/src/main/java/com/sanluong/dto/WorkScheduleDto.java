@@ -33,6 +33,9 @@ public class WorkScheduleDto {
     private BigDecimal slCc;
     private BigDecimal congCc;
     private Integer qaLayMau;
+    private Integer qaKiemNghiem;
+    private Integer qaLuuMau;
+    private Integer qaKhac;
     private boolean isPlanned = false;
 
     public Long getId() { return id; }
@@ -93,4 +96,10 @@ public class WorkScheduleDto {
     public void setCongCc(BigDecimal congCc) { this.congCc = congCc; }
     public Integer getQaLayMau() { return qaLayMau; }
     public void setQaLayMau(Integer qaLayMau) { this.qaLayMau = qaLayMau; }
+    public Integer getQaKiemNghiem() { return qaKiemNghiem; }
+    public void setQaKiemNghiem(Integer qaKiemNghiem) { this.qaKiemNghiem = qaKiemNghiem; }
+    public Integer getQaLuuMau() { return qaLuuMau; }
+    public void setQaLuuMau(Integer qaLuuMau) { this.qaLuuMau = qaLuuMau; }
+    public Integer getQaKhac() { return qaKhac; }
+    public void setQaKhac(Integer qaKhac) { this.qaKhac = qaKhac; }
 }

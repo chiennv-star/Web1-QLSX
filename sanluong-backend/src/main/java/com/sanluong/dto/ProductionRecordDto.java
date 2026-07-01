@@ -45,7 +45,13 @@ public class ProductionRecordDto {
     private BigDecimal hlSlHuy;
     private Integer qaLayMau;
     private Integer plQaLayMau;
+    private Integer plQaKiemNghiem;
+    private Integer plQaLuuMau;
+    private Integer plQaKhac;
     private Integer dgQaLayMau;
+    private Integer dgQaKiemNghiem;
+    private Integer dgQaLuuMau;
+    private Integer dgQaKhac;
     private Boolean phatLenh;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -132,8 +138,20 @@ public class ProductionRecordDto {
     public void setQaLayMau(Integer qaLayMau) { this.qaLayMau = qaLayMau; }
     public Integer getPlQaLayMau() { return plQaLayMau; }
     public void setPlQaLayMau(Integer v) { this.plQaLayMau = v; }
+    public Integer getPlQaKiemNghiem() { return plQaKiemNghiem; }
+    public void setPlQaKiemNghiem(Integer v) { this.plQaKiemNghiem = v; }
+    public Integer getPlQaLuuMau() { return plQaLuuMau; }
+    public void setPlQaLuuMau(Integer v) { this.plQaLuuMau = v; }
+    public Integer getPlQaKhac() { return plQaKhac; }
+    public void setPlQaKhac(Integer v) { this.plQaKhac = v; }
     public Integer getDgQaLayMau() { return dgQaLayMau; }
     public void setDgQaLayMau(Integer v) { this.dgQaLayMau = v; }
+    public Integer getDgQaKiemNghiem() { return dgQaKiemNghiem; }
+    public void setDgQaKiemNghiem(Integer v) { this.dgQaKiemNghiem = v; }
+    public Integer getDgQaLuuMau() { return dgQaLuuMau; }
+    public void setDgQaLuuMau(Integer v) { this.dgQaLuuMau = v; }
+    public Integer getDgQaKhac() { return dgQaKhac; }
+    public void setDgQaKhac(Integer v) { this.dgQaKhac = v; }
     public Boolean getPhatLenh() { return phatLenh; }
     public void setPhatLenh(Boolean phatLenh) { this.phatLenh = phatLenh; }
     public LocalDateTime getCreatedAt() { return createdAt; }

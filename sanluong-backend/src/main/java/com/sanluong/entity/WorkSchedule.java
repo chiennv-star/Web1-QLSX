@@ -98,6 +98,15 @@ public class WorkSchedule {
     @Column(name = "qa_lay_mau")
     private Integer qaLayMau;
 
+    @Column(name = "qa_kiem_nghiem")
+    private Integer qaKiemNghiem;
+
+    @Column(name = "qa_luu_mau")
+    private Integer qaLuuMau;
+
+    @Column(name = "qa_khac")
+    private Integer qaKhac;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -207,6 +216,12 @@ public class WorkSchedule {
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
     public Integer getQaLayMau() { return qaLayMau; }
     public void setQaLayMau(Integer qaLayMau) { this.qaLayMau = qaLayMau; }
+    public Integer getQaKiemNghiem() { return qaKiemNghiem; }
+    public void setQaKiemNghiem(Integer qaKiemNghiem) { this.qaKiemNghiem = qaKiemNghiem; }
+    public Integer getQaLuuMau() { return qaLuuMau; }
+    public void setQaLuuMau(Integer qaLuuMau) { this.qaLuuMau = qaLuuMau; }
+    public Integer getQaKhac() { return qaKhac; }
+    public void setQaKhac(Integer qaKhac) { this.qaKhac = qaKhac; }
     public String getMaBravo() { return maBravo; }
     public void setMaBravo(String maBravo) { this.maBravo = maBravo; }
     public boolean isPlanned() { return isPlanned; }

@@ -875,6 +875,14 @@ public class ProductionService {
         r.setMoTa(dto.getMoTa());
         r.setGhiChuHieuSuat(dto.getGhiChuHieuSuat());
         r.setQaLayMau(dto.getQaLayMau());
+        r.setPlQaLayMau(dto.getPlQaLayMau());
+        r.setPlQaKiemNghiem(dto.getPlQaKiemNghiem());
+        r.setPlQaLuuMau(dto.getPlQaLuuMau());
+        r.setPlQaKhac(dto.getPlQaKhac());
+        r.setDgQaLayMau(dto.getDgQaLayMau());
+        r.setDgQaKiemNghiem(dto.getDgQaKiemNghiem());
+        r.setDgQaLuuMau(dto.getDgQaLuuMau());
+        r.setDgQaKhac(dto.getDgQaKhac());
         if (dto.getPhatLenh() != null) r.setPhatLenh(dto.getPhatLenh());
     }
 
