@@ -737,14 +737,16 @@ function HieuSuatTab({ data = [], loading = false, pagination = {}, onPagination
   }
 
   const calcHs = (r) => {
-    const slPl  = parseInt(r.pcPl)   || 0
-    const slDg  = parseInt(r.dg2)    || 0
-    const qaPl  = r.plQaLayMau || 0
-    const qaDg  = r.dgQaLayMau || 0
-    const coLo  = r.soLuong || 0
-    const hsPl  = coLo  > 0 ? ((slPl + qaPl) / coLo  * 100) : null
-    const hsDg  = slPl  > 0 ? ((slDg + qaDg) / slPl  * 100) : null
-    return { slPl, slDg, qaPl, qaDg, coLo, hsPl, hsDg }
+    const slPl      = parseInt(r.pcPl)   || 0
+    const slDg      = parseInt(r.dg2)    || 0
+    const qaPl      = r.plQaLayMau || 0
+    const qaDg      = r.dgQaLayMau || 0
+    const nkho      = r.tpNhapKho  || 0
+    const coLo      = r.soLuong || 0
+    const hsPl      = coLo > 0 ? ((slPl + qaPl) / coLo * 100) : null
+    const hsDg      = slPl > 0 ? ((slDg + qaDg) / slPl * 100) : null
+    const hsTong    = coLo > 0 ? ((nkho + qaPl + qaDg) / coLo * 100) : null
+    return { slPl, slDg, qaPl, qaDg, nkho, coLo, hsPl, hsDg, hsTong }
   }
 
   const hsColor = (v) => v == null ? '#bbb' : v >= 99 ? '#16a34a' : v >= 95 ? '#d46b08' : '#cf1322'
@@ -795,8 +797,9 @@ function HieuSuatTab({ data = [], loading = false, pagination = {}, onPagination
     return { good, mid, bad, avg, total: vals.length }
   }
 
-  const stPl = stats('hsPl')
-  const stDg = stats('hsDg')
+  const stPl   = stats('hsPl')
+  const stDg   = stats('hsDg')
+  const stTong = stats('hsTong')
 
   const columns = [
     {
@@ -872,6 +875,25 @@ function HieuSuatTab({ data = [], loading = false, pagination = {}, onPagination
           {r.hsDg != null && (
             <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>
               ({Number(r.slDg).toLocaleString('vi-VN')} + {Number(r.qaDg).toLocaleString('vi-VN')}) / {Number(r.slPl).toLocaleString('vi-VN')}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: 'Hiệu suất tổng', key: 'hs_tong', width: 220,
+      sorter: (a, b) => (a.hsTong ?? -1) - (b.hsTong ?? -1),
+      sortOrder: sortField === 'hs_tong' ? sortOrder : undefined,
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
+      render: (_, r) => (
+        <div style={{
+          background: hsBg(r.hsTong), border: `1px solid ${hsBdr(r.hsTong)}`,
+          borderRadius: 6, padding: '5px 10px',
+        }}>
+          <ProgressBar value={r.hsTong} />
+          {r.hsTong != null && (
+            <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>
+              ({Number(r.nkho).toLocaleString('vi-VN')} + {Number(r.qaPl + r.qaDg).toLocaleString('vi-VN')}) / {Number(r.coLo).toLocaleString('vi-VN')}
             </div>
           )}
         </div>
@@ -959,6 +981,7 @@ function HieuSuatTab({ data = [], loading = false, pagination = {}, onPagination
       <div style={{ display: 'flex', gap: 10, padding: '10px 12px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
         <StatBand label="Hiệu suất PL" s={stPl} color="#15803d" />
         <StatBand label="Hiệu suất ĐG" s={stDg} color="#b45309" />
+        <StatBand label="Hiệu suất tổng" s={stTong} color="#7c3aed" />
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, color: '#94a3b8' }}>
           <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: '#52c41a', marginRight: 4 }} />≥ 99%</span>
           <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: '#fa8c16', marginRight: 4 }} />95–99%</span>
