@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Table, Button, Space, Typography, message, Select, DatePicker,
   Tooltip, Modal, Input, Badge, Tag, Tabs, Popconfirm, Popover,
-  AutoComplete, Drawer, InputNumber, Spin, Divider,
+  AutoComplete, Drawer, InputNumber, Spin, Divider, Segmented,
 } from 'antd'
 import SkeletonTable from '../components/SkeletonTable'
 import {
@@ -4063,16 +4063,169 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
   )
 }
 
+// ─── NhapKhoSummaryView ───────────────────────────────────────────────────────
+
+const _thS = { padding: '5px 7px', border: '1px solid #004d4d', fontSize: 11, whiteSpace: 'nowrap', textAlign: 'center' }
+const _tdS = { padding: '3px 6px', border: '1px solid #e5e7eb', fontSize: 12 }
+const _tfS = { padding: '5px 7px', border: '1px solid #005555', fontSize: 12 }
+
+function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading }) {
+  const [editMT, setEditMT] = useState(false)
+
+  const pivot = useMemo(() => {
+    const p = {}
+    for (let d = 1; d <= 31; d++) p[d] = {}
+    data.forEach(r => {
+      if (!r.ngayXuatKho) return
+      const dt = dayjs(r.ngayXuatKho)
+      if (dt.year() !== year) return
+      const d = dt.date(), m = dt.month() + 1
+      p[d][m] = (p[d][m] || 0) + (r.tpNhapKho || 0)
+    })
+    return p
+  }, [data, year])
+
+  const monthTotals = useMemo(() => {
+    const t = {}
+    for (let m = 1; m <= 12; m++)
+      t[m] = Object.values(pivot).reduce((s, row) => s + (row[m] || 0), 0)
+    return t
+  }, [pivot])
+
+  const grandTotal = Object.values(monthTotals).reduce((s, v) => s + v, 0)
+  const conThieu   = mucTieu > 0 ? mucTieu - grandTotal : null
+  const surplus    = conThieu != null && conThieu < 0
+
+  const now = dayjs()
+  const curMonth = now.year() === year ? now.month() + 1 : (now.year() < year ? 0 : 13)
+
+  const daysInMonth = m => dayjs(`${year}-${String(m).padStart(2,'0')}-01`).daysInMonth()
+  const isFuture   = m => m > curMonth
+  const fmt        = v => v ? Number(v).toLocaleString('vi-VN') : ''
+
+  const MONTHS = [1,2,3,4,5,6,7,8,9,10,11,12]
+
+  return (
+    <Spin spinning={loading}>
+      <div style={{ overflowX: 'auto', borderRadius: 6, border: '1px solid #e5e7eb' }}>
+        <table style={{ borderCollapse: 'collapse', minWidth: 900 }}>
+          <thead>
+            <tr style={{ background: '#006666', color: '#fff' }}>
+              <th style={{ ..._thS, width: 44, background: '#004d4d' }}>Ngày</th>
+              {MONTHS.map(m => (
+                <th key={m} style={{ ..._thS, minWidth: 80, opacity: isFuture(m) ? 0.55 : 1 }}>
+                  Tháng {m}
+                </th>
+              ))}
+              <th style={{ ..._thS, background: '#003333', minWidth: 90 }}>Tổng</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: 31 }, (_, i) => i + 1).map(day => {
+              const rowTotal = MONTHS.reduce((s, m) =>
+                s + (day <= daysInMonth(m) && !isFuture(m) ? (pivot[day][m] || 0) : 0), 0)
+              const hasData = rowTotal > 0
+              return (
+                <tr key={day} style={{ background: day % 2 === 0 ? '#f9fafb' : '#fff' }}>
+                  <td style={{ ..._tdS, textAlign: 'center', fontWeight: 600, color: '#374151', background: '#f0fdf4' }}>
+                    {day}
+                  </td>
+                  {MONTHS.map(m => {
+                    const valid  = day <= daysInMonth(m)
+                    const future = isFuture(m)
+                    const val    = valid && !future ? (pivot[day][m] || 0) : null
+                    return (
+                      <td key={m} style={{
+                        ..._tdS, textAlign: 'right',
+                        background: !valid ? '#f3f4f6' : undefined,
+                        color: !valid ? '#d1d5db' : future ? '#cbd5e1' : val > 0 ? '#15803d' : '#d1d5db',
+                        fontWeight: val > 0 ? 700 : 400,
+                      }}>
+                        {!valid ? '—' : future ? <span style={{ fontSize: 10 }}>#N/A</span> : val > 0 ? fmt(val) : <span style={{ fontSize: 10 }}>0</span>}
+                      </td>
+                    )
+                  })}
+                  <td style={{ ..._tdS, textAlign: 'right', fontWeight: hasData ? 700 : 400, color: hasData ? '#1d4ed8' : '#e5e7eb', background: '#eff6ff' }}>
+                    {hasData ? fmt(rowTotal) : ''}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+          <tfoot>
+            <tr style={{ background: '#006666', color: '#fff', fontWeight: 700 }}>
+              <td style={{ ..._tfS, color: '#fff', textAlign: 'left', fontSize: 11, letterSpacing: 0.3 }}>TỔNG NK</td>
+              {MONTHS.map(m => (
+                <td key={m} style={{ ..._tfS, color: '#fff', textAlign: 'right', opacity: isFuture(m) ? 0.55 : 1 }}>
+                  {isFuture(m) ? <span style={{ fontSize: 10 }}>#N/A</span> : monthTotals[m] > 0 ? fmt(monthTotals[m]) : <span style={{ opacity: 0.5 }}>0</span>}
+                </td>
+              ))}
+              <td style={{ ..._tfS, textAlign: 'right', background: '#003333', color: '#fff', fontSize: 13 }}>{fmt(grandTotal) || '0'}</td>
+            </tr>
+            <tr style={{ background: '#fefce8' }}>
+              <td style={{ ..._tfS, color: '#92400e', fontWeight: 700, textAlign: 'left', fontSize: 11 }}>Mục tiêu</td>
+              <td colSpan={12} style={{ ..._tfS, color: '#374151', textAlign: 'center' }}>
+                {editMT ? (
+                  <InputNumber
+                    autoFocus size="small" min={0} step={100000}
+                    value={mucTieu || undefined}
+                    formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
+                    parser={v => v ? v.replace(/[^\d]/g, '') : ''}
+                    onChange={v => onMucTieuChange(v || 0)}
+                    onBlur={() => setEditMT(false)}
+                    onPressEnter={() => setEditMT(false)}
+                    style={{ width: 180 }}
+                  />
+                ) : (
+                  <span
+                    onClick={() => setEditMT(true)}
+                    style={{ cursor: 'pointer', color: mucTieu > 0 ? '#92400e' : '#ccc', fontWeight: 700 }}
+                  >
+                    {mucTieu > 0 ? mucTieu.toLocaleString('vi-VN') : '✏ Nhấn để nhập mục tiêu năm'}
+                  </span>
+                )}
+              </td>
+              <td style={{ ..._tfS, textAlign: 'right', background: '#fef08a', color: '#92400e', fontWeight: 700 }}>
+                {mucTieu > 0 ? mucTieu.toLocaleString('vi-VN') : '—'}
+              </td>
+            </tr>
+            <tr style={{ background: surplus ? '#dcfce7' : '#fee2e2' }}>
+              <td style={{ ..._tfS, fontWeight: 700, fontSize: 11, color: surplus ? '#15803d' : '#dc2626', textAlign: 'left' }}>
+                {conThieu == null ? 'Còn thiếu' : surplus ? '✔ Vượt KH' : 'Còn thiếu'}
+              </td>
+              <td colSpan={12} style={{ ..._tfS, color: '#6b7280', fontSize: 11, textAlign: 'center' }}>
+                {conThieu != null
+                  ? surplus
+                    ? `Vượt ${Math.abs(conThieu).toLocaleString('vi-VN')} so với mục tiêu`
+                    : `Cần thêm ${conThieu.toLocaleString('vi-VN')} để đạt mục tiêu`
+                  : 'Chưa có mục tiêu'}
+              </td>
+              <td style={{ ..._tfS, textAlign: 'right', fontWeight: 700, color: surplus ? '#15803d' : conThieu == null ? '#9ca3af' : '#dc2626' }}>
+                {conThieu != null ? Math.abs(conThieu).toLocaleString('vi-VN') : '—'}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </Spin>
+  )
+}
+
 // ─── NhapKhoTab ───────────────────────────────────────────────────────────────
 
 function NhapKhoTab() {
   const [data,          setData]          = useState([])
   const [loading,       setLoading]       = useState(false)
-  const [saving,        setSaving]        = useState({}) // { `${id}_${field}`: true }
+  const [saving,        setSaving]        = useState({})
   const [dateRange,     setDateRange]     = useState([null, null])
-  const [editCell,      setEditCell]      = useState(null) // { id, field }
+  const [editCell,      setEditCell]      = useState(null)
   const [addModalOpen,  setAddModalOpen]  = useState(false)
-  const [drawerRecId,   setDrawerRecId]   = useState(null) // id of row to show in drawer
+  const [drawerRecId,   setDrawerRecId]   = useState(null)
+  const [viewMode,      setViewMode]      = useState('list')
+  const [summaryYear,   setSummaryYear]   = useState(dayjs().year())
+  const [summaryData,   setSummaryData]   = useState([])
+  const [summaryLoading,setSummaryLoading]= useState(false)
+  const [mucTieu,       setMucTieu]       = useState(() => parseInt(localStorage.getItem('nhapkho_muctieu') || '0', 10))
 
   const drawerRecord = drawerRecId != null ? data.find(r => r.id === drawerRecId) ?? null : null
 
@@ -4089,6 +4242,24 @@ function NhapKhoTab() {
   }, [dateRange])
 
   useEffect(() => { load() }, [load])
+
+  const fetchSummary = useCallback(async () => {
+    setSummaryLoading(true)
+    try {
+      const { data: res } = await api.get('/production/nhap-kho', {
+        params: { fromDate: `${summaryYear}-01-01`, toDate: `${summaryYear}-12-31` }
+      })
+      setSummaryData(res)
+    } catch { message.error('Không tải được dữ liệu tổng hợp') }
+    finally { setSummaryLoading(false) }
+  }, [summaryYear])
+
+  useEffect(() => { if (viewMode === 'summary') fetchSummary() }, [viewMode, fetchSummary])
+
+  const handleMucTieu = (v) => {
+    setMucTieu(v)
+    localStorage.setItem('nhapkho_muctieu', String(v))
+  }
 
   const saveField = async (id, field, value) => {
     setSaving(s => ({ ...s, [`${id}_${field}`]: true }))
@@ -4291,29 +4462,68 @@ function NhapKhoTab() {
 
   return (
     <div style={{ padding: '12px 16px' }}>
-      {/* Filter bar */}
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
         <span style={{ fontWeight: 700, color: '#006666', fontSize: 14 }}>📦 Nhập Kho Thành Phẩm</span>
-        <RangePicker
-          size="small" format="DD/MM/YYYY"
-          value={dateRange}
-          onChange={r => setDateRange(r || [null, null])}
-          placeholder={['Từ ngày xuất', 'Đến ngày']}
-          allowEmpty={[true, true]}
-          style={{ width: 260 }}
+        <Segmented
+          size="small"
+          value={viewMode}
+          onChange={setViewMode}
+          options={[
+            { label: 'Danh sách', value: 'list' },
+            { label: 'Tổng hợp theo ngày', value: 'summary' },
+          ]}
         />
-        <Button size="small" icon={<ReloadOutlined />} onClick={load} loading={loading}>Tải lại</Button>
-        <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
-          Thêm sản phẩm
-        </Button>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center', fontSize: 13 }}>
-          <span>Tổng: <strong style={{ color: '#15803d' }}>{fmtN(totalSl)}</strong></span>
-          <Tag color="success">Done: {doneCount}</Tag>
-          <Tag color="warning">Chốt: {chotCount}</Tag>
-          <span style={{ color: '#bbb' }}>Chưa: {data.length - doneCount - chotCount}</span>
-        </div>
+        {viewMode === 'list' ? (
+          <>
+            <RangePicker
+              size="small" format="DD/MM/YYYY"
+              value={dateRange}
+              onChange={r => setDateRange(r || [null, null])}
+              placeholder={['Từ ngày xuất', 'Đến ngày']}
+              allowEmpty={[true, true]}
+              style={{ width: 260 }}
+            />
+            <Button size="small" icon={<ReloadOutlined />} onClick={load} loading={loading}>Tải lại</Button>
+            <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
+              Thêm sản phẩm
+            </Button>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center', fontSize: 13 }}>
+              <span>Tổng: <strong style={{ color: '#15803d' }}>{fmtN(totalSl)}</strong></span>
+              <Tag color="success">Done: {doneCount}</Tag>
+              <Tag color="warning">Chốt: {chotCount}</Tag>
+              <span style={{ color: '#bbb' }}>Chưa: {data.length - doneCount - chotCount}</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <DatePicker
+              picker="year"
+              size="small"
+              value={dayjs().year(summaryYear)}
+              onChange={d => d && setSummaryYear(d.year())}
+              allowClear={false}
+              style={{ width: 100 }}
+            />
+            <Button size="small" icon={<ReloadOutlined />} onClick={fetchSummary} loading={summaryLoading}>Tải lại</Button>
+            <span style={{ marginLeft: 'auto', color: '#6b7280', fontSize: 12 }}>
+              Tổng năm {summaryYear}: <strong style={{ color: '#15803d' }}>
+                {summaryData.reduce((s, r) => s + (r.tpNhapKho || 0), 0).toLocaleString('vi-VN')}
+              </strong>
+            </span>
+          </>
+        )}
       </div>
 
+      {viewMode === 'summary' ? (
+        <NhapKhoSummaryView
+          data={summaryData}
+          year={summaryYear}
+          mucTieu={mucTieu}
+          onMucTieuChange={handleMucTieu}
+          loading={summaryLoading}
+        />
+      ) : (
       <Table
         size="small"
         rowKey="id"
@@ -4346,6 +4556,7 @@ function NhapKhoTab() {
           </Table.Summary>
         )}
       />
+      )}
 
       {/* Modal thêm */}
       <AddNhapKhoModal
