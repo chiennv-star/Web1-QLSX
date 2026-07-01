@@ -172,6 +172,9 @@ public class ProductionRecord {
     @Column(name = "ten_nth_nhap_kho", length = 200)
     private String tenNthNhapKho;
 
+    @Column(name = "ghi_chu_nhap_kho", length = 500)
+    private String ghiChuNhapKho;
+
     @Column(name = "phat_lenh")
     private Boolean phatLenh;
 
@@ -371,6 +374,8 @@ public class ProductionRecord {
     public void setTinhTrangNhapKho(String tinhTrangNhapKho) { this.tinhTrangNhapKho = tinhTrangNhapKho; }
     public String getTenNthNhapKho() { return tenNthNhapKho; }
     public void setTenNthNhapKho(String tenNthNhapKho) { this.tenNthNhapKho = tenNthNhapKho; }
+    public String getGhiChuNhapKho() { return ghiChuNhapKho; }
+    public void setGhiChuNhapKho(String ghiChuNhapKho) { this.ghiChuNhapKho = ghiChuNhapKho; }
     public Boolean getPhatLenh() { return phatLenh; }
     public void setPhatLenh(Boolean phatLenh) { this.phatLenh = phatLenh; }
     public Boolean getHidden() { return hidden; }

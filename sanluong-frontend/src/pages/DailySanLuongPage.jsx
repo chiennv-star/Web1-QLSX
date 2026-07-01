@@ -3898,6 +3898,7 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
   const [ngayXuat,  setNgayXuat]  = useState(null)
   const [tinhTrang, setTinhTrang] = useState(undefined)
   const [tenNth,    setTenNth]    = useState('')
+  const [ghiChu,    setGhiChu]    = useState('')
   const [saving,    setSaving]    = useState(false)
   const debounceRef = useRef(null)
 
@@ -3942,6 +3943,7 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
     if (rec.ngayXuatKho != null) setNgayXuat(dayjs(rec.ngayXuatKho))
     if (rec.tinhTrangNhapKho)    setTinhTrang(rec.tinhTrangNhapKho)
     if (rec.tenNthNhapKho)       setTenNth(rec.tenNthNhapKho)
+    if (rec.ghiChuNhapKho)       setGhiChu(rec.ghiChuNhapKho)
   }
 
   const handleSave = async () => {
@@ -3954,6 +3956,7 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
         ngayXuatKho:      ngayXuat ? ngayXuat.format('YYYY-MM-DD') : '',
         tinhTrangNhapKho: tinhTrang || '',
         tenNthNhapKho:    tenNth.trim(),
+        ghiChuNhapKho:    ghiChu.trim(),
       }
       const { data: updated } = await api.patch(`/production/${selected.id}/nhap-kho`, body)
       message.success('Đã thêm vào nhập kho')
@@ -3965,7 +3968,7 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
 
   const doClose = () => {
     setSearchVal(''); setOptions([]); setSelected(null)
-    setSlNK(null); setNgayXuat(null); setTinhTrang(undefined); setTenNth('')
+    setSlNK(null); setNgayXuat(null); setTinhTrang(undefined); setTenNth(''); setGhiChu('')
     onClose()
   }
 
@@ -4045,6 +4048,13 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
               value={tenNth} onChange={e => setTenNth(e.target.value)}
               placeholder="Nhập tên NTH"
               onPressEnter={handleSave}
+            />
+          </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Ghi chú</div>
+            <Input.TextArea
+              rows={2} value={ghiChu} onChange={e => setGhiChu(e.target.value)}
+              placeholder="Ghi chú thêm nếu cần..."
             />
           </div>
         </div>
@@ -4244,6 +4254,35 @@ function NhapKhoTab() {
         )
       },
     },
+    {
+      title: 'Ghi chú', dataIndex: 'ghiChuNhapKho', key: 'ghiChuNhapKho', width: 200,
+      render: (v, r) => {
+        const isEditing = editCell?.id === r.id && editCell?.field === 'ghiChuNhapKho'
+        if (isEditing) {
+          return (
+            <Input
+              size="small" autoFocus style={{ width: 180 }}
+              defaultValue={v || ''}
+              onClick={e => e.stopPropagation()}
+              onPressEnter={e => saveField(r.id, 'ghiChuNhapKho', e.target.value.trim())}
+              onBlur={e => { if (!saving[`${r.id}_ghiChuNhapKho`]) saveField(r.id, 'ghiChuNhapKho', e.target.value.trim()) }}
+            />
+          )
+        }
+        return (
+          <Tooltip title={v}>
+            <div
+              onClick={e => { e.stopPropagation(); setEditCell({ id: r.id, field: 'ghiChuNhapKho' }) }}
+              style={{ cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {v
+                ? <span style={{ color: '#6b7280', fontSize: 12 }}>{v}</span>
+                : <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0 }}>—</Tag>}
+            </div>
+          </Tooltip>
+        )
+      },
+    },
   ]
 
   const totalSl    = data.reduce((s, r) => s + (r.tpNhapKho || 0), 0)
@@ -4424,6 +4463,27 @@ function NhapKhoTab() {
                   {drawerRecord.tenNthNhapKho
                     ? <span style={{ color: '#374151' }}>{drawerRecord.tenNthNhapKho}</span>
                     : <span style={{ color: '#bbb' }}>Nhấn để nhập...</span>}
+                </div>
+              )}
+            </div>
+
+            {/* Ghi chú */}
+            <div>
+              <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13, color: '#374151' }}>Ghi chú</div>
+              {editCell?.id === drawerRecord.id && editCell?.field === 'ghiChuNhapKho_drawer' ? (
+                <Input.TextArea
+                  autoFocus rows={3} defaultValue={drawerRecord.ghiChuNhapKho || ''}
+                  onPressEnter={e => { if (!e.shiftKey) { e.preventDefault(); saveField(drawerRecord.id, 'ghiChuNhapKho', e.target.value.trim()) } }}
+                  onBlur={e => { if (!saving[`${drawerRecord.id}_ghiChuNhapKho`]) saveField(drawerRecord.id, 'ghiChuNhapKho', e.target.value.trim()) }}
+                />
+              ) : (
+                <div
+                  onClick={() => setEditCell({ id: drawerRecord.id, field: 'ghiChuNhapKho_drawer' })}
+                  style={{ cursor: 'pointer', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 60, whiteSpace: 'pre-wrap', fontSize: 13 }}
+                >
+                  {drawerRecord.ghiChuNhapKho
+                    ? <span style={{ color: '#374151' }}>{drawerRecord.ghiChuNhapKho}</span>
+                    : <span style={{ color: '#bbb' }}>Nhấn để nhập ghi chú...</span>}
                 </div>
               )}
             </div>

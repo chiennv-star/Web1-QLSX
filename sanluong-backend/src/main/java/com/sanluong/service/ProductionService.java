@@ -485,6 +485,10 @@ public class ProductionService {
             String v = body.get("tenNthNhapKho");
             r.setTenNthNhapKho(v != null && !v.isBlank() ? v : null);
         }
+        if (body.containsKey("ghiChuNhapKho")) {
+            String v = body.get("ghiChuNhapKho");
+            r.setGhiChuNhapKho(v != null && !v.isBlank() ? v : null);
+        }
         r.setUpdatedBy(username);
         return repository.save(r);
     }
