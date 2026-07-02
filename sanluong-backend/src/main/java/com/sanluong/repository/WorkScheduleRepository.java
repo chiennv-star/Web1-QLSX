@@ -141,6 +141,21 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
             Pageable pageable
     );
 
+    // QA batch: tổng hợp qaKiemNghiem/qaLuuMau/qaKhac/qaLayMau theo (maBravo, soLo) cho các congDoan PCPL1/PCPL2/PL/DG
+    @Query("""
+        SELECT w.maBravo, w.soLo,
+               SUM(COALESCE(w.qaKiemNghiem, 0)),
+               SUM(COALESCE(w.qaLuuMau, 0)),
+               SUM(COALESCE(w.qaKhac, 0)),
+               SUM(COALESCE(w.qaLayMau, 0))
+        FROM WorkSchedule w
+        WHERE w.deletedAt IS NULL
+          AND w.maBravo IN :maBravos
+          AND w.congDoan IN ('PCPL1', 'PCPL2', 'PL', 'DG')
+        GROUP BY w.maBravo, w.soLo
+        """)
+    List<Object[]> aggregateQaByMaBravos(@Param("maBravos") List<String> maBravos);
+
     // Monthly stats: total SL + distinct lot count per department for a given MM (and optional YY)
     @Query("""
         SELECT w.congDoan,

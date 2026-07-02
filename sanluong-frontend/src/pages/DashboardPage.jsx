@@ -1320,6 +1320,7 @@ export default function DashboardPage() {
   const [deltaMap, setDeltaMap] = useState({})
   const [hangLoiMap, setHangLoiMap] = useState({})
   const [nhapKhoMap, setNhapKhoMap] = useState({})
+  const [qaMap, setQaMap] = useState({})
 
   // Tab "Đã hoàn thành"
   const [doneData, setDoneData] = useState([])
@@ -1454,6 +1455,15 @@ export default function DashboardPage() {
     nhapKhoMap[(r.maBravo || '') + '|' + (r.lsx || '')] ?? (r.tpNhapKho ?? 0)
   , [nhapKhoMap])
 
+  const fetchQaMap = useCallback(async (rows) => {
+    const maBravos = [...new Set(rows.map(r => r.maBravo).filter(Boolean))]
+    if (maBravos.length === 0) return
+    try {
+      const { data: res } = await api.post('/work-schedule/qa-batch', maBravos)
+      setQaMap(prev => ({ ...prev, ...(res || {}) }))
+    } catch { /* non-blocking */ }
+  }, [])
+
   const fetchHangLoi = useCallback(async (rows) => {
     const pairs = rows
       .filter(r => r.maTp && r.lsx)
@@ -1474,12 +1484,13 @@ export default function DashboardPage() {
       setData(sorted)
       setPagination(p => ({ ...p, total: res.totalElements }))
       fetchHangLoi(sorted)
+      fetchQaMap(sorted)
     } catch {
       message.error('Không thể tải dữ liệu')
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [filters, fetchHangLoi])
+  }, [filters, fetchHangLoi, fetchQaMap])
 
   const fetchDoneData = useCallback(async (page = 0, size = 1000, f = filters, { silent = false } = {}) => {
     if (!silent) setDoneLoading(true)
@@ -1489,12 +1500,13 @@ export default function DashboardPage() {
       const sorted = [...res.content].sort((a, b) => parseLsx(b.lsx) - parseLsx(a.lsx))
       setDoneData(sorted)
       setDonePagination(p => ({ ...p, total: res.totalElements }))
+      fetchQaMap(sorted)
     } catch {
       message.error('Không thể tải dữ liệu đã hoàn thành')
     } finally {
       if (!silent) setDoneLoading(false)
     }
-  }, [filters])
+  }, [filters, fetchQaMap])
 
   const fetchHsData = useCallback(async (page = 0, size = 1000, f = filters, { silent = false } = {}) => {
     if (!silent) setHsLoading(true)
@@ -1820,7 +1832,9 @@ export default function DashboardPage() {
         {
           title: 'Kiểm nghiệm', key: 'qa_kn', width: 80, align: 'center',
           render: (_, r) => {
-            const v = (r.plQaKiemNghiem || 0) + (r.dgQaKiemNghiem || 0)
+            const wsKey = (r.maBravo || '') + '|' + (r.lsx || '')
+            const ws = qaMap[wsKey]
+            const v = ws ? (ws.kiemNghiem || 0) : ((r.plQaKiemNghiem || 0) + (r.dgQaKiemNghiem || 0))
             return v > 0
               ? <span style={{ color: '#0891b2' }}>{v.toLocaleString('vi-VN')}</span>
               : <span style={{ color: '#d9d9d9' }}>—</span>
@@ -1829,7 +1843,9 @@ export default function DashboardPage() {
         {
           title: 'Lưu mẫu', key: 'qa_lm', width: 72, align: 'center',
           render: (_, r) => {
-            const v = (r.plQaLuuMau || 0) + (r.dgQaLuuMau || 0)
+            const wsKey = (r.maBravo || '') + '|' + (r.lsx || '')
+            const ws = qaMap[wsKey]
+            const v = ws ? (ws.luuMau || 0) : ((r.plQaLuuMau || 0) + (r.dgQaLuuMau || 0))
             return v > 0
               ? <span style={{ color: '#0891b2' }}>{v.toLocaleString('vi-VN')}</span>
               : <span style={{ color: '#d9d9d9' }}>—</span>
@@ -1838,7 +1854,9 @@ export default function DashboardPage() {
         {
           title: 'Khác', key: 'qa_khac', width: 60, align: 'center',
           render: (_, r) => {
-            const v = (r.plQaKhac || 0) + (r.dgQaKhac || 0)
+            const wsKey = (r.maBravo || '') + '|' + (r.lsx || '')
+            const ws = qaMap[wsKey]
+            const v = ws ? (ws.khac || 0) : ((r.plQaKhac || 0) + (r.dgQaKhac || 0))
             return v > 0
               ? <span style={{ color: '#0891b2' }}>{v.toLocaleString('vi-VN')}</span>
               : <span style={{ color: '#d9d9d9' }}>—</span>
@@ -1847,7 +1865,9 @@ export default function DashboardPage() {
         {
           title: 'Tổng', key: 'qa_tong', width: 72, align: 'center',
           render: (_, r) => {
-            const total = (r.plQaLayMau || 0) + (r.dgQaLayMau || 0)
+            const wsKey = (r.maBravo || '') + '|' + (r.lsx || '')
+            const ws = qaMap[wsKey]
+            const total = ws ? (ws.layMau || 0) : ((r.plQaLayMau || 0) + (r.dgQaLayMau || 0))
             return total > 0
               ? <span style={{ fontWeight: 700, color: '#0891b2' }}>{total.toLocaleString('vi-VN')}</span>
               : <span style={{ color: '#d9d9d9' }}>—</span>

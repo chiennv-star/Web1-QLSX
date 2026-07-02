@@ -377,4 +377,10 @@ public class WorkScheduleController {
     public ResponseEntity<List<WorkScheduleCoLoHistoryDto>> getLichSuCoLo(@PathVariable Long id) {
         return ResponseEntity.ok(service.getLichSuCoLo(id));
     }
+
+    /** Tổng hợp QA lấy mẫu từ lịch SX theo (maBravo, soLo) — PCPL1 + PCPL2 + PL + DG */
+    @PostMapping("/qa-batch")
+    public ResponseEntity<Map<String, Map<String, Integer>>> qaBatch(@RequestBody List<String> maBravos) {
+        return ResponseEntity.ok(service.getQaBatch(maBravos));
+    }
 }

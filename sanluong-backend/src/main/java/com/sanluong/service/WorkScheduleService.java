@@ -972,4 +972,30 @@ public class WorkScheduleService {
                 .map(pm -> pm.getTienTrinh())
                 .orElse(null);
     }
+
+    // Tổng hợp QA (kiemNghiem/luuMau/khac/layMau) từ lịch SX theo (maBravo, soLo)
+    // congDoan: PCPL1, PCPL2, PL, DG
+    public java.util.Map<String, java.util.Map<String, Integer>> getQaBatch(List<String> maBravos) {
+        if (maBravos == null || maBravos.isEmpty()) return java.util.Collections.emptyMap();
+        List<String> distinct = maBravos.stream()
+                .filter(s -> s != null && !s.isBlank())
+                .distinct()
+                .collect(Collectors.toList());
+        if (distinct.isEmpty()) return java.util.Collections.emptyMap();
+        List<Object[]> rows = repository.aggregateQaByMaBravos(distinct);
+        java.util.Map<String, java.util.Map<String, Integer>> result = new java.util.HashMap<>();
+        for (Object[] row : rows) {
+            String mb = (String) row[0];
+            String sl = (String) row[1];
+            if (mb == null) continue;
+            String key = mb + "|" + (sl != null ? sl : "");
+            java.util.Map<String, Integer> qa = new java.util.HashMap<>();
+            qa.put("kiemNghiem", row[2] != null ? ((Number) row[2]).intValue() : 0);
+            qa.put("luuMau",     row[3] != null ? ((Number) row[3]).intValue() : 0);
+            qa.put("khac",       row[4] != null ? ((Number) row[4]).intValue() : 0);
+            qa.put("layMau",     row[5] != null ? ((Number) row[5]).intValue() : 0);
+            result.put(key, qa);
+        }
+        return result;
+    }
 }
