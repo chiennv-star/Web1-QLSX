@@ -973,6 +973,34 @@ public class WorkScheduleService {
                 .orElse(null);
     }
 
+    /** QA breakdown theo PL (PCPL1+PCPL2+PL) và DG cho một maBravo+soLo */
+    public java.util.Map<String, java.util.Map<String, Integer>> getQaByKey(String maBravo, String soLo) {
+        if (maBravo == null || maBravo.isBlank()) return java.util.Collections.emptyMap();
+        String tenTrinh = resolveTenTrinh(maBravo, null);
+
+        List<com.sanluong.entity.WorkSchedule> plList = repository.findByTripletAndCongDoans(
+                maBravo, tenTrinh, soLo, java.util.List.of("PCPL1", "PCPL2", "PL"));
+        List<com.sanluong.entity.WorkSchedule> dgList = repository.findByTripletAndCongDoans(
+                maBravo, tenTrinh, soLo, java.util.List.of("DG"));
+
+        java.util.Map<String, Integer> pl = new java.util.HashMap<>();
+        int plKn = plList.stream().mapToInt(x -> x.getQaKiemNghiem() != null ? x.getQaKiemNghiem() : 0).sum();
+        int plLm = plList.stream().mapToInt(x -> x.getQaLuuMau()     != null ? x.getQaLuuMau()     : 0).sum();
+        int plKh = plList.stream().mapToInt(x -> x.getQaKhac()       != null ? x.getQaKhac()       : 0).sum();
+        pl.put("kiemNghiem", plKn); pl.put("luuMau", plLm); pl.put("khac", plKh); pl.put("tong", plKn + plLm + plKh);
+
+        java.util.Map<String, Integer> dg = new java.util.HashMap<>();
+        int dgKn = dgList.stream().mapToInt(x -> x.getQaKiemNghiem() != null ? x.getQaKiemNghiem() : 0).sum();
+        int dgLm = dgList.stream().mapToInt(x -> x.getQaLuuMau()     != null ? x.getQaLuuMau()     : 0).sum();
+        int dgKh = dgList.stream().mapToInt(x -> x.getQaKhac()       != null ? x.getQaKhac()       : 0).sum();
+        dg.put("kiemNghiem", dgKn); dg.put("luuMau", dgLm); dg.put("khac", dgKh); dg.put("tong", dgKn + dgLm + dgKh);
+
+        java.util.Map<String, java.util.Map<String, Integer>> result = new java.util.HashMap<>();
+        result.put("pl", pl);
+        result.put("dg", dg);
+        return result;
+    }
+
     // Tổng hợp QA (kiemNghiem/luuMau/khac/layMau) từ lịch SX theo (maBravo, soLo)
     // congDoan: PCPL1, PCPL2, PL, DG
     public java.util.Map<String, java.util.Map<String, Integer>> getQaBatch(List<String> maBravos) {

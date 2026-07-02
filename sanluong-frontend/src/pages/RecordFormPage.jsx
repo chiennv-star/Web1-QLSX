@@ -65,6 +65,7 @@ export default function RecordFormPage() {
   const [ngayMap, setNgayMap] = useState({})        // hangLoiId → []
   const [ngayLoading, setNgayLoading] = useState({}) // hangLoiId → bool
   const [ngayNew, setNgayNew] = useState({})         // hangLoiId → {ngay,slTraVe,slDatSauXuLy,slHuy,ghiChu}
+  const [qaData, setQaData] = useState(null)         // live QA từ WorkSchedule { pl: {...}, dg: {...} }
   const [ngaySaving, setNgaySaving] = useState({})   // hangLoiId+ngayId → bool
 
   // Watched values for live calculation
@@ -86,14 +87,15 @@ export default function RecordFormPage() {
   const watchLsx     = Form.useWatch('lsx',      form) || ''
   const watchSlPc       = Form.useWatch('slPc',        form) || 0
   const watchBbc1_2     = Form.useWatch('bbc1_2',      form) || 0
-  const watchPlQaLayMau     = Form.useWatch('plQaLayMau',     form) || 0
-  const watchDgQaLayMau     = Form.useWatch('dgQaLayMau',     form) || 0
-  const watchPlQaLuuMau     = Form.useWatch('plQaLuuMau',     form) || 0
-  const watchDgQaLuuMau     = Form.useWatch('dgQaLuuMau',     form) || 0
-  const watchPlQaKiemNghiem = Form.useWatch('plQaKiemNghiem', form) || 0
-  const watchDgQaKiemNghiem = Form.useWatch('dgQaKiemNghiem', form) || 0
-  const watchPlQaKhac       = Form.useWatch('plQaKhac',       form) || 0
-  const watchDgQaKhac       = Form.useWatch('dgQaKhac',       form) || 0
+  // QA live từ WorkSchedule (ưu tiên hơn cached trên ProductionRecord)
+  const watchPlQaLayMau     = qaData?.pl?.tong       ?? 0
+  const watchDgQaLayMau     = qaData?.dg?.tong       ?? 0
+  const watchPlQaLuuMau     = qaData?.pl?.luuMau     ?? 0
+  const watchDgQaLuuMau     = qaData?.dg?.luuMau     ?? 0
+  const watchPlQaKiemNghiem = qaData?.pl?.kiemNghiem ?? 0
+  const watchDgQaKiemNghiem = qaData?.dg?.kiemNghiem ?? 0
+  const watchPlQaKhac       = qaData?.pl?.khac       ?? 0
+  const watchDgQaKhac       = qaData?.dg?.khac       ?? 0
   const watchTpNhapKho   = Form.useWatch('tpNhapKho',   form) || 0
 
   const fetchHangLoiList = async (maTp, lsx) => {
@@ -297,6 +299,11 @@ export default function RecordFormPage() {
             hlSlHuy:           data.hlSlHuy,
           })
           fetchHangLoiList(data.maTp, data.lsx)
+          if (data.maBravo && data.lsx) {
+            api.get('/work-schedule/qa-by-key', { params: { maBravo: data.maBravo, soLo: data.lsx } })
+              .then(({ data: qa }) => setQaData(qa))
+              .catch(() => {})
+          }
         })
         .catch(() => message.error('Không thể tải dữ liệu'))
     }
@@ -834,25 +841,14 @@ export default function RecordFormPage() {
                           </thead>
                           <tbody>
                             {[
-                              { label: 'PL', luuMau: 'plQaLuuMau', kiemNghiem: 'plQaKiemNghiem', khac: 'plQaKhac', tong: 'plQaLayMau',
-                                wLuuMau: watchPlQaLuuMau, wKiemNghiem: watchPlQaKiemNghiem, wKhac: watchPlQaKhac, wTong: watchPlQaLayMau },
-                              { label: 'ĐG', luuMau: 'dgQaLuuMau', kiemNghiem: 'dgQaKiemNghiem', khac: 'dgQaKhac', tong: 'dgQaLayMau',
-                                wLuuMau: watchDgQaLuuMau, wKiemNghiem: watchDgQaKiemNghiem, wKhac: watchDgQaKhac, wTong: watchDgQaLayMau },
+                              { label: 'PL', luuMau: watchPlQaLuuMau, kiemNghiem: watchPlQaKiemNghiem, khac: watchPlQaKhac, tong: watchPlQaLayMau },
+                              { label: 'ĐG', luuMau: watchDgQaLuuMau, kiemNghiem: watchDgQaKiemNghiem, khac: watchDgQaKhac, tong: watchDgQaLayMau },
                             ].map(row => (
                               <tr key={row.label} style={{ borderBottom: '1px solid #f0f2f5' }}>
                                 <td style={{ padding: '6px 10px', background: '#f8fafc', fontWeight: 700, fontSize: 13, color: '#374151' }}>{row.label}</td>
-                                {[
-                                  { name: row.luuMau },
-                                  { name: row.kiemNghiem },
-                                  { name: row.khac },
-                                  { name: row.tong },
-                                ].map(({ name }) => (
-                                  <td key={name} style={{ padding: '4px 6px', textAlign: 'center' }}>
-                                    <Form.Item name={name} style={{ marginBottom: 0 }}>
-                                      <InputNumber size="small" style={{ width: '100%', fontWeight: 600 }} min={0} disabled={ro}
-                                        formatter={v => v ? Number(v).toLocaleString('vi-VN') : '0'}
-                                        parser={v => v ? v.replace(/[^\d]/g, '') : 0} />
-                                    </Form.Item>
+                                {[row.luuMau, row.kiemNghiem, row.khac, row.tong].map((v, i) => (
+                                  <td key={i} style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 600, color: v > 0 ? '#1d4ed8' : '#9ca3af' }}>
+                                    {v > 0 ? v.toLocaleString('vi-VN') : '—'}
                                   </td>
                                 ))}
                               </tr>

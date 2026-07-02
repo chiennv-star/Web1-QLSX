@@ -383,4 +383,12 @@ public class WorkScheduleController {
     public ResponseEntity<Map<String, Map<String, Integer>>> qaBatch(@RequestBody List<String> maBravos) {
         return ResponseEntity.ok(service.getQaBatch(maBravos));
     }
+
+    /** QA breakdown theo PL (PCPL1+PCPL2+PL) và DG cho một maBravo+soLo */
+    @GetMapping("/qa-by-key")
+    public ResponseEntity<Map<String, Map<String, Integer>>> qaByKey(
+            @RequestParam String maBravo,
+            @RequestParam(required = false) String soLo) {
+        return ResponseEntity.ok(service.getQaByKey(maBravo, soLo));
+    }
 }
