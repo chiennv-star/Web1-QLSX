@@ -714,7 +714,8 @@ function SanLuongKeToanTab({ data = [], loading = false, pagination = {}, onPagi
 // ── Hiệu suất tab ────────────────────────────────────────────────────────────
 function HieuSuatTab({ data = [], loading = false, pagination = {}, onPaginationChange,
   doneData = [], doneLoading = false, donePagination = {}, onDonePaginationChange,
-  headerOffset = 120 }) {
+  headerOffset = 120, nhapKhoMap = {} }) {
+  const getNkHoVal = (r) => nhapKhoMap[(r.maBravo || '') + '|' + (r.lsx || '')] ?? (r.tpNhapKho ?? 0)
   const { isAdmin, isAdminKH, user } = useAuth()
   const canEditNote = () => ['ADMIN', 'ADMIN_KH', 'ADMIN_PL', 'ADMIN_DG'].includes(user?.role)
   const [subTab, setSubTab] = useState('doing')
@@ -743,7 +744,7 @@ function HieuSuatTab({ data = [], loading = false, pagination = {}, onPagination
     const slDg      = parseInt(r.dg2)    || 0
     const qaPl      = r.plQaLayMau || 0
     const qaDg      = r.dgQaLayMau || 0
-    const nkho      = getNhapKho(r)
+    const nkho      = getNkHoVal(r)
     const coLo      = r.soLuong || 0
     const hsPl      = coLo > 0 ? ((slPl + qaPl) / coLo * 100) : null
     const hsDg      = slPl > 0 ? ((slDg + qaDg) / slPl * 100) : null
@@ -2480,6 +2481,7 @@ export default function DashboardPage() {
                 donePaginationRef.current = { current: page, pageSize }
                 fetchDoneData(page - 1, pageSize)
               }}
+              nhapKhoMap={nhapKhoMap}
               headerOffset={headerOffset}
             />,
           },

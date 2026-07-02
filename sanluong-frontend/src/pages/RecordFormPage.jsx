@@ -86,8 +86,9 @@ export default function RecordFormPage() {
   const watchLsx     = Form.useWatch('lsx',      form) || ''
   const watchSlPc       = Form.useWatch('slPc',        form) || 0
   const watchBbc1_2     = Form.useWatch('bbc1_2',      form) || 0
-  const watchPlQaLayMau = Form.useWatch('plQaLayMau',  form) || 0
-  const watchDgQaLayMau = Form.useWatch('dgQaLayMau',  form) || 0
+  const watchPlQaLayMau  = Form.useWatch('plQaLayMau',  form) || 0
+  const watchDgQaLayMau  = Form.useWatch('dgQaLayMau',  form) || 0
+  const watchTpNhapKho   = Form.useWatch('tpNhapKho',   form) || 0
 
   const fetchHangLoiList = async (maTp, lsx) => {
     if (!maTp || !lsx) return
@@ -851,11 +852,14 @@ export default function RecordFormPage() {
 
                         {/* Bảng 3: Hiệu suất */}
                         {(() => {
-                          const hsPl = watchSoLuong > 0
+                          const hsPl   = watchSoLuong > 0
                             ? ((watchPcPl + watchPlQaLayMau) / watchSoLuong * 100)
                             : null
-                          const hsDg = watchPcPl > 0
+                          const hsDg   = watchPcPl > 0
                             ? ((watchDg2 + watchDgQaLayMau) / watchPcPl * 100)
+                            : null
+                          const hsTong = watchSoLuong > 0
+                            ? ((watchTpNhapKho + watchPlQaLayMau + watchDgQaLayMau) / watchSoLuong * 100)
                             : null
                           const hsColor = (v) => v == null ? '#bbb' : v >= 99 ? '#16a34a' : v >= 95 ? '#d46b08' : '#cf1322'
                           const hsBg    = (v) => v == null ? '#f8f8f8' : v >= 99 ? '#f6ffed' : v >= 95 ? '#fff7e6' : '#fff1f0'
@@ -878,6 +882,23 @@ export default function RecordFormPage() {
                                   <td style={{ padding: '5px 10px', width: '28%' }}>
                                     <div className="cv" style={{ color: hsColor(hsDg), background: hsBg(hsDg), border: `1px solid ${hsBdr(hsDg)}` }}>
                                       {hsDg != null ? hsDg.toFixed(1) + '%' : '—'}
+                                    </div>
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td colSpan={4} style={{ padding: '5px 10px', borderTop: '1px solid #f0f2f5' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                      <span style={{ fontWeight: 700, fontSize: 12, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: 0.3, minWidth: 130 }}>
+                                        Hiệu suất tổng <span style={{ fontWeight: 400, color: '#aaa', textTransform: 'none', fontSize: 11 }}>(tự tính)</span>
+                                      </span>
+                                      <div className="cv" style={{ flex: 1, color: hsColor(hsTong), background: hsBg(hsTong), border: `1px solid ${hsBdr(hsTong)}` }}>
+                                        {hsTong != null ? hsTong.toFixed(1) + '%' : '—'}
+                                      </div>
+                                      {hsTong != null && (
+                                        <span style={{ fontSize: 11, color: '#888' }}>
+                                          (NK {watchTpNhapKho.toLocaleString('vi-VN')} + QA {(watchPlQaLayMau + watchDgQaLayMau).toLocaleString('vi-VN')}) / {watchSoLuong.toLocaleString('vi-VN')}
+                                        </span>
+                                      )}
                                     </div>
                                   </td>
                                 </tr>
