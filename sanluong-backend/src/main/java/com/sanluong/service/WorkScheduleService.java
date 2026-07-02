@@ -976,12 +976,11 @@ public class WorkScheduleService {
     /** QA breakdown theo PL (PCPL1+PCPL2+PL) và DG cho một maBravo+soLo */
     public java.util.Map<String, java.util.Map<String, Integer>> getQaByKey(String maBravo, String soLo) {
         if (maBravo == null || maBravo.isBlank()) return java.util.Collections.emptyMap();
-        String tenTrinh = resolveTenTrinh(maBravo, null);
 
-        List<com.sanluong.entity.WorkSchedule> plList = repository.findByTripletAndCongDoans(
-                maBravo, tenTrinh, soLo, java.util.List.of("PCPL1", "PCPL2", "PL"));
-        List<com.sanluong.entity.WorkSchedule> dgList = repository.findByTripletAndCongDoans(
-                maBravo, tenTrinh, soLo, java.util.List.of("DG"));
+        List<com.sanluong.entity.WorkSchedule> plList = repository.findByMaBravoAndSoLoAndCongDoans(
+                maBravo, soLo, java.util.List.of("PCPL1", "PCPL2", "PL"));
+        List<com.sanluong.entity.WorkSchedule> dgList = repository.findByMaBravoAndSoLoAndCongDoans(
+                maBravo, soLo, java.util.List.of("DG"));
 
         java.util.Map<String, Integer> pl = new java.util.HashMap<>();
         int plKn = plList.stream().mapToInt(x -> x.getQaKiemNghiem() != null ? x.getQaKiemNghiem() : 0).sum();

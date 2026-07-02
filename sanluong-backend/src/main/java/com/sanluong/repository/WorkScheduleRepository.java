@@ -271,6 +271,20 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
             @Param("congDoans") java.util.List<String> congDoans
     );
 
+    /** Tất cả WorkSchedule cùng maBravo + soLo thuộc các công đoạn cho trước — dùng để tra cứu QA theo maBravo */
+    @Query("""
+        SELECT w FROM WorkSchedule w
+        WHERE w.maBravo = :maBravo
+          AND (:soLo IS NULL OR w.soLo = :soLo)
+          AND w.congDoan IN :congDoans
+          AND w.deletedAt IS NULL
+        """)
+    List<com.sanluong.entity.WorkSchedule> findByMaBravoAndSoLoAndCongDoans(
+            @Param("maBravo") String maBravo,
+            @Param("soLo") String soLo,
+            @Param("congDoans") java.util.List<String> congDoans
+    );
+
     // Cascade update soLo toàn bộ kế hoạch cùng maDonHang + lô cũ (native SQL)
     @Modifying
     @Transactional
