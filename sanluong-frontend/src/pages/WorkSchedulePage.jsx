@@ -589,7 +589,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
     const t = parseFloat(thoiGian)
     if (!t || !ca) return ''
     const divisor = ca === 'HC' ? 8 : 7
-    return parseFloat((t / divisor).toFixed(2))
+    return parseFloat((t / divisor).toFixed(4))
   }
 
   const updateLocal = (identifier, field, value) => {
@@ -1221,7 +1221,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                   }
                 </span>
                 <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                  Công: <b style={{ color: '#0f172a' }}>{tong ? tong.toFixed(1) : '0'}</b>
+                  Công: <b style={{ color: '#0f172a' }}>{tong ? tong.toFixed(4) : '0'}</b>
                 </span>
                 <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap', flexShrink: 0 }}>
                   NS:&nbsp;
