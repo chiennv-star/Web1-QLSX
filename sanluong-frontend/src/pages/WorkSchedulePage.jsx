@@ -3233,7 +3233,8 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
     const reset = { dateRange: null, maSp: '', tenTrinh: '', soLo: '', tinhTrang: '', maBravo: '' }
     setFilters(reset)
     try { localStorage.removeItem(LS_FILTERS) } catch {}
-    fetchData(0, 20, reset)
+    if (innerTab === 'list') fetchData(0, 20, reset)
+    else setSearchTick(t => t + 1)
   }
 
   const handleSearch = () => {
@@ -3970,6 +3971,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         <HiddenTab
           congDoan={congDoan}
           toNhom={forcedNhom}
+          filters={filters}
           headerOffset={headerOffset}
           onUnhide={() => fetchData(0)}
           onCountChange={setHiddenCount}
@@ -4398,7 +4400,7 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
 }
 
 // ── HiddenTab ─────────────────────────────────────────────────────────────────
-function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange, headerOffset = 84 }) {
+function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange, headerOffset = 84, filters = {} }) {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 1000, total: 0 })
@@ -4545,6 +4547,16 @@ function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange, headerOffset = 8
     }
   ]
 
+  // Lọc client-side theo filters (maSp, tenTrinh, soLo, maBravo)
+  const filteredData = useMemo(() => data.filter(r => {
+    const f = filters
+    if (f.maSp     && !(r.maSp     || '').toLowerCase().includes(f.maSp.toLowerCase()))     return false
+    if (f.tenTrinh && !(r.tenTrinh || '').toLowerCase().includes(f.tenTrinh.toLowerCase())) return false
+    if (f.soLo     && !(r.soLo     || '').toLowerCase().includes(f.soLo.toLowerCase()))     return false
+    if (f.maBravo  && !(r.maBravo  || '').toLowerCase().includes(f.maBravo.toLowerCase()))  return false
+    return true
+  }), [data, filters])
+
   return (
     <div style={{ padding: '8px 0' }}>
       {/* Toolbar */}
@@ -4555,7 +4567,7 @@ function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange, headerOffset = 8
       }}>
         <EyeInvisibleOutlined style={{ color: '#722ed1', fontSize: 15 }} />
         <span style={{ fontSize: 13, color: '#531dab', fontWeight: 600 }}>
-          Bản ghi đã ẩn — Tổng: {pagination.total}
+          Bản ghi đã ẩn — Tổng: {filteredData.length}{filteredData.length !== data.length ? ` / ${data.length}` : ''}
         </span>
         {selectedIds.length > 0 && (
           <Button
@@ -4580,7 +4592,7 @@ function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange, headerOffset = 8
           onChange: keys => setSelectedIds(keys),
         }}
         columns={columns}
-        dataSource={[...data].sort((a, b) => {
+        dataSource={[...filteredData].sort((a, b) => {
           const slF = SL_FIELD_MAP[congDoan], cF = CONG_FIELD_MAP[congDoan]
           const getPriority = r => {
             const sl   = slF ? Number(r[slF]) || 0 : 0
