@@ -4358,37 +4358,13 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
       <SkeletonTable
         className="ws-table"
         columns={columns}
-        dataSource={[...data].sort((a, b) => {
-          const getPriority = r => {
-            const { sl, cong } = getSlCong(r)
-            const slV = Number(sl) || 0, congV = Number(cong) || 0
-            const coLoV = Number(r.coLo) || 0
-            if ((congV > 0 && slV === 0) || (slV > 0 && congV === 0)) return 0
-            if (coLoV > 0 && slV > 0 && slV < coLoV * 0.95) return 1
-            if (coLoV > 0 && slV > coLoV) return 2
-            return 10
-          }
-          const pa = getPriority(a), pb = getPriority(b)
-          if (pa !== pb) return pa - pb
-          return parseSoLoNum(b.soLo) - parseSoLoNum(a.soLo)
-        })}
+        dataSource={[...data]}
         rowKey="id"
         loading={loading}
         size="small"
         scroll={{ x: 1150 }}
         sticky={{ offsetHeader: headerOffset }}
         rowHoverable={false}
-        rowClassName={record => {
-          const { sl, cong } = getSlCong(record)
-          const slV = Number(sl) || 0, congV = Number(cong) || 0
-          if ((congV > 0 && slV === 0) || (slV > 0 && congV === 0)) return 'row-missing-sl'
-          const coLoV = Number(record.coLo) || 0
-          if (coLoV > 0 && slV > 0) {
-            if (slV > coLoV)           return 'row-sl-over'
-            if (slV < coLoV * 0.95)    return 'row-sl-under'
-          }
-          return ''
-        }}
         onRow={r => ({
           onClick: () => onRowClick?.(r),
           style: { cursor: onRowClick ? 'pointer' : 'default' },
