@@ -494,17 +494,18 @@ export default function PhanTichKeHoachPage() {
                   const v = productMap[r.maSp]?.nangSuatPl
                   return v ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{Number(v).toLocaleString('vi-VN')}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
                 } },
-              { title: 'Số người ước tính', key: 'soNguoi', align: 'center', width: 110,
+              { title: 'Số người TH', key: 'soNguoi', align: 'center', width: 100,
                 render: (_, r) => {
-                  const pm = productMap[r.maSp]
-                  const sl = Number(r.coLo || 0)
                   const stage = resolveStage(r)
-                  const ns = stage === 'PL'   ? Number(pm?.nangSuatPl   || 0)
-                           : stage === 'BBC1' ? Number(pm?.nangSuatBbc1 || 0)
-                           : stage === 'DG'   ? Number(pm?.nangSuatDg   || 0)
-                           :                   Number(pm?.nangSuatPc   || 0)
-                  if (!ns || !sl) return <span style={{ color: '#d9d9d9' }}>—</span>
-                  return <span style={{ fontWeight: 700, color: '#7c3aed' }}>{Math.ceil(sl / ns)} người</span>
+                  const val = stage === 'PL'   ? r.congPl
+                            : stage === 'BBC1' ? r.congBbc1
+                            : stage === 'DG'   ? r.congDg
+                            : stage === 'CC'   ? r.congCc
+                            :                   r.congPc  // PCPL1, PCPL2
+                  const n = Number(val || 0)
+                  return n > 0
+                    ? <span style={{ fontWeight: 700, color: '#7c3aed' }}>{n} người</span>
+                    : <span style={{ color: '#d9d9d9' }}>—</span>
                 } },
               { title: 'Tình trạng', dataIndex: 'tinhTrang', width: 90, align: 'center',
                 render: v => {
