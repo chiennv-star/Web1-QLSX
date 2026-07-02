@@ -5137,9 +5137,10 @@ function NhapKhoTab() {
 // ─── Page chính: wrapper Tabs ─────────────────────────────────────────────────
 
 export default function DailySanLuongPage() {
-  const { isAdmin, isAdminKH, isManHinh, isTKSX, isTPSX } = useAuth()
+  const { user, isAdmin, isAdminKH, isManHinh, isTKSX, isTPSX } = useAuth()
   const canApprove     = isAdmin() || isAdminKH()
   const canViewAnalytics = isAdmin() || isTKSX() || isTPSX()
+  const canViewNhapKho = isAdmin() || isAdminKH() || user?.role === 'ADMIN_DG'
   const manHinh = isManHinh()
   const location = useLocation()
 
@@ -5149,6 +5150,7 @@ export default function DailySanLuongPage() {
     if (manHinh) return 'baocao'
     const t = tabFromUrl || localStorage.getItem('dailysl_activeTab') || 'daily'
     if (!canViewAnalytics && (t === 'thongke' || t === 'phantich')) return 'daily'
+    if (!canViewNhapKho && t === 'nhapkho') return 'daily'
     return t
   })
 
@@ -5247,7 +5249,7 @@ export default function DailySanLuongPage() {
       ),
       children: <PhanTichSanLuongTab />,
     }] : []),
-    ...(!manHinh ? [{
+    ...(canViewNhapKho ? [{
       key: 'nhapkho',
       label: (
         <span>
