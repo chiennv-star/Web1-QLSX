@@ -252,7 +252,7 @@ export default function MainLayout() {
         ...(isAdmin() || isTKSX() || isTPSX() || isQuanDoc() || isStageAdmin() ? [
           { key: '/work-efficiency', icon: <TrophyOutlined />, label: 'Nhân Viên' },
         ] : []),
-        ...(isAdmin() || isTPSX() || isStageAdmin() ? [
+        ...(isAdmin() || isTPSX() || isQuanDoc() || isStageAdmin() ? [
           { key: '/cham-cong', icon: <FileDoneOutlined />, label: 'Chấm công' },
         ] : []),
         { key: '/danh-muc',        icon: <AppstoreOutlined />, label: 'Quản Lý Danh Mục' },
