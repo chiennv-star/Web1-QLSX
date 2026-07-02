@@ -463,9 +463,36 @@ export default function PhanTichKeHoachPage() {
                   const tagColor = s === 'PCPL1' ? 'blue' : s === 'PCPL2' ? 'geekblue' : s === 'PL' ? 'cyan' : s === 'DG' ? 'gold' : s === 'BBC1' ? 'purple' : 'magenta'
                   return <Tag color={tagColor} style={{ fontWeight: 700, marginRight: 0 }}>{s}</Tag>
                 } },
-              { title: 'SL Kế Hoạch', dataIndex: 'coLo', align: 'right', width: 110,
+              { title: 'Cỡ lô (KH)', dataIndex: 'coLo', align: 'right', width: 100,
                 sorter: (a, b) => (a.coLo || 0) - (b.coLo || 0),
                 render: v => v ? <span style={{ fontWeight: 700, color: '#1e5fa3' }}>{fmtSL(v)}</span> : '—' },
+              { title: 'Thiết bị PC', key: 'mayMocPc', width: 120, ellipsis: true,
+                render: (_, r) => {
+                  const v = productMap[r.maSp]?.mayMocPc
+                  return v ? <Tooltip title={v}><span style={{ fontSize: 11, color: '#374151' }}>{v}</span></Tooltip> : <span style={{ color: '#d9d9d9' }}>—</span>
+                } },
+              { title: 'NS PC', key: 'nangSuatPc', align: 'right', width: 80,
+                render: (_, r) => {
+                  const v = productMap[r.maSp]?.nangSuatPc
+                  return v ? <span style={{ color: '#0369a1', fontWeight: 600 }}>{Number(v).toLocaleString('vi-VN')}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+                } },
+              { title: 'NS PL', key: 'nangSuatPl', align: 'right', width: 80,
+                render: (_, r) => {
+                  const v = productMap[r.maSp]?.nangSuatPl
+                  return v ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{Number(v).toLocaleString('vi-VN')}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+                } },
+              { title: 'Số người ước tính', key: 'soNguoi', align: 'center', width: 110,
+                render: (_, r) => {
+                  const pm = productMap[r.maSp]
+                  const sl = Number(r.coLo || 0)
+                  const stage = resolveStage(r)
+                  const ns = stage === 'PL'   ? Number(pm?.nangSuatPl   || 0)
+                           : stage === 'BBC1' ? Number(pm?.nangSuatBbc1 || 0)
+                           : stage === 'DG'   ? Number(pm?.nangSuatDg   || 0)
+                           :                   Number(pm?.nangSuatPc   || 0)
+                  if (!ns || !sl) return <span style={{ color: '#d9d9d9' }}>—</span>
+                  return <span style={{ fontWeight: 700, color: '#7c3aed' }}>{Math.ceil(sl / ns)} người</span>
+                } },
               { title: 'Tình trạng', dataIndex: 'tinhTrang', width: 90, align: 'center',
                 render: v => {
                   const cfg = {
@@ -483,8 +510,7 @@ export default function PhanTichKeHoachPage() {
                 <Table.Summary.Cell index={6} align="right">
                   <span style={{ color: '#1e5fa3' }}>{fmtSL(grandSL)}</span>
                 </Table.Summary.Cell>
-                <Table.Summary.Cell index={7} />
-
+                <Table.Summary.Cell index={7} colSpan={5} />
               </Table.Summary.Row>
             )}
           />
@@ -618,12 +644,35 @@ export default function PhanTichKeHoachPage() {
           ))}
         </div>
 
+        <style>{`
+          .ptkh-tabs .ant-tabs-tab {
+            background: #f1f5f9 !important;
+            border-radius: 6px 6px 0 0 !important;
+            margin-right: 4px !important;
+            padding: 6px 18px !important;
+            transition: all .15s;
+          }
+          .ptkh-tabs .ant-tabs-tab:hover {
+            background: #dbeafe !important;
+            color: #1e5fa3 !important;
+          }
+          .ptkh-tabs .ant-tabs-tab-active {
+            background: #1e5fa3 !important;
+          }
+          .ptkh-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+            color: #fff !important;
+            font-weight: 700 !important;
+          }
+          .ptkh-tabs .ant-tabs-ink-bar { display: none !important; }
+          .ptkh-tabs .ant-tabs-nav::before { border-color: #1e5fa3 !important; }
+        `}</style>
         <Tabs
+          className="ptkh-tabs"
           activeKey={subTab}
           onChange={setSubTab}
           size="small"
           items={subTabItems}
-          tabBarStyle={{ borderBottom: '2px solid #e2e8f0', marginBottom: 0 }}
+          tabBarStyle={{ marginBottom: 0 }}
         />
       </div>
     </Spin>
