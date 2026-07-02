@@ -203,6 +203,11 @@ public class ProductionController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/nhap-kho-tong-hop")
+    public ResponseEntity<List<java.util.Map<String, Object>>> getNhapKhoTongHop() {
+        return ResponseEntity.ok(productionService.getNhapKhoTongHop());
+    }
+
     @GetMapping("/nhap-kho")
     public ResponseEntity<List<ProductionRecord>> getNhapKho(
             @RequestParam(required = false) String fromDate,

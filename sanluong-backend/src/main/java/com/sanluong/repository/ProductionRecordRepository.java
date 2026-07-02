@@ -245,4 +245,23 @@ public interface ProductionRecordRepository extends JpaRepository<ProductionReco
     List<ProductionRecord> findNhapKho(
             @Param("fromDate") java.time.LocalDate fromDate,
             @Param("toDate")   java.time.LocalDate toDate);
+
+    /** Tất cả bản ghi phatLenh=true (lệnh sản xuất đã phát) */
+    @Query("""
+        SELECT r FROM ProductionRecord r
+        WHERE r.deletedAt IS NULL
+          AND (r.hidden IS NULL OR r.hidden = false)
+          AND r.phatLenh = true
+        ORDER BY r.id DESC
+        """)
+    List<ProductionRecord> findAllPhatLenh();
+
+    /** Tất cả bản ghi có tpNhapKho (bao gồm cả clone) để tổng hợp */
+    @Query("""
+        SELECT r FROM ProductionRecord r
+        WHERE r.deletedAt IS NULL
+          AND (r.hidden IS NULL OR r.hidden = false)
+          AND r.tpNhapKho IS NOT NULL
+        """)
+    List<ProductionRecord> findAllNhapKhoEntries();
 }

@@ -466,6 +466,49 @@ public class ProductionService {
         return repository.findNhapKho(fromDate, toDate);
     }
 
+    public List<java.util.Map<String, Object>> getNhapKhoTongHop() {
+        List<ProductionRecord> masters = repository.findAllPhatLenh();
+        List<ProductionRecord> allNk   = repository.findAllNhapKhoEntries();
+
+        // Group nhapkho entries by "maBravo|lsx"
+        java.util.Map<String, Integer>             sumMap     = new java.util.HashMap<>();
+        java.util.Map<String, Integer>             cntMap     = new java.util.HashMap<>();
+        java.util.Map<String, java.time.LocalDate> maxDateMap = new java.util.HashMap<>();
+        for (ProductionRecord r : allNk) {
+            String key = mkKey(r.getMaBravo(), r.getLsx());
+            sumMap.merge(key, r.getTpNhapKho() != null ? r.getTpNhapKho() : 0, Integer::sum);
+            cntMap.merge(key, 1, Integer::sum);
+            if (r.getNgayXuatKho() != null) {
+                maxDateMap.merge(key, r.getNgayXuatKho(),
+                        (a, b) -> a.isAfter(b) ? a : b);
+            }
+        }
+
+        java.util.List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
+        for (ProductionRecord r : masters) {
+            String key = mkKey(r.getMaBravo(), r.getLsx());
+            java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("id",                  r.getId());
+            row.put("maBravo",             r.getMaBravo());
+            row.put("maTp",                r.getMaTp());
+            row.put("tienTrinh",           r.getTienTrinh());
+            row.put("lsx",                 r.getLsx());
+            row.put("soLuong",             r.getSoLuong());
+            row.put("maDonHang",           r.getMaDonHang());
+            row.put("dg2",                 r.getDg2());
+            row.put("pcPl",                r.getPcPl());
+            row.put("totalNhapKho",        sumMap.getOrDefault(key, 0));
+            row.put("soLanNhapKho",        cntMap.getOrDefault(key, 0));
+            row.put("ngayNhapKhoMoiNhat",  maxDateMap.get(key));
+            result.add(row);
+        }
+        return result;
+    }
+
+    private static String mkKey(String maBravo, String lsx) {
+        return (maBravo == null ? "" : maBravo) + "|" + (lsx == null ? "" : lsx);
+    }
+
     public ProductionRecord createNhapKhoEntry(Long sourceId, java.util.Map<String, String> body, String username) {
         ProductionRecord src = repository.findById(sourceId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + sourceId));
