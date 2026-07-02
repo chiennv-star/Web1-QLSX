@@ -733,7 +733,13 @@ public class WorkScheduleSessionService {
             BigDecimal sl = dto.getSanLuong() != null ? dto.getSanLuong()
                     : (dto.getRequestedValue() != null ? dto.getRequestedValue() : null);
             if (sl != null && tongCong.compareTo(BigDecimal.ZERO) > 0) {
-                dto.setNangSuat(sl.divide(tongCong, 4, java.math.RoundingMode.HALF_UP));
+                BigDecimal slForNs = sl;
+                // ĐG: trừ số lượng lấy mẫu khỏi sản lượng khi tính hiệu suất
+                if ("DG".equalsIgnoreCase(w.getCongDoan()) && w.getQaLayMau() != null && w.getQaLayMau() > 0) {
+                    slForNs = sl.subtract(BigDecimal.valueOf(w.getQaLayMau()));
+                    if (slForNs.compareTo(BigDecimal.ZERO) < 0) slForNs = BigDecimal.ZERO;
+                }
+                dto.setNangSuat(slForNs.divide(tongCong, 4, java.math.RoundingMode.HALF_UP));
             }
             if (w.getMaSp() != null) {
                 ProductMaster pm = pmMap.get(w.getMaSp().toUpperCase());

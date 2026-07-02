@@ -1076,7 +1076,9 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const subHeadStyle = { ...cellStyle, background: '#fff7e6', fontWeight: 600, color: '#1890ff', whiteSpace: 'nowrap' }
   const inputStyle = { width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: 12 }
 
-  const nangSuat = tongCong > 0 && tongSanLuong > 0 ? tongSanLuong / tongCong : null
+  const qaLayMauForNs = schedule?.congDoan === 'DG' ? (Number(schedule?.qaLayMau) || 0) : 0
+  const slForNs = tongSanLuong - qaLayMauForNs
+  const nangSuat = tongCong > 0 && slForNs > 0 ? slForNs / tongCong : null
 
   const HeaderTable = () => {
     const validKeys = ngayKeys.filter(k => k !== 'unknown' && dayjs(k).isValid())
@@ -2265,7 +2267,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                   <LC accent="#d46b08">⚡ Năng Suất</LC>
                   <VC>
                     {(() => {
-                      const ns = tongCong > 0 && tongSanLuong > 0 ? tongSanLuong / tongCong : null
+                      const ns = tongCong > 0 && slForNs > 0 ? slForNs / tongCong : null
                       return ns != null
                         ? <span style={{ fontWeight: 700, color: '#d46b08', fontFamily: 'monospace', fontSize: 13 }}>{Math.round(ns).toLocaleString('vi-VN')}</span>
                         : <span style={{ color: '#aaa', fontSize: 13 }}>—</span>
@@ -4306,8 +4308,10 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
       render: (_, r) => {
         const { sl, cong } = getSlCong(r)
         const slV = Number(sl), congV = Number(cong)
-        if (slV > 0 && congV > 0) {
-          return <span style={{ color: '#d46b08', fontWeight: 600 }}>{Math.round(slV / congV).toLocaleString('vi-VN')}</span>
+        const qaV = r.congDoan === 'DG' ? (Number(r.qaLayMau) || 0) : 0
+        const slNs = slV - qaV
+        if (slNs > 0 && congV > 0) {
+          return <span style={{ color: '#d46b08', fontWeight: 600 }}>{Math.round(slNs / congV).toLocaleString('vi-VN')}</span>
         }
         return <span style={{ color: '#d9d9d9' }}>—</span>
       }
