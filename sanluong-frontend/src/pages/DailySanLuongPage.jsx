@@ -4155,6 +4155,7 @@ const _tfS = { padding: '5px 7px', border: '1px solid #005555', fontSize: 12 }
 
 function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading }) {
   const [editMT, setEditMT] = useState(false)
+  const [selectedDay, setSelectedDay] = useState(null)
 
   const pivot = useMemo(() => {
     const p = {}
@@ -4210,8 +4211,17 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading }) {
                 s + (day <= daysInMonth(m) && !isFuture(m) ? (pivot[day][m] || 0) : 0), 0)
               const hasData = rowTotal > 0
               return (
-                <tr key={day} style={{ background: day % 2 === 0 ? '#f9fafb' : '#fff' }}>
-                  <td style={{ ..._tdS, textAlign: 'center', fontWeight: 600, color: '#374151', background: '#f0fdf4' }}>
+                <tr
+                  key={day}
+                  onClick={() => setSelectedDay(prev => prev === day ? null : day)}
+                  style={{
+                    background: selectedDay === day ? '#e0f2fe' : day % 2 === 0 ? '#f9fafb' : '#fff',
+                    cursor: 'pointer',
+                    outline: selectedDay === day ? '2px solid #0ea5e9' : undefined,
+                    outlineOffset: selectedDay === day ? '-1px' : undefined,
+                  }}
+                >
+                  <td style={{ ..._tdS, textAlign: 'center', fontWeight: 600, color: '#374151', background: selectedDay === day ? '#bae6fd' : '#f0fdf4' }}>
                     {day}
                   </td>
                   {MONTHS.map(m => {
