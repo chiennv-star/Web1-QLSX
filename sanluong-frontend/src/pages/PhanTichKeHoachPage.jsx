@@ -481,7 +481,10 @@ export default function PhanTichKeHoachPage() {
                 render: v => v ? <span style={{ fontWeight: 700, color: '#1e5fa3' }}>{fmtSL(v)}</span> : '—' },
               { title: 'Thiết bị PC', key: 'mayMocPc', width: 120, ellipsis: true,
                 render: (_, r) => {
-                  const v = productMap[r.maSp]?.mayMocPc
+                  const stage = resolveStage(r)
+                  const v = (stage === 'PCPL2' || stage === 'PL')
+                    ? r.phongThucHien
+                    : productMap[r.maSp]?.mayMocPc
                   return v ? <Tooltip title={v}><span style={{ fontSize: 11, color: '#374151' }}>{v}</span></Tooltip> : <span style={{ color: '#d9d9d9' }}>—</span>
                 } },
               { title: 'NS PC', key: 'nangSuatPc', align: 'right', width: 80,
