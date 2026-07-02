@@ -475,8 +475,9 @@ function WipSummaryTab({ onNavigate, tabOffset = 0 }) {
 }
 
 function SummaryCard({ data, cfg }) {
-  const tongDoDang = data.reduce((sum, r) => sum + cfg.doDang(r), 0)
-  const tongCongDuKien = data.reduce((sum, r) => {
+  const doDangRows = data.filter(r => cfg.doDang(r) > 0)
+  const tongDoDang = doDangRows.reduce((sum, r) => sum + cfg.doDang(r), 0)
+  const tongCongDuKien = doDangRows.reduce((sum, r) => {
     const val = cfg.calcCongDuKien(r)
     return val === '—' ? sum : sum + parseFloat(val)
   }, 0)
@@ -486,7 +487,7 @@ function SummaryCard({ data, cfg }) {
       {[
         { label: cfg.summaryLabel, value: tongDoDang.toLocaleString('vi-VN'), accent: '#4db3d4' },
         { label: 'Tổng công dự kiến HT', value: tongCongDuKien.toFixed(4), accent: '#748090' },
-        { label: 'Số lô dở dang', value: data.length, accent: '#f97316' },
+        { label: 'Số lô dở dang', value: doDangRows.length, accent: '#f97316' },
       ].map((item, i) => (
         <div key={i} style={{
           flex: 1, padding: '10px 20px', background: '#fafbff',
