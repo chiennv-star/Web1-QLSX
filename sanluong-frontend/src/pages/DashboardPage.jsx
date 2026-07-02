@@ -1944,6 +1944,20 @@ export default function DashboardPage() {
             return <span style={{ fontWeight: 700, color }}>{pct}%</span>
           },
         },
+        {
+          title: 'Tổng', key: 'hs_tong', width: 80, align: 'center',
+          render: (_, r) => {
+            const coLo = r.soLuong || 0
+            if (!coLo) return <span style={{ color: '#d9d9d9' }}>—</span>
+            const nkho = getNhapKho(r)
+            const qaPl = r.plQaLayMau || 0
+            const qaDg = r.dgQaLayMau || 0
+            const pct  = ((nkho + qaPl + qaDg) / coLo * 100).toFixed(1)
+            const n    = parseFloat(pct)
+            const color = n >= 99 ? '#16a34a' : n >= 95 ? '#d46b08' : '#cf1322'
+            return <span style={{ fontWeight: 700, color }}>{pct}%</span>
+          },
+        },
       ],
     },
     {
