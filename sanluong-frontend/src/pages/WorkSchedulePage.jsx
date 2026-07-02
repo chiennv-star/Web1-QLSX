@@ -1397,9 +1397,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                                 onChange={e => { const tg = e.target.value; updateLocals(rowKey, { thoiGianBatDau: tg, congThucHien: calcCong(tg, s.caSanXuat) }) }} />
                             </td>
                             <td style={{ ...cellStyle, width: 110, textAlign: 'right', fontWeight: 700, color: '#0f766e' }}>
-                              {s.congThucHien !== '' && s.congThucHien != null
-                                ? Number(s.congThucHien).toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 4 })
-                                : '—'}
+                              {(() => { const v = calcCong(s.thoiGianBatDau, s.caSanXuat); return v !== '' ? v : (s.congThucHien !== '' && s.congThucHien != null ? parseFloat(s.congThucHien).toFixed(4) : '—') })()}
                             </td>
                             <td style={{ ...cellStyle, minWidth: 110 }}>
                               <input list={`vaitro-list-${rowKey}`} style={{ ...inputStyle, border: '1px solid #d9d9d9', borderRadius: 3, padding: '1px 5px', background: '#fff' }}
@@ -1716,7 +1714,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                         : <span style={{ color: '#bbb' }}>—</span>}
                     </td>
                     <td style={{ ...cellStyle, width: 90, textAlign: 'right' }}>{s.thoiGianBatDau || <span style={{ color: '#bbb' }}>—</span>}</td>
-                    <td style={{ ...cellStyle, width: 110, textAlign: 'right', fontWeight: 600 }}>{s.congThucHien != null ? parseFloat(s.congThucHien).toFixed(4) : <span style={{ color: '#bbb' }}>—</span>}</td>
+                    <td style={{ ...cellStyle, width: 110, textAlign: 'right', fontWeight: 600 }}>{(() => { const v = calcCong(s.thoiGianBatDau, s.caSanXuat); return v !== '' ? v : (s.congThucHien != null ? parseFloat(s.congThucHien).toFixed(4) : <span style={{ color: '#bbb' }}>—</span>) })()}</td>
                     <td style={{ ...cellStyle, minWidth: 110 }}>
                       {s.vaiTro
                         ? <Tag color={s.vaiTro === 'Trưởng ca' ? 'gold' : 'geekblue'} style={{ marginRight: 0 }}>{s.vaiTro}</Tag>
