@@ -1328,6 +1328,12 @@ export default function DashboardPage() {
   const [donePagination, setDonePagination] = useState({ current: 1, pageSize: 1000, total: 0 })
   const donePaginationRef = useRef({ current: 1, pageSize: 1000 })
 
+  // Tab "Tổng kế hồ sơ"
+  const [hoSoData, setHoSoData] = useState([])
+  const [hoSoLoading, setHoSoLoading] = useState(false)
+  const [hoSoPagination, setHoSoPagination] = useState({ current: 1, pageSize: 1000, total: 0 })
+  const hoSoPaginationRef = useRef({ current: 1, pageSize: 1000 })
+
   // Tab "Hiệu suất" — trang độc lập, 1000 rows/page
   const [hsData, setHsData] = useState([])
   const [hsLoading, setHsLoading] = useState(false)
@@ -1508,6 +1514,21 @@ export default function DashboardPage() {
     }
   }, [filters, fetchQaMap])
 
+  const fetchHoSoData = useCallback(async (page = 0, size = 1000, f = filters, { silent = false } = {}) => {
+    if (!silent) setHoSoLoading(true)
+    try {
+      const params = { page, size, ...f, hoSoHoanThien: true }
+      const { data: res } = await api.get('/production', { params })
+      const sorted = [...res.content].sort((a, b) => parseLsx(b.lsx) - parseLsx(a.lsx))
+      setHoSoData(sorted)
+      setHoSoPagination(p => ({ ...p, total: res.totalElements }))
+    } catch {
+      message.error('Không thể tải dữ liệu tổng kế hồ sơ')
+    } finally {
+      if (!silent) setHoSoLoading(false)
+    }
+  }, [filters])
+
   const fetchHsData = useCallback(async (page = 0, size = 1000, f = filters, { silent = false } = {}) => {
     if (!silent) setHsLoading(true)
     try {
@@ -1572,6 +1593,7 @@ export default function DashboardPage() {
     if (savedState) fetchData(savedState.page - 1, savedState.pageSize, savedState.filters)
     else fetchData(0)
     fetchDoneData(0)
+    fetchHoSoData(0)
     fetchHsData(0)
     fetchNhapKhoMap()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -1608,9 +1630,11 @@ export default function DashboardPage() {
   const handleSearch = () => {
     setPagination(p => ({ ...p, current: 1 }))
     setDonePagination(p => ({ ...p, current: 1 }))
+    setHoSoPagination(p => ({ ...p, current: 1 }))
     setHsPagination(p => ({ ...p, current: 1 }))
     fetchData(0)
     fetchDoneData(0)
+    fetchHoSoData(0)
     fetchHsData(0)
   }
 
@@ -1619,6 +1643,7 @@ export default function DashboardPage() {
     setFilters(empty)
     fetchData(0, pagination.pageSize, empty)
     fetchDoneData(0, donePagination.pageSize, empty)
+    fetchHoSoData(0, hoSoPagination.pageSize, empty)
     fetchHsData(0, hsPagination.pageSize, empty)
   }
 
@@ -1628,6 +1653,15 @@ export default function DashboardPage() {
       message.success('Đã ẩn bản ghi')
       fetchData(pagination.current - 1)
     } catch { message.error('Ẩn thất bại') }
+  }
+
+  const handleHoSoHoanThien = async (id) => {
+    try {
+      await api.patch(`/production/${id}/ho-so-hoan-thien`)
+      message.success('Đã chuyển sang Tổng Kế Hồ Sơ')
+      fetchData(pagination.current - 1)
+      fetchHoSoData(0)
+    } catch { message.error('Thao tác thất bại') }
   }
 
   const handleDelete = async (id) => {
@@ -2019,6 +2053,20 @@ export default function DashboardPage() {
                   </Popconfirm>
                 ),
               },
+              ...(isAdminKH() ? [{
+                key: 'ho_so',
+                icon: <AccountBookOutlined style={{ color: '#7c3aed' }} />,
+                label: (
+                  <Popconfirm
+                    title="Chuyển bản ghi này sang Tổng Kế Hồ Sơ?"
+                    okText="Chuyển" cancelText="Hủy"
+                    onConfirm={() => handleHoSoHoanThien(record.id)}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <span onClick={e => e.stopPropagation()} style={{ color: '#7c3aed' }}>Hoàn thiện hồ sơ</span>
+                  </Popconfirm>
+                ),
+              }] : []),
               { type: 'divider' },
               {
                 key: 'delete',
@@ -2321,6 +2369,7 @@ export default function DashboardPage() {
         onChange={key => {
           setActiveTab(key)
           if (key === 'done_list') fetchDoneData(donePaginationRef.current.current - 1, donePaginationRef.current.pageSize)
+          if (key === 'ho_so')     fetchHoSoData(hoSoPaginationRef.current.current - 1, hoSoPaginationRef.current.pageSize)
           if (key === 'hieu_suat') fetchHsData(hsPaginationRef.current.current - 1, hsPaginationRef.current.pageSize)
           if (key === 'tong_hop')  fetchThData(0, thPaginationRef.current.pageSize, thFilters)
         }}
@@ -2432,6 +2481,73 @@ export default function DashboardPage() {
                     setCtxMenu({ visible: true, x: e.clientX, y: e.clientY, record })
                   },
                 })}
+              />
+            )
+          },
+          {
+            key: 'ho_so',
+            label: (
+              <span>
+                📋 Tổng Kế Hồ Sơ
+                {hoSoPagination.total > 0 && (
+                  <span style={{
+                    marginLeft: 6, fontSize: 11, fontWeight: 700,
+                    background: '#7c3aed', color: '#fff',
+                    borderRadius: 10, padding: '0px 6px',
+                    display: 'inline-block', lineHeight: '18px',
+                  }}>
+                    {hoSoPagination.total}
+                  </span>
+                )}
+              </span>
+            ),
+            children: (
+              <Table
+                className="prod-table"
+                columns={[
+                  ...columns.filter(c => c.key !== 'action'),
+                  {
+                    title: '', key: 'action', width: 110, fixed: 'right', align: 'center',
+                    render: (_, record) => (isAdmin() || isAdminKH()) ? (
+                      <Popconfirm
+                        title="Hoàn lại Danh sách?"
+                        okText="Hoàn lại" cancelText="Hủy"
+                        onConfirm={async () => {
+                          try {
+                            await api.patch(`/production/${record.id}/ho-so-hoan-thien`)
+                            message.success('Đã hoàn lại Danh sách')
+                            fetchHoSoData(hoSoPaginationRef.current.current - 1, hoSoPaginationRef.current.pageSize)
+                            fetchData(pagination.current - 1)
+                          } catch { message.error('Thao tác thất bại') }
+                        }}
+                      >
+                        <Button size="small" style={{ fontSize: 11, fontWeight: 600, padding: '0 8px', borderColor: '#7c3aed', color: '#7c3aed' }}>
+                          Hoàn lại ↩
+                        </Button>
+                      </Popconfirm>
+                    ) : null,
+                  }
+                ]}
+                dataSource={hoSoData}
+                rowKey="id"
+                loading={hoSoLoading}
+                scroll={{ x: 2100 }}
+                size="small"
+                sticky={{ offsetHeader: headerOffset }}
+                rowClassName={(_, idx) => idx % 2 !== 0 ? 'row-alt' : ''}
+                pagination={{
+                  ...hoSoPagination,
+                  size: 'small',
+                  showSizeChanger: true,
+                  pageSizeOptions: ['100', '500', '1000'],
+                  showTotal: total => `Tổng ${total} hồ sơ hoàn thiện`,
+                  style: { margin: '8px 0 0' },
+                  onChange: (page, pageSize) => {
+                    hoSoPaginationRef.current = { current: page, pageSize }
+                    setHoSoPagination(p => ({ ...p, current: page, pageSize }))
+                    fetchHoSoData(page - 1, pageSize)
+                  }
+                }}
               />
             )
           },

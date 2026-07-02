@@ -31,9 +31,10 @@ public class ProductionController {
             @RequestParam(required = false) String lsx,
             @RequestParam(required = false) String trangThai,
             @RequestParam(required = false) Boolean hoanThanh,
+            @RequestParam(required = false) Boolean hoSoHoanThien,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(productionService.search(maTp, maBravo, tienTrinh, lsx, trangThai, hoanThanh, page, size));
+        return ResponseEntity.ok(productionService.search(maTp, maBravo, tienTrinh, lsx, trangThai, hoanThanh, hoSoHoanThien, page, size));
     }
 
     @GetMapping("/{id}")
@@ -133,6 +134,11 @@ public class ProductionController {
     public ResponseEntity<Map<String, Integer>> syncScheduleAll() {
         int created = productionService.syncScheduleAll();
         return ResponseEntity.ok(Map.of("created", created));
+    }
+
+    @PatchMapping("/{id}/ho-so-hoan-thien")
+    public ResponseEntity<ProductionRecord> hoSoHoanThien(@PathVariable Long id, Authentication auth) {
+        return ResponseEntity.ok(productionService.toggleHoSoHoanThien(id, auth.getName()));
     }
 
     @PatchMapping("/{id}/hide")

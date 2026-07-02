@@ -141,7 +141,7 @@ public class ProductionService {
     }
 
     public Page<ProductionRecord> search(String maTp, String maBravo, String tienTrinh,
-                                         String lsx, String trangThai, Boolean hoanThanh, int page, int size) {
+                                         String lsx, String trangThai, Boolean hoanThanh, Boolean hoSoHoanThien, int page, int size) {
         List<ProductionRecord> all = repository.searchAll(
                 isEmpty(maTp) ? null : maTp,
                 isEmpty(maBravo) ? null : maBravo,
@@ -149,19 +149,26 @@ public class ProductionService {
                 isEmpty(lsx) ? null : lsx,
                 isEmpty(trangThai) ? null : trangThai
         );
-        if (hoanThanh != null) {
-            enrichPcplStatus(all); // phải enrich trước để pcpl1/pcpl2TrangThai không null khi filter
-            all = all.stream().filter(r -> {
-                // PC done nếu bất kỳ PCPL1 hoặc PCPL2 done (OR logic)
-                boolean pcDone = "done".equals(r.getPcTrangThai())
-                        || "done".equals(r.getPcpl1TrangThai())
-                        || "done".equals(r.getPcpl2TrangThai());
-                boolean done = pcDone
-                        && "done".equals(r.getPlTrangThai())
-                        && "done".equals(r.getDgTrangThai())
-                        && "done".equals(r.getBbc1TrangThai());
-                return hoanThanh ? done : !done;
-            }).collect(Collectors.toList());
+        if (Boolean.TRUE.equals(hoSoHoanThien)) {
+            // Tab TỔNG KẾ HỒ SƠ: chỉ lấy bản ghi được đánh dấu hoSoHoanThien
+            all = all.stream().filter(r -> Boolean.TRUE.equals(r.getHoSoHoanThien())).collect(Collectors.toList());
+        } else {
+            // Mọi tab khác: loại bỏ hoSoHoanThien khỏi kết quả
+            all = all.stream().filter(r -> !Boolean.TRUE.equals(r.getHoSoHoanThien())).collect(Collectors.toList());
+            if (hoanThanh != null) {
+                enrichPcplStatus(all); // phải enrich trước để pcpl1/pcpl2TrangThai không null khi filter
+                all = all.stream().filter(r -> {
+                    // PC done nếu bất kỳ PCPL1 hoặc PCPL2 done (OR logic)
+                    boolean pcDone = "done".equals(r.getPcTrangThai())
+                            || "done".equals(r.getPcpl1TrangThai())
+                            || "done".equals(r.getPcpl2TrangThai());
+                    boolean done = pcDone
+                            && "done".equals(r.getPlTrangThai())
+                            && "done".equals(r.getDgTrangThai())
+                            && "done".equals(r.getBbc1TrangThai());
+                    return hoanThanh ? done : !done;
+                }).collect(Collectors.toList());
+            }
         }
         all.sort(Comparator
                 .comparingInt((ProductionRecord r) -> lsxSortKey(r.getLsx())).reversed()
@@ -460,6 +467,14 @@ public class ProductionService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));
         r.setHidden(true);
         repository.save(r);
+    }
+
+    public ProductionRecord toggleHoSoHoanThien(Long id, String username) {
+        ProductionRecord r = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));
+        r.setHoSoHoanThien(!Boolean.TRUE.equals(r.getHoSoHoanThien()));
+        r.setUpdatedBy(username);
+        return repository.save(r);
     }
 
     public List<ProductionRecord> getNhapKho(java.time.LocalDate fromDate, java.time.LocalDate toDate) {
