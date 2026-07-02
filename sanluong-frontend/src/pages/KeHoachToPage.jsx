@@ -682,6 +682,10 @@ export default function KeHoachToPage() {
   const [empTo, setEmpTo] = useState(selectedTo)
   useEffect(() => { setEmpTo(selectedTo) }, [selectedTo])
 
+  // Sub-tab khi xem tổ PL: 'pcpl1' | 'pcpl3'
+  const [plSubTab, setPlSubTab] = useState(() => sessionStorage.getItem('kehoachto_plSubTab') || 'pcpl1')
+  function setPlSubTabPersist(v) { sessionStorage.setItem('kehoachto_plSubTab', v); setPlSubTab(v) }
+
   const dragKind    = useRef(null)
   const dragPayload = useRef(null)
 
@@ -933,8 +937,9 @@ export default function KeHoachToPage() {
           const isPlPcpl1 = p.congDoan === 'PL' && p.toNhom === 'PCPL1'
           if (!isPcpl1 && !isPlPcpl1) return false
         } else if (selectedTo === 'PCPL3') {
-          // PL tab: chỉ hiện lịch PL đã gán cho PCPL3
-          if (!(p.congDoan === 'PL' && p.toNhom === 'PCPL3')) return false
+          // PL tab: lọc theo sub-tab (PCPL1 hoặc PCPL3)
+          const neededNhom = plSubTab === 'pcpl1' ? 'PCPL1' : 'PCPL3'
+          if (!(p.congDoan === 'PL' && p.toNhom === neededNhom)) return false
         } else {
           if (p.congDoan !== selectedTab?.schedCongDoan) return false
         }
@@ -954,10 +959,24 @@ export default function KeHoachToPage() {
     return true
   })
 
+  // Khi ở tab PL (PCPL3), lọc assigns theo sub-tab
+  const displayAssigns = (selectedTo === 'PCPL3')
+    ? assigns.filter(a => {
+        const plan = plans.find(p => p.id === a.wsId)
+        if (!plan) return false
+        return plSubTab === 'pcpl1' ? plan.toNhom === 'PCPL1' : plan.toNhom === 'PCPL3'
+      })
+    : assigns
+
   const displayEmps = empTo
     ? (() => {
         const tab = TO_TABS.find(t => t.key === empTo)
         if (tab?.congDoanKey) return employees
+        if (empTo === 'PCPL3') {
+          // PL tab: lọc nhân viên theo sub-tab
+          const nhomFilter = plSubTab === 'pcpl1' ? 'PCPL1' : 'PCPL3'
+          return employees.filter(e => e.toNhom === nhomFilter)
+        }
         return employees.filter(e => e.toNhom === empTo)
       })()
     : employees
@@ -983,7 +1002,7 @@ export default function KeHoachToPage() {
 
   async function handleSaveDay(dayStr) {
     if (!selectedTo) { message.warning('Chọn tổ trước khi lưu'); return }
-    const toSave = assigns.filter(a => a.ngay === dayStr && a.wsId && a.ngayFull)
+    const toSave = displayAssigns.filter(a => a.ngay === dayStr && a.wsId && a.ngayFull)
     if (toSave.length === 0) { message.info('Chưa có lịch nào để lưu'); return }
 
     const wsMap = {}
@@ -1373,6 +1392,18 @@ export default function KeHoachToPage() {
               {TO_TABS.find(t => t.key === selectedTo)?.label || selectedTo}
             </span>
           )}
+          {selectedTo === 'PCPL3' && (
+            <div style={{ display: 'flex', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 7, overflow: 'hidden', flexShrink: 0 }}>
+              {[{ key: 'pcpl1', label: 'PCPL1', color: '#2563eb' }, { key: 'pcpl3', label: 'PCPL3', color: '#7c3aed' }].map(t => (
+                <button key={t.key} onClick={() => setPlSubTabPersist(t.key)} style={{
+                  border: 'none', cursor: 'pointer', padding: '4px 11px',
+                  fontWeight: 700, fontSize: 11,
+                  background: plSubTab === t.key ? t.color : 'transparent',
+                  color: plSubTab === t.key ? '#fff' : '#64748b',
+                }}>{t.label}</button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 7, overflow: 'hidden', flexShrink: 0 }}>
@@ -1654,12 +1685,12 @@ export default function KeHoachToPage() {
                   <tbody>
                     {(() => {
                       const renderDays = showAllDays
-                        ? [...new Set(assigns.map(a => a.ngayFull).filter(Boolean))].sort((a, b) => b.localeCompare(a)).map(s => dayjs(s))
+                        ? [...new Set(displayAssigns.map(a => a.ngayFull).filter(Boolean))].sort((a, b) => b.localeCompare(a)).map(s => dayjs(s))
                         : [...days].reverse()
                       const q = detailSearch.toLowerCase()
                       return renderDays.map(d => {
                         const dayStr     = fmtDay(d)
-                        const dayAssigns = assigns.filter(a => {
+                        const dayAssigns = displayAssigns.filter(a => {
                           if (a.ngay !== dayStr) return false
                           if (q && !(
                             (a.ten || '').toLowerCase().includes(q) ||
@@ -1787,7 +1818,7 @@ export default function KeHoachToPage() {
                 <div style={{ color: '#94a3b8', fontSize: 12, padding: 12 }}>Chọn tổ ở thanh trên.</div>
               ) : (() => {
                 const renderDays = showAllDays
-                  ? [...new Set(assigns.map(a => a.ngayFull).filter(Boolean))].sort((a, b) => b.localeCompare(a)).map(s => dayjs(s))
+                  ? [...new Set(displayAssigns.map(a => a.ngayFull).filter(Boolean))].sort((a, b) => b.localeCompare(a)).map(s => dayjs(s))
                   : [...days].reverse()
                 return renderDays.map(d => {
                   const dayStr   = fmtDay(d)
@@ -1795,7 +1826,7 @@ export default function KeHoachToPage() {
                   const isWknd   = dow2 === 0 || dow2 === 6
                   const isSunday = dow2 === 0
                   const isSel    = dayStr === selectedDay
-                  const dayAssigns = assigns.filter(a => a.ngay === dayStr)
+                  const dayAssigns = displayAssigns.filter(a => a.ngay === dayStr)
                   // employees that have at least one assign this day
                   const empsThisDay = displayEmps.filter(emp =>
                     dayAssigns.some(a => Object.values(a.caShifts || {}).some(shift => (shift.mas || []).includes(emp.maNhanVien)))
