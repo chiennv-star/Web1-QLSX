@@ -4153,9 +4153,85 @@ const _thS = { padding: '5px 7px', border: '1px solid #004d4d', fontSize: 11, wh
 const _tdS = { padding: '3px 6px', border: '1px solid #e5e7eb', fontSize: 12 }
 const _tfS = { padding: '5px 7px', border: '1px solid #005555', fontSize: 12 }
 
-function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading }) {
+const EDITABLE_NK_MONTHS = new Set([1, 2, 3, 4, 5, 6])
+
+function CellPopoverContent({ records, day, month, year, onSave, onClose }) {
+  const [localVals, setLocalVals] = useState(() =>
+    Object.fromEntries(records.map(r => [r.id, r.tpNhapKho ?? 0]))
+  )
+  const [saving, setSaving] = useState({})
+
+  const handleSave = async (id) => {
+    setSaving(s => ({ ...s, [id]: true }))
+    try {
+      await onSave(id, 'tpNhapKho', localVals[id] ?? 0)
+      message.success('Đã lưu')
+      onClose()
+    } catch {
+      message.error('Lưu thất bại')
+    } finally {
+      setSaving(s => { const n = { ...s }; delete n[id]; return n })
+    }
+  }
+
+  return (
+    <div style={{ minWidth: 300, maxWidth: 380 }}>
+      <div style={{ fontWeight: 700, marginBottom: 10, color: '#006666', borderBottom: '1px solid #e5e7eb', paddingBottom: 6, fontSize: 13 }}>
+        📅 Ngày {String(day).padStart(2, '0')}/{String(month).padStart(2, '0')}/{year}
+      </div>
+      {records.length === 0 ? (
+        <div style={{ color: '#9ca3af', fontSize: 12, textAlign: 'center', padding: '8px 0' }}>
+          Chưa có bản ghi nào cho ngày này
+        </div>
+      ) : (
+        records.map(r => (
+          <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12, color: '#1677ff', fontFamily: 'monospace', fontWeight: 700 }}>{r.maBravo}</div>
+              <div style={{ fontSize: 11, color: '#6b7280' }}>
+                Lô {r.lsx}{r.tienTrinh ? ` — ${r.tienTrinh.slice(0, 22)}` : ''}
+              </div>
+            </div>
+            <InputNumber
+              size="small" min={0}
+              value={localVals[r.id]}
+              formatter={v => v != null && v !== '' ? Number(v).toLocaleString('vi-VN') : ''}
+              parser={v => v ? v.replace(/[^\d]/g, '') : ''}
+              onChange={v => setLocalVals(prev => ({ ...prev, [r.id]: v ?? 0 }))}
+              onPressEnter={() => handleSave(r.id)}
+              style={{ width: 110 }}
+            />
+            <Button
+              size="small" type="primary"
+              loading={!!saving[r.id]}
+              onClick={() => handleSave(r.id)}
+            >
+              Lưu
+            </Button>
+          </div>
+        ))
+      )}
+    </div>
+  )
+}
+
+function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading, onSaveField }) {
   const [editMT, setEditMT] = useState(false)
   const [selectedDay, setSelectedDay] = useState(null)
+  const [editPopover, setEditPopover] = useState(null) // { day, month }
+
+  const dayMonthRecords = useMemo(() => {
+    const dm = {}
+    data.forEach(r => {
+      if (!r.ngayXuatKho) return
+      const dt = dayjs(r.ngayXuatKho)
+      if (dt.year() !== year) return
+      const key = `${dt.date()}_${dt.month() + 1}`
+      if (!dm[key]) dm[key] = []
+      dm[key].push(r)
+    })
+    return dm
+  }, [data, year])
 
   const pivot = useMemo(() => {
     const p = {}
@@ -4199,7 +4275,7 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading }) {
               <th style={{ ..._thS, width: 44, background: '#004d4d' }}>Ngày</th>
               {MONTHS.map(m => (
                 <th key={m} style={{ ..._thS, minWidth: 80, opacity: isFuture(m) ? 0.55 : 1 }}>
-                  Tháng {m}
+                  Tháng {m}{EDITABLE_NK_MONTHS.has(m) && onSaveField ? <span style={{ fontSize: 9, opacity: 0.7, marginLeft: 2 }}>✏</span> : null}
                 </th>
               ))}
               <th style={{ ..._thS, background: '#003333', minWidth: 90 }}>Tổng</th>
@@ -4225,9 +4301,59 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading }) {
                     {day}
                   </td>
                   {MONTHS.map(m => {
-                    const valid  = day <= daysInMonth(m)
-                    const future = isFuture(m)
-                    const val    = valid && !future ? (pivot[day][m] || 0) : null
+                    const valid   = day <= daysInMonth(m)
+                    const future  = isFuture(m)
+                    const val     = valid && !future ? (pivot[day][m] || 0) : null
+                    const editable = EDITABLE_NK_MONTHS.has(m) && valid && !future && !!onSaveField
+                    const isPopOpen = editPopover?.day === day && editPopover?.month === m
+                    const cellContent = !valid
+                      ? '—'
+                      : future
+                        ? <span style={{ fontSize: 10 }}>#N/A</span>
+                        : val > 0 ? fmt(val) : <span style={{ fontSize: 10 }}>0</span>
+
+                    if (editable) {
+                      const cellRecords = dayMonthRecords[`${day}_${m}`] || []
+                      return (
+                        <td key={m} style={{
+                          ..._tdS, textAlign: 'right', padding: 0,
+                          color: val > 0 ? '#15803d' : '#d1d5db',
+                          fontWeight: val > 0 ? 700 : 400,
+                        }}>
+                          <Popover
+                            trigger="click"
+                            open={isPopOpen}
+                            onOpenChange={open => {
+                              if (open) setEditPopover({ day, month: m })
+                              else setEditPopover(null)
+                            }}
+                            content={
+                              <CellPopoverContent
+                                records={cellRecords}
+                                day={day}
+                                month={m}
+                                year={year}
+                                onSave={onSaveField}
+                                onClose={() => setEditPopover(null)}
+                              />
+                            }
+                          >
+                            <div
+                              onClick={e => e.stopPropagation()}
+                              style={{
+                                padding: '3px 6px', textAlign: 'right', cursor: 'pointer',
+                                borderRadius: 2, transition: 'background .12s',
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background = '#dcfce7'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            >
+                              {cellContent}
+                            </div>
+                          </Popover>
+                        </td>
+                      )
+                    }
+
                     return (
                       <td key={m} style={{
                         ..._tdS, textAlign: 'right',
@@ -4235,7 +4361,7 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading }) {
                         color: !valid ? '#d1d5db' : future ? '#cbd5e1' : val > 0 ? '#15803d' : '#d1d5db',
                         fontWeight: val > 0 ? 700 : 400,
                       }}>
-                        {!valid ? '—' : future ? <span style={{ fontSize: 10 }}>#N/A</span> : val > 0 ? fmt(val) : <span style={{ fontSize: 10 }}>0</span>}
+                        {cellContent}
                       </td>
                     )
                   })}
@@ -4467,6 +4593,12 @@ function NhapKhoTab() {
   }, [summaryYear])
 
   useEffect(() => { if (viewMode === 'summary') fetchSummary() }, [viewMode, fetchSummary])
+
+  const saveSummaryField = useCallback(async (id, field, value) => {
+    const body = { [field]: value != null ? String(value) : '' }
+    const { data: updated } = await api.patch(`/production/${id}/nhap-kho`, body)
+    setSummaryData(prev => prev.map(r => r.id === id ? { ...r, ...updated } : r))
+  }, [])
 
   const fetchTongHop = useCallback(async () => {
     setTongHopLoading(true)
@@ -4773,6 +4905,7 @@ function NhapKhoTab() {
           mucTieu={mucTieu}
           onMucTieuChange={handleMucTieu}
           loading={summaryLoading}
+          onSaveField={saveSummaryField}
         />
       ) : viewMode === 'tong-hop' ? (
         <NhapKhoTongHopTable data={tongHopData} loading={tongHopLoading} />
