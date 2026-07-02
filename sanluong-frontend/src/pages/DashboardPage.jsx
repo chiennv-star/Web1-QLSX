@@ -570,7 +570,9 @@ function TienDoTab({ filtersRef, searchTick, headerOffset = 120 }) {
 // ── SanLuongKeToanTab ──────────────────────────────────────────────────────────
 function SanLuongKeToanTab({ data = [], loading = false, pagination = {}, onPaginationChange,
   doneData = [], doneLoading = false, donePagination = {}, onDonePaginationChange,
-  headerOffset = 120 }) {
+  headerOffset = 120, nhapKhoMap = {} }) {
+  const mkNkKey = (r) => (r.maBravo || '') + '|' + (r.lsx || '')
+  const getNkVal  = (r) => nhapKhoMap[mkNkKey(r)] ?? (r.tpNhapKho ?? 0)
   const [subTab, setSubTab] = useState('doing')
 
   const fmtCong = v => v != null ? Number(v).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—'
@@ -647,13 +649,13 @@ function SanLuongKeToanTab({ data = [], loading = false, pagination = {}, onPagi
     { title: 'BTP Chờ ĐG', dataIndex: 'doDangDg', key: 'doDangDg', width: 100, align: 'center',
       onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: fmtN },
-    { title: 'TP Nhập Kho', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 100, align: 'center',
+    { title: 'TP Nhập Kho', key: 'tpNhapKho', width: 100, align: 'center',
       onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
-      render: v => <span style={{ color: '#389e0d' }}>{fmtN(v)}</span> },
+      render: (_, r) => <span style={{ color: '#389e0d' }}>{fmtN(getNkVal(r))}</span> },
     { title: 'Chênh lệch BTP/Nhập kho', key: 'chenhLech', width: 140, align: 'center', fixed: 'right',
       onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
       render: (_, r) => {
-        const cl = (parseInt(r.dg2) || 0) - (r.tpNhapKho || 0)
+        const cl = (parseInt(r.dg2) || 0) - getNkVal(r)
         return <span style={{ color: cl !== 0 ? '#cf1322' : '#389e0d' }}>{fmtN(cl)}</span>
       } },
   ]
@@ -741,7 +743,7 @@ function HieuSuatTab({ data = [], loading = false, pagination = {}, onPagination
     const slDg      = parseInt(r.dg2)    || 0
     const qaPl      = r.plQaLayMau || 0
     const qaDg      = r.dgQaLayMau || 0
-    const nkho      = r.tpNhapKho  || 0
+    const nkho      = getNhapKho(r)
     const coLo      = r.soLuong || 0
     const hsPl      = coLo > 0 ? ((slPl + qaPl) / coLo * 100) : null
     const hsDg      = slPl > 0 ? ((slDg + qaDg) / slPl * 100) : null
@@ -1316,6 +1318,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false)
   const [deltaMap, setDeltaMap] = useState({})
   const [hangLoiMap, setHangLoiMap] = useState({})
+  const [nhapKhoMap, setNhapKhoMap] = useState({})
 
   // Tab "Đã hoàn thành"
   const [doneData, setDoneData] = useState([])
@@ -1437,6 +1440,19 @@ export default function DashboardPage() {
     return parseInt(`${yy}${mm}${dd}`, 10)
   }
 
+  const fetchNhapKhoMap = useCallback(async () => {
+    try {
+      const { data: res } = await api.get('/production/nhap-kho-tong-hop')
+      const map = {}
+      ;(res || []).forEach(r => { map[(r.maBravo || '') + '|' + (r.lsx || '')] = r.totalNhapKho || 0 })
+      setNhapKhoMap(map)
+    } catch { /* non-blocking */ }
+  }, [])
+
+  const getNhapKho = useCallback((r) =>
+    nhapKhoMap[(r.maBravo || '') + '|' + (r.lsx || '')] ?? (r.tpNhapKho ?? 0)
+  , [nhapKhoMap])
+
   const fetchHangLoi = useCallback(async (rows) => {
     const pairs = rows
       .filter(r => r.maTp && r.lsx)
@@ -1544,13 +1560,17 @@ export default function DashboardPage() {
     else fetchData(0)
     fetchDoneData(0)
     fetchHsData(0)
+    fetchNhapKhoMap()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const handler = () => fetchData(paginationRef.current.current - 1, paginationRef.current.pageSize, undefined, { silent: true })
+    const handler = () => {
+      fetchData(paginationRef.current.current - 1, paginationRef.current.pageSize, undefined, { silent: true })
+      fetchNhapKhoMap()
+    }
     window.addEventListener('app:silent-refresh', handler)
     return () => window.removeEventListener('app:silent-refresh', handler)
-  }, [fetchData])
+  }, [fetchData, fetchNhapKhoMap])
 
   useEffect(() => {
     if (!data || data.length === 0) return
@@ -1790,7 +1810,7 @@ export default function DashboardPage() {
         { title: 'ĐG',   key: 'ddDg',   width: 80, align: 'center', render: (_, r) => { const v = (parseInt(r.pcPl) || 0) - (parseInt(r.dg2) || 0); return <span style={{ color: v > 0 ? '#d48806' : '#aaa' }}>{v}</span> } },
       ],
     },
-    { title: 'TP NKho', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 88, align: 'center', render: v => v ?? '—' },
+    { title: 'TP NKho', key: 'tpNhapKho', width: 88, align: 'center', render: (_, r) => { const v = getNhapKho(r); return v > 0 ? v : '—' } },
     { title: 'TEM ĐB',  dataIndex: 'temDb',      key: 'temDb',      width: 76, align: 'center', render: v => v ?? '—' },
     {
       title: <span style={{ color: '#0891b2' }}>QA Lấy mẫu</span>,
@@ -2436,6 +2456,7 @@ export default function DashboardPage() {
                 donePaginationRef.current = { current: page, pageSize }
                 fetchDoneData(page - 1, pageSize)
               }}
+              nhapKhoMap={nhapKhoMap}
               headerOffset={headerOffset}
             />,
           },
