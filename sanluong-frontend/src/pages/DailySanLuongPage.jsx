@@ -4383,6 +4383,15 @@ function NhapKhoTab() {
 
   const fmtN = v => v != null ? Number(v).toLocaleString('vi-VN') : '—'
 
+  // Sắp xếp: có ngày → mới nhất trước; không có ngày → cuối, theo số lô giảm dần
+  const sortedData = useMemo(() => [...data].sort((a, b) => {
+    const aD = a.ngayXuatKho, bD = b.ngayXuatKho
+    if (aD && bD) return bD.localeCompare(aD)   // cùng có ngày: ngày mới hơn trước
+    if (aD) return -1                             // a có ngày, b không → a trước
+    if (bD) return 1                              // b có ngày, a không → b trước
+    return (parseInt(b.lsx) || 0) - (parseInt(a.lsx) || 0)  // cùng chưa có ngày: số lô lớn hơn trước
+  }), [data])
+
   const columns = [
     {
       title: '#', key: 'stt', width: 46, align: 'center', fixed: 'left',
@@ -4630,7 +4639,7 @@ function NhapKhoTab() {
         size="small"
         rowKey="id"
         columns={columns}
-        dataSource={data}
+        dataSource={sortedData}
         loading={loading}
         scroll={{ x: 1100 }}
         sticky={{ offsetHeader: TAB_BAR_H }}
