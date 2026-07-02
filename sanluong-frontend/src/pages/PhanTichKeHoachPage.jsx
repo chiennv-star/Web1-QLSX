@@ -115,6 +115,19 @@ export default function PhanTichKeHoachPage() {
     return fn ? raw.filter(fn) : raw
   }, [raw, selectedTo])
 
+  // Dedup theo soLo+congDoan+toNhom: 1 lô xếp nhiều ngày chỉ tính 1 lần
+  const dedupedByLo = useMemo(() => {
+    const seen = new Set()
+    return filteredRaw.filter(r => {
+      const key = r.soLo
+        ? `${r.soLo}|${(r.congDoan || '').toUpperCase()}|${(r.toNhom || '').toUpperCase()}`
+        : `__id_${r.id}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }, [filteredRaw])
+
   const fetchData = useCallback(async (range = dateRange) => {
     setLoading(true)
     try {
@@ -136,10 +149,10 @@ export default function PhanTichKeHoachPage() {
 
   useEffect(() => { fetchData() }, []) // eslint-disable-line
 
-  // ── Group by SP / lô across stages ──────────────────────────────────────────
+  // ── Group by SP / lô across stages (dùng dedupedByLo) ──────────────────────
   const groupedData = useMemo(() => {
     const map = {}
-    filteredRaw.forEach(r => {
+    dedupedByLo.forEach(r => {
       const key = `${r.maSp || ''}|${r.soLo || ''}`
       if (!map[key]) {
         map[key] = { key, maSp: r.maSp, tenTrinh: r.tenTrinh, soLo: r.soLo }
@@ -149,11 +162,11 @@ export default function PhanTichKeHoachPage() {
       if (map[key][stage] !== undefined) map[key][stage] += Number(r.coLo || 0)
     })
     return Object.values(map)
-  }, [filteredRaw])
+  }, [dedupedByLo])
 
   const grandSL = useMemo(
-    () => filteredRaw.reduce((s, r) => s + Number(r.coLo || 0), 0),
-    [filteredRaw],
+    () => dedupedByLo.reduce((s, r) => s + Number(r.coLo || 0), 0),
+    [dedupedByLo],
   )
 
   // ── Stage stats ──────────────────────────────────────────────────────────────
@@ -162,15 +175,15 @@ export default function PhanTichKeHoachPage() {
       key:   s.key,
       label: s.label,
       color: s.color,
-      sl:    filteredRaw.filter(r => resolveStage(r) === s.key).reduce((sum, r) => sum + Number(r.coLo || 0), 0),
-      soKH:  filteredRaw.filter(r => resolveStage(r) === s.key).length,
+      sl:    dedupedByLo.filter(r => resolveStage(r) === s.key).reduce((sum, r) => sum + Number(r.coLo || 0), 0),
+      soKH:  dedupedByLo.filter(r => resolveStage(r) === s.key).length,
     })).filter(s => s.sl > 0),
-  [filteredRaw])
+  [dedupedByLo])
 
-  // ── Timeline data ────────────────────────────────────────────────────────────
+  // ── Timeline data (dùng dedupedByLo, lô chỉ hiện ngày đầu được xếp) ────────
   const timeData = useMemo(() => {
     const map = {}
-    filteredRaw.forEach(r => {
+    dedupedByLo.forEach(r => {
       const date = r.ngayThucHien
       if (!date) return
       const stage = resolveStage(r)
@@ -178,13 +191,13 @@ export default function PhanTichKeHoachPage() {
       if (map[date][stage] !== undefined) map[date][stage] += Number(r.coLo || 0)
     })
     return Object.values(map).sort((a, b) => a.date.localeCompare(b.date))
-  }, [filteredRaw])
+  }, [dedupedByLo])
 
   // ── By product type ──────────────────────────────────────────────────────────
   const loaiSpData = useMemo(() => {
     const map = {}
     let totalSl = 0
-    filteredRaw.forEach(r => {
+    dedupedByLo.forEach(r => {
       const loai = productMap[r.maSp]?.loaiSanPham || '(Chưa phân loại)'
       const stage = resolveStage(r)
       const sl = Number(r.coLo || 0)
@@ -197,7 +210,7 @@ export default function PhanTichKeHoachPage() {
     return Object.values(map)
       .map(r => ({ ...r, soTp: r.spSet.size, tyLe: totalSl > 0 ? r.sl / totalSl * 100 : 0 }))
       .sort((a, b) => b.sl - a.sl)
-  }, [filteredRaw, productMap])
+  }, [dedupedByLo, productMap])
 
   // ── Top 15 ──────────────────────────────────────────────────────────────────
   const top15 = useMemo(() =>
@@ -205,7 +218,7 @@ export default function PhanTichKeHoachPage() {
       .map(r => ({
         name: r.maSp || '?',
         lo: r.soLo || '',
-        sl: Number(r.coLo || 0),
+        sl: STAGES.reduce((sum, s) => sum + (r[s.key] || 0), 0),  // tổng theo stage keys
       }))
       .sort((a, b) => b.sl - a.sl).slice(0, 15).reverse(),
   [groupedData])
@@ -278,7 +291,7 @@ export default function PhanTichKeHoachPage() {
             summary={() => (
               <Table.Summary.Row style={{ background: '#f0fdf4', fontWeight: 700 }}>
                 <Table.Summary.Cell index={0}>TỔNG</Table.Summary.Cell>
-                <Table.Summary.Cell index={1} align="right">{filteredRaw.length}</Table.Summary.Cell>
+                <Table.Summary.Cell index={1} align="right">{dedupedByLo.length}</Table.Summary.Cell>
                 <Table.Summary.Cell index={2} align="right">
                   <span style={{ color: '#1e5fa3' }}>{fmtSL(grandSL)}</span>
                 </Table.Summary.Cell>
@@ -604,7 +617,7 @@ export default function PhanTichKeHoachPage() {
         />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ color: '#bfdbfe', fontSize: 12 }}>
-            Kế hoạch: <strong style={{ color: '#fff' }}>{filteredRaw.length}</strong>
+            Kế hoạch: <strong style={{ color: '#fff' }}>{dedupedByLo.length}</strong>
           </span>
           <span style={{ color: '#bfdbfe', fontSize: 12 }}>
             Tổng SL: <strong style={{ color: '#fff' }}>{fmtSL(grandSL)}</strong>
@@ -623,12 +636,12 @@ export default function PhanTichKeHoachPage() {
           gap: 10, marginBottom: 14,
         }}>
           {[
-            { label: 'Số SP / lô kế hoạch', value: filteredRaw.length,     color: '#1d4ed8' },
+            { label: 'Số SP / lô kế hoạch', value: dedupedByLo.length,     color: '#1d4ed8' },
             { label: 'Tổng SL kế hoạch',    value: fmtSL(grandSL),         color: '#1e5fa3' },
             { label: 'Số loại sản phẩm',     value: groupedData.length,     color: '#6d28d9' },
             { label: 'SL TB / kế hoạch',
-              value: filteredRaw.length > 0
-                ? Math.round(grandSL / filteredRaw.length).toLocaleString('vi-VN')
+              value: dedupedByLo.length > 0
+                ? Math.round(grandSL / dedupedByLo.length).toLocaleString('vi-VN')
                 : '—',
               color: '#0e7490' },
           ].map(c => (
