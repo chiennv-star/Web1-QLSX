@@ -2894,6 +2894,8 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const [innerTab, setInnerTab] = useState(() => {
     try { return localStorage.getItem(LS_INNER_TAB) || 'list' } catch { return 'list' }
   })
+  // PL có 3 sub-tabs hiển thị danh sách: list (chưa gán tổ), pl_pcpl1, pl_pcpl3
+  const isListLikeTab = innerTab === 'list' || (congDoan === 'PL' && (innerTab === 'pl_pcpl1' || innerTab === 'pl_pcpl3'))
   const [hiddenCount, setHiddenCount] = useState(0)
   const [doneCount, setDoneCount] = useState(0)
   const [filterPanelOpen, setFilterPanelOpen] = useState(false)
@@ -3235,12 +3237,12 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
     const reset = { dateRange: null, maSp: '', tenTrinh: '', soLo: '', tinhTrang: '', maBravo: '' }
     setFilters(reset)
     try { localStorage.removeItem(LS_FILTERS) } catch {}
-    if (innerTab === 'list') fetchData(0, 20, reset)
+    if (isListLikeTab) fetchData(0, 20, reset)
     else setSearchTick(t => t + 1)
   }
 
   const handleSearch = () => {
-    if (innerTab === 'list') fetchData(0)
+    if (isListLikeTab) fetchData(0)
     else setSearchTick(t => t + 1)
   }
 
@@ -3248,7 +3250,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
     const s = dayjs().startOf(unit), e = dayjs().endOf(unit)
     setFilters(f => ({ ...f, dateRange: [s, e] }))
     setTimeout(() => {
-      if (innerTab === 'list') fetchData(0)
+      if (isListLikeTab) fetchData(0)
       else setSearchTick(t => t + 1)
     }, 0)
   }
@@ -3674,7 +3676,25 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
           display: 'flex', alignItems: 'center', gap: 0, paddingLeft: 12,
         }}>
           {[
-            { key: 'list', label: 'Danh sách', color: '#1677ff' },
+            {
+              key: 'list',
+              label: congDoan === 'PL'
+                ? <span>Danh sách <Badge count={data.filter(r => r.tinhTrang !== 'done' && !r.toNhom?.trim()).length} color="#1677ff" size="small" style={{ marginLeft: 4 }} /></span>
+                : 'Danh sách',
+              color: '#1677ff',
+            },
+            ...(congDoan === 'PL' ? [
+              {
+                key: 'pl_pcpl1',
+                color: '#2563eb',
+                label: <span>PCPL1 <Badge count={data.filter(r => r.tinhTrang !== 'done' && r.toNhom === 'PCPL1').length} color="#2563eb" size="small" style={{ marginLeft: 4 }} /></span>,
+              },
+              {
+                key: 'pl_pcpl3',
+                color: '#7c3aed',
+                label: <span>PCPL3 <Badge count={data.filter(r => r.tinhTrang !== 'done' && r.toNhom === 'PCPL3').length} color="#7c3aed" size="small" style={{ marginLeft: 4 }} /></span>,
+              },
+            ] : []),
             {
               key: 'done',
               color: '#15803d',
@@ -3735,8 +3755,8 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
               {tab.label}
             </div>
           ))}
-          {/* Thêm mới — chỉ hiện ở tab Danh sách */}
-          {innerTab === 'list' && canEditStage(congDoan) && (
+          {/* Thêm mới — chỉ hiện ở tab Danh sách / PCPL1 / PCPL3 */}
+          {isListLikeTab && canEditStage(congDoan) && (
             <div style={{ marginLeft: 'auto', paddingRight: 8 }}>
               <Button size="small" type="primary" icon={<PlusOutlined />}
                 onClick={() => { setEditItem(null); setModalOpen(true) }}>
@@ -3784,8 +3804,8 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
           )}
           <Button size="small" type="primary" icon={<SearchOutlined />} onClick={handleSearch}>Tìm</Button>
           <Button size="small" icon={<ReloadOutlined />} onClick={handleReset} />
-          {/* Bulk actions — chỉ hiện ở tab Danh sách */}
-          {innerTab === 'list' && canEditStage(congDoan) && selectedRowKeys.length > 0 && (
+          {/* Bulk actions — hiện ở tab Danh sách và PCPL1/PCPL3 */}
+          {isListLikeTab && canEditStage(congDoan) && selectedRowKeys.length > 0 && (
             <Popconfirm
               title={`Ẩn ${selectedRowKeys.length} bản ghi đã chọn?`}
               okText="Ẩn" cancelText="Hủy"
@@ -3798,7 +3818,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
               </Button>
             </Popconfirm>
           )}
-          {innerTab === 'list' && canEditStage(congDoan) && selectedRowKeys.length > 0 && (
+          {isListLikeTab && canEditStage(congDoan) && selectedRowKeys.length > 0 && (
             <Space.Compact size="small">
               <Select
                 size="small"
@@ -3831,7 +3851,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
               </Popconfirm>
             </Space.Compact>
           )}
-          {innerTab === 'list' && canEditStage(congDoan) && selectedRowKeys.length > 0 && canDeleteSchedule() && (
+          {isListLikeTab && canEditStage(congDoan) && selectedRowKeys.length > 0 && canDeleteSchedule() && (
             <Popconfirm
               title={`Xóa ${selectedRowKeys.length} bản ghi đã chọn?`}
               okText="Xóa" cancelText="Hủy"
@@ -3847,8 +3867,8 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         </div>
       </div>
 
-      {/* ── Tab: Danh sách ── */}
-      {innerTab === 'list' && (
+      {/* ── Tab: Danh sách / PCPL1 / PCPL3 ── */}
+      {isListLikeTab && (
         <>
           {/* ── Desktop table ── */}
           <div className="ws-desktop-view">
@@ -3857,6 +3877,13 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
             columns={columns}
             dataSource={data
               .filter(r => r.tinhTrang !== 'done')
+              .filter(r => {
+                if (congDoan !== 'PL') return true
+                if (innerTab === 'list')     return !r.toNhom?.trim()
+                if (innerTab === 'pl_pcpl1') return r.toNhom === 'PCPL1'
+                if (innerTab === 'pl_pcpl3') return r.toNhom === 'PCPL3'
+                return true
+              })
               .sort((a, b) => {
                 const slF = SL_FIELD_MAP[congDoan], cF = CONG_FIELD_MAP[congDoan]
                 const getPriority = r => {
@@ -3915,6 +3942,13 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
             )}
             {!loading && data
               .filter(r => r.tinhTrang !== 'done')
+              .filter(r => {
+                if (congDoan !== 'PL') return true
+                if (innerTab === 'list')     return !r.toNhom?.trim()
+                if (innerTab === 'pl_pcpl1') return r.toNhom === 'PCPL1'
+                if (innerTab === 'pl_pcpl3') return r.toNhom === 'PCPL3'
+                return true
+              })
               .sort((a, b) => {
                 const slF = SL_FIELD_MAP[congDoan], cF = CONG_FIELD_MAP[congDoan]
                 const aM = cF && slF && (Number(a[cF])||0) > 0 && (Number(a[slF])||0) === 0
