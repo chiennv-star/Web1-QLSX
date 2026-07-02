@@ -21,6 +21,7 @@ public interface ProductionRecordRepository extends JpaRepository<ProductionReco
         SELECT r FROM ProductionRecord r
         WHERE r.deletedAt IS NULL
           AND (r.hidden IS NULL OR r.hidden = false)
+          AND NOT ((r.phatLenh IS NULL OR r.phatLenh = false) AND r.tpNhapKho IS NOT NULL)
           AND (:maTp IS NULL OR r.maTp LIKE %:maTp%)
           AND (:maBravo IS NULL OR r.maBravo LIKE %:maBravo%)
           AND (:tienTrinh IS NULL OR r.tienTrinh LIKE %:tienTrinh%)
@@ -47,6 +48,7 @@ public interface ProductionRecordRepository extends JpaRepository<ProductionReco
         SELECT r FROM ProductionRecord r
         WHERE r.deletedAt IS NULL
           AND (r.hidden IS NULL OR r.hidden = false)
+          AND NOT ((r.phatLenh IS NULL OR r.phatLenh = false) AND r.tpNhapKho IS NOT NULL)
           AND (:maTp IS NULL OR r.maTp LIKE %:maTp%)
           AND (:maBravo IS NULL OR r.maBravo LIKE %:maBravo%)
           AND (:tienTrinh IS NULL OR r.tienTrinh LIKE %:tienTrinh%)
@@ -232,11 +234,12 @@ public interface ProductionRecordRepository extends JpaRepository<ProductionReco
             @Param("now")       LocalDateTime now,
             @Param("username")  String username);
 
-    /** Danh sách bản ghi có tpNhapKho, lọc theo ngayXuatKho nếu cung cấp */
+    /** Danh sách bản ghi nhập kho (chỉ clone, không lấy bản gốc), lọc theo ngayXuatKho nếu cung cấp */
     @Query("""
         SELECT r FROM ProductionRecord r
         WHERE r.deletedAt IS NULL
           AND (r.hidden IS NULL OR r.hidden = false)
+          AND (r.phatLenh IS NULL OR r.phatLenh = false)
           AND r.tpNhapKho IS NOT NULL
           AND (:fromDate IS NULL OR r.ngayXuatKho IS NULL OR r.ngayXuatKho >= :fromDate)
           AND (:toDate   IS NULL OR r.ngayXuatKho IS NULL OR r.ngayXuatKho <= :toDate)
@@ -245,6 +248,19 @@ public interface ProductionRecordRepository extends JpaRepository<ProductionReco
     List<ProductionRecord> findNhapKho(
             @Param("fromDate") java.time.LocalDate fromDate,
             @Param("toDate")   java.time.LocalDate toDate);
+
+    /** Tất cả clone nhập kho của một bản ghi gốc (để tính lại tổng) */
+    @Query("""
+        SELECT r FROM ProductionRecord r
+        WHERE r.deletedAt IS NULL
+          AND (r.phatLenh IS NULL OR r.phatLenh = false)
+          AND r.tpNhapKho IS NOT NULL
+          AND r.maBravo = :maBravo
+          AND r.lsx = :lsx
+        """)
+    List<ProductionRecord> findNhapKhoClonesByKey(
+            @Param("maBravo") String maBravo,
+            @Param("lsx")     String lsx);
 
     /** Tất cả bản ghi phatLenh=true (lệnh sản xuất đã phát) */
     @Query("""
@@ -256,11 +272,12 @@ public interface ProductionRecordRepository extends JpaRepository<ProductionReco
         """)
     List<ProductionRecord> findAllPhatLenh();
 
-    /** Tất cả bản ghi có tpNhapKho (bao gồm cả clone) để tổng hợp */
+    /** Tất cả clone nhập kho (không lấy bản gốc) để tổng hợp — tránh đếm đôi */
     @Query("""
         SELECT r FROM ProductionRecord r
         WHERE r.deletedAt IS NULL
           AND (r.hidden IS NULL OR r.hidden = false)
+          AND (r.phatLenh IS NULL OR r.phatLenh = false)
           AND r.tpNhapKho IS NOT NULL
         """)
     List<ProductionRecord> findAllNhapKhoEntries();

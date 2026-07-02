@@ -522,12 +522,16 @@ public class ProductionService {
         clone.setCreatedAt(java.time.LocalDateTime.now());
         clone.setCreatedBy(username);
         applyNhapKhoFields(clone, body);
-        return repository.save(clone);
+        ProductionRecord saved = repository.save(clone);
+        recalcSourceTpNhapKho(src.getMaBravo(), src.getLsx(), username);
+        return saved;
     }
 
     public void removeFromNhapKho(Long id, String username) {
         ProductionRecord r = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));
+        String maBravo = r.getMaBravo();
+        String lsx     = r.getLsx();
         boolean isNhapKhoOnly = r.getPhatLenh() == null || !r.getPhatLenh();
         boolean hasNoSlData = r.getSlPc() == null && r.getDgTrangThai() == null && r.getPcTrangThai() == null;
         if (isNhapKhoOnly && hasNoSlData) {
@@ -542,6 +546,7 @@ public class ProductionService {
             r.setUpdatedBy(username);
         }
         repository.save(r);
+        recalcSourceTpNhapKho(maBravo, lsx, username);
     }
 
     private void applyNhapKhoFields(ProductionRecord r, java.util.Map<String, String> body) {
@@ -591,7 +596,29 @@ public class ProductionService {
             r.setGhiChuNhapKho(v != null && !v.isBlank() ? v : null);
         }
         r.setUpdatedBy(username);
-        return repository.save(r);
+        ProductionRecord saved = repository.save(r);
+        if (body.containsKey("tpNhapKho")) {
+            recalcSourceTpNhapKho(r.getMaBravo(), r.getLsx(), username);
+        }
+        return saved;
+    }
+
+    /** Tính lại tổng tpNhapKho từ tất cả clone entries rồi cập nhật lên bản ghi gốc */
+    private void recalcSourceTpNhapKho(String maBravo, String lsx, String username) {
+        if (maBravo == null || lsx == null) return;
+        List<ProductionRecord> clones = repository.findNhapKhoClonesByKey(maBravo, lsx);
+        int total = clones.stream()
+                .mapToInt(c -> c.getTpNhapKho() != null ? c.getTpNhapKho() : 0)
+                .sum();
+        List<ProductionRecord> sources = repository.findByMaBravoAndTienTrinhAndLsx(maBravo, null, lsx);
+        for (ProductionRecord src : sources) {
+            if (Boolean.TRUE.equals(src.getPhatLenh())) {
+                src.setTpNhapKho(total > 0 ? total : null);
+                src.setUpdatedBy(username);
+                repository.save(src);
+                break;
+            }
+        }
     }
 
     public ProductionRecord updateGhiChuHieuSuat(Long id, String ghiChu) {
