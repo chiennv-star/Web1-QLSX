@@ -527,6 +527,28 @@ public class ProductionService {
     public ProductionRecord createNhapKhoEntry(Long sourceId, java.util.Map<String, String> body, String username) {
         ProductionRecord src = repository.findById(sourceId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + sourceId));
+
+        // Nếu source đã có tpNhapKho trực tiếp (lần nhập đầu tiên qua PATCH) nhưng chưa có clone →
+        // migrate sang clone để recalc tổng đúng khi có nhiều ngày nhập kho
+        List<ProductionRecord> existingClones = repository.findNhapKhoClonesByKey(src.getMaBravo(), src.getLsx());
+        if (src.getTpNhapKho() != null && existingClones.isEmpty()) {
+            ProductionRecord firstClone = new ProductionRecord();
+            firstClone.setMaBravo(src.getMaBravo());
+            firstClone.setMaTp(src.getMaTp());
+            firstClone.setTienTrinh(src.getTienTrinh());
+            firstClone.setLsx(src.getLsx());
+            firstClone.setSoLuong(src.getSoLuong());
+            firstClone.setMaDonHang(src.getMaDonHang());
+            firstClone.setTpNhapKho(src.getTpNhapKho());
+            firstClone.setNgayXuatKho(src.getNgayXuatKho());
+            firstClone.setTinhTrangNhapKho(src.getTinhTrangNhapKho());
+            firstClone.setTenNthNhapKho(src.getTenNthNhapKho());
+            firstClone.setGhiChuNhapKho(src.getGhiChuNhapKho());
+            firstClone.setCreatedAt(java.time.LocalDateTime.now());
+            firstClone.setCreatedBy(username);
+            repository.save(firstClone);
+        }
+
         ProductionRecord clone = new ProductionRecord();
         clone.setMaBravo(src.getMaBravo());
         clone.setMaTp(src.getMaTp());
@@ -590,26 +612,27 @@ public class ProductionService {
     public ProductionRecord updateNhapKho(Long id, java.util.Map<String, String> body, String username) {
         ProductionRecord r = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));
-        if (body.containsKey("tpNhapKho")) {
-            String v = body.get("tpNhapKho");
-            r.setTpNhapKho(v != null && !v.isBlank() ? Integer.parseInt(v) : null);
+
+        // Nếu đây là bản gốc (phatLenh=true) và body có tpNhapKho → tạo clone thay vì patch trực tiếp
+        // để bản ghi xuất hiện đúng trong tab "Ngày Nhập Kho" (chỉ hiện clone)
+        if (Boolean.TRUE.equals(r.getPhatLenh()) && body.containsKey("tpNhapKho")) {
+            ProductionRecord clone = new ProductionRecord();
+            clone.setMaBravo(r.getMaBravo());
+            clone.setMaTp(r.getMaTp());
+            clone.setTienTrinh(r.getTienTrinh());
+            clone.setLsx(r.getLsx());
+            clone.setSoLuong(r.getSoLuong());
+            clone.setMaDonHang(r.getMaDonHang());
+            clone.setCreatedAt(java.time.LocalDateTime.now());
+            clone.setCreatedBy(username);
+            applyNhapKhoFields(clone, body);
+            ProductionRecord saved = repository.save(clone);
+            recalcSourceTpNhapKho(r.getMaBravo(), r.getLsx(), username);
+            return saved;
         }
-        if (body.containsKey("ngayXuatKho")) {
-            String v = body.get("ngayXuatKho");
-            r.setNgayXuatKho(v != null && !v.isBlank() ? java.time.LocalDate.parse(v) : null);
-        }
-        if (body.containsKey("tinhTrangNhapKho")) {
-            String v = body.get("tinhTrangNhapKho");
-            r.setTinhTrangNhapKho(v != null && !v.isBlank() ? v : null);
-        }
-        if (body.containsKey("tenNthNhapKho")) {
-            String v = body.get("tenNthNhapKho");
-            r.setTenNthNhapKho(v != null && !v.isBlank() ? v : null);
-        }
-        if (body.containsKey("ghiChuNhapKho")) {
-            String v = body.get("ghiChuNhapKho");
-            r.setGhiChuNhapKho(v != null && !v.isBlank() ? v : null);
-        }
+
+        // Bản clone hoặc patch không có tpNhapKho → cập nhật trực tiếp
+        applyNhapKhoFields(r, body);
         r.setUpdatedBy(username);
         ProductionRecord saved = repository.save(r);
         if (body.containsKey("tpNhapKho")) {
