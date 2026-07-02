@@ -246,7 +246,7 @@ export default function MainLayout() {
             label: t.label,
           })),
         }] : []),
-        ...(!isAdminKH() ? [{
+        ...(!isAdminKH() && !isStageAdmin() ? [{
           key: 'phan-tich-kh-group',
           icon: <BarChartOutlined />,
           label: 'Phân Tích Kế Hoạch',
