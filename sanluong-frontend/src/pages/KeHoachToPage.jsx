@@ -927,8 +927,17 @@ export default function KeHoachToPage() {
     }
     if (selectedTo) {
       if (planSource === 'SCHEDULE') {
-        if (p.congDoan !== selectedTab?.schedCongDoan) return false
-        if (selectedTo === 'PCPL1' && p.toNhom === 'PCPL2') return false
+        if (selectedTo === 'PCPL1') {
+          // PCPL1 tab: hiện lịch PCPL1 + lịch PL đã gán cho PCPL1
+          const isPcpl1 = p.congDoan === 'PCPL1' && p.toNhom !== 'PCPL2'
+          const isPlPcpl1 = p.congDoan === 'PL' && p.toNhom === 'PCPL1'
+          if (!isPcpl1 && !isPlPcpl1) return false
+        } else if (selectedTo === 'PCPL3') {
+          // PL tab: chỉ hiện lịch PL đã gán cho PCPL3
+          if (!(p.congDoan === 'PL' && p.toNhom === 'PCPL3')) return false
+        } else {
+          if (p.congDoan !== selectedTab?.schedCongDoan) return false
+        }
         if (selectedTo === 'PCPL2' && p.toNhom === 'PCPL1') return false
       } else {
         if (selectedTab?.congDoanKey) {
