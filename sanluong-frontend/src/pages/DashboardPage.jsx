@@ -1311,6 +1311,7 @@ export default function DashboardPage() {
   const [importOpen, setImportOpen] = useState(false)
   const [inboxCount, setInboxCount] = useState(0)
   const [activeTab, setActiveTab] = useState('list')
+  const [selectedId, setSelectedId] = useState(null)
   const [ctxMenu, setCtxMenu] = useState({ visible: false, x: 0, y: 0, record: null })
   const [selectedIds, setSelectedIds] = useState([])
   const [bulkDelLoading, setBulkDelLoading] = useState(false)
@@ -1457,9 +1458,10 @@ export default function DashboardPage() {
     } catch { /* non-blocking */ }
   }, [])
 
-  const getNhapKho = useCallback((r) =>
-    nhapKhoMap[(r.maBravo || '') + '|' + (r.lsx || '')] ?? (r.tpNhapKho ?? 0)
-  , [nhapKhoMap])
+  const getNhapKho = useCallback((r) => {
+    const fromMap = nhapKhoMap[(r.maBravo || '') + '|' + (r.lsx || '')]
+    return fromMap || (r.tpNhapKho ?? 0)
+  }, [nhapKhoMap])
 
   const fetchQaMap = useCallback(async (rows) => {
     const maBravos = [...new Set(rows.map(r => r.maBravo).filter(Boolean))]
@@ -1522,12 +1524,13 @@ export default function DashboardPage() {
       const sorted = [...res.content].sort((a, b) => parseLsx(b.lsx) - parseLsx(a.lsx))
       setHoSoData(sorted)
       setHoSoPagination(p => ({ ...p, total: res.totalElements }))
+      fetchQaMap(sorted)
     } catch {
       message.error('Không thể tải dữ liệu tổng kế hồ sơ')
     } finally {
       if (!silent) setHoSoLoading(false)
     }
-  }, [filters])
+  }, [filters, fetchQaMap])
 
   const fetchHsData = useCallback(async (page = 0, size = 1000, f = filters, { silent = false } = {}) => {
     if (!silent) setHsLoading(true)
@@ -1901,7 +1904,9 @@ export default function DashboardPage() {
           render: (_, r) => {
             const wsKey = (r.maBravo || '') + '|' + (r.lsx || '')
             const ws = qaMap[wsKey]
-            const total = ws ? (ws.layMau || 0) : ((r.plQaLayMau || 0) + (r.dgQaLayMau || 0))
+            const total = ws
+              ? (ws.kiemNghiem || 0) + (ws.luuMau || 0) + (ws.khac || 0)
+              : ((r.plQaLayMau || 0) + (r.dgQaLayMau || 0))
             return total > 0
               ? <span style={{ fontWeight: 700, color: '#0891b2' }}>{total.toLocaleString('vi-VN')}</span>
               : <span style={{ color: '#d9d9d9' }}>—</span>
@@ -2135,6 +2140,7 @@ export default function DashboardPage() {
         .prod-table .ant-table-tbody > tr:hover > td { background: #EFF6FF !important; }
         .prod-table .row-alt > td { background: #F8FAFF !important; }
         .prod-table .row-highlight > td { background: #f0fff4 !important; outline: 1px solid #86EFAC; }
+        .prod-table .row-selected > td { background: #dbeafe !important; outline: 2px solid #3b82f6; outline-offset: -1px; }
         .prod-table .row-chua-phat-lenh > td { background: #FFCC33 !important; }
         .prod-table .row-chua-phat-lenh:hover > td { background: #f5bc00 !important; }
         .prod-table .ant-table-summary > tr > td { background: linear-gradient(90deg, #1f6fa3 0%, #2980b3 100%) !important; color: #ffffff; font-weight: 700; font-size: 12px; padding: 5px 6px !important; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
@@ -2387,6 +2393,21 @@ export default function DashboardPage() {
             label: 'Danh sách',
             children: (
               <>
+                <div
+                  tabIndex={0}
+                  style={{ outline: 'none' }}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+                    e.preventDefault()
+                    if (!data.length) return
+                    const idx = selectedId != null ? data.findIndex(r => r.id === selectedId) : -1
+                    const next = e.key === 'ArrowDown' ? Math.min(idx + 1, data.length - 1) : Math.max(idx - 1, 0)
+                    if (next !== idx || idx === -1) {
+                      setSelectedId(data[next < 0 ? 0 : next].id)
+                      document.getElementById(`prod-row-${data[next < 0 ? 0 : next].id}`)?.scrollIntoView({ block: 'nearest' })
+                    }
+                  }}
+                >
                 <Table
                 className="prod-table"
                 columns={columns}
@@ -2416,18 +2437,23 @@ export default function DashboardPage() {
                     idx % 2 !== 0 ? 'row-alt' : '',
                     isHighlight ? 'row-highlight' : '',
                     !record.phatLenh ? 'row-chua-phat-lenh' : '',
+                    record.id === selectedId ? 'row-selected' : '',
                   ].filter(Boolean).join(' ')
                 }}
                 onRow={record => ({
                   id: `prod-row-${record.id}`,
-                  onClick: isStageAdmin() ? () => navigate('/work-schedule', { state: { jumpTo: { stage: getRowJumpStage(), tienTrinh: record.tienTrinh, soLo: record.lsx, maTp: record.maTp } } }) : undefined,
-                  style: isStageAdmin() ? { cursor: 'pointer' } : {},
+                  onClick: (e) => {
+                    setSelectedId(record.id)
+                    if (isStageAdmin()) navigate('/work-schedule', { state: { jumpTo: { stage: getRowJumpStage(), tienTrinh: record.tienTrinh, soLo: record.lsx, maTp: record.maTp } } })
+                  },
+                  style: isStageAdmin() ? { cursor: 'pointer' } : { cursor: 'default' },
                   onContextMenu: (e) => {
                     e.preventDefault()
                     setCtxMenu({ visible: true, x: e.clientX, y: e.clientY, record })
                   },
                 })}
               />
+                </div>
               </>
             )
           },
@@ -2449,6 +2475,20 @@ export default function DashboardPage() {
               </span>
             ),
             children: (
+              <div
+                tabIndex={0}
+                style={{ outline: 'none' }}
+                onKeyDown={(e) => {
+                  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+                  e.preventDefault()
+                  if (!doneData.length) return
+                  const idx = selectedId != null ? doneData.findIndex(r => r.id === selectedId) : -1
+                  const next = e.key === 'ArrowDown' ? Math.min(idx + 1, doneData.length - 1) : Math.max(idx - 1, 0)
+                  const nextIdx = next < 0 ? 0 : next
+                  setSelectedId(doneData[nextIdx].id)
+                  document.getElementById(`prod-row-done-${doneData[nextIdx].id}`)?.scrollIntoView({ block: 'nearest' })
+                }}
+              >
               <Table
                 className="prod-table"
                 columns={columns}
@@ -2458,7 +2498,7 @@ export default function DashboardPage() {
                 scroll={{ x: 2100 }}
                 size="small"
                 sticky={{ offsetHeader: headerOffset }}
-                rowClassName={(_, idx) => idx % 2 !== 0 ? 'row-alt' : ''}
+                rowClassName={(record, idx) => [idx % 2 !== 0 ? 'row-alt' : '', record.id === selectedId ? 'row-selected' : ''].filter(Boolean).join(' ')}
                 pagination={{
                   ...donePagination,
                   size: 'small',
@@ -2474,14 +2514,18 @@ export default function DashboardPage() {
                 }}
                 onRow={record => ({
                   id: `prod-row-done-${record.id}`,
-                  onClick: isStageAdmin() ? () => navigate('/work-schedule', { state: { jumpTo: { stage: getRowJumpStage(), tienTrinh: record.tienTrinh, soLo: record.lsx, maTp: record.maTp } } }) : undefined,
-                  style: isStageAdmin() ? { cursor: 'pointer' } : {},
+                  onClick: (e) => {
+                    setSelectedId(record.id)
+                    if (isStageAdmin()) navigate('/work-schedule', { state: { jumpTo: { stage: getRowJumpStage(), tienTrinh: record.tienTrinh, soLo: record.lsx, maTp: record.maTp } } })
+                  },
+                  style: isStageAdmin() ? { cursor: 'pointer' } : { cursor: 'default' },
                   onContextMenu: (e) => {
                     e.preventDefault()
                     setCtxMenu({ visible: true, x: e.clientX, y: e.clientY, record })
                   },
                 })}
               />
+              </div>
             )
           },
           {
@@ -2502,6 +2546,20 @@ export default function DashboardPage() {
               </span>
             ),
             children: (
+              <div
+                tabIndex={0}
+                style={{ outline: 'none' }}
+                onKeyDown={(e) => {
+                  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+                  e.preventDefault()
+                  if (!hoSoData.length) return
+                  const idx = selectedId != null ? hoSoData.findIndex(r => r.id === selectedId) : -1
+                  const next = e.key === 'ArrowDown' ? Math.min(idx + 1, hoSoData.length - 1) : Math.max(idx - 1, 0)
+                  const nextIdx = next < 0 ? 0 : next
+                  setSelectedId(hoSoData[nextIdx].id)
+                  document.getElementById(`prod-row-ho_so-${hoSoData[nextIdx].id}`)?.scrollIntoView({ block: 'nearest' })
+                }}
+              >
               <Table
                 className="prod-table"
                 columns={[
@@ -2534,7 +2592,7 @@ export default function DashboardPage() {
                 scroll={{ x: 2100 }}
                 size="small"
                 sticky={{ offsetHeader: headerOffset }}
-                rowClassName={(_, idx) => idx % 2 !== 0 ? 'row-alt' : ''}
+                rowClassName={(record, idx) => [idx % 2 !== 0 ? 'row-alt' : '', record.id === selectedId ? 'row-selected' : ''].filter(Boolean).join(' ')}
                 pagination={{
                   ...hoSoPagination,
                   size: 'small',
@@ -2548,7 +2606,13 @@ export default function DashboardPage() {
                     fetchHoSoData(page - 1, pageSize)
                   }
                 }}
+                onRow={record => ({
+                  id: `prod-row-ho_so-${record.id}`,
+                  onClick: () => setSelectedId(record.id),
+                  style: { cursor: 'default' },
+                })}
               />
+              </div>
             )
           },
           {
