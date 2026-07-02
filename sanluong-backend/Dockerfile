@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────
-# Stage 1 — Build (Maven + JDK 17)
+# Stage 1 — Build (Maven + JDK 21)
 # ─────────────────────────────────────────
-FROM maven:3.9-eclipse-temurin-17 AS builder
+FROM maven:3.9-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 
@@ -15,9 +15,9 @@ RUN mvn package -DskipTests -B -q
 
 
 # ─────────────────────────────────────────
-# Stage 2 — Runtime (JRE 17 Alpine)
+# Stage 2 — Runtime (JRE 21 Jammy)
 # ─────────────────────────────────────────
-FROM eclipse-temurin:17-jre-jammy AS runner
+FROM eclipse-temurin:21-jre-jammy AS runner
 
 WORKDIR /app
 

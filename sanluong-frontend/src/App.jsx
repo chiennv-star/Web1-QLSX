@@ -21,6 +21,7 @@ import LenhSanXuatPage from './pages/LenhSanXuatPage'
 import LenhSanXuatDetailPage from './pages/LenhSanXuatDetailPage'
 import LenhSanXuatOrderPage from './pages/LenhSanXuatOrderPage'
 import KeHoachToPage from './pages/KeHoachToPage'
+import PhanTichKeHoachPage from './pages/PhanTichKeHoachPage'
 import ForceChangePasswordPage from './pages/ForceChangePasswordPage'
 import MainLayout from './components/MainLayout'
 
@@ -87,6 +88,7 @@ export default function App() {
         <Route path="notifications" element={<NotificationPage />} />
         <Route path="don-hang" element={<DonHangPage />} />
         <Route path="ke-hoach-to" element={<KeHoachToPage />} />
+        <Route path="phan-tich-ke-hoach" element={<PhanTichKeHoachPage />} />
         <Route path="lenh-san-xuat" element={<LenhSanXuatPage />} />
         <Route path="lenh-san-xuat/:maBravo" element={<LenhSanXuatDetailPage />} />
         <Route path="lenh-san-xuat/:maBravo/don-hang/:orderId" element={<LenhSanXuatOrderPage />} />

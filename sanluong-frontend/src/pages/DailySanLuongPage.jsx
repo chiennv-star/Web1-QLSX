@@ -4433,7 +4433,7 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading, onS
 
 // ─── NhapKhoTongHopTable ─────────────────────────────────────────────────────
 
-function NhapKhoTongHopTable({ data, loading }) {
+function NhapKhoTongHopTable({ data, loading, onRowClick }) {
   const fmtN = v => v != null ? Number(v).toLocaleString('vi-VN') : '—'
 
   const columns = [
@@ -4521,6 +4521,10 @@ function NhapKhoTongHopTable({ data, loading }) {
       sticky={{ offsetHeader: TAB_BAR_H }}
       pagination={{ pageSize: 200, showSizeChanger: true, pageSizeOptions: ['100', '200', '500'], showTotal: t => `Tổng ${t} lô`, size: 'small' }}
       rowClassName={r => (r.totalNhapKho || 0) === 0 ? 'nk-tonghop-chua' : ''}
+      onRow={record => ({
+        onClick: () => onRowClick && onRowClick(record),
+        style: { cursor: onRowClick ? 'pointer' : 'default' },
+      })}
       summary={() => (
         <Table.Summary fixed="bottom">
           <Table.Summary.Row style={{ background: '#f0fdf4' }}>
@@ -4556,6 +4560,11 @@ function NhapKhoTab() {
   const [ctxMenu,       setCtxMenu]       = useState(null)   // { x, y, record }
   const [tongHopData,   setTongHopData]   = useState([])
   const [tongHopLoading,setTongHopLoading]= useState(false)
+  const [searchText,    setSearchText]    = useState('')
+  const [tongHopDrawer, setTongHopDrawer] = useState(null)  // record từ tong-hop
+  const [filterMaBravo, setFilterMaBravo] = useState('')
+  const [filterMaSp,    setFilterMaSp]    = useState('')
+  const [filterTinhTrang, setFilterTinhTrang] = useState('')
 
   const drawerRecord = drawerRecId != null ? data.find(r => r.id === drawerRecId) ?? null : null
 
@@ -4645,6 +4654,8 @@ function NhapKhoTab() {
 
   const fmtN = v => v != null ? Number(v).toLocaleString('vi-VN') : '—'
 
+  const searchLower = searchText.trim().toLowerCase()
+
   // Sắp xếp: có ngày → mới nhất trước; không có ngày → cuối, theo số lô giảm dần
   const sortedData = useMemo(() => [...data].sort((a, b) => {
     const aD = a.ngayXuatKho, bD = b.ngayXuatKho
@@ -4653,6 +4664,32 @@ function NhapKhoTab() {
     if (bD) return 1                              // b có ngày, a không → b trước
     return (parseInt(b.lsx) || 0) - (parseInt(a.lsx) || 0)  // cùng chưa có ngày: số lô lớn hơn trước
   }), [data])
+
+  const filteredListData = useMemo(() => {
+    let result = sortedData
+    if (searchLower)
+      result = result.filter(r =>
+        (r.tienTrinh || '').toLowerCase().includes(searchLower) ||
+        (r.lsx || '').toLowerCase().includes(searchLower)
+      )
+    if (filterMaBravo.trim())
+      result = result.filter(r => (r.maBravo || '').toLowerCase().includes(filterMaBravo.trim().toLowerCase()))
+    if (filterMaSp.trim())
+      result = result.filter(r => (r.maTp || '').toLowerCase().includes(filterMaSp.trim().toLowerCase()))
+    if (filterTinhTrang)
+      result = result.filter(r => filterTinhTrang === '__chua__'
+        ? !r.tinhTrangNhapKho
+        : (r.tinhTrangNhapKho || '') === filterTinhTrang)
+    return result
+  }, [sortedData, searchLower, filterMaBravo, filterMaSp, filterTinhTrang])
+
+  const filteredTongHopData = useMemo(() => {
+    if (!searchLower) return tongHopData
+    return tongHopData.filter(r =>
+      (r.tienTrinh || '').toLowerCase().includes(searchLower) ||
+      (r.lsx || '').toLowerCase().includes(searchLower)
+    )
+  }, [tongHopData, searchLower])
 
   const columns = [
     {
@@ -4858,6 +4895,31 @@ function NhapKhoTab() {
               allowEmpty={[true, true]}
               style={{ width: 260 }}
             />
+            <Input
+              size="small" allowClear placeholder="Mã Bravo"
+              value={filterMaBravo} onChange={e => setFilterMaBravo(e.target.value)}
+              style={{ width: 110 }}
+            />
+            <Input
+              size="small" allowClear placeholder="Mã SP"
+              value={filterMaSp} onChange={e => setFilterMaSp(e.target.value)}
+              style={{ width: 90 }}
+            />
+            <Input.Search
+              size="small" allowClear placeholder="Tên SP / Số lô..."
+              value={searchText} onChange={e => setSearchText(e.target.value)}
+              style={{ width: 190 }}
+            />
+            <Select
+              size="small" allowClear placeholder="Tình trạng"
+              value={filterTinhTrang || undefined}
+              onChange={v => setFilterTinhTrang(v || '')}
+              style={{ width: 120 }}
+              options={[
+                ...TINH_TRANG_NK_OPTIONS.map(o => ({ value: o, label: o })),
+                { value: '__chua__', label: 'Chưa' },
+              ]}
+            />
             <Button size="small" icon={<ReloadOutlined />} onClick={load} loading={loading}>Tải lại</Button>
             <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
               Thêm sản phẩm
@@ -4871,11 +4933,16 @@ function NhapKhoTab() {
           </>
         ) : viewMode === 'tong-hop' ? (
           <>
+            <Input.Search
+              size="small" allowClear placeholder="Tên SP / Số lô..."
+              value={searchText} onChange={e => setSearchText(e.target.value)}
+              style={{ width: 200 }}
+            />
             <Button size="small" icon={<ReloadOutlined />} onClick={fetchTongHop} loading={tongHopLoading}>Tải lại</Button>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center', fontSize: 13 }}>
-              <span>Tổng lệnh: <strong style={{ color: '#1d4ed8' }}>{tongHopData.length}</strong></span>
-              <span>Đã NK: <strong style={{ color: '#15803d' }}>{tongHopData.filter(r => (r.totalNhapKho || 0) > 0).length}</strong></span>
-              <span>Chưa NK: <strong style={{ color: '#d97706' }}>{tongHopData.filter(r => (r.totalNhapKho || 0) === 0).length}</strong></span>
+              <span>Tổng lệnh: <strong style={{ color: '#1d4ed8' }}>{filteredTongHopData.length}</strong></span>
+              <span>Đã NK: <strong style={{ color: '#15803d' }}>{filteredTongHopData.filter(r => (r.totalNhapKho || 0) > 0).length}</strong></span>
+              <span>Chưa NK: <strong style={{ color: '#d97706' }}>{filteredTongHopData.filter(r => (r.totalNhapKho || 0) === 0).length}</strong></span>
             </div>
           </>
         ) : (
@@ -4908,13 +4975,13 @@ function NhapKhoTab() {
           onSaveField={saveSummaryField}
         />
       ) : viewMode === 'tong-hop' ? (
-        <NhapKhoTongHopTable data={tongHopData} loading={tongHopLoading} />
+        <NhapKhoTongHopTable data={filteredTongHopData} loading={tongHopLoading} onRowClick={setTongHopDrawer} />
       ) : (
       <Table
         size="small"
         rowKey="id"
         columns={columns}
-        dataSource={sortedData}
+        dataSource={filteredListData}
         loading={loading}
         scroll={{ x: 1100 }}
         sticky={{ offsetHeader: TAB_BAR_H }}
@@ -4986,6 +5053,82 @@ function NhapKhoTab() {
           </Popconfirm>
         </div>
       )}
+
+      {/* Drawer chi tiết Nhập Kho (tong-hop) */}
+      <Drawer
+        title={
+          tongHopDrawer
+            ? <span>
+                <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{tongHopDrawer.maBravo}</span>
+                {' '}<Tag style={{ marginLeft: 4 }}>{tongHopDrawer.maTp}</Tag>
+              </span>
+            : 'Chi tiết nhập kho'
+        }
+        open={tongHopDrawer != null}
+        onClose={() => setTongHopDrawer(null)}
+        width={400}
+        destroyOnClose
+      >
+        {tongHopDrawer && (() => {
+          const r = tongHopDrawer
+          const fmtN = v => v != null ? Number(v).toLocaleString('vi-VN') : '—'
+          const dg2V = parseInt(r.dg2) || 0
+          const total = r.totalNhapKho || 0
+          const conLai = dg2V > 0 ? dg2V - total : null
+          const done = dg2V > 0 && total >= dg2V
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ background: '#f9fafb', borderRadius: 6, padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+                <div><span style={{ color: '#6b7280', minWidth: 120, display: 'inline-block' }}>Tên sản phẩm:</span> <strong>{r.tienTrinh || '—'}</strong></div>
+                <div><span style={{ color: '#6b7280', minWidth: 120, display: 'inline-block' }}>Số lô:</span> <span style={{ fontFamily: 'monospace' }}>{r.lsx || '—'}</span></div>
+                <div><span style={{ color: '#6b7280', minWidth: 120, display: 'inline-block' }}>Mã ĐH:</span> <span>{r.maDonHang || '—'}</span></div>
+              </div>
+
+              <Divider style={{ margin: 0 }}>Sản lượng</Divider>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#6b7280' }}>SL Lệnh (cỡ lô):</span>
+                  <strong>{fmtN(r.soLuong)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#6b7280' }}>SL Đóng Gói:</span>
+                  <span style={{ color: '#374151', fontWeight: 600 }}>{fmtN(r.dg2)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e5e7eb', paddingTop: 8 }}>
+                  <span style={{ color: '#6b7280' }}>Tổng Nhập Kho:</span>
+                  <span style={{ fontWeight: 700, fontSize: 15, color: done ? '#15803d' : total > 0 ? '#1677ff' : '#d97706' }}>
+                    {total > 0 ? total.toLocaleString('vi-VN') : 'Chưa NK'}
+                  </span>
+                </div>
+                {conLai != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#6b7280' }}>Còn lại:</span>
+                    {conLai <= 0
+                      ? <Tag color="success" style={{ marginRight: 0 }}>Hoàn tất</Tag>
+                      : <span style={{ color: '#cf1322', fontWeight: 600 }}>{conLai.toLocaleString('vi-VN')}</span>}
+                  </div>
+                )}
+              </div>
+
+              <Divider style={{ margin: 0 }}>Lịch sử nhập kho</Divider>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#6b7280' }}>Số lần nhập kho:</span>
+                  {r.soLanNhapKho > 0
+                    ? <Tag color="blue" style={{ marginRight: 0 }}>{r.soLanNhapKho} lần</Tag>
+                    : <span style={{ color: '#bbb' }}>—</span>}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#6b7280' }}>Ngày NK mới nhất:</span>
+                  <span style={{ color: '#374151' }}>
+                    {r.ngayNhapKhoMoiNhat ? dayjs(r.ngayNhapKhoMoiNhat).format('DD/MM/YYYY') : '—'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+      </Drawer>
 
       {/* Modal thêm */}
       <AddNhapKhoModal

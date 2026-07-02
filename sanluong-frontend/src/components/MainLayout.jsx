@@ -98,7 +98,10 @@ function SidebarInner({ collapsed, location, menuItems, onNavigate, selectedKeys
       <Menu
         mode="inline"
         selectedKeys={selectedKeys}
-        defaultOpenKeys={selectedKeys.some(k => k.startsWith('kht:')) ? ['ke-hoach-to-group'] : []}
+        defaultOpenKeys={[
+          ...(selectedKeys.some(k => k.startsWith('kht:')) ? ['ke-hoach-to-group'] : []),
+          ...(selectedKeys.some(k => k.startsWith('pkh:')) ? ['phan-tich-kh-group'] : []),
+        ]}
         items={menuItems}
         onClick={({ key }) => onNavigate(key)}
         theme="dark"
@@ -243,6 +246,15 @@ export default function MainLayout() {
             label: t.label,
           })),
         }] : []),
+        ...(!isAdminKH() ? [{
+          key: 'phan-tich-kh-group',
+          icon: <BarChartOutlined />,
+          label: 'Phân Tích Kế Hoạch',
+          children: [
+            { key: 'pkh:', label: 'Tất cả' },
+            ...KHT_TABS_ALL.map(t => ({ key: `pkh:${t.key}`, label: t.label })),
+          ],
+        }] : []),
         { key: '/lenh-san-xuat', icon: <FileDoneOutlined />, label: 'Lệnh Sản Xuất' },
         ...(canEditHangLoi() ? [{
           key: '/hang-loi',
@@ -311,6 +323,10 @@ export default function MainLayout() {
       const to = key.slice(4)
       sessionStorage.setItem('kehoachto_selectedTo', to)
       navigate('/ke-hoach-to', { state: { selectedTo: to } })
+    } else if (key.startsWith('pkh:')) {
+      const to = key.slice(4)
+      sessionStorage.setItem('ptkh_selectedTo', to)
+      navigate('/phan-tich-ke-hoach', { state: { selectedTo: to } })
     } else {
       navigate(key)
     }
@@ -322,6 +338,10 @@ export default function MainLayout() {
     if (p === '/ke-hoach-to') {
       const saved = sessionStorage.getItem('kehoachto_selectedTo') || ''
       return saved ? [`kht:${saved}`] : [p]
+    }
+    if (p === '/phan-tich-ke-hoach') {
+      const saved = sessionStorage.getItem('ptkh_selectedTo') ?? null
+      return saved !== null ? [`pkh:${saved}`] : [p]
     }
     return [p]
   })()

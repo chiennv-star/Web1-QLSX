@@ -1778,18 +1778,14 @@ export default function DashboardPage() {
       title: <span style={{ color: '#ffffff', fontSize: 11 }}>TRẠNG THÁI CÔNG ĐOẠN</span>,
       children: [
         {
-          title: 'PCPL1', key: 'pcpl1TrangThai', width: 72, align: 'center',
-          render: (_, r) => <StatusTag
-            value={r.pcpl1TrangThai}
-            onClick={() => goToSchedule('PCPL1', r)}
-          />,
+          title: 'PCPL1', dataIndex: 'pcpl1TrangThai', key: 'pcpl1TrangThai', width: 72, align: 'center',
+          render: (v, r) => <StatusTag value={v} onClick={() => goToSchedule('PCPL1', r)} />,
+          ...colStatus('pcpl1TrangThai'),
         },
         {
-          title: 'PCPL2', key: 'pcpl2TrangThai', width: 72, align: 'center',
-          render: (_, r) => <StatusTag
-            value={r.pcpl2TrangThai}
-            onClick={() => goToSchedule('PCPL2', r)}
-          />,
+          title: 'PCPL2', dataIndex: 'pcpl2TrangThai', key: 'pcpl2TrangThai', width: 72, align: 'center',
+          render: (v, r) => <StatusTag value={v} onClick={() => goToSchedule('PCPL2', r)} />,
+          ...colStatus('pcpl2TrangThai'),
         },
         {
           title: 'PL', dataIndex: 'plTrangThai', key: 'plTrangThai', width: 68, align: 'center',
