@@ -67,8 +67,47 @@ export default function PhanTichKeHoachPage() {
   const [dateRange, setDateRange]   = useState([dayjs().subtract(7, 'day'), dayjs().add(30, 'day')])
   const [productMap, setProductMap] = useState({})
   const [subTab, setSubTab]         = useState('tonghop')
+  const [pickerMode, setPickerMode] = useState('range')  // 'range' | 'week' | 'month'
+  const [activePreset, setActivePreset] = useState(null) // null | 'last_week' | 'this_week'
 
   const selectedTo = sessionStorage.getItem(SS_TO) || location.state?.selectedTo || ''
+
+  const mondayOf = d => {
+    const dow = d.day()
+    return d.subtract(dow === 0 ? 6 : dow - 1, 'day').startOf('day')
+  }
+
+  const applyPreset = preset => {
+    let range
+    if (preset === 'last_week') {
+      const mon = mondayOf(dayjs()).subtract(7, 'day')
+      range = [mon, mon.add(6, 'day').endOf('day')]
+    } else {
+      const mon = mondayOf(dayjs())
+      range = [mon, mon.add(6, 'day').endOf('day')]
+    }
+    setActivePreset(preset)
+    setPickerMode('range')
+    setDateRange(range)
+    fetchData(range)
+  }
+
+  const handleMonthChange = m => {
+    if (!m) return
+    const range = [m.startOf('month'), m.endOf('month')]
+    setActivePreset(null)
+    setDateRange(range)
+    fetchData(range)
+  }
+
+  const handleWeekChange = w => {
+    if (!w) return
+    const mon = mondayOf(w)
+    const range = [mon, mon.add(6, 'day').endOf('day')]
+    setActivePreset(null)
+    setDateRange(range)
+    fetchData(range)
+  }
 
   const filteredRaw = useMemo(() => {
     if (!selectedTo) return raw
@@ -475,15 +514,52 @@ export default function PhanTichKeHoachPage() {
             </span>
           )}
         </span>
-        <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.3)' }} />
-        <RangePicker
-          size="small"
-          value={dateRange}
-          onChange={setDateRange}
-          format="DD/MM/YYYY"
-          allowClear
-          placeholder={['Từ ngày', 'Đến ngày']}
-        />
+        {/* Preset buttons */}
+        <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
+        {[{ key: 'last_week', label: 'Tuần trước' }, { key: 'this_week', label: 'Tuần này' }].map(p => (
+          <Button key={p.key} size="small"
+            onClick={() => applyPreset(p.key)}
+            style={{
+              fontWeight: 600, fontSize: 12,
+              background: activePreset === p.key ? '#fff' : 'rgba(255,255,255,0.12)',
+              borderColor: activePreset === p.key ? '#fff' : 'rgba(255,255,255,0.4)',
+              color: activePreset === p.key ? '#1e5fa3' : '#fff',
+            }}>{p.label}</Button>
+        ))}
+        {/* Picker mode */}
+        <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
+        {[{ key: 'month', label: 'Tháng' }, { key: 'week', label: 'Tuần' }, { key: 'range', label: 'Khoảng' }].map(m => (
+          <Button key={m.key} size="small"
+            onClick={() => { setPickerMode(m.key); setActivePreset(null) }}
+            style={{
+              fontWeight: 600, fontSize: 12,
+              background: pickerMode === m.key && !activePreset ? '#fff' : 'rgba(255,255,255,0.12)',
+              borderColor: pickerMode === m.key && !activePreset ? '#fff' : 'rgba(255,255,255,0.4)',
+              color: pickerMode === m.key && !activePreset ? '#1e5fa3' : '#fff',
+            }}>{m.label}</Button>
+        ))}
+        {/* Dynamic picker */}
+        {pickerMode === 'month' && (
+          <DatePicker size="small" picker="month" format="MM/YYYY"
+            value={dateRange?.[0]}
+            onChange={handleMonthChange}
+            placeholder="Chọn tháng"
+            style={{ width: 120 }}
+          />
+        )}
+        {pickerMode === 'week' && (
+          <DatePicker size="small" picker="week" format="[T]wo YYYY"
+            value={dateRange?.[0]}
+            onChange={handleWeekChange}
+            placeholder="Chọn tuần"
+            style={{ width: 130 }}
+          />
+        )}
+        {pickerMode === 'range' && (
+          <RangePicker size="small" value={dateRange} onChange={v => { setDateRange(v); setActivePreset(null) }}
+            format="DD/MM/YYYY" allowClear placeholder={['Từ ngày', 'Đến ngày']}
+          />
+        )}
         <Button size="small" type="primary" icon={<SearchOutlined />}
           style={{ background: '#0891b2', borderColor: '#0891b2', fontWeight: 600 }}
           loading={loading}
@@ -493,6 +569,8 @@ export default function PhanTichKeHoachPage() {
         <Button size="small" icon={<ReloadOutlined />}
           onClick={() => {
             const def = [dayjs().subtract(7, 'day'), dayjs().add(30, 'day')]
+            setActivePreset(null)
+            setPickerMode('range')
             setDateRange(def)
             fetchData(def)
           }}
