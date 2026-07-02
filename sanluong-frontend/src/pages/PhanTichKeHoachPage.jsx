@@ -669,8 +669,15 @@ export default function PhanTichKeHoachPage() {
             padding: 6px 18px !important;
             transition: all .15s;
           }
+          .ptkh-tabs .ant-tabs-tab .ant-tabs-tab-btn {
+            color: #374151 !important;
+            font-weight: 600 !important;
+          }
           .ptkh-tabs .ant-tabs-tab:hover {
             background: #dbeafe !important;
+            color: #1e5fa3 !important;
+          }
+          .ptkh-tabs .ant-tabs-tab:hover .ant-tabs-tab-btn {
             color: #1e5fa3 !important;
           }
           .ptkh-tabs .ant-tabs-tab-active {
