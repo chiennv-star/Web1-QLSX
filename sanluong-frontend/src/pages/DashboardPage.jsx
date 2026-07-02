@@ -2053,7 +2053,7 @@ export default function DashboardPage() {
                   </Popconfirm>
                 ),
               },
-              ...(isAdminKH() ? [{
+              ...((isAdmin() || isAdminKH()) ? [{
                 key: 'ho_so',
                 icon: <AccountBookOutlined style={{ color: '#7c3aed' }} />,
                 label: (

@@ -86,8 +86,14 @@ export default function RecordFormPage() {
   const watchLsx     = Form.useWatch('lsx',      form) || ''
   const watchSlPc       = Form.useWatch('slPc',        form) || 0
   const watchBbc1_2     = Form.useWatch('bbc1_2',      form) || 0
-  const watchPlQaLayMau  = Form.useWatch('plQaLayMau',  form) || 0
-  const watchDgQaLayMau  = Form.useWatch('dgQaLayMau',  form) || 0
+  const watchPlQaLayMau     = Form.useWatch('plQaLayMau',     form) || 0
+  const watchDgQaLayMau     = Form.useWatch('dgQaLayMau',     form) || 0
+  const watchPlQaLuuMau     = Form.useWatch('plQaLuuMau',     form) || 0
+  const watchDgQaLuuMau     = Form.useWatch('dgQaLuuMau',     form) || 0
+  const watchPlQaKiemNghiem = Form.useWatch('plQaKiemNghiem', form) || 0
+  const watchDgQaKiemNghiem = Form.useWatch('dgQaKiemNghiem', form) || 0
+  const watchPlQaKhac       = Form.useWatch('plQaKhac',       form) || 0
+  const watchDgQaKhac       = Form.useWatch('dgQaKhac',       form) || 0
   const watchTpNhapKho   = Form.useWatch('tpNhapKho',   form) || 0
 
   const fetchHangLoiList = async (maTp, lsx) => {
@@ -804,20 +810,65 @@ export default function RecordFormPage() {
                               </td>
                             </tr>
                             <tr>
-                              <td style={{ padding: '7px 14px', background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap' }}>QA Lấy mẫu</td>
-                              <td style={{ padding: '4px 10px' }}>
-                                <Form.Item name="qaLayMau" style={{ marginBottom: 0 }}>
-                                  <InputNumber size="small" style={{ width: '100%', fontWeight: 600 }} min={0} disabled={ro}
-                                    formatter={v => v ? Number(v).toLocaleString('vi-VN') : '0'}
-                                    parser={v => v ? v.replace(/[^\d]/g, '') : 0} />
-                                </Form.Item>
-                              </td>
                               <td style={{ padding: '7px 14px', background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap' }}>SL Trung bình</td>
                               <td style={{ padding: '4px 10px' }}>
                                 <Form.Item name="slTrungBinh" style={{ marginBottom: 0 }}>
                                   <InputNumber size="small" style={{ width: '100%', fontWeight: 600 }} min={0} disabled={ro} precision={2} />
                                 </Form.Item>
                               </td>
+                              <td colSpan={2} />
+                            </tr>
+                          </tbody>
+                        </table>
+
+                        {/* Bảng QA Lấy mẫu chi tiết */}
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, borderTop: '2px solid #e0e7ff' }}>
+                          <thead>
+                            <tr style={{ background: '#eef2ff' }}>
+                              <th style={{ padding: '6px 10px', color: '#4c1d95', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4, textAlign: 'left', width: '14%' }}>QA Lấy mẫu</th>
+                              <th style={{ padding: '6px 10px', color: '#4c1d95', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4, textAlign: 'center', width: '22%' }}>Lưu mẫu</th>
+                              <th style={{ padding: '6px 10px', color: '#4c1d95', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4, textAlign: 'center', width: '22%' }}>Kiểm nghiệm</th>
+                              <th style={{ padding: '6px 10px', color: '#4c1d95', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4, textAlign: 'center', width: '22%' }}>Khác</th>
+                              <th style={{ padding: '6px 10px', color: '#4c1d95', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4, textAlign: 'center', width: '20%' }}>Tổng</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[
+                              { label: 'PL', luuMau: 'plQaLuuMau', kiemNghiem: 'plQaKiemNghiem', khac: 'plQaKhac', tong: 'plQaLayMau',
+                                wLuuMau: watchPlQaLuuMau, wKiemNghiem: watchPlQaKiemNghiem, wKhac: watchPlQaKhac, wTong: watchPlQaLayMau },
+                              { label: 'ĐG', luuMau: 'dgQaLuuMau', kiemNghiem: 'dgQaKiemNghiem', khac: 'dgQaKhac', tong: 'dgQaLayMau',
+                                wLuuMau: watchDgQaLuuMau, wKiemNghiem: watchDgQaKiemNghiem, wKhac: watchDgQaKhac, wTong: watchDgQaLayMau },
+                            ].map(row => (
+                              <tr key={row.label} style={{ borderBottom: '1px solid #f0f2f5' }}>
+                                <td style={{ padding: '6px 10px', background: '#f8fafc', fontWeight: 700, fontSize: 13, color: '#374151' }}>{row.label}</td>
+                                {[
+                                  { name: row.luuMau },
+                                  { name: row.kiemNghiem },
+                                  { name: row.khac },
+                                  { name: row.tong },
+                                ].map(({ name }) => (
+                                  <td key={name} style={{ padding: '4px 6px', textAlign: 'center' }}>
+                                    <Form.Item name={name} style={{ marginBottom: 0 }}>
+                                      <InputNumber size="small" style={{ width: '100%', fontWeight: 600 }} min={0} disabled={ro}
+                                        formatter={v => v ? Number(v).toLocaleString('vi-VN') : '0'}
+                                        parser={v => v ? v.replace(/[^\d]/g, '') : 0} />
+                                    </Form.Item>
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                            <tr style={{ background: '#f0f4ff', fontWeight: 700, fontSize: 13 }}>
+                              <td style={{ padding: '6px 10px', color: '#4c1d95' }}>Tổng</td>
+                              {[
+                                watchPlQaLuuMau + watchDgQaLuuMau,
+                                watchPlQaKiemNghiem + watchDgQaKiemNghiem,
+                                watchPlQaKhac + watchDgQaKhac,
+                                watchPlQaLayMau + watchDgQaLayMau,
+                              ].map((v, i) => (
+                                <td key={i} style={{ padding: '6px 10px', textAlign: 'center', color: '#4c1d95' }}>
+                                  {v > 0 ? v.toLocaleString('vi-VN') : '—'}
+                                </td>
+                              ))}
                             </tr>
                           </tbody>
                         </table>
