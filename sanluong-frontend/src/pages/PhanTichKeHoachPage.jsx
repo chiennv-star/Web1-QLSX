@@ -658,8 +658,8 @@ export default function PhanTichKeHoachPage() {
                               title={`${r.tenTrinh || r.maBravo} — Lô ${r.soLo} — ${cl.toLocaleString('vi-VN')} SP`}
                             >
                               <div style={{
-                                background: '#dbeafe',
-                                borderLeft: '3px solid #1d4ed8',
+                                background: '#1d4ed8',
+                                borderLeft: '3px solid rgba(255,255,255,0.4)',
                                 borderRadius: '0 4px 4px 0',
                                 padding: '4px 6px',
                                 fontSize: 11,
@@ -667,23 +667,23 @@ export default function PhanTichKeHoachPage() {
                                 overflow: 'hidden',
                               }}>
                                 <div style={{
-                                  fontWeight: 700, color: '#1e40af',
+                                  fontWeight: 700, color: '#ffffff',
                                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                 }}>
                                   {r.tenTrinh || r.maBravo || '—'}
                                 </div>
-                                <div style={{ color: '#6b7280', fontSize: 10 }}>
-                                  Lô {r.soLo || '—'} · <span style={{ fontWeight: 600, color: '#0369a1' }}>{cl.toLocaleString('vi-VN')} SP</span>
+                                <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 10 }}>
+                                  Lô {r.soLo || '—'} · <span style={{ fontWeight: 600, color: '#ffffff' }}>{cl.toLocaleString('vi-VN')} SP</span>
                                 </div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 8px', marginTop: 3, fontSize: 10 }}>
                                   {soNguoi > 0 && (
-                                    <span style={{ color: '#7c3aed', fontWeight: 700 }}>👤 {soNguoi} người</span>
+                                    <span style={{ color: '#ffffff', fontWeight: 700 }}>👤 {soNguoi} người</span>
                                   )}
                                   {congTH > 0 && (
-                                    <span style={{ color: '#0369a1', fontWeight: 700 }}>⏱ {congTH.toFixed(2)} công</span>
+                                    <span style={{ color: 'rgba(255,255,255,0.9)', fontWeight: 700 }}>⏱ {congTH.toFixed(2)} công</span>
                                   )}
                                   {soCa > 0 && (
-                                    <span style={{ color: '#b45309', fontWeight: 700 }}>🔄 {soCa.toFixed(2)} ca</span>
+                                    <span style={{ color: 'rgba(255,255,255,0.9)', fontWeight: 700 }}>🔄 {soCa.toFixed(2)} ca</span>
                                   )}
                                 </div>
                               </div>
