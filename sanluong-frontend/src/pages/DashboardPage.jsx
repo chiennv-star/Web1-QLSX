@@ -1027,7 +1027,7 @@ function HieuSuatTab({ data = [], loading = false, pagination = {}, onPagination
 }
 
 // ── ProductionOverview — tab Tổng quan ───────────────────────────────────────
-function ProductionOverview({ data, doneTotal }) {
+function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho }) {
   const fmtN = v => v ? Number(v).toLocaleString('vi-VN') : '0'
   const pct  = (a, b) => b > 0 ? Math.min(100, Math.round(a / b * 100)) : 0
 
@@ -1042,6 +1042,28 @@ function ProductionOverview({ data, doneTotal }) {
   const ddPl   = data.reduce((s, r) => s + Math.max(0, (parseInt(r.slPc)||0) - (parseInt(r.pcPl)||0)), 0)
   const ddDg   = data.reduce((s, r) => s + Math.max(0, (parseInt(r.pcPl)||0) - (parseInt(r.dg2)||0)), 0)
   const ddBbc1 = data.reduce((s, r) => s + Math.max(0, (r.soLuong||0) - (parseInt(r.bbc1_2)||0)), 0)
+
+  // ── Nhập kho ─────────────────────────────────────────────────────────────
+  const nhapKhoRows = getNhapKho
+    ? data.map(r => ({ ...r, _nk: getNhapKho(r) })).filter(r => r._nk > 0)
+    : data.filter(r => (r.tpNhapKho ?? 0) > 0).map(r => ({ ...r, _nk: r.tpNhapKho }))
+  const totalNhapKho   = nhapKhoRows.reduce((s, r) => s + r._nk, 0)
+  const nhapKhoRecent  = [...nhapKhoRows].sort((a, b) => b._nk - a._nk).slice(0, 8)
+
+  // ── Delta (thay đổi) per stage ────────────────────────────────────────────
+  const stageFields = [
+    { key: 'PC',   field: 'slPc',   label: 'PC',   accent: '#1d4ed8' },
+    { key: 'PL',   field: 'pcPl',   label: 'PL',   accent: '#7c3aed' },
+    { key: 'ĐG',   field: 'dg2',    label: 'ĐG',   accent: '#d48806' },
+    { key: 'BBC1', field: 'bbc1_2', label: 'BBC1', accent: '#16a34a' },
+  ]
+  const deltaStats = stageFields.map(s => ({
+    ...s,
+    tang:  data.filter(r => deltaMap[r.id]?.[s.field] === 'up').length,
+    giam:  data.filter(r => deltaMap[r.id]?.[s.field] === 'down').length,
+  }))
+  const totalTang = deltaStats.reduce((s, d) => s + d.tang, 0)
+  const totalGiam = deltaStats.reduce((s, d) => s + d.giam, 0)
 
   // ── Trạng thái per tổ ────────────────────────────────────────────────────
   const pcpl1Doing = data.filter(r => r.pcpl1TrangThai === 'doing').length
@@ -1106,11 +1128,12 @@ function ProductionOverview({ data, doneTotal }) {
     warnings.push({ level: 'info', icon: '📊', label: 'SL lệch >15% giữa PC và PL', count: loSlLechCao.length, color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc' })
 
   // ── Sub-components ────────────────────────────────────────────────────────
-  const KpiCard = ({ label, value, sub, bg, badge }) => (
+  const KpiCard = ({ label, value, sub, bg, badge, icon }) => (
     <div style={{ flex: 1, background: bg, borderRadius: 10, padding: '10px 16px', color: '#fff', textAlign: 'center', minWidth: 100, position: 'relative' }}>
       {badge != null && badge > 0 && (
         <span style={{ position: 'absolute', top: 7, right: 10, background: 'rgba(255,255,255,0.25)', borderRadius: 999, fontSize: 10, fontWeight: 700, padding: '1px 7px' }}>{badge}%</span>
       )}
+      {icon && <div style={{ fontSize: 18, marginBottom: 2, opacity: 0.9 }}>{icon}</div>}
       <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.85, letterSpacing: '0.05em', marginBottom: 3 }}>{label}</div>
       <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.15 }}>{value}</div>
       {sub && <div style={{ fontSize: 10, opacity: 0.75, marginTop: 2 }}>{sub}</div>}
@@ -1129,25 +1152,25 @@ function ProductionOverview({ data, doneTotal }) {
     </span>
   )
 
-  const ProgressBar = ({ value, color }) => (
-    <div style={{ height: 5, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden', margin: '4px 0 2px' }}>
+  const ProgressBar = ({ value, color, thin }) => (
+    <div style={{ height: thin ? 4 : 5, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden', margin: thin ? '3px 0' : '4px 0 2px' }}>
       <div style={{ height: '100%', width: `${value}%`, background: color, borderRadius: 999, transition: 'width 0.4s ease' }} />
     </div>
   )
 
-  const StageCard = ({ label, doing1, done1, doing2, done2, sl, dd, kh, slColor, accent }) => {
+  const StageCard = ({ label, doing1, done1, doing2, done2, sl, dd, kh, slColor, accent, tang, giam }) => {
     const progress = pct(sl, kh)
     const doneLo   = (doing2 !== undefined ? pcpl1Done + pcpl2Done : done1)
     const doingLo  = (doing2 !== undefined ? pcpl1Doing + pcpl2Doing : doing1)
     const totalLo  = doingLo + doneLo
     return (
       <div style={{ flex: 1, background: '#fff', borderRadius: 10, border: `1.5px solid ${accent}22`, borderTop: `3px solid ${accent}`, padding: '8px 12px', minWidth: 130 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
           <span style={{ fontWeight: 800, fontSize: 13, color: accent, letterSpacing: '0.05em' }}>{label}</span>
           <span style={{ fontSize: 11, fontWeight: 700, color: progress >= 80 ? '#16a34a' : progress >= 50 ? '#d48806' : '#dc2626', background: progress >= 80 ? '#f0fdf4' : progress >= 50 ? '#fffbeb' : '#fff1f2', padding: '1px 7px', borderRadius: 999, border: `1px solid ${progress >= 80 ? '#bbf7d0' : progress >= 50 ? '#fed7aa' : '#fecdd3'}` }}>{progress}%</span>
         </div>
         {doing2 !== undefined ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 5 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
             {[['PCPL1', doing1, done1], ['PCPL2', doing2, done2]].map(([lbl, d, dn]) => (
               <div key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                 <span style={{ fontSize: 10, color: '#94a3b8', width: 38, flexShrink: 0 }}>{lbl}</span>
@@ -1158,21 +1181,21 @@ function ProductionOverview({ data, doneTotal }) {
             ))}
           </div>
         ) : (
-          <div style={{ display: 'flex', gap: 4, marginBottom: 5, minHeight: 24, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 4, marginBottom: 4, minHeight: 24, alignItems: 'center' }}>
             <TtBadge count={doing1} type="doing" />
             <TtBadge count={done1} type="done" />
             {!doing1 && !done1 && <span style={{ fontSize: 11, color: '#cbd5e1' }}>—</span>}
           </div>
         )}
         <ProgressBar value={progress} color={accent} />
-        <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+        <div style={{ display: 'flex', gap: 4, marginTop: 5 }}>
           <div style={{ flex: 1, textAlign: 'center' }}>
             <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600, marginBottom: 1 }}>SL thực tế</div>
             <div style={{ fontWeight: 800, fontSize: 12, color: slColor }}>{fmtN(sl)}</div>
           </div>
           <div style={{ width: 1, background: '#f1f5f9', flexShrink: 0 }} />
           <div style={{ flex: 1, textAlign: 'center' }}>
-            <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600, marginBottom: 1 }}>Dở dang</div>
+            <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600, marginBottom: 1 }}>Tồn (dở dang)</div>
             <div style={{ fontWeight: 800, fontSize: 12, color: dd > 0 ? '#d48806' : '#94a3b8' }}>{fmtN(dd)}</div>
           </div>
           <div style={{ width: 1, background: '#f1f5f9', flexShrink: 0 }} />
@@ -1181,13 +1204,19 @@ function ProductionOverview({ data, doneTotal }) {
             <div style={{ fontWeight: 700, fontSize: 12, color: '#475569' }}>{doneLo}<span style={{ color: '#94a3b8', fontWeight: 400 }}>/{totalLo || data.length}</span></div>
           </div>
         </div>
+        {(tang > 0 || giam > 0) && (
+          <div style={{ display: 'flex', gap: 4, marginTop: 5, paddingTop: 5, borderTop: '1px dashed #f1f5f9' }}>
+            {tang > 0 && <span style={{ flex: 1, textAlign: 'center', fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', borderRadius: 4, padding: '2px 0' }}>▲ +{tang} lô</span>}
+            {giam > 0 && <span style={{ flex: 1, textAlign: 'center', fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fff1f2', borderRadius: 4, padding: '2px 0' }}>▼ -{giam} lô</span>}
+          </div>
+        )}
       </div>
     )
   }
 
   // ── Section header ────────────────────────────────────────────────────────
-  const SectionLabel = ({ children }) => (
-    <div style={{ fontSize: 10, fontWeight: 800, color: '#64748b', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 6, borderLeft: '3px solid #94a3b8', paddingLeft: 6 }}>{children}</div>
+  const SectionLabel = ({ children, accent }) => (
+    <div style={{ fontSize: 10, fontWeight: 800, color: '#64748b', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8, borderLeft: `3px solid ${accent || '#94a3b8'}`, paddingLeft: 6 }}>{children}</div>
   )
 
   return (
@@ -1195,75 +1224,170 @@ function ProductionOverview({ data, doneTotal }) {
 
       {/* ── Row 1: KPI ── */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-        <KpiCard label="ĐANG SẢN XUẤT"  value={data.length}    sub="lô"         bg="#006666" />
-        <KpiCard label="TỔNG KẾ HOẠCH"  value={fmtN(totalKH)} sub="sản phẩm"   bg="#1d4ed8" badge={overallPct} />
-        <KpiCard label="ĐÃ HOÀN THÀNH"  value={doneTotal}      sub="lô done"    bg="#16a34a" />
-        <KpiCard label="CÓ HÀNG LỖI"    value={hangLoiCount}   sub="lô"         bg={hangLoiCount > 0 ? '#dc2626' : '#94a3b8'} />
+        <KpiCard label="ĐANG SẢN XUẤT"  value={data.length}        sub="lô"           bg="#006666"  icon="🏭" />
+        <KpiCard label="TỔNG KẾ HOẠCH"  value={fmtN(totalKH)}      sub="sản phẩm"     bg="#1d4ed8"  badge={overallPct} icon="📋" />
+        <KpiCard label="ĐÃ HOÀN THÀNH"  value={doneTotal}           sub="lô done"      bg="#16a34a"  icon="✅" />
+        <KpiCard label="ĐÃ NHẬP KHO"    value={nhapKhoRows.length}  sub={`${fmtN(totalNhapKho)} SP`} bg="#0891b2" icon="📦" />
+        <KpiCard label="CÓ HÀNG LỖI"    value={hangLoiCount}        sub="lô"           bg={hangLoiCount > 0 ? '#dc2626' : '#94a3b8'} icon="⚠️" />
       </div>
 
       {/* ── Row 2: Stage cards ── */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-        <StageCard label="PC"   doing1={pcpl1Doing} done1={pcpl1Done} doing2={pcpl2Doing} done2={pcpl2Done} sl={totalSlPc}   dd={ddPc}   kh={totalKH} slColor="#1d4ed8" accent="#1d4ed8" />
-        <StageCard label="PL"   doing1={plDoing}    done1={plDone}                                          sl={totalSlPl}   dd={ddPl}   kh={totalKH} slColor="#7c3aed" accent="#7c3aed" />
-        <StageCard label="ĐG"   doing1={dgDoing}    done1={dgDone}                                          sl={totalSlDg}   dd={ddDg}   kh={totalKH} slColor="#d48806" accent="#d48806" />
-        <StageCard label="BBC1" doing1={bbc1Doing}  done1={bbc1Done}                                        sl={totalSlBbc1} dd={ddBbc1} kh={totalKH} slColor="#16a34a" accent="#16a34a" />
+        <StageCard label="PC"   doing1={pcpl1Doing} done1={pcpl1Done} doing2={pcpl2Doing} done2={pcpl2Done} sl={totalSlPc}   dd={ddPc}   kh={totalKH} slColor="#1d4ed8" accent="#1d4ed8" tang={deltaStats[0].tang} giam={deltaStats[0].giam} />
+        <StageCard label="PL"   doing1={plDoing}    done1={plDone}                                          sl={totalSlPl}   dd={ddPl}   kh={totalKH} slColor="#7c3aed" accent="#7c3aed" tang={deltaStats[1].tang} giam={deltaStats[1].giam} />
+        <StageCard label="ĐG"   doing1={dgDoing}    done1={dgDone}                                          sl={totalSlDg}   dd={ddDg}   kh={totalKH} slColor="#d48806" accent="#d48806" tang={deltaStats[2].tang} giam={deltaStats[2].giam} />
+        <StageCard label="BBC1" doing1={bbc1Doing}  done1={bbc1Done}                                        sl={totalSlBbc1} dd={ddBbc1} kh={totalKH} slColor="#16a34a" accent="#16a34a" tang={deltaStats[3].tang} giam={deltaStats[3].giam} />
       </div>
 
-      {/* ── Row 3: Phân tích tình trạng lô + Per-tổ ── */}
+      {/* ── Row 3: Báo cáo tổng hợp công đoạn ── */}
+      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: '10px 14px', marginBottom: 10 }}>
+        <SectionLabel accent="#1d4ed8">Báo cáo tổng hợp theo công đoạn</SectionLabel>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr style={{ background: '#f8fafc' }}>
+                {['Công đoạn', 'SL thực tế', 'Tồn (dở dang)', '% hoàn thành', 'Tăng (lô)', 'Giảm (lô)', 'Lô đang làm', 'Lô xong'].map((h, i) => (
+                  <th key={h} style={{ padding: '6px 10px', textAlign: i === 0 ? 'left' : 'right', fontWeight: 700, color: '#475569', fontSize: 11, borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { label: 'PC',   sl: totalSlPc,   dd: ddPc,   p: pcPct,   tang: deltaStats[0].tang, giam: deltaStats[0].giam, doing: pcpl1Doing+pcpl2Doing, done: pcpl1Done+pcpl2Done, accent: '#1d4ed8' },
+                { label: 'PL',   sl: totalSlPl,   dd: ddPl,   p: plPct,   tang: deltaStats[1].tang, giam: deltaStats[1].giam, doing: plDoing,                done: plDone,               accent: '#7c3aed' },
+                { label: 'ĐG',   sl: totalSlDg,   dd: ddDg,   p: dgPct,   tang: deltaStats[2].tang, giam: deltaStats[2].giam, doing: dgDoing,                done: dgDone,               accent: '#d48806' },
+                { label: 'BBC1', sl: totalSlBbc1, dd: ddBbc1, p: bbc1Pct, tang: deltaStats[3].tang, giam: deltaStats[3].giam, doing: bbc1Doing,              done: bbc1Done,             accent: '#16a34a' },
+              ].map((row, i) => (
+                <tr key={row.label} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 1 ? '#fafafa' : '#fff' }}>
+                  <td style={{ padding: '7px 10px' }}>
+                    <span style={{ fontWeight: 800, color: row.accent, fontSize: 12 }}>{row.label}</span>
+                  </td>
+                  <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: row.accent }}>{fmtN(row.sl)}</td>
+                  <td style={{ padding: '7px 10px', textAlign: 'right' }}>
+                    <span style={{ fontWeight: 700, color: row.dd > 0 ? '#d48806' : '#94a3b8' }}>{fmtN(row.dd)}</span>
+                  </td>
+                  <td style={{ padding: '7px 10px', textAlign: 'right' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                      <div style={{ width: 60, height: 6, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${row.p}%`, background: row.p >= 80 ? '#16a34a' : row.p >= 50 ? '#d48806' : '#dc2626', borderRadius: 999 }} />
+                      </div>
+                      <span style={{ fontWeight: 700, color: row.p >= 80 ? '#16a34a' : row.p >= 50 ? '#d48806' : '#dc2626', minWidth: 32 }}>{row.p}%</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: '7px 10px', textAlign: 'right' }}>
+                    {row.tang > 0 ? <span style={{ color: '#16a34a', fontWeight: 700 }}>▲ {row.tang}</span> : <span style={{ color: '#d9d9d9' }}>—</span>}
+                  </td>
+                  <td style={{ padding: '7px 10px', textAlign: 'right' }}>
+                    {row.giam > 0 ? <span style={{ color: '#dc2626', fontWeight: 700 }}>▼ {row.giam}</span> : <span style={{ color: '#d9d9d9' }}>—</span>}
+                  </td>
+                  <td style={{ padding: '7px 10px', textAlign: 'right' }}>
+                    {row.doing > 0 ? <span style={{ fontWeight: 600, color: '#1d4ed8', background: '#eff6ff', borderRadius: 4, padding: '1px 6px', fontSize: 11 }}>⚙ {row.doing}</span> : <span style={{ color: '#d9d9d9' }}>—</span>}
+                  </td>
+                  <td style={{ padding: '7px 10px', textAlign: 'right' }}>
+                    {row.done > 0 ? <span style={{ fontWeight: 600, color: '#16a34a', background: '#f0fdf4', borderRadius: 4, padding: '1px 6px', fontSize: 11 }}>✓ {row.done}</span> : <span style={{ color: '#d9d9d9' }}>—</span>}
+                  </td>
+                </tr>
+              ))}
+              <tr style={{ background: '#f0f5ff', borderTop: '2px solid #dbeafe' }}>
+                <td style={{ padding: '6px 10px', fontWeight: 800, color: '#1e3a5f', fontSize: 11 }}>TỔNG</td>
+                <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 800, color: '#1e3a5f' }}>{fmtN(totalSlPc + totalSlPl + totalSlDg + totalSlBbc1)}</td>
+                <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 800, color: '#d48806' }}>{fmtN(ddPc + ddPl + ddDg + ddBbc1)}</td>
+                <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 800, color: '#1e3a5f' }}>{overallPct}%</td>
+                <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 800, color: '#16a34a' }}>{totalTang > 0 ? `▲ ${totalTang}` : '—'}</td>
+                <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 800, color: '#dc2626' }}>{totalGiam > 0 ? `▼ ${totalGiam}` : '—'}</td>
+                <td colSpan={2} />
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── Row 4: Nhập kho gần đây + Trạng thái lô + Hoạt động tổ ── */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
 
-        {/* Trạng thái lô */}
-        <div style={{ flex: 1.2, background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: '10px 12px' }}>
-          <SectionLabel>Trạng thái lô sản xuất ({total} lô)</SectionLabel>
-          {[
-            { label: 'Đang thực hiện',        count: loAngSX,        color: '#1d4ed8', bg: '#eff6ff', icon: '⚙' },
-            { label: 'Chờ hoàn thành (done ≥1 stage, 0 doing)', count: loSapHoanThanh, color: '#16a34a', bg: '#f0fdf4', icon: '✅' },
-            { label: 'Chưa bắt đầu công đoạn nào', count: loChuaBatDau, color: '#94a3b8', bg: '#f8fafc', icon: '⏸' },
-          ].map(row => {
-            const w = total > 0 ? Math.round(row.count / total * 100) : 0
-            return (
-              <div key={row.label} style={{ marginBottom: 7 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-                  <span style={{ fontSize: 11, color: '#475569' }}>{row.icon} {row.label}</span>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: row.color }}>{row.count} <span style={{ fontSize: 10, fontWeight: 500, color: '#94a3b8' }}>({w}%)</span></span>
-                </div>
-                <div style={{ height: 6, background: '#f1f5f9', borderRadius: 999, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${w}%`, background: row.color, borderRadius: 999, transition: 'width 0.4s ease', opacity: 0.8 }} />
-                </div>
-              </div>
-            )
-          })}
+        {/* Nhập kho gần đây */}
+        <div style={{ flex: 1.6, background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: '10px 12px', minWidth: 0 }}>
+          <SectionLabel accent="#0891b2">
+            Sản phẩm mới nhập kho
+            {nhapKhoRows.length > 0 && <span style={{ marginLeft: 6, background: '#e0f7fa', color: '#0891b2', borderRadius: 999, padding: '0 6px', fontSize: 10, fontWeight: 700 }}>{nhapKhoRows.length} lô · {fmtN(totalNhapKho)} SP</span>}
+          </SectionLabel>
+          {nhapKhoRecent.length === 0 ? (
+            <div style={{ color: '#94a3b8', fontSize: 12, textAlign: 'center', padding: '16px 0' }}>Chưa có lô nào nhập kho</div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+              <thead>
+                <tr style={{ background: '#f8fafc' }}>
+                  {['Mã Bravo', 'Mã TP', 'Tên sản phẩm', 'LSX', 'SL nhập kho'].map((h, i) => (
+                    <th key={h} style={{ padding: '4px 6px', textAlign: i === 4 ? 'right' : 'left', fontWeight: 700, color: '#64748b', fontSize: 10, borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {nhapKhoRecent.map((r, i) => (
+                  <tr key={r.id} style={{ borderBottom: '1px solid #f8fafc', background: i % 2 === 1 ? '#fafafa' : '#fff' }}>
+                    <td style={{ padding: '4px 6px', fontFamily: 'monospace', fontWeight: 700, color: '#0369a1', fontSize: 11 }}>{r.maBravo || '—'}</td>
+                    <td style={{ padding: '4px 6px', color: '#475569' }}>{r.maTp || '—'}</td>
+                    <td style={{ padding: '4px 6px', color: '#1e293b', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.tienTrinh || '—'}</td>
+                    <td style={{ padding: '4px 6px', fontFamily: 'monospace', color: '#64748b' }}>{r.lsx || '—'}</td>
+                    <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 800, color: '#0891b2' }}>{fmtN(r._nk)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
-        {/* Per-tổ breakdown */}
-        <div style={{ flex: 2, background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: '10px 12px' }}>
-          <SectionLabel>Hoạt động theo tổ</SectionLabel>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {toStats.map(t => {
-              const active = t.doing + t.done
+        {/* Trạng thái lô + Per-tổ */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+
+          {/* Trạng thái lô */}
+          <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: '10px 12px' }}>
+            <SectionLabel>Trạng thái lô ({total} lô)</SectionLabel>
+            {[
+              { label: 'Đang thực hiện',             count: loAngSX,         color: '#1d4ed8', icon: '⚙' },
+              { label: 'Chờ hoàn thành',              count: loSapHoanThanh,  color: '#16a34a', icon: '✅' },
+              { label: 'Chưa bắt đầu công đoạn nào', count: loChuaBatDau,    color: '#94a3b8', icon: '⏸' },
+            ].map(row => {
+              const w = total > 0 ? Math.round(row.count / total * 100) : 0
               return (
-                <div key={t.key} style={{ flex: 1, textAlign: 'center', background: `${t.accent}08`, border: `1px solid ${t.accent}22`, borderRadius: 8, padding: '6px 4px' }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: t.accent, marginBottom: 4 }}>{t.label}</div>
-                  <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginBottom: 4, flexWrap: 'wrap' }}>
-                    {t.doing > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: '#eff6ff', color: '#1d4ed8', borderRadius: 999, padding: '1px 5px', border: '1px solid #bfdbfe' }}>⚙ {t.doing}</span>}
-                    {t.done  > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: '#f0fdf4', color: '#16a34a', borderRadius: 999, padding: '1px 5px', border: '1px solid #bbf7d0' }}>✓ {t.done}</span>}
-                    {!active && <span style={{ fontSize: 10, color: '#cbd5e1' }}>—</span>}
+                <div key={row.label} style={{ marginBottom: 6 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                    <span style={{ fontSize: 11, color: '#475569' }}>{row.icon} {row.label}</span>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: row.color }}>{row.count} <span style={{ fontSize: 10, fontWeight: 500, color: '#94a3b8' }}>({w}%)</span></span>
                   </div>
-                  <div style={{ height: 4, background: '#f1f5f9', borderRadius: 999, overflow: 'hidden' }}>
-                    {t.doing > 0 && <div style={{ height: '100%', width: `${pct(t.doing, active)}%`, background: '#3b82f6', borderRadius: 999 }} />}
-                  </div>
-                  <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 3, fontWeight: 600 }}>{active} lô có TT</div>
+                  <ProgressBar value={w} color={row.color} thin />
                 </div>
               )
             })}
           </div>
+
+          {/* Per-tổ breakdown */}
+          <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: '10px 12px', flex: 1 }}>
+            <SectionLabel>Hoạt động theo tổ</SectionLabel>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+              {toStats.map(t => {
+                const active = t.doing + t.done
+                return (
+                  <div key={t.key} style={{ flex: '1 0 60px', textAlign: 'center', background: `${t.accent}08`, border: `1px solid ${t.accent}22`, borderRadius: 8, padding: '5px 4px' }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: t.accent, marginBottom: 3 }}>{t.label}</div>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: 3, marginBottom: 3, flexWrap: 'wrap' }}>
+                      {t.doing > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: '#eff6ff', color: '#1d4ed8', borderRadius: 999, padding: '1px 4px', border: '1px solid #bfdbfe' }}>⚙{t.doing}</span>}
+                      {t.done  > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: '#f0fdf4', color: '#16a34a', borderRadius: 999, padding: '1px 4px', border: '1px solid #bbf7d0' }}>✓{t.done}</span>}
+                      {!active && <span style={{ fontSize: 10, color: '#cbd5e1' }}>—</span>}
+                    </div>
+                    <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600 }}>{active} lô</div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── Row 4: Cảnh báo bất thường ── */}
+      {/* ── Row 5: Cảnh báo bất thường ── */}
       {warnings.length > 0 && (
         <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: '10px 12px' }}>
-          <SectionLabel>Cảnh báo bất thường ({warnings.length})</SectionLabel>
+          <SectionLabel accent="#dc2626">Cảnh báo bất thường ({warnings.length})</SectionLabel>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {warnings.map((w, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, background: w.bg, border: `1px solid ${w.border}`, borderRadius: 8, padding: '6px 12px', flexShrink: 0 }}>
@@ -2396,7 +2520,7 @@ export default function DashboardPage() {
           {
             key: 'tong_quan',
             label: <Space size={4}><AppstoreOutlined />Tổng quan</Space>,
-            children: <ProductionOverview data={data} doneTotal={donePagination.total} />,
+            children: <ProductionOverview data={data} doneTotal={donePagination.total} deltaMap={deltaMap} getNhapKho={getNhapKho} />,
           },
           {
             key: 'list',
