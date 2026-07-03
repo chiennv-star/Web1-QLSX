@@ -4386,6 +4386,7 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading, onS
             })}
           </tbody>
           <tfoot>
+            {/* TỔNG NK */}
             <tr style={{ background: '#006666', color: '#fff', fontWeight: 700 }}>
               <td style={{ ..._tfS, color: '#fff', textAlign: 'left', fontSize: 11, letterSpacing: 0.3 }}>TỔNG NK</td>
               {MONTHS.map(m => (
@@ -4395,48 +4396,155 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading, onS
               ))}
               <td style={{ ..._tfS, textAlign: 'right', background: '#003333', color: '#fff', fontSize: 13 }}>{fmt(grandTotal) || '0'}</td>
             </tr>
-            <tr style={{ background: '#fefce8' }}>
-              <td style={{ ..._tfS, color: '#92400e', fontWeight: 700, textAlign: 'left', fontSize: 11 }}>Mục tiêu</td>
-              <td colSpan={12} style={{ ..._tfS, color: '#374151', textAlign: 'center' }}>
-                {editMT ? (
-                  <InputNumber
-                    autoFocus size="small" min={0} step={100000}
-                    value={mucTieu || undefined}
-                    formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
-                    parser={v => v ? v.replace(/[^\d]/g, '') : ''}
-                    onChange={v => onMucTieuChange(v || 0)}
-                    onBlur={() => setEditMT(false)}
-                    onPressEnter={() => setEditMT(false)}
-                    style={{ width: 180 }}
-                  />
-                ) : (
-                  <span
-                    onClick={() => setEditMT(true)}
-                    style={{ cursor: 'pointer', color: mucTieu > 0 ? '#92400e' : '#ccc', fontWeight: 700 }}
-                  >
-                    {mucTieu > 0 ? mucTieu.toLocaleString('vi-VN') : '✏ Nhấn để nhập mục tiêu năm'}
-                  </span>
-                )}
-              </td>
-              <td style={{ ..._tfS, textAlign: 'right', background: '#fef08a', color: '#92400e', fontWeight: 700 }}>
-                {mucTieu > 0 ? mucTieu.toLocaleString('vi-VN') : '—'}
-              </td>
-            </tr>
-            <tr style={{ background: surplus ? '#dcfce7' : '#fee2e2' }}>
-              <td style={{ ..._tfS, fontWeight: 700, fontSize: 11, color: surplus ? '#15803d' : '#dc2626', textAlign: 'left' }}>
-                {conThieu == null ? 'Còn thiếu' : surplus ? '✔ Vượt KH' : 'Còn thiếu'}
-              </td>
-              <td colSpan={12} style={{ ..._tfS, color: '#6b7280', fontSize: 11, textAlign: 'center' }}>
-                {conThieu != null
-                  ? surplus
-                    ? `Vượt ${Math.abs(conThieu).toLocaleString('vi-VN')} so với mục tiêu`
-                    : `Cần thêm ${conThieu.toLocaleString('vi-VN')} để đạt mục tiêu`
-                  : 'Chưa có mục tiêu'}
-              </td>
-              <td style={{ ..._tfS, textAlign: 'right', fontWeight: 700, color: surplus ? '#15803d' : conThieu == null ? '#9ca3af' : '#dc2626' }}>
-                {conThieu != null ? Math.abs(conThieu).toLocaleString('vi-VN') : '—'}
-              </td>
-            </tr>
+
+            {mucTieu > 0 ? (
+              <>
+                {/* Mục tiêu tháng */}
+                <tr style={{ background: '#fefce8' }}>
+                  <td style={{ ..._tfS, color: '#92400e', fontWeight: 700, textAlign: 'left', fontSize: 11 }}>Mục tiêu tháng</td>
+                  {MONTHS.map(m => (
+                    <td key={m} style={{ ..._tfS, textAlign: 'right', color: '#92400e', fontWeight: 600 }}>
+                      {fmt(Math.round(mucTieu / 12))}
+                    </td>
+                  ))}
+                  <td style={{ ..._tfS, textAlign: 'right', background: '#fef08a', color: '#92400e', fontWeight: 700 }}>
+                    {editMT ? (
+                      <InputNumber
+                        autoFocus size="small" min={0} step={100000}
+                        value={mucTieu || undefined}
+                        formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
+                        parser={v => v ? v.replace(/[^\d]/g, '') : ''}
+                        onChange={v => onMucTieuChange(v || 0)}
+                        onBlur={() => setEditMT(false)}
+                        onPressEnter={() => setEditMT(false)}
+                        style={{ width: 130 }}
+                      />
+                    ) : (
+                      <Tooltip title="Mục tiêu năm — Nhấn để sửa">
+                        <span onClick={() => setEditMT(true)} style={{ cursor: 'pointer' }}>
+                          {mucTieu.toLocaleString('vi-VN')}
+                        </span>
+                      </Tooltip>
+                    )}
+                  </td>
+                </tr>
+
+                {/* Còn thiếu tháng — cảnh báo màu */}
+                <tr>
+                  <td style={{ ..._tfS, fontWeight: 700, fontSize: 11, textAlign: 'left' }}>
+                    <Tooltip title="Xanh (+): Đạt/vượt mục tiêu · Vàng: Còn thiếu ≤ 30% · Đỏ: Còn thiếu > 30%">
+                      <span style={{ cursor: 'help', borderBottom: '1px dotted #999' }}>Còn thiếu tháng</span>
+                    </Tooltip>
+                  </td>
+                  {MONTHS.map(m => {
+                    if (isFuture(m)) return (
+                      <td key={m} style={{ ..._tfS, textAlign: 'right', color: '#cbd5e1', fontSize: 10 }}>#N/A</td>
+                    )
+                    const mt  = Math.round(mucTieu / 12)
+                    const ct  = mt - (monthTotals[m] || 0)
+                    const pct = mt > 0 ? ct / mt : 0
+                    const bg    = ct <= 0 ? '#f0fdf4' : pct > 0.3 ? '#fee2e2' : '#fef9c3'
+                    const color = ct <= 0 ? '#15803d' : pct > 0.3 ? '#dc2626' : '#d97706'
+                    return (
+                      <td key={m} style={{ ..._tfS, textAlign: 'right', fontWeight: 700, background: bg, color }}>
+                        {ct <= 0 ? `+${fmt(Math.abs(ct))}` : fmt(ct)}
+                      </td>
+                    )
+                  })}
+                  <td style={{ ..._tfS, textAlign: 'right', fontWeight: 700,
+                    background: surplus ? '#dcfce7' : '#fee2e2',
+                    color: surplus ? '#15803d' : '#dc2626' }}>
+                    {conThieu != null ? (surplus ? `+${fmt(Math.abs(conThieu))}` : fmt(conThieu)) : '—'}
+                  </td>
+                </tr>
+
+                {/* NK cần/ngày */}
+                <tr style={{ background: '#f0f9ff' }}>
+                  <td style={{ ..._tfS, fontWeight: 700, fontSize: 11, color: '#0369a1', textAlign: 'left' }}>
+                    <Tooltip title="Quá khứ: NK TB/ngày đạt được · Tháng hiện tại: NK/ngày cần đạt thêm (đỏ=thiếu) · Tương lai: mục tiêu TB/ngày cần đạt">
+                      <span style={{ cursor: 'help', borderBottom: '1px dotted #0369a1' }}>NK cần/ngày</span>
+                    </Tooltip>
+                  </td>
+                  {MONTHS.map(m => {
+                    if (isFuture(m)) {
+                      const rate = daysInMonth(m) > 0 ? Math.round(mucTieu / 12) / daysInMonth(m) : 0
+                      return (
+                        <td key={m} style={{ ..._tfS, textAlign: 'right', color: '#94a3b8', fontSize: 11 }}>
+                          {Math.round(rate).toLocaleString('vi-VN')}
+                        </td>
+                      )
+                    }
+                    if (m === curMonth) {
+                      const mt       = Math.round(mucTieu / 12)
+                      const ct       = mt - (monthTotals[m] || 0)
+                      const daysLeft = Math.max(1, daysInMonth(m) - now.date())
+                      const rate     = ct > 0 ? ct / daysLeft : 0
+                      return (
+                        <td key={m} style={{ ..._tfS, textAlign: 'right', fontWeight: 700,
+                          color: ct > 0 ? '#dc2626' : '#15803d',
+                          background: ct > 0 ? '#fff1f2' : '#f0fdf4' }}>
+                          {ct > 0 ? Math.round(rate).toLocaleString('vi-VN') : '0'}
+                        </td>
+                      )
+                    }
+                    const rate = daysInMonth(m) > 0 ? (monthTotals[m] || 0) / daysInMonth(m) : 0
+                    return (
+                      <td key={m} style={{ ..._tfS, textAlign: 'right', color: '#0369a1', fontSize: 11 }}>
+                        {Math.round(rate).toLocaleString('vi-VN')}
+                      </td>
+                    )
+                  })}
+                  {/* NK/ngày cần để đạt mục tiêu năm */}
+                  {(() => {
+                    if (now.year() !== year || conThieu == null || conThieu <= 0) {
+                      return (
+                        <td style={{ ..._tfS, textAlign: 'right', fontWeight: 700,
+                          color: surplus ? '#15803d' : '#94a3b8' }}>
+                          {surplus ? '0' : '—'}
+                        </td>
+                      )
+                    }
+                    const daysLeft = Math.max(1, dayjs(`${year}-12-31`).diff(now.startOf('day'), 'day') + 1)
+                    return (
+                      <td style={{ ..._tfS, textAlign: 'right', fontWeight: 700, color: '#dc2626', background: '#fff1f2' }}>
+                        {Math.round(conThieu / daysLeft).toLocaleString('vi-VN')}
+                      </td>
+                    )
+                  })()}
+                </tr>
+              </>
+            ) : (
+              /* Chưa có mục tiêu */
+              <>
+                <tr style={{ background: '#fefce8' }}>
+                  <td style={{ ..._tfS, color: '#92400e', fontWeight: 700, textAlign: 'left', fontSize: 11 }}>Mục tiêu</td>
+                  <td colSpan={12} style={{ ..._tfS, color: '#374151', textAlign: 'center' }}>
+                    {editMT ? (
+                      <InputNumber
+                        autoFocus size="small" min={0} step={100000}
+                        value={mucTieu || undefined}
+                        formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
+                        parser={v => v ? v.replace(/[^\d]/g, '') : ''}
+                        onChange={v => onMucTieuChange(v || 0)}
+                        onBlur={() => setEditMT(false)}
+                        onPressEnter={() => setEditMT(false)}
+                        style={{ width: 180 }}
+                      />
+                    ) : (
+                      <span onClick={() => setEditMT(true)} style={{ cursor: 'pointer', color: '#ccc', fontWeight: 700 }}>
+                        ✏ Nhấn để nhập mục tiêu năm
+                      </span>
+                    )}
+                  </td>
+                  <td style={{ ..._tfS, textAlign: 'right', background: '#fef08a', color: '#92400e', fontWeight: 700 }}>—</td>
+                </tr>
+                <tr style={{ background: '#f9fafb' }}>
+                  <td style={{ ..._tfS, color: '#9ca3af', fontSize: 11, textAlign: 'left' }}>Còn thiếu</td>
+                  <td colSpan={12} style={{ ..._tfS, color: '#9ca3af', fontSize: 11, textAlign: 'center' }}>Chưa có mục tiêu</td>
+                  <td style={{ ..._tfS, textAlign: 'right', color: '#9ca3af' }}>—</td>
+                </tr>
+              </>
+            )}
           </tfoot>
         </table>
       </div>
@@ -5330,9 +5438,15 @@ function NhapKhoTab() {
   const chotCount  = data.filter(r => r.tinhTrangNhapKho === 'Chốt').length
 
   return (
-    <div style={{ padding: '12px 16px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+    <div style={{ padding: '0 16px 12px' }}>
+      {/* Header - sticky */}
+      <div style={{
+        position: 'sticky', top: TAB_BAR_H, zIndex: 9,
+        background: '#fff', borderBottom: '2px solid #b2f5f5',
+        boxShadow: '0 2px 8px rgba(0,102,102,0.10)',
+        display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+        padding: '8px 16px', margin: '0 -16px 8px',
+      }}>
         <span style={{ fontWeight: 700, color: '#006666', fontSize: 14 }}>📦 Nhập Kho Thành Phẩm</span>
         <Segmented
           size="small"
