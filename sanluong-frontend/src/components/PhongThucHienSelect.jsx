@@ -16,7 +16,7 @@ function normalize(s) {
   return (s || '').toLowerCase().replace(/\s+/g, ' ').trim()
 }
 
-export default function PhongThucHienSelect({ value, onChange, disabled, size, style, placeholder }) {
+export default function PhongThucHienSelect({ value, onChange, disabled, size, style, placeholder, open, autoFocus, defaultValue, onBlur }) {
   const [options, setOptions] = useState(_cached || FALLBACK.map(t => ({ id: null, ten: t })))
   const [search, setSearch] = useState('')
 
@@ -41,6 +41,7 @@ export default function PhongThucHienSelect({ value, onChange, disabled, size, s
   return (
     <Select
       value={value || undefined}
+      defaultValue={defaultValue}
       onChange={v => { onChange?.(v || null); setSearch('') }}
       disabled={disabled}
       size={size}
@@ -50,8 +51,12 @@ export default function PhongThucHienSelect({ value, onChange, disabled, size, s
       allowClear
       filterOption={false}
       onSearch={setSearch}
-      onBlur={() => setSearch('')}
+      onBlur={() => { setSearch(''); onBlur?.() }}
       options={selectOptions}
+      open={open}
+      autoFocus={autoFocus}
+      popupMatchSelectWidth={false}
+      dropdownStyle={{ minWidth: 220 }}
       notFoundContent={<span style={{ color: '#aaa', fontSize: 12 }}>Không tìm thấy</span>}
     />
   )
