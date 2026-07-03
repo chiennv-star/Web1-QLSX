@@ -4360,8 +4360,9 @@ function CellPopoverContent({ records, day, month, year, onSave, onClose }) {
   )
 }
 
-function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading, onSaveField }) {
+function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang = {}, onMucTieuThangChange, loading, onSaveField }) {
   const [editMT, setEditMT] = useState(false)
+  const [editMTMonth, setEditMTMonth] = useState(null)
   const [selectedDay, setSelectedDay] = useState(null)
   const [editPopover, setEditPopover] = useState(null) // { day, month }
   const [dayDetailModal, setDayDetailModal] = useState(null) // { day, month }
@@ -4402,6 +4403,8 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading, onS
   const grandTotal = Object.values(monthTotals).reduce((s, v) => s + v, 0)
   const conThieu   = mucTieu > 0 ? mucTieu - grandTotal : null
   const surplus    = conThieu != null && conThieu < 0
+  const hasMucTieuThang = Object.values(mucTieuThang).some(v => v > 0)
+  const hasTarget  = mucTieu > 0 || hasMucTieuThang
 
   const now = dayjs()
   const curMonth = now.year() === year ? now.month() + 1 : (now.year() < year ? 0 : 13)
@@ -4535,16 +4538,42 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading, onS
               <td style={{ ..._tfS, textAlign: 'right', background: '#003333', color: '#fff', fontSize: 13 }}>{fmt(grandTotal) || '0'}</td>
             </tr>
 
-            {mucTieu > 0 ? (
+            {hasTarget ? (
               <>
-                {/* Mục tiêu tháng */}
+                {/* Mục tiêu tháng — mỗi tháng tự nhập riêng */}
                 <tr style={{ background: '#fefce8' }}>
                   <td style={{ ..._tfS, color: '#92400e', fontWeight: 700, textAlign: 'left', fontSize: 11 }}>Mục tiêu tháng</td>
-                  {MONTHS.map(m => (
-                    <td key={m} style={{ ..._tfS, textAlign: 'right', color: '#92400e', fontWeight: 600 }}>
-                      {fmt(Math.round(mucTieu / 12))}
-                    </td>
-                  ))}
+                  {MONTHS.map(m => {
+                    const mt = Number(mucTieuThang[m] || 0)
+                    return (
+                      <td key={m} style={{ ..._tfS, textAlign: 'right', color: mt > 0 ? '#92400e' : '#d1d5db', fontWeight: mt > 0 ? 600 : 400, padding: 0 }}>
+                        {editMTMonth === m ? (
+                          <InputNumber
+                            autoFocus size="small" min={0} step={10000}
+                            value={mt || undefined}
+                            formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
+                            parser={v => v ? v.replace(/[^\d]/g, '') : ''}
+                            onChange={v => onMucTieuThangChange?.(m, v || 0)}
+                            onBlur={() => setEditMTMonth(null)}
+                            onPressEnter={() => setEditMTMonth(null)}
+                            style={{ width: '100%', borderRadius: 0 }}
+                            controls={false}
+                          />
+                        ) : (
+                          <Tooltip title="Nhấn để nhập mục tiêu tháng">
+                            <div
+                              onClick={() => setEditMTMonth(m)}
+                              style={{ padding: '3px 6px', cursor: 'pointer', textAlign: 'right' }}
+                              onMouseEnter={e => e.currentTarget.style.background = '#fef3c7'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            >
+                              {mt > 0 ? fmt(mt) : <span style={{ fontSize: 10 }}>—</span>}
+                            </div>
+                          </Tooltip>
+                        )}
+                      </td>
+                    )
+                  })}
                   <td style={{ ..._tfS, textAlign: 'right', background: '#fef08a', color: '#92400e', fontWeight: 700 }}>
                     {editMT ? (
                       <InputNumber
@@ -4560,7 +4589,7 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading, onS
                     ) : (
                       <Tooltip title="Mục tiêu năm — Nhấn để sửa">
                         <span onClick={() => setEditMT(true)} style={{ cursor: 'pointer' }}>
-                          {mucTieu.toLocaleString('vi-VN')}
+                          {mucTieu > 0 ? mucTieu.toLocaleString('vi-VN') : '—'}
                         </span>
                       </Tooltip>
                     )}
@@ -4578,9 +4607,10 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading, onS
                     if (isFuture(m)) return (
                       <td key={m} style={{ ..._tfS, textAlign: 'right', color: '#cbd5e1', fontSize: 10 }}>#N/A</td>
                     )
-                    const mt  = Math.round(mucTieu / 12)
+                    const mt = Number(mucTieuThang[m] || 0)
+                    if (mt === 0) return <td key={m} style={{ ..._tfS, textAlign: 'right', color: '#d1d5db' }}>—</td>
                     const ct  = mt - (monthTotals[m] || 0)
-                    const pct = mt > 0 ? ct / mt : 0
+                    const pct = ct / mt
                     const bg    = ct <= 0 ? '#f0fdf4' : pct > 0.3 ? '#fee2e2' : '#fef9c3'
                     const color = ct <= 0 ? '#15803d' : pct > 0.3 ? '#dc2626' : '#d97706'
                     return (
@@ -4604,16 +4634,17 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading, onS
                     </Tooltip>
                   </td>
                   {MONTHS.map(m => {
+                    const mt = Number(mucTieuThang[m] || 0)
                     if (isFuture(m)) {
-                      const rate = daysInMonth(m) > 0 ? Math.round(mucTieu / 12) / daysInMonth(m) : 0
+                      const rate = mt > 0 && daysInMonth(m) > 0 ? mt / daysInMonth(m) : 0
                       return (
                         <td key={m} style={{ ..._tfS, textAlign: 'right', color: '#94a3b8', fontSize: 11 }}>
-                          {Math.round(rate).toLocaleString('vi-VN')}
+                          {rate > 0 ? Math.round(rate).toLocaleString('vi-VN') : '—'}
                         </td>
                       )
                     }
                     if (m === curMonth) {
-                      const mt       = Math.round(mucTieu / 12)
+                      if (mt === 0) return <td key={m} style={{ ..._tfS, textAlign: 'right', color: '#94a3b8' }}>—</td>
                       const ct       = mt - (monthTotals[m] || 0)
                       const daysLeft = Math.max(1, daysInMonth(m) - now.date())
                       const rate     = ct > 0 ? ct / daysLeft : 0
@@ -4652,36 +4683,53 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading, onS
                 </tr>
               </>
             ) : (
-              /* Chưa có mục tiêu */
-              <>
-                <tr style={{ background: '#fefce8' }}>
-                  <td style={{ ..._tfS, color: '#92400e', fontWeight: 700, textAlign: 'left', fontSize: 11 }}>Mục tiêu</td>
-                  <td colSpan={12} style={{ ..._tfS, color: '#374151', textAlign: 'center' }}>
-                    {editMT ? (
-                      <InputNumber
-                        autoFocus size="small" min={0} step={100000}
-                        value={mucTieu || undefined}
-                        formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
-                        parser={v => v ? v.replace(/[^\d]/g, '') : ''}
-                        onChange={v => onMucTieuChange(v || 0)}
-                        onBlur={() => setEditMT(false)}
-                        onPressEnter={() => setEditMT(false)}
-                        style={{ width: 180 }}
-                      />
-                    ) : (
-                      <span onClick={() => setEditMT(true)} style={{ cursor: 'pointer', color: '#ccc', fontWeight: 700 }}>
-                        ✏ Nhấn để nhập mục tiêu năm
-                      </span>
-                    )}
+              /* Chưa có mục tiêu — hiển thị row để nhập */
+              <tr style={{ background: '#fefce8' }}>
+                <td style={{ ..._tfS, color: '#92400e', fontWeight: 700, textAlign: 'left', fontSize: 11 }}>Mục tiêu tháng</td>
+                {MONTHS.map(m => (
+                  <td key={m} style={{ ..._tfS, textAlign: 'right', color: '#d1d5db', padding: 0 }}>
+                    <Tooltip title="Nhấn để nhập mục tiêu tháng">
+                      <div
+                        onClick={() => setEditMTMonth(m)}
+                        style={{ padding: '3px 6px', cursor: 'pointer' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#fef3c7'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        {editMTMonth === m ? (
+                          <InputNumber
+                            autoFocus size="small" min={0} step={10000}
+                            formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
+                            parser={v => v ? v.replace(/[^\d]/g, '') : ''}
+                            onChange={v => onMucTieuThangChange?.(m, v || 0)}
+                            onBlur={() => setEditMTMonth(null)}
+                            onPressEnter={() => setEditMTMonth(null)}
+                            style={{ width: '100%', borderRadius: 0 }}
+                            controls={false}
+                          />
+                        ) : <span style={{ fontSize: 10 }}>—</span>}
+                      </div>
+                    </Tooltip>
                   </td>
-                  <td style={{ ..._tfS, textAlign: 'right', background: '#fef08a', color: '#92400e', fontWeight: 700 }}>—</td>
-                </tr>
-                <tr style={{ background: '#f9fafb' }}>
-                  <td style={{ ..._tfS, color: '#9ca3af', fontSize: 11, textAlign: 'left' }}>Còn thiếu</td>
-                  <td colSpan={12} style={{ ..._tfS, color: '#9ca3af', fontSize: 11, textAlign: 'center' }}>Chưa có mục tiêu</td>
-                  <td style={{ ..._tfS, textAlign: 'right', color: '#9ca3af' }}>—</td>
-                </tr>
-              </>
+                ))}
+                <td style={{ ..._tfS, textAlign: 'right', background: '#fef08a', color: '#92400e', fontWeight: 700 }}>
+                  {editMT ? (
+                    <InputNumber
+                      autoFocus size="small" min={0} step={100000}
+                      value={mucTieu || undefined}
+                      formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
+                      parser={v => v ? v.replace(/[^\d]/g, '') : ''}
+                      onChange={v => onMucTieuChange(v || 0)}
+                      onBlur={() => setEditMT(false)}
+                      onPressEnter={() => setEditMT(false)}
+                      style={{ width: 130 }}
+                    />
+                  ) : (
+                    <Tooltip title="Mục tiêu năm — Nhấn để sửa">
+                      <span onClick={() => setEditMT(true)} style={{ cursor: 'pointer', color: '#ccc' }}>✏</span>
+                    </Tooltip>
+                  )}
+                </td>
+              </tr>
             )}
           </tfoot>
         </table>
@@ -5161,6 +5209,7 @@ function NhapKhoTab() {
   const [summaryData,   setSummaryData]   = useState([])
   const [summaryLoading,setSummaryLoading]= useState(false)
   const [mucTieu,       setMucTieu]       = useState(() => parseInt(localStorage.getItem('nhapkho_muctieu') || '0', 10))
+  const [mucTieuThang,  setMucTieuThang]  = useState(() => { try { return JSON.parse(localStorage.getItem('nhapkho_muctieu_thang') || '{}') } catch { return {} } })
   const [ctxMenu,       setCtxMenu]       = useState(null)   // { x, y, record }
   const [tongHopData,   setTongHopData]   = useState([])
   const [tongHopLoading,setTongHopLoading]= useState(false)
@@ -5242,6 +5291,14 @@ function NhapKhoTab() {
   const handleMucTieu = (v) => {
     setMucTieu(v)
     localStorage.setItem('nhapkho_muctieu', String(v))
+  }
+
+  const handleMucTieuThang = (month, val) => {
+    setMucTieuThang(prev => {
+      const next = { ...prev, [month]: val || 0 }
+      localStorage.setItem('nhapkho_muctieu_thang', JSON.stringify(next))
+      return next
+    })
   }
 
   const saveField = async (id, field, value) => {
@@ -5682,6 +5739,8 @@ function NhapKhoTab() {
           year={summaryYear}
           mucTieu={mucTieu}
           onMucTieuChange={handleMucTieu}
+          mucTieuThang={mucTieuThang}
+          onMucTieuThangChange={handleMucTieuThang}
           loading={summaryLoading}
           onSaveField={saveSummaryField}
         />
