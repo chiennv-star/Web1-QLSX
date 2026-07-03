@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { DatePicker, Button, Spin, message, Tabs, Table, Tag, Tooltip } from 'antd'
-import { SearchOutlined, ReloadOutlined, BarChartOutlined } from '@ant-design/icons'
+import { DatePicker, Button, Spin, message, Tabs, Table, Tag, Tooltip, Modal, Input, Switch } from 'antd'
+import { SearchOutlined, ReloadOutlined, BarChartOutlined, SettingOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RcTooltip, Legend,
@@ -22,7 +22,16 @@ const STAGES = [
   { key: 'CC',    label: 'CC',    color: '#9d174d' },
 ]
 
-const MACHINES_PCPL2 = ['Máy Nhũ hóa 500L', 'Máy Khuấy 700L', 'Máy Nhũ hóa 100L', 'Máy Khuấy 1500L']
+const MACHINES_PL_DEFAULT = [
+  'Máy Chiết 4 Vòi Bơm Từ',
+  'Máy Chiết Bánh Răng',
+  'Máy Chiết Bắng Răng',
+  'Máy Chiết Tube Hàn Nhiệt',
+  'Máy Chiết Tube Hàn Seal',
+  'Máy Dập 1 Vòi',
+  'Máy Chiết 4 Vòi Bơm Khí',
+]
+const LS_MACHINE_KEY = 'ptkh_pl_machine_config'
 
 const TYPE_COLORS = [
   '#1677ff','#52c41a','#fa8c16','#722ed1','#eb2f96',
@@ -84,6 +93,36 @@ export default function PhanTichKeHoachPage() {
   }
 
   const [dateRange, setDateRange] = useState(thisWeekRange)
+
+  const [machineConfig, setMachineConfig] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(LS_MACHINE_KEY)) || { hidden: [], custom: [] } }
+    catch { return { hidden: [], custom: [] } }
+  })
+  const [machineModalOpen, setMachineModalOpen] = useState(false)
+  const [newMachineName, setNewMachineName] = useState('')
+
+  const saveMachineConfig = cfg => {
+    setMachineConfig(cfg)
+    localStorage.setItem(LS_MACHINE_KEY, JSON.stringify(cfg))
+  }
+  const toggleMachineHidden = (name, hide) => {
+    const hidden = hide ? [...machineConfig.hidden, name] : machineConfig.hidden.filter(m => m !== name)
+    saveMachineConfig({ ...machineConfig, hidden })
+  }
+  const addMachine = () => {
+    const name = newMachineName.trim()
+    if (!name) return
+    const all = [...MACHINES_PL_DEFAULT, ...machineConfig.custom]
+    if (all.includes(name)) { message.warning('Máy đã tồn tại'); return }
+    saveMachineConfig({ ...machineConfig, custom: [...machineConfig.custom, name] })
+    setNewMachineName('')
+  }
+  const removeMachine = name => {
+    saveMachineConfig({
+      hidden: machineConfig.hidden.filter(m => m !== name),
+      custom: machineConfig.custom.filter(m => m !== name),
+    })
+  }
 
   const applyPreset = preset => {
     let range
@@ -243,17 +282,19 @@ export default function PhanTichKeHoachPage() {
 
   // ── Lịch Máy (từ filteredRaw, giống Chi Tiết) ───────────────────────────────
   const machineSchedule = useMemo(() => {
-    const pcpl2 = filteredRaw.filter(r => resolveStage(r) === 'PCPL2')
-    const dates = [...new Set(pcpl2.map(r => r.ngayThucHien).filter(Boolean))].sort()
-    const rows = MACHINES_PCPL2.map(machine => {
+    const pl = filteredRaw.filter(r => resolveStage(r) === 'PL')
+    const dates = [...new Set(pl.map(r => r.ngayThucHien).filter(Boolean))].sort()
+    const allMachines = [...MACHINES_PL_DEFAULT, ...machineConfig.custom]
+    const visibleMachines = allMachines.filter(m => !machineConfig.hidden.includes(m))
+    const rows = visibleMachines.map(machine => {
       const row = { machine }
       dates.forEach(date => {
-        row[date] = pcpl2.filter(r => r.ngayThucHien === date && (r.phongThucHien || '') === machine)
+        row[date] = pl.filter(r => r.ngayThucHien === date && (r.phongThucHien || '') === machine)
       })
       return row
     })
-    return { dates, rows }
-  }, [filteredRaw])
+    return { dates, rows, allMachines, visibleMachines }
+  }, [filteredRaw, machineConfig])
 
   // ── Sub-tabs ─────────────────────────────────────────────────────────────────
   const subTabItems = [
@@ -604,6 +645,46 @@ export default function PhanTichKeHoachPage() {
       label: 'Lịch Máy',
       children: (
         <div style={{ padding: '12px 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <Button size="small" icon={<SettingOutlined />} onClick={() => setMachineModalOpen(true)}>
+              Quản lý máy
+            </Button>
+          </div>
+          <Modal
+            title="Quản lý danh sách máy"
+            open={machineModalOpen}
+            onCancel={() => setMachineModalOpen(false)}
+            footer={null}
+            width={420}
+          >
+            <div style={{ marginBottom: 12, fontSize: 12, color: '#888' }}>Bật/tắt để ẩn hoặc hiện máy. Máy tự thêm có thể xóa.</div>
+            {machineSchedule.allMachines.map(name => {
+              const isCustom = machineConfig.custom.includes(name)
+              const isVisible = !machineConfig.hidden.includes(name)
+              return (
+                <div key={name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <span style={{ fontSize: 13, color: isVisible ? '#000077' : '#bbb' }}>{name}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Switch size="small" checked={isVisible} onChange={checked => toggleMachineHidden(name, !checked)} />
+                    {isCustom && (
+                      <Button type="link" danger size="small" icon={<DeleteOutlined />}
+                        style={{ padding: 0 }} onClick={() => removeMachine(name)} />
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+            <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+              <Input
+                placeholder="Tên máy mới..."
+                value={newMachineName}
+                onChange={e => setNewMachineName(e.target.value)}
+                onPressEnter={addMachine}
+                size="small"
+              />
+              <Button type="primary" icon={<PlusOutlined />} size="small" onClick={addMachine}>Thêm</Button>
+            </div>
+          </Modal>
           <Table
             size="small"
             dataSource={machineSchedule.rows}
