@@ -499,17 +499,19 @@ export default function PhanTichKeHoachPage() {
                 } },
               { title: 'Công TH PC', key: 'congThucHienPc', align: 'right', width: 90,
                 render: (_, r) => {
-                  const n = Number(r.congPc || 0)
-                  return n > 0
-                    ? <span style={{ color: '#0369a1', fontWeight: 600 }}>{n}</span>
-                    : <span style={{ color: '#d9d9d9' }}>—</span>
+                  const ns = Number(productMap[r.maSp]?.nangSuatPc || 0)
+                  const cl = Number(r.coLo || 0)
+                  if (!ns || !cl) return <span style={{ color: '#d9d9d9' }}>—</span>
+                  const v = (cl / ns).toFixed(2)
+                  return <span style={{ color: '#0369a1', fontWeight: 600 }}>{v}</span>
                 } },
               { title: 'Công TH PL', key: 'congThucHienPl', align: 'right', width: 90,
                 render: (_, r) => {
-                  const n = Number(r.congPl || 0)
-                  return n > 0
-                    ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{n}</span>
-                    : <span style={{ color: '#d9d9d9' }}>—</span>
+                  const ns = Number(productMap[r.maSp]?.nangSuatPl || 0)
+                  const cl = Number(r.coLo || 0)
+                  if (!ns || !cl) return <span style={{ color: '#d9d9d9' }}>—</span>
+                  const v = (cl / ns).toFixed(2)
+                  return <span style={{ color: '#0e7490', fontWeight: 600 }}>{v}</span>
                 } },
               { title: 'Số người TH', key: 'soNguoi', align: 'center', width: 100,
                 render: (_, r) => {
