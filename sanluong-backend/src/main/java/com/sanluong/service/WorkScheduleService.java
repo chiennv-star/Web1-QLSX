@@ -242,7 +242,8 @@ public class WorkScheduleService {
     // Nếu đã có record (congDoan + maBravo + soLo) → update maDonHang + coLo
     // Nếu chưa có → tạo mới
     // isPhatLenh=true + toNhomOverride=PCPL1/PCPL2 → đặt tinhTrang="doing" cho PC/PL/BBC1/DG (nếu chưa có)
-    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.transaction.annotation.Transactional(
+            propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public int autoSyncFromProduction(String maBravo, String maSp, String tenTrinh,
                                        String soLo, java.math.BigDecimal coLo, String maDonHang,
                                        boolean isPhatLenh, String toNhomOverride) {
