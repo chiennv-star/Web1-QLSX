@@ -638,36 +638,50 @@ export default function PhanTichKeHoachPage() {
                     if (!records?.length) return <span style={{ color: '#d9d9d9' }}>—</span>
                     return (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {records.map(r => (
-                          <Tooltip
-                            key={r.id}
-                            title={`${r.tenTrinh || r.maBravo} — Lô ${r.soLo} — ${Number(r.coLo || 0).toLocaleString('vi-VN')} SP`}
-                          >
-                            <div style={{
-                              background: '#dbeafe',
-                              borderLeft: '3px solid #1d4ed8',
-                              borderRadius: '0 4px 4px 0',
-                              padding: '3px 6px',
-                              fontSize: 11,
-                              cursor: 'default',
-                              overflow: 'hidden',
-                            }}>
+                        {records.map(r => {
+                          const cl       = Number(r.coLo || 0)
+                          const nsPc     = Number(productMap[r.maSp]?.nangSuatPc || 0)
+                          const soNguoi  = Number(r.congPc || 0)
+                          const congTH   = nsPc && cl ? cl / nsPc : 0
+                          const soCa     = congTH && soNguoi ? congTH / soNguoi : 0
+                          return (
+                            <Tooltip
+                              key={r.id}
+                              title={`${r.tenTrinh || r.maBravo} — Lô ${r.soLo} — ${cl.toLocaleString('vi-VN')} SP`}
+                            >
                               <div style={{
-                                fontWeight: 700, color: '#1e40af',
-                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                background: '#dbeafe',
+                                borderLeft: '3px solid #1d4ed8',
+                                borderRadius: '0 4px 4px 0',
+                                padding: '4px 6px',
+                                fontSize: 11,
+                                cursor: 'default',
+                                overflow: 'hidden',
                               }}>
-                                {r.tenTrinh || r.maBravo || '—'}
+                                <div style={{
+                                  fontWeight: 700, color: '#1e40af',
+                                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                }}>
+                                  {r.tenTrinh || r.maBravo || '—'}
+                                </div>
+                                <div style={{ color: '#6b7280', fontSize: 10 }}>
+                                  Lô {r.soLo || '—'} · <span style={{ fontWeight: 600, color: '#0369a1' }}>{cl.toLocaleString('vi-VN')} SP</span>
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 8px', marginTop: 3, fontSize: 10 }}>
+                                  {soNguoi > 0 && (
+                                    <span style={{ color: '#7c3aed', fontWeight: 700 }}>👤 {soNguoi} người</span>
+                                  )}
+                                  {congTH > 0 && (
+                                    <span style={{ color: '#0369a1', fontWeight: 700 }}>⏱ {congTH.toFixed(2)} công</span>
+                                  )}
+                                  {soCa > 0 && (
+                                    <span style={{ color: '#b45309', fontWeight: 700 }}>🔄 {soCa.toFixed(2)} ca</span>
+                                  )}
+                                </div>
                               </div>
-                              <div style={{ color: '#6b7280', fontSize: 10, display: 'flex', gap: 4 }}>
-                                <span>Lô {r.soLo || '—'}</span>
-                                <span>·</span>
-                                <span style={{ fontWeight: 600, color: '#0369a1' }}>
-                                  {Number(r.coLo || 0).toLocaleString('vi-VN')} SP
-                                </span>
-                              </div>
-                            </div>
-                          </Tooltip>
-                        ))}
+                            </Tooltip>
+                          )
+                        })}
                       </div>
                     )
                   },
