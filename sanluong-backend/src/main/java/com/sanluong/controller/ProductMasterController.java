@@ -56,7 +56,26 @@ public class ProductMasterController {
     public ResponseEntity<Map<String, Map<String, Object>>> lookupBatch(
             @RequestParam List<String> codes) {
         Map<String, Map<String, Object>> result = new java.util.LinkedHashMap<>();
-        service.findByMaTpIn(codes).forEach(p -> result.put(p.getMaTp(), buildLookupBody(p)));
+        // Ưu tiên lookup theo maTp
+        java.util.Set<String> matched = new java.util.HashSet<>();
+        service.findByMaTpIn(codes).forEach(p -> {
+            result.put(p.getMaTp(), buildLookupBody(p));
+            matched.add(p.getMaTp().toUpperCase());
+        });
+        // Fallback: với các code chưa tìm được qua maTp, thử lookup theo maBravo
+        List<String> notFound = codes.stream()
+                .filter(c -> !matched.contains(c.toUpperCase()))
+                .collect(java.util.stream.Collectors.toList());
+        if (!notFound.isEmpty()) {
+            java.util.Map<String, com.sanluong.entity.ProductMaster> byBravo = new java.util.HashMap<>();
+            service.findByMaBravoIn(notFound).forEach(p -> {
+                if (p.getMaBravo() != null) byBravo.putIfAbsent(p.getMaBravo().toUpperCase(), p);
+            });
+            notFound.forEach(code -> {
+                com.sanluong.entity.ProductMaster p = byBravo.get(code.toUpperCase());
+                if (p != null) result.put(code, buildLookupBody(p));
+            });
+        }
         return ResponseEntity.ok(result);
     }
 
