@@ -4550,8 +4550,20 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
   const [slNK,   setSlNK]   = useState(null)
   const [ngayNK, setNgayNK] = useState(dayjs())
   const [saving, setSaving] = useState(false)
+  const [entries, setEntries] = useState([])
 
-  useEffect(() => { setLocalRecord(initialRecord) }, [initialRecord])
+  const fetchEntries = async (id) => {
+    try {
+      const res = await api.get(`/production/${id}/nhap-kho-entries`)
+      setEntries(res.data || [])
+    } catch { setEntries([]) }
+  }
+
+  useEffect(() => {
+    setLocalRecord(initialRecord)
+    setEntries([])
+    if (initialRecord?.id) fetchEntries(initialRecord.id)
+  }, [initialRecord])
 
   const r     = localRecord
   const fmtN  = v => v != null ? Number(v).toLocaleString('vi-VN') : '—'
@@ -4591,6 +4603,7 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
       }))
       setSlNK(null)
       setNgayNK(dayjs())
+      fetchEntries(r.id)
       onSaved()
     } catch { message.error('Lưu thất bại') }
     finally { setSaving(false) }
@@ -4667,22 +4680,35 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
                 </div>
               </div>
 
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Lịch sử nhập kho</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
-                  <LCell>Số lần NK</LCell>
-                  <VCell last>
-                    {r.soLanNhapKho > 0
-                      ? <Tag color="blue" style={{ marginRight: 0 }}>{r.soLanNhapKho} lần</Tag>
-                      : <span style={{ color: '#bbb' }}>—</span>}
-                  </VCell>
-                  <LCell>Ngày NK mới nhất</LCell>
-                  <VCell last>
-                    <span style={{ color: '#374151' }}>
-                      {r.ngayNhapKhoMoiNhat ? dayjs(r.ngayNhapKhoMoiNhat).format('DD/MM/YYYY') : '—'}
-                    </span>
-                  </VCell>
+              <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  Lịch sử nhập kho
+                  {entries.length > 0 && <Tag color="blue" style={{ marginRight: 0, fontWeight: 700 }}>{entries.length} lần</Tag>}
                 </div>
+                {entries.length === 0 ? (
+                  <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, padding: '12px', color: '#bbb', fontSize: 13, textAlign: 'center' }}>Chưa có lịch sử nhập kho</div>
+                ) : (
+                  <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '30px 1fr 1fr', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
+                      <div style={{ padding: '5px 8px', fontSize: 11, fontWeight: 700, color: '#64748b', borderRight: '1px solid #e2e8f0' }}>#</div>
+                      <div style={{ padding: '5px 8px', fontSize: 11, fontWeight: 700, color: '#64748b', borderRight: '1px solid #e2e8f0' }}>Ngày NK</div>
+                      <div style={{ padding: '5px 8px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'right' }}>Số lượng</div>
+                    </div>
+                    <div style={{ maxHeight: 160, overflowY: 'auto' }}>
+                      {entries.map((e, i) => (
+                        <div key={e.id} style={{ display: 'grid', gridTemplateColumns: '30px 1fr 1fr', borderBottom: i < entries.length - 1 ? '1px solid #f0f4f8' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
+                          <div style={{ padding: '5px 8px', fontSize: 12, color: '#94a3b8', borderRight: '1px solid #f0f4f8' }}>{i + 1}</div>
+                          <div style={{ padding: '5px 8px', fontSize: 12, color: '#374151', borderRight: '1px solid #f0f4f8' }}>
+                            {e.ngayXuatKho ? dayjs(e.ngayXuatKho).format('DD/MM/YYYY') : '—'}
+                          </div>
+                          <div style={{ padding: '5px 8px', fontSize: 12, fontWeight: 600, color: '#1d4ed8', textAlign: 'right' }}>
+                            {e.tpNhapKho != null ? Number(e.tpNhapKho).toLocaleString('vi-VN') : '—'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

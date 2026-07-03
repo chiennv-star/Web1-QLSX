@@ -659,6 +659,39 @@ public class ProductionService {
         }
     }
 
+    /** Trả về danh sách từng lần nhập kho của bản ghi nguồn (theo maBravo + lsx) */
+    public List<java.util.Map<String, Object>> getNhapKhoEntries(Long sourceId) {
+        ProductionRecord src = repository.findById(sourceId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + sourceId));
+        List<ProductionRecord> clones = repository.findNhapKhoClonesByKey(src.getMaBravo(), src.getLsx());
+
+        if (!clones.isEmpty()) {
+            return clones.stream()
+                    .sorted(java.util.Comparator.comparing(
+                            c -> c.getNgayXuatKho() != null ? c.getNgayXuatKho() : java.time.LocalDate.MIN))
+                    .map(c -> {
+                        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                        m.put("id", c.getId());
+                        m.put("tpNhapKho", c.getTpNhapKho());
+                        m.put("ngayXuatKho", c.getNgayXuatKho());
+                        m.put("ghiChu", c.getGhiChuNhapKho());
+                        return m;
+                    }).collect(java.util.stream.Collectors.toList());
+        }
+
+        // Chưa có clone (chỉ mới nhập lần đầu trực tiếp trên source)
+        if (src.getTpNhapKho() != null) {
+            java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("id", src.getId());
+            m.put("tpNhapKho", src.getTpNhapKho());
+            m.put("ngayXuatKho", src.getNgayXuatKho());
+            m.put("ghiChu", src.getGhiChuNhapKho());
+            return java.util.List.of(m);
+        }
+
+        return java.util.List.of();
+    }
+
     public ProductionRecord updateGhiChuHieuSuat(Long id, String ghiChu) {
         ProductionRecord r = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));

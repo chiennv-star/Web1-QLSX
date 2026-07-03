@@ -202,6 +202,12 @@ public class ProductionController {
                 .body(productionService.createNhapKhoEntry(sourceId, body, auth.getName()));
     }
 
+    /** Trả về danh sách từng lần nhập kho của bản ghi nguồn */
+    @GetMapping("/{id}/nhap-kho-entries")
+    public ResponseEntity<List<java.util.Map<String, Object>>> getNhapKhoEntries(@PathVariable Long id) {
+        return ResponseEntity.ok(productionService.getNhapKhoEntries(id));
+    }
+
     /** Xóa hàng khỏi danh sách nhập kho (xóa mềm nếu là bản ghi nhập kho đơn thuần, ngược lại chỉ xóa các trường NK) */
     @DeleteMapping("/{id}/nhap-kho")
     public ResponseEntity<Void> removeFromNhapKho(@PathVariable Long id, Authentication auth) {
