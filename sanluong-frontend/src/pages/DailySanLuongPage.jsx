@@ -5507,6 +5507,32 @@ function NhapKhoTab() {
                     <VC><span style={{ fontSize: 12, lineHeight: 1.4 }}>{r.tienTrinh || '—'}</span></VC>
                     <LC>Số lô</LC>
                     <VC><span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#6d28d9' }}>{r.lsx || '—'}</span></VC>
+                    <LC>Mã Bravo</LC>
+                    <VC>
+                      {bravoEdit?.id === r.id ? (
+                        <div style={{ display: 'flex', gap: 4, width: '100%', alignItems: 'center' }}>
+                          <AutoComplete
+                            autoFocus
+                            options={bravoSearch}
+                            value={bravoEdit.maBravo}
+                            onChange={val => setBravoEdit(prev => ({ ...prev, maBravo: val, maTp: '', tienTrinh: '' }))}
+                            onSearch={searchBravo}
+                            onSelect={(val, opt) => { setBravoEdit(prev => ({ ...prev, maBravo: val, maTp: opt.maTp || '', tienTrinh: opt.tienTrinh || '' })); setBravoSearch([]) }}
+                            style={{ flex: 1 }}
+                            size="small"
+                            notFoundContent={bravoSearching ? <Spin size="small" /> : null}
+                          />
+                          <Button size="small" type="primary" onClick={saveBravoEdit} loading={saving[`${r.id}_maBravo`]}>Lưu</Button>
+                          <Button size="small" onClick={() => { setBravoEdit(null); setBravoSearch([]) }}>Hủy</Button>
+                        </div>
+                      ) : (
+                        <span
+                          onClick={() => setBravoEdit({ id: r.id, maBravo: r.maBravo || '', maTp: r.maTp || '', tienTrinh: r.tienTrinh || '' })}
+                          style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1d4ed8', cursor: 'pointer', textDecoration: 'underline dotted' }}>
+                          {r.maBravo || <span style={{ color: '#bbb', fontFamily: 'inherit', fontWeight: 400 }}>Nhấn để sửa...</span>}
+                        </span>
+                      )}
+                    </VC>
                     <LC>SL Kế Hoạch</LC>
                     <VC><span style={{ fontWeight: 600, color: '#374151' }}>{r.soLuong?.toLocaleString('vi-VN') || '—'}</span></VC>
                     <LC>SL Đóng Gói</LC>
