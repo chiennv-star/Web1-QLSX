@@ -868,6 +868,12 @@ function DailyDetailTab() {
         : <span style={{ color: '#bbb' }}>—</span>,
     },
     {
+      title: 'Phòng TH', dataIndex: 'phongThucHien', key: 'phongThucHien', width: 130,
+      render: v => v
+        ? <Tooltip title={v}><span style={{ fontSize: 11, color: '#444', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>{v}</span></Tooltip>
+        : <span style={{ color: '#bbb' }}>—</span>,
+    },
+    {
       title: 'Vai Trò', dataIndex: 'vaiTro', key: 'vaiTro', width: 110, align: 'center',
       render: v => {
         if (!v) return <span style={{ color: '#bbb' }}>—</span>
