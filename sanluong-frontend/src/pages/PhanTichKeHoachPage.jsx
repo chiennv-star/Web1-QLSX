@@ -120,7 +120,7 @@ export default function PhanTichKeHoachPage() {
     const seen = new Set()
     return filteredRaw.filter(r => {
       const key = r.soLo
-        ? `${r.soLo}|${(r.congDoan || '').toUpperCase()}|${(r.toNhom || '').toUpperCase()}`
+        ? `${r.maBravo || ''}|${r.soLo}|${(r.congDoan || '').toUpperCase()}|${(r.toNhom || '').toUpperCase()}`
         : `__id_${r.id}`
       if (seen.has(key)) return false
       seen.add(key)
@@ -169,10 +169,10 @@ export default function PhanTichKeHoachPage() {
     [dedupedByLo],
   )
 
-  // Tổng SL cho Chi Tiết: dùng filteredRaw (tất cả hàng hiển thị, kể cả chưa có số lô)
+  // Tổng SL (dedup theo maBravo+soLo+congDoan+toNhom để tránh cộng 2 lần khi lô trải nhiều ngày)
   const grandSLAll = useMemo(
-    () => filteredRaw.reduce((s, r) => s + Number(r.coLo || 0), 0),
-    [filteredRaw],
+    () => dedupedByLo.reduce((s, r) => s + Number(r.coLo || 0), 0),
+    [dedupedByLo],
   )
 
   // ── Stage stats ──────────────────────────────────────────────────────────────
