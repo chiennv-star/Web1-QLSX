@@ -302,7 +302,12 @@ public class LenhSanXuatService {
         // Tạo ProductionRecord + SCHEDULE WorkSchedules cho từng lệnh vừa ban hành
         for (LenhSanXuat lenh : list) {
             if (lenh.getMaBravo() != null && lenh.getSoLo() != null) {
-                autoCreateSanLuong(lenh, username);
+                try {
+                    autoCreateSanLuong(lenh, username);
+                } catch (Exception ex) {
+                    System.err.println("banHanhBulk: lỗi autoCreateSanLuong id=" + lenh.getId()
+                            + " — " + ex.getMessage());
+                }
             }
         }
         return list.size();
