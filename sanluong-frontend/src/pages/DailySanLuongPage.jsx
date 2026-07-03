@@ -4862,7 +4862,18 @@ function NhapKhoTab() {
   const [bravoSearch, setBravoSearch] = useState([]) // autocomplete options
   const [bravoSearching, setBravoSearching] = useState(false)
 
+  const [drawerEntries, setDrawerEntries] = useState([])
+  const [drawerDgSl, setDrawerDgSl] = useState(null)
+
   const drawerRecord = drawerRecId != null ? data.find(r => r.id === drawerRecId) ?? null : null
+
+  useEffect(() => {
+    if (drawerRecId == null) { setDrawerEntries([]); setDrawerDgSl(null); return }
+    api.get(`/production/${drawerRecId}/nhap-kho-entries`).then(r => setDrawerEntries(r.data || [])).catch(() => {})
+    api.get(`/production/${drawerRecId}/dg-san-luong`).then(r => {
+      const v = Number(r.data?.slDg || 0); setDrawerDgSl(v > 0 ? v : null)
+    }).catch(() => {})
+  }, [drawerRecId])
 
   // Đóng context menu khi click ra ngoài
   useEffect(() => {
@@ -5444,142 +5455,212 @@ function NhapKhoTab() {
         onAdded={handleAdded}
       />
 
-      {/* Drawer chi tiết */}
-      <Drawer
-        title={
-          drawerRecord
-            ? <span>
-                <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{drawerRecord.maBravo}</span>
-                {' '}<Tag style={{ marginLeft: 4 }}>{drawerRecord.maTp}</Tag>
-              </span>
-            : 'Chi tiết nhập kho'
-        }
+      {/* Modal chi tiết nhập kho — layout 2 cột kiểu DonHang */}
+      <Modal
         open={drawerRecId != null}
-        onClose={() => { setDrawerRecId(null); setEditCell(null) }}
-        width={400}
+        onCancel={() => { setDrawerRecId(null); setEditCell(null) }}
+        footer={null}
+        width={720}
         destroyOnClose={false}
+        title={null}
+        closable={false}
+        styles={{ body: { padding: 0 } }}
       >
-        {drawerRecord && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Thông tin cơ bản */}
-            <div style={{ background: '#f9fafb', borderRadius: 6, padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
-              <div><span style={{ color: '#6b7280', minWidth: 110, display: 'inline-block' }}>Tên sản phẩm:</span> <strong>{drawerRecord.tienTrinh || '—'}</strong></div>
-              <div><span style={{ color: '#6b7280', minWidth: 110, display: 'inline-block' }}>Số lô:</span> <span style={{ fontFamily: 'monospace' }}>{drawerRecord.lsx || '—'}</span></div>
-              <div><span style={{ color: '#6b7280', minWidth: 110, display: 'inline-block' }}>SL kế hoạch:</span> {drawerRecord.soLuong?.toLocaleString('vi-VN') || '—'}</div>
-            </div>
-
-            <Divider style={{ margin: '0' }}>Thông tin nhập kho</Divider>
-
-            {/* SL Nhập Kho */}
-            <div>
-              <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13, color: '#374151' }}>SL Nhập Kho</div>
-              {editCell?.id === drawerRecord.id && editCell?.field === 'tpNhapKho_drawer' ? (
-                <InputNumber
-                  autoFocus min={0} step={1} style={{ width: '100%' }}
-                  defaultValue={drawerRecord.tpNhapKho ?? undefined}
-                  formatter={val => val != null && val !== '' ? Number(val).toLocaleString('vi-VN') : ''}
-                  parser={val => val ? val.replace(/[^\d]/g, '') : ''}
-                  onPressEnter={e => {
-                    const num = e.target.value ? parseInt(e.target.value.replace(/[^\d]/g, ''), 10) : null
-                    saveField(drawerRecord.id, 'tpNhapKho', isNaN(num) ? null : num)
-                  }}
-                  onBlur={e => {
-                    if (!saving[`${drawerRecord.id}_tpNhapKho`]) {
-                      const num = e.target.value ? parseInt(e.target.value.replace(/[^\d]/g, ''), 10) : null
-                      saveField(drawerRecord.id, 'tpNhapKho', isNaN(num) ? null : num)
-                    }
-                  }}
-                />
-              ) : (
-                <div
-                  onClick={() => setEditCell({ id: drawerRecord.id, field: 'tpNhapKho_drawer' })}
-                  style={{ cursor: 'pointer', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 32, display: 'flex', alignItems: 'center' }}
-                >
-                  {drawerRecord.tpNhapKho != null
-                    ? <span style={{ fontWeight: 700, color: '#15803d', fontSize: 15 }}>{drawerRecord.tpNhapKho.toLocaleString('vi-VN')}</span>
-                    : <span style={{ color: '#bbb' }}>Nhấn để nhập...</span>}
+        {drawerRecord && (() => {
+          const r = drawerRecord
+          const total = r.tpNhapKho || 0
+          const slDgVal = drawerDgSl != null ? drawerDgSl : (parseInt(r.dg2) || 0)
+          const conLai = slDgVal > 0 ? slDgVal - total : null
+          const done = slDgVal > 0 && total >= slDgVal
+          const LC = ({ children }) => (
+            <div style={{ padding: '7px 12px', background: '#f1f5f9', fontWeight: 600, fontSize: 12, color: '#64748b', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0', display: 'flex', alignItems: 'center' }}>{children}</div>
+          )
+          const VC = ({ children }) => (
+            <div style={{ padding: '6px 12px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', fontSize: 13, minHeight: 38 }}>{children}</div>
+          )
+          return (
+            <div style={{ borderRadius: 8, overflow: 'hidden' }}>
+              {/* Header */}
+              <div style={{ background: '#1e4570', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 20 }}>📦</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ color: '#fff', fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {r.tienTrinh || 'Chi tiết nhập kho'}
+                  </div>
+                  <div style={{ color: '#93c5fd', fontSize: 11, marginTop: 2, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    {r.maBravo   && <span>Bravo: <b>{r.maBravo}</b></span>}
+                    {r.maTp      && <span>SP: <b>{r.maTp}</b></span>}
+                    {r.maDonHang && <span>ĐH: <b style={{ color: '#c4b5fd' }}>{r.maDonHang}</b></span>}
+                  </div>
                 </div>
-              )}
-            </div>
+                <button onClick={() => { setDrawerRecId(null); setEditCell(null) }}
+                  style={{ background: 'none', border: 'none', color: '#93c5fd', cursor: 'pointer', fontSize: 20, padding: 0, lineHeight: 1, flexShrink: 0 }}>✕</button>
+              </div>
 
-            {/* Ngày xuất */}
-            <div>
-              <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13, color: '#374151' }}>Ngày xuất</div>
-              {editCell?.id === drawerRecord.id && editCell?.field === 'ngayXuatKho_drawer' ? (
-                <DatePicker
-                  autoFocus style={{ width: '100%' }} format="DD/MM/YYYY"
-                  defaultValue={drawerRecord.ngayXuatKho ? dayjs(drawerRecord.ngayXuatKho) : undefined}
-                  onChange={d => saveField(drawerRecord.id, 'ngayXuatKho', d ? d.format('YYYY-MM-DD') : '')}
-                  onBlur={() => !saving[`${drawerRecord.id}_ngayXuatKho`] && setEditCell(null)}
-                />
-              ) : (
-                <div
-                  onClick={() => setEditCell({ id: drawerRecord.id, field: 'ngayXuatKho_drawer' })}
-                  style={{ cursor: 'pointer', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 32, display: 'flex', alignItems: 'center' }}
-                >
-                  {drawerRecord.ngayXuatKho
-                    ? <span style={{ color: '#374151' }}>{dayjs(drawerRecord.ngayXuatKho).format('DD/MM/YYYY')}</span>
-                    : <span style={{ color: '#bbb' }}>Nhấn để chọn ngày...</span>}
+              {/* Body — 2 cột */}
+              <div style={{ padding: '16px 20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+
+                {/* Cột trái: thông tin */}
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden', alignSelf: 'start' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr' }}>
+                    <LC>Tên sản phẩm</LC>
+                    <VC><span style={{ fontSize: 12, lineHeight: 1.4 }}>{r.tienTrinh || '—'}</span></VC>
+                    <LC>Số lô</LC>
+                    <VC><span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#6d28d9' }}>{r.lsx || '—'}</span></VC>
+                    <LC>SL Kế Hoạch</LC>
+                    <VC><span style={{ fontWeight: 600, color: '#374151' }}>{r.soLuong?.toLocaleString('vi-VN') || '—'}</span></VC>
+                    <LC>SL Đóng Gói</LC>
+                    <VC>{slDgVal > 0 ? <span style={{ fontWeight: 600, color: '#374151' }}>{slDgVal.toLocaleString('vi-VN')}</span> : <span style={{ color: '#bbb' }}>—</span>}</VC>
+                    <LC>Tổng đã NK</LC>
+                    <VC>
+                      <span style={{ fontWeight: 700, fontSize: 15, color: done ? '#15803d' : total > 0 ? '#1677ff' : '#d97706' }}>
+                        {total > 0 ? total.toLocaleString('vi-VN') : 'Chưa NK'}
+                      </span>
+                    </VC>
+                    {conLai != null && <>
+                      <LC>Còn lại</LC>
+                      <VC>{conLai <= 0 ? <Tag color="success" style={{ marginRight: 0 }}>Hoàn tất</Tag> : <span style={{ color: '#cf1322', fontWeight: 700 }}>{conLai.toLocaleString('vi-VN')}</span>}</VC>
+                    </>}
+                  </div>
                 </div>
-              )}
-            </div>
 
-            {/* Tình trạng */}
-            <div>
-              <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13, color: '#374151' }}>Tình trạng</div>
-              <Select
-                style={{ width: '100%' }}
-                value={drawerRecord.tinhTrangNhapKho || undefined}
-                placeholder="— Chọn —" allowClear
-                onChange={val => saveField(drawerRecord.id, 'tinhTrangNhapKho', val || '')}
-                options={TINH_TRANG_NK_OPTIONS.map(o => ({ value: o, label: o }))}
-              />
-            </div>
+                {/* Cột phải: nhập liệu */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div>
+                    <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 12, color: '#374151' }}>SL Nhập Kho</div>
+                    {editCell?.id === r.id && editCell?.field === 'tpNhapKho_drawer' ? (
+                      <InputNumber autoFocus min={0} step={1} style={{ width: '100%' }}
+                        defaultValue={r.tpNhapKho ?? undefined}
+                        formatter={val => val != null && val !== '' ? Number(val).toLocaleString('vi-VN') : ''}
+                        parser={val => val ? val.replace(/[^\d]/g, '') : ''}
+                        onPressEnter={e => { const n = parseInt(e.target.value.replace(/[^\d]/g, ''), 10); saveField(r.id, 'tpNhapKho', isNaN(n) ? null : n) }}
+                        onBlur={e => { if (!saving[`${r.id}_tpNhapKho`]) { const n = parseInt(e.target.value.replace(/[^\d]/g, ''), 10); saveField(r.id, 'tpNhapKho', isNaN(n) ? null : n) } }}
+                      />
+                    ) : (
+                      <div onClick={() => setEditCell({ id: r.id, field: 'tpNhapKho_drawer' })}
+                        style={{ cursor: 'pointer', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 32, display: 'flex', alignItems: 'center' }}>
+                        {r.tpNhapKho != null
+                          ? <span style={{ fontWeight: 700, color: '#15803d', fontSize: 15 }}>{r.tpNhapKho.toLocaleString('vi-VN')}</span>
+                          : <span style={{ color: '#bbb' }}>Nhấn để nhập...</span>}
+                      </div>
+                    )}
+                  </div>
 
-            {/* Tên NTH */}
-            <div>
-              <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13, color: '#374151' }}>Tên NTH</div>
-              {editCell?.id === drawerRecord.id && editCell?.field === 'tenNthNhapKho_drawer' ? (
-                <Input
-                  autoFocus defaultValue={drawerRecord.tenNthNhapKho || ''}
-                  onPressEnter={e => saveField(drawerRecord.id, 'tenNthNhapKho', e.target.value.trim())}
-                  onBlur={e => { if (!saving[`${drawerRecord.id}_tenNthNhapKho`]) saveField(drawerRecord.id, 'tenNthNhapKho', e.target.value.trim()) }}
-                />
-              ) : (
-                <div
-                  onClick={() => setEditCell({ id: drawerRecord.id, field: 'tenNthNhapKho_drawer' })}
-                  style={{ cursor: 'pointer', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 32, display: 'flex', alignItems: 'center' }}
-                >
-                  {drawerRecord.tenNthNhapKho
-                    ? <span style={{ color: '#374151' }}>{drawerRecord.tenNthNhapKho}</span>
-                    : <span style={{ color: '#bbb' }}>Nhấn để nhập...</span>}
+                  <div>
+                    <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 12, color: '#374151' }}>Ngày nhập kho</div>
+                    {editCell?.id === r.id && editCell?.field === 'ngayXuatKho_drawer' ? (
+                      <DatePicker autoFocus style={{ width: '100%' }} format="DD/MM/YYYY"
+                        defaultValue={r.ngayXuatKho ? dayjs(r.ngayXuatKho) : undefined}
+                        onChange={d => saveField(r.id, 'ngayXuatKho', d ? d.format('YYYY-MM-DD') : '')}
+                        onBlur={() => !saving[`${r.id}_ngayXuatKho`] && setEditCell(null)}
+                      />
+                    ) : (
+                      <div onClick={() => setEditCell({ id: r.id, field: 'ngayXuatKho_drawer' })}
+                        style={{ cursor: 'pointer', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 32, display: 'flex', alignItems: 'center' }}>
+                        {r.ngayXuatKho
+                          ? <span style={{ color: '#374151' }}>{dayjs(r.ngayXuatKho).format('DD/MM/YYYY')}</span>
+                          : <span style={{ color: '#bbb' }}>Nhấn để chọn ngày...</span>}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 12, color: '#374151' }}>Tình trạng</div>
+                    <Select style={{ width: '100%' }} value={r.tinhTrangNhapKho || undefined}
+                      placeholder="— Chọn —" allowClear
+                      onChange={val => saveField(r.id, 'tinhTrangNhapKho', val || '')}
+                      options={TINH_TRANG_NK_OPTIONS.map(o => ({ value: o, label: o }))}
+                    />
+                  </div>
+
+                  <div>
+                    <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 12, color: '#374151' }}>Tên NTH</div>
+                    {editCell?.id === r.id && editCell?.field === 'tenNthNhapKho_drawer' ? (
+                      <Input autoFocus defaultValue={r.tenNthNhapKho || ''}
+                        onPressEnter={e => saveField(r.id, 'tenNthNhapKho', e.target.value.trim())}
+                        onBlur={e => { if (!saving[`${r.id}_tenNthNhapKho`]) saveField(r.id, 'tenNthNhapKho', e.target.value.trim()) }}
+                      />
+                    ) : (
+                      <div onClick={() => setEditCell({ id: r.id, field: 'tenNthNhapKho_drawer' })}
+                        style={{ cursor: 'pointer', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 32, display: 'flex', alignItems: 'center' }}>
+                        {r.tenNthNhapKho ? <span style={{ color: '#374151' }}>{r.tenNthNhapKho}</span> : <span style={{ color: '#bbb' }}>Nhấn để nhập...</span>}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 12, color: '#374151' }}>Ghi chú</div>
+                    {editCell?.id === r.id && editCell?.field === 'ghiChuNhapKho_drawer' ? (
+                      <Input.TextArea autoFocus rows={3} defaultValue={r.ghiChuNhapKho || ''}
+                        onPressEnter={e => { if (!e.shiftKey) { e.preventDefault(); saveField(r.id, 'ghiChuNhapKho', e.target.value.trim()) } }}
+                        onBlur={e => { if (!saving[`${r.id}_ghiChuNhapKho`]) saveField(r.id, 'ghiChuNhapKho', e.target.value.trim()) }}
+                      />
+                    ) : (
+                      <div onClick={() => setEditCell({ id: r.id, field: 'ghiChuNhapKho_drawer' })}
+                        style={{ cursor: 'pointer', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 60, whiteSpace: 'pre-wrap', fontSize: 13 }}>
+                        {r.ghiChuNhapKho ? <span style={{ color: '#374151' }}>{r.ghiChuNhapKho}</span> : <span style={{ color: '#bbb' }}>Nhấn để nhập ghi chú...</span>}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
+              </div>
 
-            {/* Ghi chú */}
-            <div>
-              <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 13, color: '#374151' }}>Ghi chú</div>
-              {editCell?.id === drawerRecord.id && editCell?.field === 'ghiChuNhapKho_drawer' ? (
-                <Input.TextArea
-                  autoFocus rows={3} defaultValue={drawerRecord.ghiChuNhapKho || ''}
-                  onPressEnter={e => { if (!e.shiftKey) { e.preventDefault(); saveField(drawerRecord.id, 'ghiChuNhapKho', e.target.value.trim()) } }}
-                  onBlur={e => { if (!saving[`${drawerRecord.id}_ghiChuNhapKho`]) saveField(drawerRecord.id, 'ghiChuNhapKho', e.target.value.trim()) }}
-                />
-              ) : (
-                <div
-                  onClick={() => setEditCell({ id: drawerRecord.id, field: 'ghiChuNhapKho_drawer' })}
-                  style={{ cursor: 'pointer', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 60, whiteSpace: 'pre-wrap', fontSize: 13 }}
-                >
-                  {drawerRecord.ghiChuNhapKho
-                    ? <span style={{ color: '#374151' }}>{drawerRecord.ghiChuNhapKho}</span>
-                    : <span style={{ color: '#bbb' }}>Nhấn để nhập ghi chú...</span>}
-                </div>
-              )}
+              {/* Section: Lịch sử nhập kho */}
+              <div style={{ background: '#1e4570', padding: '8px 20px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: '#fff', fontWeight: 700, fontSize: 12 }}>📋 Lịch sử nhập kho</span>
+                {drawerEntries.length > 0 && <Tag color="blue" style={{ marginRight: 0, fontWeight: 700 }}>{drawerEntries.length} lần</Tag>}
+                <Button size="small" style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', color: '#fff' }}
+                  onClick={() => api.get(`/production/${r.id}/nhap-kho-entries`).then(res => setDrawerEntries(res.data || [])).catch(() => {})}>
+                  Làm mới
+                </Button>
+              </div>
+              <div style={{ padding: '12px 20px', maxHeight: 200, overflowY: 'auto', minHeight: 52 }}>
+                {drawerEntries.length === 0 ? (
+                  <div style={{ color: '#bbb', fontSize: 13, textAlign: 'center', padding: '8px 0' }}>Chưa có lịch sử nhập kho</div>
+                ) : (
+                  <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 1fr 30px', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
+                      {['#','Ngày NK','Số lượng',''].map((h, i) => (
+                        <div key={i} style={{ padding: '5px 8px', fontSize: 11, fontWeight: 700, color: '#64748b', borderRight: i < 3 ? '1px solid #e2e8f0' : 'none', textAlign: i === 2 ? 'right' : 'left' }}>{h}</div>
+                      ))}
+                    </div>
+                    {drawerEntries.map((e, i) => (
+                      <div key={e.id} style={{ display: 'grid', gridTemplateColumns: '28px 1fr 1fr 30px', borderBottom: i < drawerEntries.length - 1 ? '1px solid #f0f4f8' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc', alignItems: 'center' }}>
+                        <div style={{ padding: '5px 8px', fontSize: 12, color: '#94a3b8', borderRight: '1px solid #f0f4f8' }}>{i + 1}</div>
+                        <div style={{ padding: '5px 8px', fontSize: 12, color: '#374151', borderRight: '1px solid #f0f4f8' }}>{e.ngayXuatKho ? dayjs(e.ngayXuatKho).format('DD/MM/YYYY') : '—'}</div>
+                        <div style={{ padding: '5px 8px', fontSize: 12, fontWeight: 600, color: '#1d4ed8', textAlign: 'right', borderRight: '1px solid #f0f4f8' }}>
+                          {e.tpNhapKho != null ? Number(e.tpNhapKho).toLocaleString('vi-VN') : '—'}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Popconfirm title="Xóa lần nhập kho này?" okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }} placement="left"
+                            onConfirm={() => api.delete(`/production/${e.id}/nhap-kho`).then(() => {
+                              message.success('Đã xóa')
+                              api.get(`/production/${r.id}/nhap-kho-entries`).then(res => {
+                                const fresh = res.data || []
+                                setDrawerEntries(fresh)
+                                const newTotal = fresh.reduce((s, x) => s + (x.tpNhapKho || 0), 0)
+                                setData(prev => prev.map(x => x.id === r.id ? { ...x, tpNhapKho: newTotal || null, soLanNhapKho: fresh.length } : x))
+                              }).catch(() => {})
+                            }).catch(() => message.error('Xóa thất bại'))}>
+                            <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 2, display: 'flex', alignItems: 'center' }}>
+                              <DeleteOutlined style={{ fontSize: 12 }} />
+                            </button>
+                          </Popconfirm>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div style={{ padding: '10px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
+                <Button onClick={() => { setDrawerRecId(null); setEditCell(null) }}>Đóng</Button>
+              </div>
             </div>
-          </div>
-        )}
-      </Drawer>
+          )
+        })()}
+      </Modal>
     </div>
   )
 }
