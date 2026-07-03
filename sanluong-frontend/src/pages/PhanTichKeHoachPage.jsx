@@ -894,7 +894,7 @@ export default function PhanTichKeHoachPage() {
                 return {
                   key: date,
                   title: (
-                    <div style={{ textAlign: 'center', minWidth: 130 }}>
+                    <div style={{ textAlign: 'center', minWidth: 155 }}>
                       <div style={{ fontWeight: 700, color: '#ffffff', fontSize: 12 }}>
                         {dayjs(date).format('DD/MM')}
                       </div>
@@ -902,7 +902,7 @@ export default function PhanTichKeHoachPage() {
                     </div>
                   ),
                   dataIndex: date,
-                  width: 160,
+                  width: 185,
                   onHeaderCell: () => ({
                     style: { background: isWeekend ? '#cc7700' : '#009999', padding: '4px 8px' },
                   }),
@@ -910,49 +910,43 @@ export default function PhanTichKeHoachPage() {
                     style: { background: '#ffffff', verticalAlign: 'top', padding: '4px 6px' },
                   }),
                   render: records => {
-                    if (!records?.length) return <span style={{ color: '#d9d9d9' }}>—</span>
+                    if (!records?.length) return <span style={{ color: '#d9d9d9', display: 'block', textAlign: 'center' }}>—</span>
                     return (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                         {records.map(r => {
-                          const cl       = Number(r.coLo || 0)
-                          const nsPc     = Number(productMap[r.maSp]?.nangSuatPc || 0)
-                          const soNguoi  = Number(r.congPc || 0)
-                          const congTH   = nsPc && cl ? cl / nsPc : 0
-                          const soCa     = congTH && soNguoi ? congTH / soNguoi : 0
+                          const cl      = Number(r.coLo || 0)
+                          const nsPc    = Number(productMap[r.maSp]?.nangSuatPc || 0)
+                          const soNguoi = Number(r.congPc || 0)
+                          const congTH  = nsPc && cl ? cl / nsPc : 0
+                          const soCa    = congTH && soNguoi ? congTH / soNguoi : 0
                           return (
                             <Tooltip
                               key={r.id}
                               title={`${r.tenTrinh || r.maBravo} — Lô ${r.soLo} — ${cl.toLocaleString('vi-VN')} SP`}
                             >
                               <div style={{
-                                background: '#ffffff',
-                                border: '1px solid #d0e4ff',
+                                background: '#f6faff',
+                                border: '1px solid #c8dcf8',
                                 borderLeft: '3px solid #009999',
-                                borderRadius: '0 4px 4px 0',
-                                padding: '4px 6px',
-                                fontSize: 11,
+                                borderRadius: '0 5px 5px 0',
+                                padding: '5px 8px',
                                 cursor: 'default',
-                                overflow: 'hidden',
                               }}>
                                 <div style={{
-                                  fontWeight: 700, color: '#000077',
+                                  fontWeight: 700, color: '#1a3a6b', fontSize: 11,
                                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                 }}>
                                   {r.tenTrinh || r.maBravo || '—'}
                                 </div>
-                                <div style={{ color: '#000077', fontSize: 10 }}>
-                                  Lô {r.soLo || '—'} · <span style={{ fontWeight: 600, color: '#000077' }}>{cl.toLocaleString('vi-VN')} SP</span>
+                                <div style={{ fontSize: 10, color: '#4a5568', marginTop: 2 }}>
+                                  Lô <b style={{ color: '#1e5fa3' }}>{r.soLo || '—'}</b>
+                                  {' · '}
+                                  <b style={{ color: '#1e5fa3' }}>{cl.toLocaleString('vi-VN')} SP</b>
                                 </div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 8px', marginTop: 3, fontSize: 10 }}>
-                                  {soNguoi > 0 && (
-                                    <span style={{ color: '#000077', fontWeight: 700 }}>👤 {soNguoi} người</span>
-                                  )}
-                                  {congTH > 0 && (
-                                    <span style={{ color: '#000077', fontWeight: 700 }}>⏱ {congTH.toFixed(2)} công</span>
-                                  )}
-                                  {soCa > 0 && (
-                                    <span style={{ color: '#000077', fontWeight: 700 }}>🔄 {soCa.toFixed(2)} ca</span>
-                                  )}
+                                <div style={{ display: 'flex', gap: 6, marginTop: 4, fontSize: 10, flexWrap: 'nowrap' }}>
+                                  <span style={{ color: '#7c3aed', whiteSpace: 'nowrap' }}>👤 {soNguoi > 0 ? soNguoi : '—'}</span>
+                                  <span style={{ color: '#0369a1', whiteSpace: 'nowrap' }}>⏱ {congTH > 0 ? congTH.toFixed(2) : '—'}</span>
+                                  <span style={{ color: '#059669', whiteSpace: 'nowrap' }}>🔄 {soCa > 0 ? soCa.toFixed(2) : '—'}</span>
                                 </div>
                               </div>
                             </Tooltip>
