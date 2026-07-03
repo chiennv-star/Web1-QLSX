@@ -4,11 +4,13 @@ import com.sanluong.dto.ProductionRecordDto;
 import com.sanluong.entity.ProductionEditHistory;
 import com.sanluong.entity.ProductionRecord;
 import com.sanluong.entity.WorkSchedule;
+import com.sanluong.entity.WorkScheduleSession;
 import com.sanluong.repository.LenhSanXuatRepository;
 import com.sanluong.repository.ProductionEditHistoryRepository;
 import com.sanluong.repository.ProductionRecordRepository;
 import com.sanluong.repository.ProductMasterRepository;
 import com.sanluong.repository.WorkScheduleRepository;
+import com.sanluong.repository.WorkScheduleSessionRepository;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.usermodel.*;
@@ -34,6 +36,7 @@ public class ProductionService {
     private final ProductMasterRepository productMasterRepository;
     private final LenhSanXuatRepository lenhSanXuatRepository;
     private final WorkScheduleRepository workScheduleRepository;
+    private final WorkScheduleSessionRepository workScheduleSessionRepository;
     private final WorkScheduleService workScheduleService;
     private final ProductionEditHistoryRepository historyRepository;
     private final NotificationService notificationService;
@@ -44,6 +47,7 @@ public class ProductionService {
                              ProductMasterRepository productMasterRepository,
                              LenhSanXuatRepository lenhSanXuatRepository,
                              WorkScheduleRepository workScheduleRepository,
+                             WorkScheduleSessionRepository workScheduleSessionRepository,
                              WorkScheduleService workScheduleService,
                              ProductionEditHistoryRepository historyRepository,
                              NotificationService notificationService,
@@ -53,6 +57,7 @@ public class ProductionService {
         this.productMasterRepository = productMasterRepository;
         this.lenhSanXuatRepository = lenhSanXuatRepository;
         this.workScheduleRepository = workScheduleRepository;
+        this.workScheduleSessionRepository = workScheduleSessionRepository;
         this.workScheduleService = workScheduleService;
         this.historyRepository = historyRepository;
         this.notificationService = notificationService;
@@ -690,6 +695,27 @@ public class ProductionService {
         }
 
         return java.util.List.of();
+    }
+
+    /** Tính tổng SL Đóng Gói từ các sessions của WorkSchedule ĐG (theo maBravo + lsx) */
+    public java.util.Map<String, Object> getDgSanLuong(Long sourceId) {
+        ProductionRecord src = repository.findById(sourceId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + sourceId));
+        if (src.getMaBravo() == null || src.getLsx() == null) {
+            return java.util.Map.of("slDg", 0);
+        }
+        java.util.Optional<WorkSchedule> wsOpt = workScheduleRepository
+                .findFirstScheduleByCongDoanAndKey("DG", src.getMaBravo(), null, src.getLsx());
+        if (wsOpt.isEmpty()) {
+            return java.util.Map.of("slDg", 0);
+        }
+        BigDecimal total = workScheduleSessionRepository
+                .findByWorkScheduleIdOrderByNgayAscIdAsc(wsOpt.get().getId())
+                .stream()
+                .filter(s -> s.getSanLuong() != null)
+                .map(WorkScheduleSession::getSanLuong)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return java.util.Map.of("slDg", total);
     }
 
     public ProductionRecord updateGhiChuHieuSuat(Long id, String ghiChu) {

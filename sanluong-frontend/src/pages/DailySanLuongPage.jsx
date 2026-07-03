@@ -4551,6 +4551,8 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
   const [ngayNK, setNgayNK] = useState(dayjs())
   const [saving, setSaving] = useState(false)
   const [entries, setEntries] = useState([])
+  const [dgSl,   setDgSl]   = useState(null)   // null = loading/unknown, number = fetched
+  const [deletingId, setDeletingId] = useState(null)
 
   const fetchEntries = async (id) => {
     try {
@@ -4559,18 +4561,49 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
     } catch { setEntries([]) }
   }
 
+  const fetchDgSl = async (id) => {
+    try {
+      const res = await api.get(`/production/${id}/dg-san-luong`)
+      const v = Number(res.data?.slDg || 0)
+      setDgSl(v > 0 ? v : null)
+    } catch { setDgSl(null) }
+  }
+
   useEffect(() => {
     setLocalRecord(initialRecord)
     setEntries([])
-    if (initialRecord?.id) fetchEntries(initialRecord.id)
+    setDgSl(null)
+    if (initialRecord?.id) {
+      fetchEntries(initialRecord.id)
+      fetchDgSl(initialRecord.id)
+    }
   }, [initialRecord])
 
-  const r     = localRecord
-  const fmtN  = v => v != null ? Number(v).toLocaleString('vi-VN') : '—'
-  const dg2V  = parseInt(r.dg2) || 0
-  const total = r.totalNhapKho || 0
-  const conLai = dg2V > 0 ? dg2V - total : null
-  const done   = dg2V > 0 && total >= dg2V
+  const handleDeleteEntry = async (entry) => {
+    setDeletingId(entry.id)
+    try {
+      await api.delete(`/production/${entry.id}/nhap-kho`)
+      message.success('Đã xóa lần nhập kho')
+      const res = await api.get(`/production/${r.id}/nhap-kho-entries`)
+      const fresh = res.data || []
+      setEntries(fresh)
+      const newTotal = fresh.reduce((s, e) => s + (e.tpNhapKho || 0), 0)
+      setLocalRecord(prev => ({
+        ...prev,
+        totalNhapKho: newTotal,
+        soLanNhapKho: fresh.length,
+      }))
+      onSaved()
+    } catch { message.error('Xóa thất bại') }
+    finally { setDeletingId(null) }
+  }
+
+  const r      = localRecord
+  const fmtN   = v => v != null ? Number(v).toLocaleString('vi-VN') : '—'
+  const slDgRef = dgSl != null ? dgSl : (parseInt(r.dg2) || 0)
+  const total  = r.totalNhapKho || 0
+  const conLai = slDgRef > 0 ? slDgRef - total : null
+  const done   = slDgRef > 0 && total >= slDgRef
 
   const LCell = ({ children }) => (
     <div style={{ padding: '7px 10px', background: '#f1f5f9', fontWeight: 600, fontSize: 12, color: '#64748b', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0', display: 'flex', alignItems: 'center' }}>{children}</div>
@@ -4676,7 +4709,12 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
                   <LCell>SL Lệnh (cỡ lô)</LCell>
                   <VCell last><strong>{fmtN(r.soLuong)}</strong></VCell>
                   <LCell>SL Đóng Gói</LCell>
-                  <VCell last><span style={{ color: '#374151', fontWeight: 600 }}>{fmtN(r.dg2)}</span></VCell>
+                  <VCell last>
+                    {dgSl != null
+                      ? <span style={{ color: '#374151', fontWeight: 600 }}>{dgSl.toLocaleString('vi-VN')}</span>
+                      : <span style={{ color: '#374151', fontWeight: 600 }}>{fmtN(r.dg2)}</span>
+                    }
+                  </VCell>
                 </div>
               </div>
 
@@ -4689,20 +4727,38 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
                   <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, padding: '12px', color: '#bbb', fontSize: 13, textAlign: 'center' }}>Chưa có lịch sử nhập kho</div>
                 ) : (
                   <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '30px 1fr 1fr', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
-                      <div style={{ padding: '5px 8px', fontSize: 11, fontWeight: 700, color: '#64748b', borderRight: '1px solid #e2e8f0' }}>#</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 1fr 30px', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
+                      <div style={{ padding: '5px 6px', fontSize: 11, fontWeight: 700, color: '#64748b', borderRight: '1px solid #e2e8f0' }}>#</div>
                       <div style={{ padding: '5px 8px', fontSize: 11, fontWeight: 700, color: '#64748b', borderRight: '1px solid #e2e8f0' }}>Ngày NK</div>
-                      <div style={{ padding: '5px 8px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'right' }}>Số lượng</div>
+                      <div style={{ padding: '5px 8px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'right', borderRight: '1px solid #e2e8f0' }}>Số lượng</div>
+                      <div style={{ padding: '5px 4px', fontSize: 11, color: '#64748b' }} />
                     </div>
                     <div style={{ maxHeight: 160, overflowY: 'auto' }}>
                       {entries.map((e, i) => (
-                        <div key={e.id} style={{ display: 'grid', gridTemplateColumns: '30px 1fr 1fr', borderBottom: i < entries.length - 1 ? '1px solid #f0f4f8' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
-                          <div style={{ padding: '5px 8px', fontSize: 12, color: '#94a3b8', borderRight: '1px solid #f0f4f8' }}>{i + 1}</div>
+                        <div key={e.id} style={{ display: 'grid', gridTemplateColumns: '28px 1fr 1fr 30px', borderBottom: i < entries.length - 1 ? '1px solid #f0f4f8' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc', alignItems: 'center' }}>
+                          <div style={{ padding: '5px 6px', fontSize: 12, color: '#94a3b8', borderRight: '1px solid #f0f4f8' }}>{i + 1}</div>
                           <div style={{ padding: '5px 8px', fontSize: 12, color: '#374151', borderRight: '1px solid #f0f4f8' }}>
                             {e.ngayXuatKho ? dayjs(e.ngayXuatKho).format('DD/MM/YYYY') : '—'}
                           </div>
-                          <div style={{ padding: '5px 8px', fontSize: 12, fontWeight: 600, color: '#1d4ed8', textAlign: 'right' }}>
+                          <div style={{ padding: '5px 8px', fontSize: 12, fontWeight: 600, color: '#1d4ed8', textAlign: 'right', borderRight: '1px solid #f0f4f8' }}>
                             {e.tpNhapKho != null ? Number(e.tpNhapKho).toLocaleString('vi-VN') : '—'}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Popconfirm
+                              title="Xóa lần nhập kho này?"
+                              onConfirm={() => handleDeleteEntry(e)}
+                              okText="Xóa"
+                              cancelText="Hủy"
+                              okButtonProps={{ danger: true }}
+                              placement="left"
+                            >
+                              <button
+                                disabled={deletingId === e.id}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '2px', display: 'flex', alignItems: 'center', opacity: deletingId === e.id ? 0.4 : 1 }}
+                              >
+                                <DeleteOutlined style={{ fontSize: 12 }} />
+                              </button>
+                            </Popconfirm>
                           </div>
                         </div>
                       ))}
@@ -4734,9 +4790,9 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
                   parser={val => val ? val.replace(/[^\d]/g, '') : ''}
                   placeholder="Nhập số lượng nhập kho..."
                 />
-                {r.dg2 && (
+                {(dgSl != null || r.dg2) && (
                   <div style={{ marginTop: 4, fontSize: 12, color: '#64748b' }}>
-                    SL Đóng Gói: <b>{fmtN(r.dg2)}</b>
+                    SL Đóng Gói: <b>{dgSl != null ? dgSl.toLocaleString('vi-VN') : fmtN(r.dg2)}</b>
                     {conLai != null && conLai > 0 && (
                       <span style={{ marginLeft: 8, color: '#cf1322' }}>· Còn lại: <b>{conLai.toLocaleString('vi-VN')}</b></span>
                     )}

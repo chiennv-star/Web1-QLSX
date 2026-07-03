@@ -208,6 +208,12 @@ public class ProductionController {
         return ResponseEntity.ok(productionService.getNhapKhoEntries(id));
     }
 
+    /** Tổng SL Đóng Gói từ sessions WorkSchedule ĐG của sản phẩm */
+    @GetMapping("/{id}/dg-san-luong")
+    public ResponseEntity<java.util.Map<String, Object>> getDgSanLuong(@PathVariable Long id) {
+        return ResponseEntity.ok(productionService.getDgSanLuong(id));
+    }
+
     /** Xóa hàng khỏi danh sách nhập kho (xóa mềm nếu là bản ghi nhập kho đơn thuần, ngược lại chỉ xóa các trường NK) */
     @DeleteMapping("/{id}/nhap-kho")
     public ResponseEntity<Void> removeFromNhapKho(@PathVariable Long id, Authentication auth) {
