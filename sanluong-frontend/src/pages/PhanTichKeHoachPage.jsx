@@ -469,9 +469,9 @@ export default function PhanTichKeHoachPage() {
             columns={[
               { title: 'Ngày KH', dataIndex: 'ngayThucHien', width: 100, fixed: 'left',
                 render: v => v ? <span style={{ fontWeight: 600, color: '#1677ff' }}>{dayjs(v).format('DD/MM/YYYY')}</span> : '—' },
-              { title: 'Mã Bravo', dataIndex: 'maBravo', width: 105,
+              { title: 'Mã Bravo', dataIndex: 'maBravo', width: 105, fixed: 'left',
                 render: v => <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#374151' }}>{v || '—'}</span> },
-              { title: 'Tên / Tiến trình', dataIndex: 'tenTrinh', width: 220,
+              { title: 'Tên / Tiến trình', dataIndex: 'tenTrinh', width: 220, fixed: 'left',
                 render: v => <Tooltip title={v}><span style={{ fontSize: 12, whiteSpace: 'normal', wordBreak: 'break-word' }}>{v || '—'}</span></Tooltip> },
               { title: 'Số lô', dataIndex: 'soLo', width: 90,
                 render: v => <span style={{ color: '#6d28d9', fontWeight: 600 }}>{v || '—'}</span> },
