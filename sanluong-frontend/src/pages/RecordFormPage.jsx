@@ -304,6 +304,12 @@ export default function RecordFormPage() {
               .then(({ data: qa }) => setQaData(qa))
               .catch(() => {})
           }
+          // Refresh tienTrinh từ ProductMaster để tránh hiển thị tên cũ đã lỗi thời
+          if (data.maBravo) {
+            api.get(`/product-master/lookup-by-bravo/${encodeURIComponent(data.maBravo)}`)
+              .then(({ data: pm }) => { if (pm.tienTrinh) form.setFieldsValue({ tienTrinh: pm.tienTrinh }) })
+              .catch(() => {})
+          }
         })
         .catch(() => message.error('Không thể tải dữ liệu'))
     }

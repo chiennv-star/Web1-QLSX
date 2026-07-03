@@ -304,6 +304,57 @@ export default function PhanTichKeHoachPage() {
     return { dates, rows, allMachines, visibleMachines, isPL }
   }, [filteredRaw, machineConfig, selectedTo])
 
+  const totalCongPc = useMemo(() =>
+    dedupedByLo.reduce((s, r) => {
+      const ns = Number(productMap[r.maSp]?.nangSuatPc || 0)
+      const cl = Number(r.coLo || 0)
+      return s + (ns && cl ? cl / ns : 0)
+    }, 0),
+  [dedupedByLo, productMap])
+
+  const totalCongPl = useMemo(() =>
+    dedupedByLo.reduce((s, r) => {
+      const ns = Number(productMap[r.maSp]?.nangSuatPl || 0)
+      const cl = Number(r.coLo || 0)
+      return s + (ns && cl ? cl / ns : 0)
+    }, 0),
+  [dedupedByLo, productMap])
+
+  const peakDay = useMemo(() =>
+    timeData.reduce((best, d) => {
+      const tot = STAGES.reduce((s, st) => s + (d[st.key] || 0), 0)
+      return (!best || tot > best.total) ? { date: d.date, total: tot } : best
+    }, null),
+  [timeData])
+
+  const machineLoadData = useMemo(() =>
+    machineSchedule.rows.map(row => {
+      const daysUsed     = machineSchedule.dates.filter(d => row[d]?.length > 0).length
+      const totalBatches = machineSchedule.dates.reduce((s, d) => s + (row[d]?.length || 0), 0)
+      const totalSL      = machineSchedule.dates.reduce((s, d) =>
+        s + (row[d] || []).reduce((ss, r) => ss + Number(r.coLo || 0), 0), 0)
+      const totalCong    = machineSchedule.dates.reduce((s, d) =>
+        s + (row[d] || []).reduce((ss, r) => {
+          const ns = Number(productMap[r.maSp]?.nangSuatPc || 0)
+          const cl = Number(r.coLo || 0)
+          return ss + (ns && cl ? cl / ns : 0)
+        }, 0), 0)
+      return { machine: row.machine, daysUsed, totalBatches, totalSL, totalCong }
+    }).filter(m => m.totalBatches > 0),
+  [machineSchedule, productMap])
+
+  const busiestMachine = useMemo(() =>
+    [...machineLoadData].sort((a, b) => b.totalBatches - a.totalBatches)[0] || null,
+  [machineLoadData])
+
+  const activeStages = useMemo(() =>
+    STAGES.filter(s => stageStats.some(ss => ss.key === s.key)),
+  [stageStats])
+
+  const avgBatchSize = useMemo(() =>
+    dedupedByLo.length > 0 ? Math.round(grandSLAll / dedupedByLo.length) : 0,
+  [dedupedByLo, grandSLAll])
+
   // ── Sub-tabs ─────────────────────────────────────────────────────────────────
   const subTabItems = [
     {
@@ -311,73 +362,199 @@ export default function PhanTichKeHoachPage() {
       label: 'Tổng Hợp',
       children: (
         <div style={{ padding: '12px 0' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-            <div style={{ background: '#f8f9fa', borderRadius: 6, padding: 16 }}>
-              <div style={{ fontWeight: 600, marginBottom: 12, color: '#333', fontSize: 13 }}>
-                SL kế hoạch theo Công đoạn
+          {/* KPI cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(155px, 1fr))', gap: 10, marginBottom: 16 }}>
+            {[
+              { label: 'Số lô kế hoạch',   value: dedupedByLo.length,                              unit: 'lô',      color: '#1d4ed8' },
+              { label: 'Tổng SL kế hoạch', value: fmtSL(grandSLAll),                               unit: 'SP',      color: '#1e5fa3' },
+              { label: 'SL trung bình/lô', value: avgBatchSize > 0 ? fmtSL(avgBatchSize) : '—',    unit: 'SP / lô', color: '#0891b2' },
+              { label: 'Số ngày sản xuất', value: timeData.length,                                  unit: 'ngày',    color: '#7c3aed' },
+              { label: 'Số loại sản phẩm', value: loaiSpData.length,                                unit: 'loại SP', color: '#6d28d9' },
+              { label: 'Công PC dự kiến',  value: totalCongPc > 0 ? totalCongPc.toFixed(1) : '—',  unit: 'công',    color: '#0369a1' },
+            ].map(c => (
+              <div key={c.label} style={{
+                background: '#fff', border: '1px solid #e5e7eb',
+                borderLeft: `4px solid ${c.color}`, borderRadius: 6,
+                padding: '10px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              }}>
+                <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 5 }}>{c.label}</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: c.color, lineHeight: 1.1 }}>{c.value}</div>
+                <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 3 }}>{c.unit}</div>
               </div>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={stageStats} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="label" tick={{ fontSize: 12, fontWeight: 700 }} />
-                  <YAxis tickFormatter={v => v.toLocaleString('vi-VN')} tick={{ fontSize: 11 }} />
-                  <RcTooltip formatter={v => [v.toLocaleString('vi-VN'), 'SL Kế Hoạch']} />
-                  <Bar dataKey="sl" radius={[4, 4, 0, 0]}>
-                    {stageStats.map(s => <Cell key={s.key} fill={s.color} />)}
-                    <LabelList dataKey="sl" position="top"
-                      formatter={v => v > 0 ? v.toLocaleString('vi-VN') : ''}
-                      style={{ fontSize: 10, fill: '#444' }} />
-                  </Bar>
+            ))}
+          </div>
+
+          {/* Charts row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 14, marginBottom: 14 }}>
+            <div style={{ background: '#f8f9fa', borderRadius: 6, padding: 14 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#1f2937', marginBottom: 10 }}>Phân bổ SL theo ngày</div>
+              <ResponsiveContainer width="100%" height={210}>
+                <BarChart data={timeData} margin={{ top: 5, right: 20, left: 5, bottom: 35 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} angle={-40} textAnchor="end" interval={0}
+                    tickFormatter={v => dayjs(v).format('DD/MM')} />
+                  <YAxis tickFormatter={v => v.toLocaleString('vi-VN')} tick={{ fontSize: 10 }} width={65} />
+                  <RcTooltip formatter={v => [v.toLocaleString('vi-VN'), 'SL KH']}
+                    labelFormatter={v => dayjs(v).format('DD/MM/YYYY')} />
+                  {activeStages.length === 1
+                    ? (
+                      <Bar dataKey={activeStages[0].key} fill={activeStages[0].color} radius={[3, 3, 0, 0]}>
+                        <LabelList dataKey={activeStages[0].key} position="top"
+                          formatter={v => v > 0 ? v.toLocaleString('vi-VN') : ''}
+                          style={{ fontSize: 9, fill: '#444' }} />
+                      </Bar>
+                    ) : (
+                      <>
+                        {activeStages.map(s => (
+                          <Bar key={s.key} dataKey={s.key} name={s.label} stackId="a" fill={s.color} />
+                        ))}
+                        <Legend wrapperStyle={{ fontSize: 11 }} />
+                      </>
+                    )
+                  }
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div style={{ background: '#f8f9fa', borderRadius: 6, padding: 16 }}>
-              <div style={{ fontWeight: 600, marginBottom: 12, color: '#333', fontSize: 13 }}>
-                Tỷ lệ % SL kế hoạch theo Công đoạn
+            <div style={{ background: '#f8f9fa', borderRadius: 6, padding: 14 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#1f2937', marginBottom: 12 }}>
+                Cơ cấu theo loại SP
+                <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: 11, marginLeft: 6 }}>({loaiSpData.length} loại)</span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
-                {stageStats.map(s => (
-                  <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 60, fontSize: 12, fontWeight: 700, color: s.color, flexShrink: 0 }}>{s.label}</div>
-                    <div style={{ flex: 1, background: '#e5e7eb', borderRadius: 4, height: 22, overflow: 'hidden' }}>
-                      <div style={{
-                        width: `${Math.max(2, grandSL > 0 ? s.sl / grandSL * 100 : 0)}%`,
-                        height: '100%', background: s.color, borderRadius: 4,
-                        display: 'flex', alignItems: 'center', paddingLeft: 6,
-                      }}>
-                        <span style={{ color: '#fff', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                          {grandSL > 0 ? (s.sl / grandSL * 100).toFixed(1) : 0}%
-                        </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {loaiSpData.slice(0, 7).map(r => (
+                  <div key={r.loai} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 100, fontSize: 11, color: '#374151', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.loai}>{r.loai}</div>
+                    <div style={{ flex: 1, background: '#e5e7eb', borderRadius: 3, height: 18, overflow: 'hidden' }}>
+                      <div style={{ width: `${Math.max(2, r.tyLe)}%`, height: '100%', background: colorOf(r.loai), borderRadius: 3, display: 'flex', alignItems: 'center', paddingLeft: 4 }}>
+                        <span style={{ color: '#fff', fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap' }}>{r.tyLe.toFixed(1)}%</span>
                       </div>
                     </div>
-                    <span style={{ fontSize: 11, color: '#888', minWidth: 70, textAlign: 'right' }}>{fmtSL(s.sl)}</span>
+                    <span style={{ fontSize: 10, color: '#6b7280', minWidth: 60, textAlign: 'right' }}>{fmtSL(r.sl)}</span>
                   </div>
                 ))}
+                {loaiSpData.length > 7 && (
+                  <div style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', fontStyle: 'italic' }}>
+                    + {loaiSpData.length - 7} loại khác
+                  </div>
+                )}
               </div>
             </div>
           </div>
-          <Table size="small" dataSource={stageStats} rowKey="key" pagination={false}
-            columns={[
-              { title: 'Công đoạn', dataIndex: 'label', width: 100,
-                render: (v, r) => <Tag color={r.key === 'PCPL1' ? 'blue' : r.key === 'PCPL2' ? 'geekblue' : r.key === 'PL' ? 'cyan' : r.key === 'DG' ? 'gold' : r.key === 'BBC1' ? 'purple' : 'magenta'} style={{ fontWeight: 700 }}>{v}</Tag> },
-              { title: 'Số Kế Hoạch', dataIndex: 'soKH', align: 'right', width: 110,
-                render: v => <span style={{ color: '#374151' }}>{v}</span> },
-              { title: 'Tổng SL KH', dataIndex: 'sl', align: 'right',
-                render: (v, r) => <span style={{ fontWeight: 700, color: r.color }}>{fmtSL(v)}</span> },
-              { title: '% SL', dataIndex: 'sl', key: 'pct', align: 'right', width: 80,
-                render: v => `${grandSL > 0 ? ((v / grandSL) * 100).toFixed(1) : 0}%` },
-            ]}
-            summary={() => (
-              <Table.Summary.Row style={{ background: '#f0fdf4', fontWeight: 700 }}>
-                <Table.Summary.Cell index={0}>TỔNG</Table.Summary.Cell>
-                <Table.Summary.Cell index={1} align="right">{dedupedByLo.length}</Table.Summary.Cell>
-                <Table.Summary.Cell index={2} align="right">
-                  <span style={{ color: '#1e5fa3' }}>{fmtSL(grandSL)}</span>
-                </Table.Summary.Cell>
-                <Table.Summary.Cell index={3} align="right">100%</Table.Summary.Cell>
-              </Table.Summary.Row>
+
+          {/* Analysis tables */}
+          <div style={{ display: 'grid', gridTemplateColumns: machineLoadData.length > 0 ? '1fr 1fr' : '1fr', gap: 14, marginBottom: 14 }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#1f2937', marginBottom: 8 }}>Phân tích theo loại sản phẩm</div>
+              <Table size="small" dataSource={loaiSpData} rowKey="loai" pagination={false}
+                columns={[
+                  { title: 'Loại SP', dataIndex: 'loai', ellipsis: true,
+                    render: v => <span style={{ fontWeight: 600, fontSize: 12, color: colorOf(v) }}>{v}</span> },
+                  { title: 'Số lô', dataIndex: 'soTp', align: 'center', width: 65,
+                    render: v => <strong>{v}</strong> },
+                  { title: 'Tổng SL', dataIndex: 'sl', align: 'right', width: 110, sorter: (a, b) => a.sl - b.sl,
+                    render: (v, r) => <span style={{ fontWeight: 700, color: colorOf(r.loai) }}>{fmtSL(v)}</span> },
+                  { title: '%', dataIndex: 'tyLe', align: 'right', width: 60,
+                    render: v => `${v.toFixed(1)}%` },
+                ]}
+                summary={() => (
+                  <Table.Summary.Row style={{ fontWeight: 700, background: '#f0f9ff' }}>
+                    <Table.Summary.Cell index={0}>TỔNG</Table.Summary.Cell>
+                    <Table.Summary.Cell index={1} align="center">{loaiSpData.reduce((s, r) => s + r.soTp, 0)}</Table.Summary.Cell>
+                    <Table.Summary.Cell index={2} align="right"><span style={{ color: '#1e5fa3' }}>{fmtSL(grandSLAll)}</span></Table.Summary.Cell>
+                    <Table.Summary.Cell index={3} align="right">100%</Table.Summary.Cell>
+                  </Table.Summary.Row>
+                )}
+              />
+            </div>
+            {machineLoadData.length > 0 && (
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#1f2937', marginBottom: 8 }}>Tình trạng sử dụng máy</div>
+                <Table size="small" dataSource={machineLoadData} rowKey="machine" pagination={false}
+                  columns={[
+                    { title: 'Máy thực hiện', dataIndex: 'machine', ellipsis: true, width: 150,
+                      render: v => <span style={{ fontWeight: 600, fontSize: 11, color: '#000077' }}>{v}</span> },
+                    { title: 'Số ngày', dataIndex: 'daysUsed', align: 'center', width: 70,
+                      sorter: (a, b) => a.daysUsed - b.daysUsed,
+                      render: v => <Tag color="geekblue" style={{ marginRight: 0, fontWeight: 700 }}>{v}</Tag> },
+                    { title: 'Số lô', dataIndex: 'totalBatches', align: 'center', width: 60,
+                      sorter: (a, b) => a.totalBatches - b.totalBatches,
+                      render: v => <strong>{v}</strong> },
+                    { title: 'Tổng SL', dataIndex: 'totalSL', align: 'right',
+                      sorter: (a, b) => a.totalSL - b.totalSL,
+                      render: v => <span style={{ fontWeight: 700, color: '#009999' }}>{fmtSL(v)}</span> },
+                    { title: 'Công DK', dataIndex: 'totalCong', align: 'right', width: 85,
+                      render: v => v > 0
+                        ? <span style={{ color: '#7c3aed', fontWeight: 700 }}>{v.toFixed(1)}</span>
+                        : <span style={{ color: '#d9d9d9' }}>—</span> },
+                  ]}
+                  summary={() => {
+                    const totBatches = machineLoadData.reduce((s, r) => s + r.totalBatches, 0)
+                    const totSL      = machineLoadData.reduce((s, r) => s + r.totalSL, 0)
+                    const totCong    = machineLoadData.reduce((s, r) => s + r.totalCong, 0)
+                    return (
+                      <Table.Summary.Row style={{ fontWeight: 700, background: '#f0f5ff' }}>
+                        <Table.Summary.Cell index={0}>{machineLoadData.length} máy</Table.Summary.Cell>
+                        <Table.Summary.Cell index={1} align="center">{machineSchedule.dates.length} ngày</Table.Summary.Cell>
+                        <Table.Summary.Cell index={2} align="center">{totBatches}</Table.Summary.Cell>
+                        <Table.Summary.Cell index={3} align="right"><span style={{ color: '#1e5fa3' }}>{fmtSL(totSL)}</span></Table.Summary.Cell>
+                        <Table.Summary.Cell index={4} align="right">
+                          <span style={{ color: '#7c3aed' }}>{totCong > 0 ? totCong.toFixed(1) : '—'}</span>
+                        </Table.Summary.Cell>
+                      </Table.Summary.Row>
+                    )
+                  }}
+                />
+              </div>
             )}
-          />
+          </div>
+
+          {/* Highlights */}
+          {dedupedByLo.length > 0 && (
+            <div style={{ background: '#f8f9fa', borderRadius: 6, padding: 12, border: '1px solid #e5e7eb' }}>
+              <div style={{ fontWeight: 700, fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Điểm nổi bật</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                {peakDay && (
+                  <div style={{ background: '#eff6ff', borderRadius: 6, padding: '10px 14px', minWidth: 150 }}>
+                    <div style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>Ngày cao điểm</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#1d4ed8' }}>{dayjs(peakDay.date).format('DD/MM/YYYY')}</div>
+                    <div style={{ fontSize: 11, color: '#60a5fa', marginTop: 2 }}>{fmtSL(peakDay.total)} SP</div>
+                  </div>
+                )}
+                {loaiSpData[0] && (
+                  <div style={{ background: '#faf5ff', borderRadius: 6, padding: '10px 14px', minWidth: 170 }}>
+                    <div style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>Loại SP nhiều nhất</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#7c3aed', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{loaiSpData[0].loai}</div>
+                    <div style={{ fontSize: 11, color: '#a78bfa', marginTop: 2 }}>{loaiSpData[0].tyLe.toFixed(1)}% · {fmtSL(loaiSpData[0].sl)} SP</div>
+                  </div>
+                )}
+                {busiestMachine && (
+                  <div style={{ background: '#f0fdfa', borderRadius: 6, padding: '10px 14px', minWidth: 170 }}>
+                    <div style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>Máy bận nhất</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#0e7490', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>{busiestMachine.machine}</div>
+                    <div style={{ fontSize: 11, color: '#22d3ee', marginTop: 2 }}>{busiestMachine.totalBatches} lô · {fmtSL(busiestMachine.totalSL)} SP</div>
+                  </div>
+                )}
+                {totalCongPc > 0 && (
+                  <div style={{ background: '#f0f9ff', borderRadius: 6, padding: '10px 14px', minWidth: 150 }}>
+                    <div style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>Công PC dự kiến</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#0369a1' }}>{totalCongPc.toFixed(1)} công</div>
+                    {timeData.length > 0 && (
+                      <div style={{ fontSize: 11, color: '#7dd3fc', marginTop: 2 }}>TB {(totalCongPc / timeData.length).toFixed(1)} công / ngày</div>
+                    )}
+                  </div>
+                )}
+                {totalCongPl > 0 && (
+                  <div style={{ background: '#ecfdf5', borderRadius: 6, padding: '10px 14px', minWidth: 150 }}>
+                    <div style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>Công PL dự kiến</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#0e7490' }}>{totalCongPl.toFixed(1)} công</div>
+                    {timeData.length > 0 && (
+                      <div style={{ fontSize: 11, color: '#6ee7b7', marginTop: 2 }}>TB {(totalCongPl / timeData.length).toFixed(1)} công / ngày</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       ),
     },
