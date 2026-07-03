@@ -688,6 +688,24 @@ export default function PhanTichKeHoachPage() {
                 }
               }),
             ]}
+            summary={() => (
+              <Table.Summary.Row style={{ background: '#f0f5ff' }}>
+                <Table.Summary.Cell index={0} style={{ fontWeight: 700, color: '#0f4c81', fontSize: 12, position: 'sticky', left: 0, zIndex: 2, background: '#e8f0fe' }}>
+                  Tổng người
+                </Table.Summary.Cell>
+                {machineSchedule.dates.map((date, i) => {
+                  const total = machineSchedule.rows.reduce((sum, row) =>
+                    sum + (row[date] || []).reduce((s, r) => s + Number(r.congPc || 0), 0), 0)
+                  return (
+                    <Table.Summary.Cell key={date} index={i + 1} align="center">
+                      {total > 0
+                        ? <span style={{ color: '#7c3aed', fontWeight: 700 }}>👤 {total}</span>
+                        : <span style={{ color: '#d9d9d9' }}>—</span>}
+                    </Table.Summary.Cell>
+                  )
+                })}
+              </Table.Summary.Row>
+            )}
           />
         </div>
       ),
