@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { DatePicker, Button, Spin, message, Tabs, Table, Tag, Tooltip, Modal, Input, Switch } from 'antd'
+import { DatePicker, Button, Spin, message, Tabs, Table, Tag, Tooltip, Modal, Switch } from 'antd'
 import { SearchOutlined, ReloadOutlined, BarChartOutlined, SettingOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import {
@@ -8,6 +8,7 @@ import {
 } from 'recharts'
 import { useLocation } from 'react-router-dom'
 import api from '../api/axios'
+import PhongThucHienSelect from '../components/PhongThucHienSelect'
 
 const { RangePicker } = DatePicker
 
@@ -682,12 +683,12 @@ export default function PhanTichKeHoachPage() {
               )
             })}
             <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-              <Input
-                placeholder="Tên máy mới..."
-                value={newMachineName}
-                onChange={e => setNewMachineName(e.target.value)}
-                onPressEnter={addMachine}
+              <PhongThucHienSelect
+                value={newMachineName || undefined}
+                onChange={v => setNewMachineName(v || '')}
                 size="small"
+                placeholder="Chọn phòng thực hiện..."
+                style={{ flex: 1 }}
               />
               <Button type="primary" icon={<PlusOutlined />} size="small" onClick={addMachine}>Thêm</Button>
             </div>
