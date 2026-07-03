@@ -22,6 +22,7 @@ const STAGES = [
   { key: 'CC',    label: 'CC',    color: '#9d174d' },
 ]
 
+const MACHINES_PCPL2 = ['Máy Nhũ hóa 500L', 'Máy Khuấy 700L', 'Máy Nhũ hóa 100L', 'Máy Khuấy 1500L']
 const MACHINES_PL_DEFAULT = [
   'Máy Chiết 4 Vòi Bơm Từ',
   'Máy Chiết Bánh Răng',
@@ -282,19 +283,25 @@ export default function PhanTichKeHoachPage() {
 
   // ── Lịch Máy (từ filteredRaw, giống Chi Tiết) ───────────────────────────────
   const machineSchedule = useMemo(() => {
-    const pl = filteredRaw.filter(r => resolveStage(r) === 'PL')
-    const dates = [...new Set(pl.map(r => r.ngayThucHien).filter(Boolean))].sort()
-    const allMachines = [...MACHINES_PL_DEFAULT, ...machineConfig.custom]
-    const visibleMachines = allMachines.filter(m => !machineConfig.hidden.includes(m))
+    const isPL = selectedTo === 'PL'
+    const stageKey = isPL ? 'PL' : 'PCPL2'
+    const records = filteredRaw.filter(r => resolveStage(r) === stageKey)
+    const dates = [...new Set(records.map(r => r.ngayThucHien).filter(Boolean))].sort()
+    const allMachines = isPL
+      ? [...MACHINES_PL_DEFAULT, ...machineConfig.custom]
+      : [...MACHINES_PCPL2]
+    const visibleMachines = isPL
+      ? allMachines.filter(m => !machineConfig.hidden.includes(m))
+      : allMachines
     const rows = visibleMachines.map(machine => {
       const row = { machine }
       dates.forEach(date => {
-        row[date] = pl.filter(r => r.ngayThucHien === date && (r.phongThucHien || '') === machine)
+        row[date] = records.filter(r => r.ngayThucHien === date && (r.phongThucHien || '') === machine)
       })
       return row
     })
-    return { dates, rows, allMachines, visibleMachines }
-  }, [filteredRaw, machineConfig])
+    return { dates, rows, allMachines, visibleMachines, isPL }
+  }, [filteredRaw, machineConfig, selectedTo])
 
   // ── Sub-tabs ─────────────────────────────────────────────────────────────────
   const subTabItems = [
@@ -645,11 +652,13 @@ export default function PhanTichKeHoachPage() {
       label: 'Lịch Máy',
       children: (
         <div style={{ padding: '12px 0' }}>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-            <Button size="small" icon={<SettingOutlined />} onClick={() => setMachineModalOpen(true)}>
-              Quản lý máy
-            </Button>
-          </div>
+          {machineSchedule.isPL && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+              <Button size="small" icon={<SettingOutlined />} onClick={() => setMachineModalOpen(true)}>
+                Quản lý máy
+              </Button>
+            </div>
+          )}
           <Modal
             title="Quản lý danh sách máy"
             open={machineModalOpen}
