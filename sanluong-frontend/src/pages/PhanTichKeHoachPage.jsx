@@ -497,6 +497,20 @@ export default function PhanTichKeHoachPage() {
                   const v = productMap[r.maSp]?.nangSuatPl
                   return v ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{Number(v).toLocaleString('vi-VN')}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
                 } },
+              { title: 'Công TH PC', key: 'congThucHienPc', align: 'right', width: 90,
+                render: (_, r) => {
+                  const n = Number(r.congPc || 0)
+                  return n > 0
+                    ? <span style={{ color: '#0369a1', fontWeight: 600 }}>{n}</span>
+                    : <span style={{ color: '#d9d9d9' }}>—</span>
+                } },
+              { title: 'Công TH PL', key: 'congThucHienPl', align: 'right', width: 90,
+                render: (_, r) => {
+                  const n = Number(r.congPl || 0)
+                  return n > 0
+                    ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{n}</span>
+                    : <span style={{ color: '#d9d9d9' }}>—</span>
+                } },
               { title: 'Số người TH', key: 'soNguoi', align: 'center', width: 100,
                 render: (_, r) => {
                   const stage = resolveStage(r)
@@ -527,7 +541,7 @@ export default function PhanTichKeHoachPage() {
                 <Table.Summary.Cell index={6} align="right">
                   <span style={{ color: '#1e5fa3' }}>{fmtSL(grandSL)}</span>
                 </Table.Summary.Cell>
-                <Table.Summary.Cell index={7} colSpan={5} />
+                <Table.Summary.Cell index={7} colSpan={7} />
               </Table.Summary.Row>
             )}
           />
