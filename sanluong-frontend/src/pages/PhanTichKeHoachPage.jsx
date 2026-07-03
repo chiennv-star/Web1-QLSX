@@ -617,8 +617,9 @@ export default function PhanTichKeHoachPage() {
                 dataIndex: 'machine',
                 width: 180,
                 fixed: 'left',
+                onHeaderCell: () => ({ style: { background: '#009999', color: '#ffffff' } }),
                 render: v => (
-                  <span style={{ fontWeight: 700, fontSize: 12, color: '#0f4c81' }}>{v}</span>
+                  <span style={{ fontWeight: 700, fontSize: 12, color: '#000077' }}>{v}</span>
                 ),
               },
               ...machineSchedule.dates.map(date => {
@@ -628,19 +629,19 @@ export default function PhanTichKeHoachPage() {
                   key: date,
                   title: (
                     <div style={{ textAlign: 'center', minWidth: 130 }}>
-                      <div style={{ fontWeight: 700, color: isWeekend ? '#ef4444' : '#1677ff', fontSize: 12 }}>
+                      <div style={{ fontWeight: 700, color: '#ffffff', fontSize: 12 }}>
                         {dayjs(date).format('DD/MM')}
                       </div>
-                      <div style={{ fontSize: 10, color: isWeekend ? '#ef4444' : '#6b7280' }}>{dow}</div>
+                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)' }}>{dow}</div>
                     </div>
                   ),
                   dataIndex: date,
                   width: 160,
                   onHeaderCell: () => ({
-                    style: { background: isWeekend ? '#fff7f7' : undefined, padding: '4px 8px' },
+                    style: { background: isWeekend ? '#cc7700' : '#009999', padding: '4px 8px' },
                   }),
                   onCell: () => ({
-                    style: { background: isWeekend ? '#fff7f7' : undefined, verticalAlign: 'top', padding: '4px 6px' },
+                    style: { background: '#ffffff', verticalAlign: 'top', padding: '4px 6px' },
                   }),
                   render: records => {
                     if (!records?.length) return <span style={{ color: '#d9d9d9' }}>—</span>
@@ -658,8 +659,9 @@ export default function PhanTichKeHoachPage() {
                               title={`${r.tenTrinh || r.maBravo} — Lô ${r.soLo} — ${cl.toLocaleString('vi-VN')} SP`}
                             >
                               <div style={{
-                                background: '#1d4ed8',
-                                borderLeft: '3px solid rgba(255,255,255,0.4)',
+                                background: '#ffffff',
+                                border: '1px solid #d0e4ff',
+                                borderLeft: '3px solid #009999',
                                 borderRadius: '0 4px 4px 0',
                                 padding: '4px 6px',
                                 fontSize: 11,
@@ -667,23 +669,23 @@ export default function PhanTichKeHoachPage() {
                                 overflow: 'hidden',
                               }}>
                                 <div style={{
-                                  fontWeight: 700, color: '#ffffff',
+                                  fontWeight: 700, color: '#000077',
                                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                 }}>
                                   {r.tenTrinh || r.maBravo || '—'}
                                 </div>
-                                <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 10 }}>
-                                  Lô {r.soLo || '—'} · <span style={{ fontWeight: 600, color: '#ffffff' }}>{cl.toLocaleString('vi-VN')} SP</span>
+                                <div style={{ color: '#000077', fontSize: 10 }}>
+                                  Lô {r.soLo || '—'} · <span style={{ fontWeight: 600, color: '#000077' }}>{cl.toLocaleString('vi-VN')} SP</span>
                                 </div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 8px', marginTop: 3, fontSize: 10 }}>
                                   {soNguoi > 0 && (
-                                    <span style={{ color: '#ffffff', fontWeight: 700 }}>👤 {soNguoi} người</span>
+                                    <span style={{ color: '#000077', fontWeight: 700 }}>👤 {soNguoi} người</span>
                                   )}
                                   {congTH > 0 && (
-                                    <span style={{ color: 'rgba(255,255,255,0.9)', fontWeight: 700 }}>⏱ {congTH.toFixed(2)} công</span>
+                                    <span style={{ color: '#000077', fontWeight: 700 }}>⏱ {congTH.toFixed(2)} công</span>
                                   )}
                                   {soCa > 0 && (
-                                    <span style={{ color: 'rgba(255,255,255,0.9)', fontWeight: 700 }}>🔄 {soCa.toFixed(2)} ca</span>
+                                    <span style={{ color: '#000077', fontWeight: 700 }}>🔄 {soCa.toFixed(2)} ca</span>
                                   )}
                                 </div>
                               </div>
