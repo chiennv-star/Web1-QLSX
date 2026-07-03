@@ -606,6 +606,133 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
   )
 }
 
+// ─── Modal chi tiết bản ghi sản xuất ─────────────────────────────────────────
+function RecordDetailModal({ open, record, onClose }) {
+  const [sessions, setSessions]     = useState([])
+  const [sessLoading, setSessLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open || !record?.workScheduleId) { setSessions([]); return }
+    setSessLoading(true)
+    api.get('/work-schedule-session', { params: { scheduleId: record.workScheduleId } })
+      .then(({ data }) => {
+        const dayStr = record.ngay
+        setSessions(data.filter(s => {
+          const sDay = s.ngay || s.ngayThucHien
+          if (!sDay) return false
+          const sd = typeof sDay === 'string' ? sDay.slice(0, 10) : String(sDay).slice(0, 10)
+          return sd === dayStr
+        }))
+      })
+      .catch(() => setSessions([]))
+      .finally(() => setSessLoading(false))
+  }, [open, record?.workScheduleId, record?.ngay])
+
+  const totalCong = sessions.reduce((s, r) => s + Number(r.congThucHien || 0), 0)
+  const sl        = Number(record?.sanLuong || 0)
+  const ns        = totalCong > 0 && sl > 0 ? sl / totalCong : null
+
+  const sessCols = [
+    { title: '#', width: 36, align: 'center',
+      render: (_, __, i) => <span style={{ color: '#aaa', fontSize: 11 }}>{i + 1}</span> },
+    { title: 'Người thực hiện', dataIndex: 'nguoiThucHien', key: 'nguoi', width: 170,
+      render: v => v || <span style={{ color: '#ccc' }}>—</span> },
+    { title: 'Vai trò', dataIndex: 'vaiTro', key: 'vaiTro', width: 110, align: 'center',
+      render: v => !v ? <span style={{ color: '#ccc' }}>—</span>
+        : <Tag color={v.toLowerCase().includes('trưởng') ? 'gold' : 'geekblue'} style={{ marginRight: 0 }}>{v}</Tag> },
+    { title: 'Ca', dataIndex: 'caSanXuat', key: 'ca', width: 66, align: 'center',
+      render: v => v ? <Tag color="orange" style={{ marginRight: 0, fontSize: 11 }}>{v}</Tag> : <span style={{ color: '#ccc' }}>—</span> },
+    { title: 'Giờ', key: 'gio', width: 96, align: 'center',
+      render: (_, r) => {
+        const bd = r.thoiGianBatDau, kt = r.thoiGianKetThuc
+        return (!bd && !kt)
+          ? <span style={{ color: '#ccc' }}>—</span>
+          : <span style={{ fontSize: 11, fontFamily: 'monospace' }}>{bd || '?'}–{kt || '?'}</span>
+      }},
+    { title: 'Giờ TH', dataIndex: 'soGioThucHien', key: 'soGio', width: 70, align: 'center',
+      render: v => v != null ? <span style={{ fontFamily: 'monospace' }}>{Number(v).toFixed(2)}</span> : <span style={{ color: '#ccc' }}>—</span> },
+    { title: 'Công TH', dataIndex: 'congThucHien', key: 'cong', width: 88, align: 'center',
+      render: v => v != null
+        ? <span style={{ color: '#1d4ed8', fontWeight: 700, fontFamily: 'monospace' }}>{Number(v).toFixed(4)}</span>
+        : <span style={{ color: '#ccc' }}>—</span> },
+    { title: 'Tăng ca', dataIndex: 'isTangCa', key: 'tc', width: 66, align: 'center',
+      render: v => v ? <Tag color="red" style={{ marginRight: 0, fontSize: 10 }}>TC</Tag> : <span style={{ color: '#d9d9d9' }}>—</span> },
+    { title: 'Ghi chú', dataIndex: 'ghiChu', key: 'gc',
+      render: v => v ? <span style={{ fontSize: 11, color: '#555' }}>{v}</span> : <span style={{ color: '#ccc' }}>—</span> },
+  ]
+
+  if (!record) return null
+  const infoItems = [
+    { label: 'Mã Bravo',  value: record.maBravo },
+    { label: 'Số Lô',     value: record.soLo },
+    { label: 'Cỡ Lô',     value: record.coLo != null ? Number(record.coLo).toLocaleString('vi-VN') + ' SP' : null },
+    { label: 'Công Đoạn', value: record.congDoan },
+    { label: 'Tổ/Nhóm',  value: record.toNhom || record.nhomThucHien },
+    { label: 'Ngày SX',   value: record.ngay ? dayjs(record.ngay).format('DD/MM/YYYY') : null },
+    { label: 'Ca SX',     value: record.caSanXuat },
+    { label: 'Phòng TH',  value: record.phongThucHien },
+    { label: 'Sản lượng', value: record.sanLuong != null ? Number(record.sanLuong).toLocaleString('vi-VN') + ' SP' : 'Chưa nhập' },
+  ]
+
+  return (
+    <Modal open={open} onCancel={onClose}
+      footer={<Button onClick={onClose}>Đóng</Button>}
+      width={900}
+      title={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Tag color={CONG_DOAN_COLOR[record.congDoan] || 'default'} style={{ fontWeight: 700, fontSize: 13, marginRight: 0 }}>
+            {record.congDoan}
+          </Tag>
+          <span style={{ fontWeight: 700, color: '#1a3a6b', fontSize: 14 }}>
+            {record.tenTrinh || record.maBravo || '—'}
+          </span>
+        </div>
+      }
+      destroyOnClose
+    >
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px 20px',
+        marginBottom: 14, background: '#f8faff', border: '1px solid #dbeafe',
+        borderRadius: 8, padding: '10px 14px',
+      }}>
+        {infoItems.map(({ label, value }) => (
+          <div key={label} style={{ fontSize: 12 }}>
+            <span style={{ color: '#6b7280', marginRight: 4 }}>{label}:</span>
+            <b style={{ color: value && value !== 'Chưa nhập' ? '#1a3a6b' : (value === 'Chưa nhập' ? '#dc2626' : '#d1d5db') }}>
+              {value || '—'}
+            </b>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ fontWeight: 600, color: '#1d4ed8', fontSize: 12, marginBottom: 6 }}>
+        Chi tiết thực hiện ngày {record.ngay ? dayjs(record.ngay).format('DD/MM/YYYY') : '—'}
+        <span style={{ fontWeight: 400, color: '#6b7280', marginLeft: 8 }}>({sessions.length} phiên)</span>
+      </div>
+      <Table size="small" dataSource={sessions} columns={sessCols} rowKey="id"
+        loading={sessLoading} pagination={false} scroll={{ x: 800 }}
+        summary={() => sessions.length > 0 && (
+          <Table.Summary.Row style={{ background: '#eff6ff', fontWeight: 700 }}>
+            <Table.Summary.Cell index={0} colSpan={6} align="right">
+              <span style={{ color: '#374151', fontSize: 11 }}>Tổng cộng</span>
+            </Table.Summary.Cell>
+            <Table.Summary.Cell index={6} align="center">
+              <span style={{ color: '#1d4ed8', fontFamily: 'monospace' }}>{totalCong.toFixed(4)}</span>
+            </Table.Summary.Cell>
+            <Table.Summary.Cell index={7} colSpan={2} align="center">
+              {ns != null && (
+                <span style={{ color: '#059669', fontSize: 11 }}>
+                  NS: {ns.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} SP/công
+                </span>
+              )}
+            </Table.Summary.Cell>
+          </Table.Summary.Row>
+        )}
+      />
+    </Modal>
+  )
+}
+
 // ─── Tab 1: Sản lượng theo ngày (chi tiết) ───────────────────────────────────
 
 function DailyDetailTab() {
@@ -637,6 +764,7 @@ function DailyDetailTab() {
   const [actionLoading, setActionLoading] = useState({})
   const [nsTbMap, setNsTbMap] = useState({}) // maSp → slTrungBinh (năng suất trung bình)
   const [loaiSpMap, setLoaiSpMap] = useState({}) // maSp → loaiSanPham
+  const [detailRecord, setDetailRecord] = useState(null)
   const filterRef = useRef(null)
   const [filterH, setFilterH] = useState(0)
   useEffect(() => {
@@ -1146,6 +1274,10 @@ function DailyDetailTab() {
         size="small"
         scroll={{ x: 1600 }}
         sticky={{ offsetHeader: TAB_BAR_H + filterH }}
+        onRow={record => ({
+          onClick: () => setDetailRecord(record),
+          style: { cursor: 'pointer' },
+        })}
         rowClassName={record => {
           if (record.status === 'PENDING') return 'row-pending'
           if (record.status === 'IN_PROGRESS') return 'row-in-progress'
@@ -1181,6 +1313,12 @@ function DailyDetailTab() {
           maxLength={500}
         />
       </Modal>
+
+      <RecordDetailModal
+        open={!!detailRecord}
+        record={detailRecord}
+        onClose={() => setDetailRecord(null)}
+      />
     </>
   )
 }
