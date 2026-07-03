@@ -1,4 +1,5 @@
 ﻿import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { Rnd } from 'react-rnd'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Table, Button, Space, Typography, message, Select, DatePicker,
@@ -5054,81 +5055,109 @@ function NhapKhoTab() {
         </div>
       )}
 
-      {/* Drawer chi tiết Nhập Kho (tong-hop) */}
-      <Drawer
-        title={
-          tongHopDrawer
-            ? <span>
-                <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{tongHopDrawer.maBravo}</span>
-                {' '}<Tag style={{ marginLeft: 4 }}>{tongHopDrawer.maTp}</Tag>
-              </span>
-            : 'Chi tiết nhập kho'
-        }
-        open={tongHopDrawer != null}
-        onClose={() => setTongHopDrawer(null)}
-        width={400}
-        destroyOnClose
-      >
-        {tongHopDrawer && (() => {
-          const r = tongHopDrawer
-          const fmtN = v => v != null ? Number(v).toLocaleString('vi-VN') : '—'
-          const dg2V = parseInt(r.dg2) || 0
-          const total = r.totalNhapKho || 0
-          const conLai = dg2V > 0 ? dg2V - total : null
-          const done = dg2V > 0 && total >= dg2V
-          return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ background: '#f9fafb', borderRadius: 6, padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
-                <div><span style={{ color: '#6b7280', minWidth: 120, display: 'inline-block' }}>Tên sản phẩm:</span> <strong>{r.tienTrinh || '—'}</strong></div>
-                <div><span style={{ color: '#6b7280', minWidth: 120, display: 'inline-block' }}>Số lô:</span> <span style={{ fontFamily: 'monospace' }}>{r.lsx || '—'}</span></div>
-                <div><span style={{ color: '#6b7280', minWidth: 120, display: 'inline-block' }}>Mã ĐH:</span> <span>{r.maDonHang || '—'}</span></div>
-              </div>
-
-              <Divider style={{ margin: 0 }}>Sản lượng</Divider>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#6b7280' }}>SL Lệnh (cỡ lô):</span>
-                  <strong>{fmtN(r.soLuong)}</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#6b7280' }}>SL Đóng Gói:</span>
-                  <span style={{ color: '#374151', fontWeight: 600 }}>{fmtN(r.dg2)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e5e7eb', paddingTop: 8 }}>
-                  <span style={{ color: '#6b7280' }}>Tổng Nhập Kho:</span>
-                  <span style={{ fontWeight: 700, fontSize: 15, color: done ? '#15803d' : total > 0 ? '#1677ff' : '#d97706' }}>
-                    {total > 0 ? total.toLocaleString('vi-VN') : 'Chưa NK'}
-                  </span>
-                </div>
-                {conLai != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#6b7280' }}>Còn lại:</span>
-                    {conLai <= 0
-                      ? <Tag color="success" style={{ marginRight: 0 }}>Hoàn tất</Tag>
-                      : <span style={{ color: '#cf1322', fontWeight: 600 }}>{conLai.toLocaleString('vi-VN')}</span>}
+      {/* Panel nổi chi tiết Nhập Kho (tong-hop) — dạng kéo được như DonHang */}
+      {tongHopDrawer && (() => {
+        const r = tongHopDrawer
+        const fmtN = v => v != null ? Number(v).toLocaleString('vi-VN') : '—'
+        const dg2V = parseInt(r.dg2) || 0
+        const total = r.totalNhapKho || 0
+        const conLai = dg2V > 0 ? dg2V - total : null
+        const done   = dg2V > 0 && total >= dg2V
+        const LCell = ({ children }) => (
+          <div style={{ padding: '7px 10px', background: '#f1f5f9', fontWeight: 600, fontSize: 12, color: '#64748b', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0', display: 'flex', alignItems: 'center' }}>{children}</div>
+        )
+        const VCell = ({ children, last }) => (
+          <div style={{ padding: '6px 10px', borderBottom: '1px solid #e2e8f0', ...(last ? {} : { borderRight: '1px solid #e2e8f0' }), display: 'flex', alignItems: 'center', fontSize: 13 }}>{children}</div>
+        )
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 1050, pointerEvents: 'none' }}>
+            <style>{`.nk-th-drag { cursor: move; user-select: none; }`}</style>
+            <Rnd
+              key={r.id}
+              default={{ x: Math.max(20, window.innerWidth - 460), y: 80, width: 430, height: 480 }}
+              minWidth={360} minHeight={320}
+              bounds="window"
+              dragHandleClassName="nk-th-drag"
+              style={{ pointerEvents: 'all', zIndex: 1050 }}
+              enableResizing={{ bottom: true, right: true, bottomRight: true, left: true, bottomLeft: true, top: false, topLeft: false, topRight: false }}
+            >
+              <div style={{ borderRadius: 10, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.24)', background: '#fff', display: 'flex', flexDirection: 'column', height: '100%' }}>
+                {/* Header */}
+                <div className="nk-th-drag" style={{ background: '#1e4570', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                  <span style={{ fontSize: 20 }}>📦</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: '#fff', fontWeight: 800, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {r.tienTrinh || 'Chi tiết nhập kho'}
+                    </div>
+                    <div style={{ color: '#93c5fd', fontSize: 11, marginTop: 2, display: 'flex', gap: 10 }}>
+                      {r.maBravo     && <span>Bravo: <b>{r.maBravo}</b></span>}
+                      {r.maTp        && <span>SP: <b>{r.maTp}</b></span>}
+                      {r.maDonHang   && <span>ĐH: <b style={{ color: '#c4b5fd' }}>{r.maDonHang}</b></span>}
+                    </div>
                   </div>
-                )}
-              </div>
+                  <button onClick={() => setTongHopDrawer(null)}
+                    style={{ background: 'none', border: 'none', color: '#93c5fd', cursor: 'pointer', fontSize: 18, padding: 0, lineHeight: 1, flexShrink: 0 }}>✕</button>
+                </div>
 
-              <Divider style={{ margin: 0 }}>Lịch sử nhập kho</Divider>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#6b7280' }}>Số lần nhập kho:</span>
-                  {r.soLanNhapKho > 0
-                    ? <Tag color="blue" style={{ marginRight: 0 }}>{r.soLanNhapKho} lần</Tag>
-                    : <span style={{ color: '#bbb' }}>—</span>}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#6b7280' }}>Ngày NK mới nhất:</span>
-                  <span style={{ color: '#374151' }}>
-                    {r.ngayNhapKhoMoiNhat ? dayjs(r.ngayNhapKhoMoiNhat).format('DD/MM/YYYY') : '—'}
-                  </span>
+                {/* Body */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {/* Info grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
+                    <LCell>Số lô</LCell>
+                    <VCell last><span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#6d28d9' }}>{r.lsx || '—'}</span></VCell>
+                    <LCell>Mã đơn hàng</LCell>
+                    <VCell last><span style={{ fontFamily: 'monospace', color: '#7c3aed' }}>{r.maDonHang || '—'}</span></VCell>
+                    <LCell>Tổng NK</LCell>
+                    <VCell last>
+                      <span style={{ fontWeight: 700, fontSize: 15, color: done ? '#15803d' : total > 0 ? '#1677ff' : '#d97706' }}>
+                        {total > 0 ? total.toLocaleString('vi-VN') : 'Chưa NK'}
+                      </span>
+                    </VCell>
+                    {conLai != null && <>
+                      <LCell>Còn lại</LCell>
+                      <VCell last>
+                        {conLai <= 0
+                          ? <Tag color="success" style={{ marginRight: 0 }}>Hoàn tất</Tag>
+                          : <span style={{ color: '#cf1322', fontWeight: 700 }}>{conLai.toLocaleString('vi-VN')}</span>}
+                      </VCell>
+                    </>}
+                  </div>
+
+                  {/* Sản lượng */}
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Sản lượng</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
+                      <LCell>SL Lệnh (cỡ lô)</LCell>
+                      <VCell last><strong>{fmtN(r.soLuong)}</strong></VCell>
+                      <LCell>SL Đóng Gói</LCell>
+                      <VCell last><span style={{ color: '#374151', fontWeight: 600 }}>{fmtN(r.dg2)}</span></VCell>
+                    </div>
+                  </div>
+
+                  {/* Lịch sử */}
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Lịch sử nhập kho</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
+                      <LCell>Số lần NK</LCell>
+                      <VCell last>
+                        {r.soLanNhapKho > 0
+                          ? <Tag color="blue" style={{ marginRight: 0 }}>{r.soLanNhapKho} lần</Tag>
+                          : <span style={{ color: '#bbb' }}>—</span>}
+                      </VCell>
+                      <LCell>Ngày NK mới nhất</LCell>
+                      <VCell last>
+                        <span style={{ color: '#374151' }}>
+                          {r.ngayNhapKhoMoiNhat ? dayjs(r.ngayNhapKhoMoiNhat).format('DD/MM/YYYY') : '—'}
+                        </span>
+                      </VCell>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          )
-        })()}
-      </Drawer>
+            </Rnd>
+          </div>
+        )
+      })()}
 
       {/* Modal thêm */}
       <AddNhapKhoModal
