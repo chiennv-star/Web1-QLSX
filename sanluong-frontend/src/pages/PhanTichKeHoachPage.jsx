@@ -66,11 +66,10 @@ export default function PhanTichKeHoachPage() {
   const location   = useLocation()
   const [raw, setRaw]               = useState([])
   const [loading, setLoading]       = useState(false)
-  const [dateRange, setDateRange]   = useState([dayjs().subtract(7, 'day'), dayjs().add(30, 'day')])
   const [productMap, setProductMap] = useState({})
   const [subTab, setSubTab]         = useState('tonghop')
-  const [pickerMode, setPickerMode] = useState('range')  // 'range' | 'week' | 'month'
-  const [activePreset, setActivePreset] = useState(null) // null | 'last_week' | 'this_week'
+  const [pickerMode, setPickerMode] = useState('range')  // 'range' | 'month'
+  const [activePreset, setActivePreset] = useState('this_week')
 
   const selectedTo = sessionStorage.getItem(SS_TO) || location.state?.selectedTo || ''
 
@@ -79,14 +78,23 @@ export default function PhanTichKeHoachPage() {
     return d.subtract(dow === 0 ? 6 : dow - 1, 'day').startOf('day')
   }
 
+  const thisWeekRange = () => {
+    const mon = mondayOf(dayjs())
+    return [mon, mon.add(6, 'day').endOf('day')]
+  }
+
+  const [dateRange, setDateRange] = useState(thisWeekRange)
+
   const applyPreset = preset => {
     let range
     if (preset === 'last_week') {
       const mon = mondayOf(dayjs()).subtract(7, 'day')
       range = [mon, mon.add(6, 'day').endOf('day')]
-    } else {
-      const mon = mondayOf(dayjs())
+    } else if (preset === 'next_week') {
+      const mon = mondayOf(dayjs()).add(7, 'day')
       range = [mon, mon.add(6, 'day').endOf('day')]
+    } else {
+      range = thisWeekRange()
     }
     setActivePreset(preset)
     setPickerMode('range')
@@ -735,7 +743,7 @@ export default function PhanTichKeHoachPage() {
         </span>
         {/* Preset buttons */}
         <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
-        {[{ key: 'last_week', label: 'Tuần trước' }, { key: 'this_week', label: 'Tuần này' }].map(p => (
+        {[{ key: 'last_week', label: 'Tuần trước' }, { key: 'this_week', label: 'Tuần này' }, { key: 'next_week', label: 'Tuần sau' }].map(p => (
           <Button key={p.key} size="small"
             onClick={() => applyPreset(p.key)}
             style={{
@@ -747,7 +755,7 @@ export default function PhanTichKeHoachPage() {
         ))}
         {/* Picker mode */}
         <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
-        {[{ key: 'month', label: 'Tháng' }, { key: 'week', label: 'Tuần' }, { key: 'range', label: 'Khoảng' }].map(m => (
+        {[{ key: 'month', label: 'Tháng' }, { key: 'range', label: 'Khoảng' }].map(m => (
           <Button key={m.key} size="small"
             onClick={() => { setPickerMode(m.key); setActivePreset(null) }}
             style={{
@@ -766,14 +774,6 @@ export default function PhanTichKeHoachPage() {
             style={{ width: 120 }}
           />
         )}
-        {pickerMode === 'week' && (
-          <DatePicker size="small" picker="week" format="[T]wo YYYY"
-            value={dateRange?.[0]}
-            onChange={handleWeekChange}
-            placeholder="Chọn tuần"
-            style={{ width: 130 }}
-          />
-        )}
         {pickerMode === 'range' && (
           <RangePicker size="small" value={dateRange} onChange={v => { setDateRange(v); setActivePreset(null) }}
             format="DD/MM/YYYY" allowClear placeholder={['Từ ngày', 'Đến ngày']}
@@ -787,8 +787,8 @@ export default function PhanTichKeHoachPage() {
         </Button>
         <Button size="small" icon={<ReloadOutlined />}
           onClick={() => {
-            const def = [dayjs().subtract(7, 'day'), dayjs().add(30, 'day')]
-            setActivePreset(null)
+            const def = thisWeekRange()
+            setActivePreset('this_week')
             setPickerMode('range')
             setDateRange(def)
             fetchData(def)
