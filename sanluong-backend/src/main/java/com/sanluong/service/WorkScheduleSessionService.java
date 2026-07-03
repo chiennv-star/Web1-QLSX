@@ -704,6 +704,7 @@ public class WorkScheduleSessionService {
             dto.setSoLo(w.getSoLo());
             dto.setCoLo(w.getCoLo());
             dto.setToNhom(w.getToNhom());
+            dto.setPhongThucHien(w.getPhongThucHien());
             dto.setNhomThucHien(rep.getNhomThucHien());
             dto.setCaSanXuat(rep.getCaSanXuat());
             dto.setCongThucHien(tongCong.compareTo(java.math.BigDecimal.ZERO) == 0 ? null : tongCong);

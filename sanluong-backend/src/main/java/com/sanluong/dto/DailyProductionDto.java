@@ -30,6 +30,7 @@ public class DailyProductionDto {
     private String requestedAt;
     private Integer soNguoi;      // số người thực hiện trong ngày
     private String nguoiThucHienList; // danh sách người TH, cách nhau dấu phẩy
+    private String phongThucHien;
 
     public Long getSessionId() { return sessionId; }
     public void setSessionId(Long sessionId) { this.sessionId = sessionId; }
@@ -85,4 +86,6 @@ public class DailyProductionDto {
     public void setSoNguoi(Integer soNguoi) { this.soNguoi = soNguoi; }
     public String getNguoiThucHienList() { return nguoiThucHienList; }
     public void setNguoiThucHienList(String nguoiThucHienList) { this.nguoiThucHienList = nguoiThucHienList; }
+    public String getPhongThucHien() { return phongThucHien; }
+    public void setPhongThucHien(String phongThucHien) { this.phongThucHien = phongThucHien; }
 }
