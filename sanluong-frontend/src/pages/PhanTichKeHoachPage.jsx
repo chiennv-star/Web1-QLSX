@@ -283,7 +283,7 @@ export default function PhanTichKeHoachPage() {
 
   // ── Lịch Máy (từ filteredRaw, giống Chi Tiết) ───────────────────────────────
   const machineSchedule = useMemo(() => {
-    const isPL = selectedTo === 'PL'
+    const isPL = selectedTo === 'PL' || selectedTo === 'PCPL3'
     const stageKey = isPL ? 'PL' : 'PCPL2'
     const records = filteredRaw.filter(r => resolveStage(r) === stageKey)
     const dates = [...new Set(records.map(r => r.ngayThucHien).filter(Boolean))].sort()
