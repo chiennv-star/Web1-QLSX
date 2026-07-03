@@ -4857,6 +4857,10 @@ function NhapKhoTab() {
   const [filterMaBravo, setFilterMaBravo] = useState('')
   const [filterMaSp,    setFilterMaSp]    = useState('')
   const [filterTinhTrang, setFilterTinhTrang] = useState('')
+  // State cho edit maBravo inline
+  const [bravoEdit, setBravoEdit] = useState(null)  // { id, maBravo, maTp, tienTrinh }
+  const [bravoSearch, setBravoSearch] = useState([]) // autocomplete options
+  const [bravoSearching, setBravoSearching] = useState(false)
 
   const drawerRecord = drawerRecId != null ? data.find(r => r.id === drawerRecId) ?? null : null
 
@@ -4928,6 +4932,42 @@ function NhapKhoTab() {
     finally { setSaving(s => { const n = { ...s }; delete n[`${id}_${field}`]; return n }) }
   }
 
+  const searchBravo = useCallback(async (keyword) => {
+    if (!keyword || keyword.trim().length < 1) { setBravoSearch([]); return }
+    setBravoSearching(true)
+    try {
+      const { data: res } = await api.get('/product-master', { params: { keyword: keyword.trim(), size: 20 } })
+      const items = res.content || []
+      setBravoSearch(items.map(p => ({
+        value: p.maBravo,
+        label: (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12 }}>
+            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', minWidth: 80 }}>{p.maBravo}</span>
+            <span style={{ color: '#374151' }}>{p.tienTrinh}</span>
+            <span style={{ marginLeft: 'auto', color: '#888', fontSize: 11 }}>{p.maTp}</span>
+          </div>
+        ),
+        maTp: p.maTp,
+        tienTrinh: p.tienTrinh,
+      })))
+    } catch { setBravoSearch([]) }
+    finally { setBravoSearching(false) }
+  }, [])
+
+  const saveBravoEdit = async () => {
+    if (!bravoEdit) return
+    const { id, maBravo, maTp, tienTrinh } = bravoEdit
+    setSaving(s => ({ ...s, [`${id}_maBravo`]: true }))
+    try {
+      const body = { maBravo, maTp: maTp || '', tienTrinh: tienTrinh || '' }
+      const { data: updated } = await api.patch(`/production/${id}/nhap-kho`, body)
+      setData(prev => prev.map(r => r.id === id ? { ...r, ...updated, maBravo, maTp, tienTrinh } : r))
+      setBravoEdit(null)
+      setBravoSearch([])
+    } catch { message.error('Cập nhật Mã Bravo thất bại') }
+    finally { setSaving(s => { const n = { ...s }; delete n[`${id}_maBravo`]; return n }) }
+  }
+
   const handleAdded = (updated) => {
     setData(prev => {
       const exists = prev.find(r => r.id === updated.id)
@@ -4989,8 +5029,50 @@ function NhapKhoTab() {
       render: (_, __, i) => <span style={{ color: '#bbb', fontSize: 11 }}>{i + 1}</span>,
     },
     {
-      title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 100, fixed: 'left',
-      render: v => <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{v || '—'}</span>,
+      title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 130, fixed: 'left',
+      render: (v, r) => {
+        const isEditing = bravoEdit?.id === r.id
+        if (isEditing) {
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 220 }} onClick={e => e.stopPropagation()}>
+              <AutoComplete
+                autoFocus size="small"
+                style={{ width: '100%' }}
+                options={bravoSearch}
+                value={bravoEdit.maBravo}
+                onChange={val => setBravoEdit(prev => ({ ...prev, maBravo: val, maTp: '', tienTrinh: '' }))}
+                onSearch={searchBravo}
+                onSelect={(val, opt) => {
+                  setBravoEdit(prev => ({ ...prev, maBravo: val, maTp: opt.maTp || '', tienTrinh: opt.tienTrinh || '' }))
+                  setBravoSearch([])
+                }}
+                notFoundContent={bravoSearching ? <Spin size="small" /> : null}
+                placeholder="Mã Bravo..."
+                popupMatchSelectWidth={420}
+              />
+              {(bravoEdit.maTp || bravoEdit.tienTrinh) && (
+                <div style={{ fontSize: 11, color: '#15803d', padding: '2px 4px', background: '#f0fdf4', borderRadius: 4 }}>
+                  <strong>{bravoEdit.maTp}</strong>{bravoEdit.maTp && bravoEdit.tienTrinh ? ' · ' : ''}{bravoEdit.tienTrinh}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 4 }}>
+                <Button size="small" type="primary" style={{ flex: 1, fontSize: 11 }}
+                  loading={saving[`${r.id}_maBravo`]}
+                  onClick={saveBravoEdit}>Lưu</Button>
+                <Button size="small" style={{ fontSize: 11 }}
+                  onClick={() => { setBravoEdit(null); setBravoSearch([]) }}>Hủy</Button>
+              </div>
+            </div>
+          )
+        }
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}
+            onClick={e => { e.stopPropagation(); setBravoEdit({ id: r.id, maBravo: v || '', maTp: r.maTp || '', tienTrinh: r.tienTrinh || '' }) }}>
+            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{v || '—'}</span>
+            <span style={{ fontSize: 10, color: '#d1d5db' }}>✎</span>
+          </div>
+        )
+      },
     },
     {
       title: 'Mã SP', dataIndex: 'maTp', key: 'maTp', width: 80, align: 'center',

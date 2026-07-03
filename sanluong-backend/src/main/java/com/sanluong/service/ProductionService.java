@@ -592,6 +592,18 @@ public class ProductionService {
     }
 
     private void applyNhapKhoFields(ProductionRecord r, java.util.Map<String, String> body) {
+        if (body.containsKey("maBravo")) {
+            String v = body.get("maBravo");
+            r.setMaBravo(v != null && !v.isBlank() ? v.trim() : null);
+        }
+        if (body.containsKey("maTp")) {
+            String v = body.get("maTp");
+            r.setMaTp(v != null && !v.isBlank() ? v.trim() : null);
+        }
+        if (body.containsKey("tienTrinh")) {
+            String v = body.get("tienTrinh");
+            r.setTienTrinh(v != null && !v.isBlank() ? v.trim() : null);
+        }
         if (body.containsKey("tpNhapKho")) {
             String v = body.get("tpNhapKho");
             r.setTpNhapKho(v != null && !v.isBlank() ? Integer.parseInt(v) : null);
