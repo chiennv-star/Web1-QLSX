@@ -22,6 +22,8 @@ const STAGES = [
   { key: 'CC',    label: 'CC',    color: '#9d174d' },
 ]
 
+const MACHINES_PCPL2 = ['Máy Nhũ hóa 500L', 'Máy Khuấy 700L', 'Máy Nhũ hóa 100L', 'Máy Khuấy 1500L']
+
 const TYPE_COLORS = [
   '#1677ff','#52c41a','#fa8c16','#722ed1','#eb2f96',
   '#13c2c2','#faad14','#f5222d','#a0d911','#2f54eb',
@@ -230,6 +232,20 @@ export default function PhanTichKeHoachPage() {
   [groupedData])
 
   const colorOf = loai => TYPE_COLORS[loaiSpData.findIndex(r => r.loai === loai) % TYPE_COLORS.length] || '#888'
+
+  // ── Lịch Máy (từ filteredRaw, giống Chi Tiết) ───────────────────────────────
+  const machineSchedule = useMemo(() => {
+    const pcpl2 = filteredRaw.filter(r => resolveStage(r) === 'PCPL2')
+    const dates = [...new Set(pcpl2.map(r => r.ngayThucHien).filter(Boolean))].sort()
+    const rows = MACHINES_PCPL2.map(machine => {
+      const row = { machine }
+      dates.forEach(date => {
+        row[date] = pcpl2.filter(r => r.ngayThucHien === date && (r.phongThucHien || '') === machine)
+      })
+      return row
+    })
+    return { dates, rows }
+  }, [filteredRaw])
 
   // ── Sub-tabs ─────────────────────────────────────────────────────────────────
   const subTabItems = [
@@ -571,6 +587,93 @@ export default function PhanTichKeHoachPage() {
                 <Table.Summary.Cell index={7} colSpan={8} />
               </Table.Summary.Row>
             )}
+          />
+        </div>
+      ),
+    },
+    {
+      key: 'lichmay',
+      label: 'Lịch Máy',
+      children: (
+        <div style={{ padding: '12px 0' }}>
+          <Table
+            size="small"
+            dataSource={machineSchedule.rows}
+            rowKey="machine"
+            pagination={false}
+            bordered
+            scroll={{ x: 'max-content' }}
+            columns={[
+              {
+                title: 'Máy thực hiện',
+                dataIndex: 'machine',
+                width: 180,
+                fixed: 'left',
+                render: v => (
+                  <span style={{ fontWeight: 700, fontSize: 12, color: '#0f4c81' }}>{v}</span>
+                ),
+              },
+              ...machineSchedule.dates.map(date => {
+                const dow = ['CN','T2','T3','T4','T5','T6','T7'][dayjs(date).day()]
+                const isWeekend = dayjs(date).day() === 0 || dayjs(date).day() === 6
+                return {
+                  key: date,
+                  title: (
+                    <div style={{ textAlign: 'center', minWidth: 130 }}>
+                      <div style={{ fontWeight: 700, color: isWeekend ? '#ef4444' : '#1677ff', fontSize: 12 }}>
+                        {dayjs(date).format('DD/MM')}
+                      </div>
+                      <div style={{ fontSize: 10, color: isWeekend ? '#ef4444' : '#6b7280' }}>{dow}</div>
+                    </div>
+                  ),
+                  dataIndex: date,
+                  width: 160,
+                  onHeaderCell: () => ({
+                    style: { background: isWeekend ? '#fff7f7' : undefined, padding: '4px 8px' },
+                  }),
+                  onCell: () => ({
+                    style: { background: isWeekend ? '#fff7f7' : undefined, verticalAlign: 'top', padding: '4px 6px' },
+                  }),
+                  render: records => {
+                    if (!records?.length) return <span style={{ color: '#d9d9d9' }}>—</span>
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {records.map(r => (
+                          <Tooltip
+                            key={r.id}
+                            title={`${r.tenTrinh || r.maBravo} — Lô ${r.soLo} — ${Number(r.coLo || 0).toLocaleString('vi-VN')} SP`}
+                          >
+                            <div style={{
+                              background: '#dbeafe',
+                              borderLeft: '3px solid #1d4ed8',
+                              borderRadius: '0 4px 4px 0',
+                              padding: '3px 6px',
+                              fontSize: 11,
+                              cursor: 'default',
+                              overflow: 'hidden',
+                            }}>
+                              <div style={{
+                                fontWeight: 700, color: '#1e40af',
+                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                              }}>
+                                {r.tenTrinh || r.maBravo || '—'}
+                              </div>
+                              <div style={{ color: '#6b7280', fontSize: 10, display: 'flex', gap: 4 }}>
+                                <span>Lô {r.soLo || '—'}</span>
+                                <span>·</span>
+                                <span style={{ fontWeight: 600, color: '#0369a1' }}>
+                                  {Number(r.coLo || 0).toLocaleString('vi-VN')} SP
+                                </span>
+                              </div>
+                            </div>
+                          </Tooltip>
+                        ))}
+                      </div>
+                    )
+                  },
+                }
+              }),
+            ]}
           />
         </div>
       ),
