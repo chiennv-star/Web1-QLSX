@@ -1343,7 +1343,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                                   updateLocals(rowKey, { nguoiThucHien: name, maNhanVien: best ? best.maNhanVien : '' })
                                 }}>
                                 <option value="">-- Chọn nhân viên --</option>
-                                {employees.filter(emp => !s.nhomThucHien || emp.toNhom === s.nhomThucHien)
+                                {employees.filter(emp => !s.nhomThucHien || emp.toNhom === s.nhomThucHien || emp.toNhom2 === s.nhomThucHien)
                                   .map(emp => <option key={emp.id} value={emp.hoVaTen}>{emp.hoVaTen}</option>)}
                               </select>
                             </td>
@@ -2209,7 +2209,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                         disabled={!isInfoEditing}
                         style={{ width: '100%' }}
                         options={(watchedToNhom
-                          ? employees.filter(e => e.toNhom === watchedToNhom)
+                          ? employees.filter(e => e.toNhom === watchedToNhom || e.toNhom2 === watchedToNhom)
                           : employees
                         ).map(e => ({ value: e.hoVaTen }))}
                         filterOption={(input, option) =>
@@ -2227,7 +2227,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                         disabled={!isInfoEditing}
                         style={{ width: '100%' }}
                         options={(watchedToNhom
-                          ? employees.filter(e => e.toNhom === watchedToNhom)
+                          ? employees.filter(e => e.toNhom === watchedToNhom || e.toNhom2 === watchedToNhom)
                           : employees
                         ).map(e => ({ value: e.hoVaTen }))}
                         filterOption={(input, option) =>
