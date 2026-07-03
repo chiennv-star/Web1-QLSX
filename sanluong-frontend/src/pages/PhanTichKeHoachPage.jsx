@@ -652,13 +652,11 @@ export default function PhanTichKeHoachPage() {
       label: 'Lịch Máy',
       children: (
         <div style={{ padding: '12px 0' }}>
-          {machineSchedule.isPL && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-              <Button size="small" icon={<SettingOutlined />} onClick={() => setMachineModalOpen(true)}>
-                Quản lý máy
-              </Button>
-            </div>
-          )}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <Button size="small" icon={<SettingOutlined />} onClick={() => setMachineModalOpen(true)}>
+              Quản lý máy
+            </Button>
+          </div>
           <Modal
             title="Quản lý danh sách máy"
             open={machineModalOpen}
