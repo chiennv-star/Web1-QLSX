@@ -4412,6 +4412,9 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
   const daysInMonth = m => dayjs(`${year}-${String(m).padStart(2,'0')}-01`).daysInMonth()
   const isFuture   = m => m > curMonth
   const fmt        = v => v ? Number(v).toLocaleString('vi-VN') : ''
+  const isSundayCell = (d, m) => d <= daysInMonth(m) && dayjs(`${year}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`).day() === 0
+  const workingDaysInMonth = m => { let n = 0; for (let d = 1; d <= daysInMonth(m); d++) if (!isSundayCell(d, m)) n++; return Math.max(1, n) }
+  const workingDaysLeft = () => { let n = 0; for (let d = now.date() + 1; d <= daysInMonth(curMonth); d++) if (!isSundayCell(d, curMonth)) n++; return Math.max(1, n) }
 
   const MONTHS = [1,2,3,4,5,6,7,8,9,10,11,12]
 
@@ -4435,6 +4438,8 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
               const rowTotal = MONTHS.reduce((s, m) =>
                 s + (day <= daysInMonth(m) && !isFuture(m) ? (pivot[day][m] || 0) : 0), 0)
               const hasData = rowTotal > 0
+              // Check if this day is Sunday in the current month (or earliest valid month) for row-level hint
+              const isSundayRow = MONTHS.some(m => !isFuture(m) && isSundayCell(day, m))
               return (
                 <tr
                   key={day}
@@ -4446,8 +4451,12 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
                     outlineOffset: selectedDay === day ? '-1px' : undefined,
                   }}
                 >
-                  <td style={{ ..._tdS, textAlign: 'center', fontWeight: 600, color: '#374151', background: selectedDay === day ? '#bae6fd' : '#f0fdf4' }}>
-                    {day}
+                  <td style={{ ..._tdS, textAlign: 'center', fontWeight: 600,
+                    color: isSundayRow ? '#9333ea' : '#374151',
+                    background: selectedDay === day ? '#bae6fd' : isSundayRow ? '#faf5ff' : '#f0fdf4',
+                    fontSize: isSundayRow ? 10 : undefined,
+                  }}>
+                    {day}{isSundayRow ? <span style={{ display: 'block', fontSize: 9, color: '#a855f7', lineHeight: 1 }}>CN</span> : null}
                   </td>
                   {MONTHS.map(m => {
                     const valid   = day <= daysInMonth(m)
@@ -4463,10 +4472,12 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
 
                     if (editable) {
                       const cellRecords = dayMonthRecords[`${day}_${m}`] || []
+                      const sunEdit = isSundayCell(day, m)
                       return (
                         <td key={m} style={{
                           ..._tdS, textAlign: 'right', padding: 0,
-                          color: val > 0 ? '#15803d' : '#d1d5db',
+                          background: sunEdit ? '#faf5ff' : undefined,
+                          color: sunEdit ? '#a855f7' : val > 0 ? '#15803d' : '#d1d5db',
                           fontWeight: val > 0 ? 700 : 400,
                         }}>
                           <Popover
@@ -4504,13 +4515,14 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
                     }
 
                     const clickable = valid && !future && val > 0
+                    const sunCell  = valid && !future && isSundayCell(day, m)
                     return (
                       <td key={m}
                         onClick={clickable ? e => { e.stopPropagation(); setDayDetailModal({ day, month: m }) } : undefined}
                         style={{
                           ..._tdS, textAlign: 'right',
-                          background: !valid ? '#f3f4f6' : undefined,
-                          color: !valid ? '#d1d5db' : future ? '#cbd5e1' : val > 0 ? '#15803d' : '#d1d5db',
+                          background: !valid ? '#f3f4f6' : sunCell ? '#faf5ff' : undefined,
+                          color: !valid ? '#d1d5db' : future ? '#cbd5e1' : sunCell ? '#a855f7' : val > 0 ? '#15803d' : '#d1d5db',
                           fontWeight: val > 0 ? 700 : 400,
                           cursor: clickable ? 'pointer' : 'default',
                           textDecoration: clickable ? 'underline dotted' : undefined,
@@ -4636,7 +4648,7 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
                   {MONTHS.map(m => {
                     const mt = Number(mucTieuThang[m] || 0)
                     if (isFuture(m)) {
-                      const rate = mt > 0 && daysInMonth(m) > 0 ? mt / daysInMonth(m) : 0
+                      const rate = mt > 0 ? mt / workingDaysInMonth(m) : 0
                       return (
                         <td key={m} style={{ ..._tfS, textAlign: 'right', color: '#94a3b8', fontSize: 11 }}>
                           {rate > 0 ? Math.round(rate).toLocaleString('vi-VN') : '—'}
@@ -4645,9 +4657,9 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
                     }
                     if (m === curMonth) {
                       if (mt === 0) return <td key={m} style={{ ..._tfS, textAlign: 'right', color: '#94a3b8' }}>—</td>
-                      const ct       = mt - (monthTotals[m] || 0)
-                      const daysLeft = Math.max(1, daysInMonth(m) - now.date())
-                      const rate     = ct > 0 ? ct / daysLeft : 0
+                      const ct   = mt - (monthTotals[m] || 0)
+                      const wdLeft = workingDaysLeft()
+                      const rate = ct > 0 ? ct / wdLeft : 0
                       return (
                         <td key={m} style={{ ..._tfS, textAlign: 'right', fontWeight: 700,
                           color: ct > 0 ? '#dc2626' : '#15803d',
@@ -4656,7 +4668,7 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
                         </td>
                       )
                     }
-                    const rate = daysInMonth(m) > 0 ? (monthTotals[m] || 0) / daysInMonth(m) : 0
+                    const rate = (monthTotals[m] || 0) / workingDaysInMonth(m)
                     return (
                       <td key={m} style={{ ..._tfS, textAlign: 'right', color: '#0369a1', fontSize: 11 }}>
                         {Math.round(rate).toLocaleString('vi-VN')}
