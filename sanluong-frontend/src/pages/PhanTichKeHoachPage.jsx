@@ -169,6 +169,12 @@ export default function PhanTichKeHoachPage() {
     [dedupedByLo],
   )
 
+  // Tổng SL cho Chi Tiết: dùng filteredRaw (tất cả hàng hiển thị, kể cả chưa có số lô)
+  const grandSLAll = useMemo(
+    () => filteredRaw.reduce((s, r) => s + Number(r.coLo || 0), 0),
+    [filteredRaw],
+  )
+
   // ── Stage stats ──────────────────────────────────────────────────────────────
   const stageStats = useMemo(() =>
     STAGES.map(s => ({
@@ -458,14 +464,15 @@ export default function PhanTichKeHoachPage() {
       children: (
         <div style={{ padding: '12px 0' }}>
           <Table size="small" dataSource={filteredRaw} rowKey="id"
+            scroll={{ x: 'max-content', y: 'calc(100vh - 340px)' }}
             pagination={{ pageSize: 20, showSizeChanger: true, showTotal: t => `${t} kế hoạch` }}
             columns={[
-              { title: 'Ngày KH', dataIndex: 'ngayThucHien', width: 100,
+              { title: 'Ngày KH', dataIndex: 'ngayThucHien', width: 100, fixed: 'left',
                 render: v => v ? <span style={{ fontWeight: 600, color: '#1677ff' }}>{dayjs(v).format('DD/MM/YYYY')}</span> : '—' },
-              { title: 'Mã Bravo', dataIndex: 'maBravo', width: 100,
+              { title: 'Mã Bravo', dataIndex: 'maBravo', width: 105,
                 render: v => <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#374151' }}>{v || '—'}</span> },
-              { title: 'Tên / Tiến trình', dataIndex: 'tenTrinh', ellipsis: true,
-                render: v => <Tooltip title={v}><span style={{ fontSize: 12 }}>{v || '—'}</span></Tooltip> },
+              { title: 'Tên / Tiến trình', dataIndex: 'tenTrinh', width: 220,
+                render: v => <Tooltip title={v}><span style={{ fontSize: 12, whiteSpace: 'normal', wordBreak: 'break-word' }}>{v || '—'}</span></Tooltip> },
               { title: 'Số lô', dataIndex: 'soLo', width: 90,
                 render: v => <span style={{ color: '#6d28d9', fontWeight: 600 }}>{v || '—'}</span> },
               { title: 'Tổ', dataIndex: 'toNhom', width: 80, align: 'center',
@@ -559,7 +566,7 @@ export default function PhanTichKeHoachPage() {
               <Table.Summary.Row style={{ fontWeight: 700, background: '#f0f5ff' }}>
                 <Table.Summary.Cell index={0} colSpan={6}>Tổng ({filteredRaw.length} kế hoạch)</Table.Summary.Cell>
                 <Table.Summary.Cell index={6} align="right">
-                  <span style={{ color: '#1e5fa3' }}>{fmtSL(grandSL)}</span>
+                  <span style={{ color: '#1e5fa3' }}>{fmtSL(grandSLAll)}</span>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={7} colSpan={8} />
               </Table.Summary.Row>
@@ -655,10 +662,10 @@ export default function PhanTichKeHoachPage() {
         />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ color: '#bfdbfe', fontSize: 12 }}>
-            Kế hoạch: <strong style={{ color: '#fff' }}>{dedupedByLo.length}</strong>
+            Kế hoạch: <strong style={{ color: '#fff' }}>{filteredRaw.length}</strong>
           </span>
           <span style={{ color: '#bfdbfe', fontSize: 12 }}>
-            Tổng SL: <strong style={{ color: '#fff' }}>{fmtSL(grandSL)}</strong>
+            Tổng SL: <strong style={{ color: '#fff' }}>{fmtSL(grandSLAll)}</strong>
           </span>
           <span style={{ color: '#bfdbfe', fontSize: 12 }}>
             SP/lô: <strong style={{ color: '#fff' }}>{groupedData.length}</strong>
@@ -674,12 +681,12 @@ export default function PhanTichKeHoachPage() {
           gap: 10, marginBottom: 14,
         }}>
           {[
-            { label: 'Số SP / lô kế hoạch', value: dedupedByLo.length,     color: '#1d4ed8' },
-            { label: 'Tổng SL kế hoạch',    value: fmtSL(grandSL),         color: '#1e5fa3' },
+            { label: 'Số SP / lô kế hoạch', value: filteredRaw.length,     color: '#1d4ed8' },
+            { label: 'Tổng SL kế hoạch',    value: fmtSL(grandSLAll),      color: '#1e5fa3' },
             { label: 'Số loại sản phẩm',     value: groupedData.length,     color: '#6d28d9' },
             { label: 'SL TB / kế hoạch',
-              value: dedupedByLo.length > 0
-                ? Math.round(grandSL / dedupedByLo.length).toLocaleString('vi-VN')
+              value: filteredRaw.length > 0
+                ? Math.round(grandSLAll / filteredRaw.length).toLocaleString('vi-VN')
                 : '—',
               color: '#0e7490' },
           ].map(c => (
