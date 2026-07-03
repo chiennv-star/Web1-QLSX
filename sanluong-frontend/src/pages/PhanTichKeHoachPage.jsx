@@ -526,6 +526,24 @@ export default function PhanTichKeHoachPage() {
                     ? <span style={{ fontWeight: 700, color: '#7c3aed' }}>{n} người</span>
                     : <span style={{ color: '#d9d9d9' }}>—</span>
                 } },
+              { title: 'Số ca dự kiến', key: 'soCaDuKien', align: 'right', width: 110,
+                render: (_, r) => {
+                  const stage = resolveStage(r)
+                  const nsPc = Number(productMap[r.maSp]?.nangSuatPc || 0)
+                  const nsPl = Number(productMap[r.maSp]?.nangSuatPl || 0)
+                  const cl   = Number(r.coLo || 0)
+                  const congTH = stage === 'PL'
+                    ? (nsPl && cl ? cl / nsPl : 0)
+                    : (nsPc && cl ? cl / nsPc : 0)
+                  const soNguoi = stage === 'PL'   ? Number(r.congPl   || 0)
+                                : stage === 'BBC1' ? Number(r.congBbc1 || 0)
+                                : stage === 'DG'   ? Number(r.congDg   || 0)
+                                : stage === 'CC'   ? Number(r.congCc   || 0)
+                                :                   Number(r.congPc   || 0)
+                  if (!congTH || !soNguoi) return <span style={{ color: '#d9d9d9' }}>—</span>
+                  const v = (congTH / soNguoi).toFixed(2)
+                  return <span style={{ color: '#b45309', fontWeight: 700 }}>{v} ca</span>
+                } },
               { title: 'Tình trạng', dataIndex: 'tinhTrang', width: 90, align: 'center',
                 render: v => {
                   const cfg = {
@@ -543,7 +561,7 @@ export default function PhanTichKeHoachPage() {
                 <Table.Summary.Cell index={6} align="right">
                   <span style={{ color: '#1e5fa3' }}>{fmtSL(grandSL)}</span>
                 </Table.Summary.Cell>
-                <Table.Summary.Cell index={7} colSpan={7} />
+                <Table.Summary.Cell index={7} colSpan={8} />
               </Table.Summary.Row>
             )}
           />
