@@ -4220,6 +4220,7 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading, onS
   const [editMT, setEditMT] = useState(false)
   const [selectedDay, setSelectedDay] = useState(null)
   const [editPopover, setEditPopover] = useState(null) // { day, month }
+  const [dayDetailModal, setDayDetailModal] = useState(null) // { day, month }
 
   const dayMonthRecords = useMemo(() => {
     const dm = {}
@@ -4355,13 +4356,18 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading, onS
                       )
                     }
 
+                    const clickable = valid && !future && val > 0
                     return (
-                      <td key={m} style={{
-                        ..._tdS, textAlign: 'right',
-                        background: !valid ? '#f3f4f6' : undefined,
-                        color: !valid ? '#d1d5db' : future ? '#cbd5e1' : val > 0 ? '#15803d' : '#d1d5db',
-                        fontWeight: val > 0 ? 700 : 400,
-                      }}>
+                      <td key={m}
+                        onClick={clickable ? e => { e.stopPropagation(); setDayDetailModal({ day, month: m }) } : undefined}
+                        style={{
+                          ..._tdS, textAlign: 'right',
+                          background: !valid ? '#f3f4f6' : undefined,
+                          color: !valid ? '#d1d5db' : future ? '#cbd5e1' : val > 0 ? '#15803d' : '#d1d5db',
+                          fontWeight: val > 0 ? 700 : 400,
+                          cursor: clickable ? 'pointer' : 'default',
+                          textDecoration: clickable ? 'underline dotted' : undefined,
+                        }}>
                         {cellContent}
                       </td>
                     )
@@ -4428,6 +4434,60 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, loading, onS
           </tfoot>
         </table>
       </div>
+
+      {/* Modal chi tiết sản phẩm nhập kho theo ngày */}
+      <Modal
+        open={dayDetailModal != null}
+        onCancel={() => setDayDetailModal(null)}
+        footer={<Button onClick={() => setDayDetailModal(null)}>Đóng</Button>}
+        width={620}
+        title={dayDetailModal ? (
+          <span style={{ color: '#006666', fontWeight: 700 }}>
+            📅 Sản phẩm nhập kho ngày {String(dayDetailModal.day).padStart(2,'0')}/{String(dayDetailModal.month).padStart(2,'0')}/{year}
+          </span>
+        ) : null}
+        destroyOnClose
+      >
+        {dayDetailModal && (() => {
+          const records = dayMonthRecords[`${dayDetailModal.day}_${dayDetailModal.month}`] || []
+          const total = records.reduce((s, r) => s + (r.tpNhapKho || 0), 0)
+          return records.length === 0 ? (
+            <div style={{ color: '#9ca3af', textAlign: 'center', padding: '20px 0' }}>Không có dữ liệu</div>
+          ) : (
+            <>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: '#006666', color: '#fff' }}>
+                    {['#','Mã Bravo','Mã SP','Tên sản phẩm','Số lô','SL NK'].map((h, i) => (
+                      <th key={i} style={{ padding: '6px 8px', textAlign: i >= 5 ? 'right' : 'left', fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {records.map((r, i) => (
+                    <tr key={r.id} style={{ background: i % 2 === 0 ? '#fff' : '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '5px 8px', color: '#9ca3af', fontSize: 11 }}>{i + 1}</td>
+                      <td style={{ padding: '5px 8px', fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{r.maBravo || '—'}</td>
+                      <td style={{ padding: '5px 8px', color: '#374151' }}>{r.maTp || '—'}</td>
+                      <td style={{ padding: '5px 8px', color: '#374151', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.tienTrinh || '—'}</td>
+                      <td style={{ padding: '5px 8px', fontFamily: 'monospace', color: '#6d28d9' }}>{r.lsx || '—'}</td>
+                      <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 700, color: '#15803d' }}>
+                        {r.tpNhapKho != null ? Number(r.tpNhapKho).toLocaleString('vi-VN') : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr style={{ background: '#f0fdf4', fontWeight: 700 }}>
+                    <td colSpan={5} style={{ padding: '6px 8px', color: '#374151' }}>Tổng ({records.length} sản phẩm)</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'right', color: '#15803d', fontSize: 14 }}>{total.toLocaleString('vi-VN')}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </>
+          )
+        })()}
+      </Modal>
     </Spin>
   )
 }
