@@ -1416,8 +1416,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                 </div>
               </div>
 
-              {/* ── Thời gian không tạo ra sản phẩm — chỉ ADMIN ── */}
-              {isAdmin() && (() => {
+              {/* ── Thời gian không tạo ra sản phẩm ── */}
+              {(isAdmin() || isAdminKH() || isStageAdmin()) && (() => {
                 const dayEntries = nonprodEntries[k] || []
                 const totalMin = dayEntries.reduce((sum, e) => sum + (parseInt(e.min) || 0), 0)
                 const isNpOpen = nonprodOpenDays.has(k)
@@ -2853,7 +2853,8 @@ function MobileScheduleCard({ record, congDoan, nsMap, onClick }) {
 // ── StageTab ──────────────────────────────────────────────────────────────────
 function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved, jumpTarget }) {
   const navigate = useNavigate()
-  const { canEditStage, getAllowedNhom, isNhanVien, canDeleteSchedule, user, isAdmin } = useAuth()
+  const { canEditStage, getAllowedNhom, isNhanVien, canDeleteSchedule, user, isAdmin, isAdminKH, isStageAdmin } = useAuth()
+  const isAnyAdmin = () => isAdmin() || isAdminKH() || isStageAdmin()
   const allowedNhom = forcedNhom || (congDoan === 'PC' ? getAllowedNhom() : null)
   const AUTO_DEFAULT_NHOM = { DG: 'ĐG', BBC1: 'BBC1' }
   const defaultModalNhom = allowedNhom || AUTO_DEFAULT_NHOM[congDoan] || null
@@ -3026,7 +3027,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
 
   // Fetch employees cho tab Không SX khi cần
   useEffect(() => {
-    if (innerTab !== 'nonprod' || !isAdmin()) return
+    if (innerTab !== 'nonprod' || !isAnyAdmin()) return
     if (npEmployees.length > 0) return
     api.get('/employees', { params: { page: 0, size: 500, excludeTinhTrang: 'tam_nghi' } })
       .then(r => setNpEmployees(r.data?.content || []))
@@ -3719,7 +3720,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                 </span>
               )
             },
-            ...(isAdmin() ? [{
+            ...(isAnyAdmin() ? [{
               key: 'nonprod',
               color: '#d97706',
               label: (
@@ -4012,8 +4013,8 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         />
       )}
 
-      {/* ── Tab: Không SX — chỉ ADMIN ── */}
-      {innerTab === 'nonprod' && isAdmin() && (() => {
+      {/* ── Tab: Không SX ── */}
+      {innerTab === 'nonprod' && isAnyAdmin() && (() => {
         const NP_TO_LIST = ['PCPL1', 'PCPL2', 'PL', 'BBC1', 'ĐG', 'KT']
         const npFilteredEmps = npForm?.to
           ? npEmployees.filter(e => {
