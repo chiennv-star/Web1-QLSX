@@ -1918,7 +1918,15 @@ export default function DonHangPage() {
       ) : activeTab === 'trend' ? (
       /* ── Tab: Xu Hướng ── */
       (() => {
-        const trendData = displayData.map(r => ({ ...r, _pm: productMasterMap[r.maBravo] || {} }))
+        const ttScore = v => v === 'du' ? 2 : v === 'chua_du' ? 1 : 0
+        const trendData = displayData
+          .map(r => ({ ...r, _pm: productMasterMap[r.maBravo] || {} }))
+          .sort((a, b) => {
+            const sa = ttScore(a.ttNguyenLieu) + ttScore(a.ttBbc1) + ttScore(a.ttBbc2)
+            const sb = ttScore(b.ttNguyenLieu) + ttScore(b.ttBbc1) + ttScore(b.ttBbc2)
+            if (sb !== sa) return sb - sa
+            return (Number(b.soLuongConLai) || 0) - (Number(a.soLuongConLai) || 0)
+          })
         const fmtNS = v => v != null ? Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 0 }) : '—'
         const trendColumns = [
           {
