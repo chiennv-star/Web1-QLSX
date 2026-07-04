@@ -11,7 +11,7 @@ import {
   SyncOutlined, CheckCircleOutlined, EyeOutlined, LinkOutlined,
   CheckOutlined, CloseOutlined, EyeInvisibleOutlined,
   EyeTwoTone, SettingOutlined, DownOutlined, FilterOutlined, UsergroupAddOutlined,
-  PrinterOutlined, ClockCircleOutlined
+  PrinterOutlined, ClockCircleOutlined, BarChartOutlined
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import api from '../api/axios'
@@ -3204,6 +3204,224 @@ function WorkScheduleAnalyticsTab() {
   )
 }
 
+// ── StageAnalyticsTab ────────────────────────────────────────────────────────
+const STAGE_MACHINE_FIELD = { PCPL1: 'mayMocPc', PCPL2: 'mayMocPc', PL: 'mayMocPl', DG: 'mayMocDg', BBC1: 'mayMocBbc1' }
+
+function StageAnalyticsTab({ congDoan }) {
+  const cfg      = WS_ANALY_STAGES.find(s => s.key === congDoan) || {}
+  const slField  = cfg.slField   || SL_FIELD_MAP[congDoan]   || 'slPc'
+  const cfField  = cfg.congField || CONG_FIELD_MAP[congDoan] || 'congPc'
+  const mmField  = STAGE_MACHINE_FIELD[congDoan]
+  const showMM   = congDoan === 'PCPL2' || congDoan === 'PL'
+  const stColor  = cfg.slColor   || '#1677ff'
+  const stCColor = cfg.congColor || '#60A5FA'
+
+  const [raw, setRaw]               = useState([])
+  const [loading, setLoading]       = useState(false)
+  const [dateRange, setDateRange]   = useState([dayjs().startOf('month'), dayjs()])
+  const [ttFilter, setTtFilter]     = useState('all')
+  const [machineMap, setMachineMap] = useState({})
+
+  const fmtN = v => (v || 0).toLocaleString('vi-VN')
+  const fmtC = (v, d = 1) => (v || 0).toLocaleString('vi-VN', { minimumFractionDigits: d, maximumFractionDigits: d })
+
+  const fetchData = useCallback(async (range = dateRange, tt = ttFilter) => {
+    setLoading(true)
+    try {
+      const { data: res } = await api.get('/work-schedule', {
+        params: {
+          congDoan, source: 'SCHEDULE', page: 0, size: 2000,
+          fromDate: range?.[0]?.format('YYYY-MM-DD'),
+          toDate:   range?.[1]?.format('YYYY-MM-DD'),
+          ...(tt !== 'all' ? { tinhTrang: tt } : {}),
+        },
+      })
+      const content = res.content || []
+      setRaw(content)
+      const codes = [...new Set(content.map(r => r.maSp).filter(Boolean))]
+      if (codes.length > 0) {
+        api.get('/product-master/lookup-batch', { params: { codes } })
+          .then(({ data }) => setMachineMap(data)).catch(() => {})
+      }
+    } catch { message.error('Không thể tải dữ liệu phân tích') }
+    finally { setLoading(false) }
+  }, [congDoan, dateRange, ttFilter]) // eslint-disable-line
+
+  useEffect(() => { fetchData() }, []) // eslint-disable-line
+
+  // Aggregate by product code
+  const productData = useMemo(() => {
+    const map = {}
+    raw.forEach(r => {
+      const k = r.maSp || '?'
+      if (!map[k]) map[k] = { maSp: k, tenTrinh: r.tenTrinh, sl: 0, cong: 0, soLo: 0, done: 0, doing: 0, pending: 0, mmSet: new Set() }
+      map[k].sl   += Number(r[slField]) || 0
+      map[k].cong += Number(r[cfField]) || 0
+      map[k].soLo++
+      if (r.tinhTrang === 'done')       map[k].done++
+      else if (r.tinhTrang === 'doing') map[k].doing++
+      else                              map[k].pending++
+      const mm = mmField ? machineMap[r.maSp]?.[mmField] : null
+      if (mm) map[k].mmSet.add(mm)
+    })
+    return Object.values(map)
+      .map(r => ({ ...r, mayMoc: [...r.mmSet].join(', ') }))
+      .sort((a, b) => b.sl - a.sl)
+  }, [raw, slField, cfField, mmField, machineMap])
+
+  // Daily time series
+  const timeData = useMemo(() => {
+    const map = {}
+    raw.forEach(r => {
+      const d = r.ngayThucHien; if (!d) return
+      if (!map[d]) map[d] = { date: d, sl: 0, soLo: 0 }
+      map[d].sl   += Number(r[slField]) || 0
+      map[d].soLo++
+    })
+    return Object.values(map).sort((a, b) => a.date.localeCompare(b.date))
+  }, [raw, slField])
+
+  const grandSL   = productData.reduce((s, r) => s + r.sl, 0)
+  const grandCong = productData.reduce((s, r) => s + r.cong, 0)
+  const grandLo   = raw.length
+  const doneCnt   = raw.filter(r => r.tinhTrang === 'done').length
+  const doingCnt  = raw.filter(r => r.tinhTrang === 'doing').length
+  const pendCnt   = raw.filter(r => !r.tinhTrang).length
+
+  const QUICK = [
+    { label: 'Tuần',  range: () => [dayjs().startOf('week'), dayjs()] },
+    { label: 'Tháng', range: () => [dayjs().startOf('month'), dayjs()] },
+    { label: 'Năm',   range: () => [dayjs().startOf('year'), dayjs()] },
+  ]
+
+  const mmColSpan = showMM ? 1 : 0
+  const summaryIdxOffset = showMM ? 1 : 0
+
+  return (
+    <div style={{ padding: '14px 16px' }}>
+      {/* Filter bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap',
+        background: '#f8f9fa', borderRadius: 8, padding: '10px 14px', border: '1px solid #e5e7eb' }}>
+        <RangePicker size="small" value={dateRange} format="DD/MM/YYYY"
+          placeholder={['Từ ngày', 'Đến ngày']} onChange={v => setDateRange(v)} />
+        <Select size="small" value={ttFilter} style={{ width: 120 }} onChange={v => setTtFilter(v)}
+          options={[
+            { value: 'all',   label: 'Tất cả' },
+            { value: 'done',  label: 'Done'   },
+            { value: 'doing', label: 'Doing'  },
+          ]} />
+        <Button size="small" type="primary" icon={<SearchOutlined />} loading={loading}
+          onClick={() => fetchData(dateRange, ttFilter)}>Truy xuất</Button>
+        <Button size="small" icon={<ReloadOutlined />} onClick={() => {
+          const r = [dayjs().startOf('month'), dayjs()]
+          setDateRange(r); setTtFilter('all'); fetchData(r, 'all')
+        }} />
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+          {QUICK.map(q => (
+            <Button key={q.label} size="small"
+              onClick={() => { const r = q.range(); setDateRange(r); fetchData(r, ttFilter) }}>
+              {q.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* KPI cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 20 }}>
+        {[
+          { label: 'Số lô SX',      value: loading ? '—' : grandLo.toLocaleString('vi-VN'), color: '#374151' },
+          { label: 'Tổng Sản Lượng', value: loading ? '—' : fmtN(grandSL),   color: stColor  },
+          { label: 'Tổng Công',      value: loading ? '—' : fmtC(grandCong),  color: stCColor },
+          { label: 'SL / Công TB',   value: loading ? '—' : grandCong > 0 ? fmtN(Math.round(grandSL / grandCong)) : '—', color: '#0e7490' },
+          { label: 'Tỷ lệ Done',     value: loading ? '—' : grandLo > 0 ? `${Math.round(doneCnt / grandLo * 100)}%` : '—', color: '#15803d' },
+        ].map(c => (
+          <div key={c.label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8,
+            padding: '14px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
+            <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 600, marginBottom: 4,
+              textTransform: 'uppercase', letterSpacing: 0.5 }}>{c.label}</div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: c.color, lineHeight: 1.1 }}>{c.value}</div>
+          </div>
+        ))}
+      </div>
+
+      <Spin spinning={loading}>
+        {/* Daily SL chart */}
+        {timeData.length > 0 && (
+          <div style={{ background: '#f8f9fa', borderRadius: 6, padding: 16, marginBottom: 16 }}>
+            <div style={{ fontWeight: 600, marginBottom: 10, color: '#333', fontSize: 13 }}>Sản lượng theo ngày</div>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={timeData} margin={{ top: 5, right: 20, left: 10, bottom: 40 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} angle={-45} textAnchor="end" interval={0}
+                  tickFormatter={v => dayjs(v).format('DD/MM')} />
+                <YAxis tickFormatter={v => v.toLocaleString('vi-VN')} tick={{ fontSize: 11 }} />
+                <RcTooltip formatter={v => [v.toLocaleString('vi-VN'), 'Sản lượng']}
+                  labelFormatter={v => dayjs(v).format('DD/MM/YYYY')} />
+                <Bar dataKey="sl" fill={stColor} radius={[4, 4, 0, 0]}>
+                  <LabelList dataKey="sl" position="top"
+                    formatter={v => v > 0 ? v.toLocaleString('vi-VN') : ''}
+                    style={{ fontSize: 10, fill: '#444' }} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* Product table */}
+        <Table size="small" dataSource={productData} rowKey="maSp"
+          pagination={{ pageSize: 20, showSizeChanger: false, showTotal: t => `${t} sản phẩm` }}
+          columns={[
+            { title: 'Mã SP', dataIndex: 'maSp', width: 90, fixed: 'left',
+              render: v => <Tag color="blue" style={{ fontFamily: 'monospace', fontWeight: 700 }}>{v}</Tag> },
+            { title: 'Tên Tiến Trình', dataIndex: 'tenTrinh', ellipsis: true },
+            { title: 'Số lô', dataIndex: 'soLo', align: 'right', width: 68,
+              render: v => <span style={{ color: '#374151' }}>{v}</span> },
+            { title: 'Tổng SL', dataIndex: 'sl', align: 'right', width: 110,
+              render: v => <span style={{ fontWeight: 700, color: stColor }}>{fmtN(v)}</span> },
+            { title: 'Tổng Công', dataIndex: 'cong', align: 'right', width: 90,
+              render: v => <span style={{ color: stCColor, fontWeight: 600 }}>{fmtC(v)}</span> },
+            { title: 'SL/Công', align: 'right', width: 85,
+              render: (_, r) => r.cong > 0
+                ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{fmtN(Math.round(r.sl / r.cong))}</span>
+                : <span style={{ color: '#d9d9d9' }}>—</span> },
+            ...(showMM ? [{
+              title: 'Máy sử dụng', dataIndex: 'mayMoc', ellipsis: true,
+              render: v => v
+                ? <span style={{ fontSize: 11, color: '#5b21b6' }}>{v}</span>
+                : <span style={{ color: '#d9d9d9' }}>—</span>,
+            }] : []),
+            { title: 'Done', dataIndex: 'done', align: 'right', width: 58,
+              render: v => v > 0 ? <span style={{ color: '#52c41a', fontWeight: 700 }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span> },
+            { title: 'Doing', dataIndex: 'doing', align: 'right', width: 58,
+              render: v => v > 0 ? <span style={{ color: '#fa8c16', fontWeight: 700 }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span> },
+            { title: 'Chưa SX', dataIndex: 'pending', align: 'right', width: 72,
+              render: v => v > 0 ? <span style={{ color: '#888' }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span> },
+          ]}
+          summary={() => (
+            <Table.Summary.Row style={{ background: '#f0fdf4', fontWeight: 700 }}>
+              <Table.Summary.Cell index={0} colSpan={2}>TỔNG</Table.Summary.Cell>
+              <Table.Summary.Cell index={2} align="right">{grandLo}</Table.Summary.Cell>
+              <Table.Summary.Cell index={3} align="right"><span style={{ color: stColor }}>{fmtN(grandSL)}</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={4} align="right"><span style={{ color: stCColor }}>{fmtC(grandCong)}</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={5} align="right">
+                {grandCong > 0 ? <span style={{ color: '#0e7490' }}>{fmtN(Math.round(grandSL / grandCong))}</span> : '—'}
+              </Table.Summary.Cell>
+              {showMM && <Table.Summary.Cell index={6} />}
+              <Table.Summary.Cell index={6 + summaryIdxOffset} align="right"><span style={{ color: '#52c41a' }}>{doneCnt}</span></Table.Summary.Cell>
+              <Table.Summary.Cell index={7 + summaryIdxOffset} align="right">
+                {doingCnt > 0 ? <span style={{ color: '#fa8c16' }}>{doingCnt}</span> : <span style={{ color: '#d9d9d9' }}>—</span>}
+              </Table.Summary.Cell>
+              <Table.Summary.Cell index={8 + summaryIdxOffset} align="right">
+                {pendCnt > 0 ? <span style={{ color: '#888' }}>{pendCnt}</span> : <span style={{ color: '#d9d9d9' }}>—</span>}
+              </Table.Summary.Cell>
+            </Table.Summary.Row>
+          )}
+        />
+      </Spin>
+    </div>
+  )
+}
+
 // ── StageSummaryBar ──────────────────────────────────────────────────────────
 function StageSummaryBar({ congDoan, liveData }) {
   const slField = SL_FIELD_MAP[congDoan]
@@ -4243,7 +4461,17 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                   )}
                 </span>
               )
-            }] : [])
+            }] : []),
+            {
+              key: 'analytics',
+              color: '#0e7490',
+              label: (
+                <span>
+                  <BarChartOutlined style={{ marginRight: 5, color: '#0e7490' }} />
+                  Tổng quát
+                </span>
+              )
+            },
           ].map(tab => (
             <div
               key={tab.key}
@@ -4689,6 +4917,9 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
           </div>
         )
       })()}
+
+      {/* ── Tab: Tổng quát (per-stage analytics) ── */}
+      {innerTab === 'analytics' && <StageAnalyticsTab congDoan={congDoan} />}
 
       <WorkDetailDrawer
         open={detailOpen}
@@ -5354,11 +5585,6 @@ export default function WorkSchedulePage() {
   ]
 
   const tabItems = [
-    ...(!allowedStages ? [{
-      key: 'analytics',
-      label: 'Tổng quát',
-      children: <WorkScheduleAnalyticsTab />,
-    }] : []),
     ...Object.entries(STAGE_CONFIG)
       .filter(([stage]) => !allowedStages || allowedStages.includes(stage))
       .map(([stage, config]) => ({
