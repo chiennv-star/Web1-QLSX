@@ -4360,7 +4360,7 @@ function CellPopoverContent({ records, day, month, year, onSave, onClose }) {
   )
 }
 
-function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang = {}, onMucTieuThangChange, loading, onSaveField }) {
+function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang = {}, onMucTieuThangChange, loading, onSaveField, canEdit = false }) {
   const [editMT, setEditMT] = useState(false)
   const [editMTMonth, setEditMTMonth] = useState(null)
   const [selectedDay, setSelectedDay] = useState(null)
@@ -4572,11 +4572,11 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
                             controls={false}
                           />
                         ) : (
-                          <Tooltip title="Nhấn để nhập mục tiêu tháng">
+                          <Tooltip title={canEdit ? 'Nhấn để nhập mục tiêu tháng' : undefined}>
                             <div
-                              onClick={() => setEditMTMonth(m)}
-                              style={{ padding: '3px 6px', cursor: 'pointer', textAlign: 'right' }}
-                              onMouseEnter={e => e.currentTarget.style.background = '#fef3c7'}
+                              onClick={() => canEdit && setEditMTMonth(m)}
+                              style={{ padding: '3px 6px', cursor: canEdit ? 'pointer' : 'default', textAlign: 'right' }}
+                              onMouseEnter={e => canEdit && (e.currentTarget.style.background = '#fef3c7')}
                               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                             >
                               {mt > 0 ? fmt(mt) : <span style={{ fontSize: 10 }}>—</span>}
@@ -4599,8 +4599,8 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
                         style={{ width: 130 }}
                       />
                     ) : (
-                      <Tooltip title="Mục tiêu năm — Nhấn để sửa">
-                        <span onClick={() => setEditMT(true)} style={{ cursor: 'pointer' }}>
+                      <Tooltip title={canEdit ? 'Mục tiêu năm — Nhấn để sửa' : undefined}>
+                        <span onClick={() => canEdit && setEditMT(true)} style={{ cursor: canEdit ? 'pointer' : 'default' }}>
                           {mucTieu > 0 ? mucTieu.toLocaleString('vi-VN') : '—'}
                         </span>
                       </Tooltip>
@@ -4735,11 +4735,11 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
                       onPressEnter={() => setEditMT(false)}
                       style={{ width: 130 }}
                     />
-                  ) : (
+                  ) : canEdit ? (
                     <Tooltip title="Mục tiêu năm — Nhấn để sửa">
                       <span onClick={() => setEditMT(true)} style={{ cursor: 'pointer', color: '#ccc' }}>✏</span>
                     </Tooltip>
-                  )}
+                  ) : null}
                 </td>
               </tr>
             )}
@@ -5209,6 +5209,7 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
 // ─── NhapKhoTab ───────────────────────────────────────────────────────────────
 
 function NhapKhoTab() {
+  const { canEditNhapKhoTarget } = useAuth()
   const [data,          setData]          = useState([])
   const [loading,       setLoading]       = useState(false)
   const [saving,        setSaving]        = useState({})
@@ -5220,8 +5221,8 @@ function NhapKhoTab() {
   const [summaryYear,   setSummaryYear]   = useState(dayjs().year())
   const [summaryData,   setSummaryData]   = useState([])
   const [summaryLoading,setSummaryLoading]= useState(false)
-  const [mucTieu,       setMucTieu]       = useState(() => parseInt(localStorage.getItem('nhapkho_muctieu') || '0', 10))
-  const [mucTieuThang,  setMucTieuThang]  = useState(() => { try { return JSON.parse(localStorage.getItem('nhapkho_muctieu_thang') || '{}') } catch { return {} } })
+  const [mucTieu,       setMucTieu]       = useState(0)
+  const [mucTieuThang,  setMucTieuThang]  = useState({})
   const [ctxMenu,       setCtxMenu]       = useState(null)   // { x, y, record }
   const [tongHopData,   setTongHopData]   = useState([])
   const [tongHopLoading,setTongHopLoading]= useState(false)
@@ -5255,6 +5256,16 @@ function NhapKhoTab() {
     window.addEventListener('click', close)
     return () => window.removeEventListener('click', close)
   }, [ctxMenu])
+
+  // Fetch mục tiêu nhập kho từ server (đồng bộ mọi tài khoản)
+  useEffect(() => {
+    api.get('/app-settings/nhapkho-muctieu', { params: { year: summaryYear } })
+      .then(r => {
+        setMucTieu(Number(r.data.mucTieu || 0))
+        setMucTieuThang(r.data.mucTieuThang || {})
+      })
+      .catch(() => {})
+  }, [summaryYear])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -5302,13 +5313,13 @@ function NhapKhoTab() {
 
   const handleMucTieu = (v) => {
     setMucTieu(v)
-    localStorage.setItem('nhapkho_muctieu', String(v))
+    api.put('/app-settings/nhapkho-muctieu', { mucTieu: v || 0 }, { params: { year: summaryYear } }).catch(() => {})
   }
 
   const handleMucTieuThang = (month, val) => {
     setMucTieuThang(prev => {
       const next = { ...prev, [month]: val || 0 }
-      localStorage.setItem('nhapkho_muctieu_thang', JSON.stringify(next))
+      api.put('/app-settings/nhapkho-muctieu', { mucTieuThang: next }, { params: { year: summaryYear } }).catch(() => {})
       return next
     })
   }
@@ -5755,6 +5766,7 @@ function NhapKhoTab() {
           onMucTieuThangChange={handleMucTieuThang}
           loading={summaryLoading}
           onSaveField={saveSummaryField}
+          canEdit={canEditNhapKhoTarget()}
         />
       ) : viewMode === 'tong-hop' ? (
         <NhapKhoTongHopTable data={filteredTongHopData} loading={tongHopLoading} onRowClick={setTongHopDrawer} />

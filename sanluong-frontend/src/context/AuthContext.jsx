@@ -93,6 +93,9 @@ export function AuthProvider({ children }) {
   // Có thể thêm/sửa/xóa bản ghi Công Ra Vào (chấm công giờ): ADMIN + HCNS
   const canEditAttendance = () => ['ADMIN', 'HCNS'].includes(user?.role)
 
+  // Có thể đặt mục tiêu Nhập Kho: ADMIN_KH, TKSX, QUAN_DOC
+  const canEditNhapKhoTarget = () => ['ADMIN_KH', 'TKSX', 'QUAN_DOC'].includes(user?.role)
+
   // Có thể nhập/sửa xử lý hàng lỗi: tất cả ADMIN_* + TKSX
   const canEditHangLoi = () => [
     'ADMIN', 'TKSX',
@@ -189,7 +192,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, updateUser, isAdmin, isAdminKH, isTKSX, isTPSX, isQuanDoc, isNhanVien, isHCNS, isKeToan, isManHinh, getMaNhanVien, getToNhom, canEditProduction, canEditProductMaster, canEditPlan, canEditLenh, canEditStage, isStageAdmin, canEditHangLoi, canEditAttendance, allowedEfficiencyTabs, getAllowedNhom, getAllowedStages, getAllowedEmployeeGroups, canDeleteSchedule, getLockedCongDoan }}>
+    <AuthContext.Provider value={{ user, login, logout, updateUser, isAdmin, isAdminKH, isTKSX, isTPSX, isQuanDoc, isNhanVien, isHCNS, isKeToan, isManHinh, getMaNhanVien, getToNhom, canEditProduction, canEditProductMaster, canEditPlan, canEditLenh, canEditStage, isStageAdmin, canEditHangLoi, canEditAttendance, canEditNhapKhoTarget, allowedEfficiencyTabs, getAllowedNhom, getAllowedStages, getAllowedEmployeeGroups, canDeleteSchedule, getLockedCongDoan }}>
       {children}
     </AuthContext.Provider>
   )
