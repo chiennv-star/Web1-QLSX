@@ -67,6 +67,31 @@ public class DonHang {
     @Column(name = "trang_thai_duyet", length = 20)
     private String trangThaiDuyet;
 
+    /** Tình trạng Nguyên Liệu: du | chua_du */
+    @Column(name = "tt_nguyen_lieu", length = 20)
+    private String ttNguyenLieu;
+
+    @Column(name = "ngay_ve_nguyen_lieu")
+    private LocalDate ngayVeNguyenLieu;
+
+    /** Tình trạng BBC1: du | chua_du */
+    @Column(name = "tt_bbc1", length = 20)
+    private String ttBbc1;
+
+    @Column(name = "ngay_ve_bbc1")
+    private LocalDate ngayVeBbc1;
+
+    /** Tình trạng BBC2: du | chua_du */
+    @Column(name = "tt_bbc2", length = 20)
+    private String ttBbc2;
+
+    @Column(name = "ngay_ve_bbc2")
+    private LocalDate ngayVeBbc2;
+
+    /** SL kế hoạch sản xuất (mặc định = soLuongDatHang) */
+    @Column(name = "sl_san_xuat", precision = 12, scale = 0)
+    private BigDecimal slSanXuat;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
@@ -124,6 +149,20 @@ public class DonHang {
     public void setGhiChu(String ghiChu) { this.ghiChu = ghiChu; }
     public Boolean getDaDgVaXepLichDg() { return daDgVaXepLichDg; }
     public void setDaDgVaXepLichDg(Boolean daDgVaXepLichDg) { this.daDgVaXepLichDg = daDgVaXepLichDg; }
+    public String getTtNguyenLieu() { return ttNguyenLieu; }
+    public void setTtNguyenLieu(String ttNguyenLieu) { this.ttNguyenLieu = ttNguyenLieu; }
+    public LocalDate getNgayVeNguyenLieu() { return ngayVeNguyenLieu; }
+    public void setNgayVeNguyenLieu(LocalDate ngayVeNguyenLieu) { this.ngayVeNguyenLieu = ngayVeNguyenLieu; }
+    public String getTtBbc1() { return ttBbc1; }
+    public void setTtBbc1(String ttBbc1) { this.ttBbc1 = ttBbc1; }
+    public LocalDate getNgayVeBbc1() { return ngayVeBbc1; }
+    public void setNgayVeBbc1(LocalDate ngayVeBbc1) { this.ngayVeBbc1 = ngayVeBbc1; }
+    public String getTtBbc2() { return ttBbc2; }
+    public void setTtBbc2(String ttBbc2) { this.ttBbc2 = ttBbc2; }
+    public LocalDate getNgayVeBbc2() { return ngayVeBbc2; }
+    public void setNgayVeBbc2(LocalDate ngayVeBbc2) { this.ngayVeBbc2 = ngayVeBbc2; }
+    public BigDecimal getSlSanXuat() { return slSanXuat; }
+    public void setSlSanXuat(BigDecimal slSanXuat) { this.slSanXuat = slSanXuat; }
     public String getTrangThaiDuyet() { return trangThaiDuyet; }
     public void setTrangThaiDuyet(String trangThaiDuyet) { this.trangThaiDuyet = trangThaiDuyet; }
     public LocalDateTime getDeletedAt() { return deletedAt; }

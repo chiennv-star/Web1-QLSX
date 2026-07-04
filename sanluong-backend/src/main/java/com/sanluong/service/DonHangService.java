@@ -434,6 +434,13 @@ public class DonHangService {
         if (d.getDaLenLichLam()    != null) e.setDaLenLichLam(d.getDaLenLichLam());
         e.setGhiChu(d.getGhiChu());
         if (d.getDaDgVaXepLichDg() != null) e.setDaDgVaXepLichDg(d.getDaDgVaXepLichDg());
+        e.setTtNguyenLieu(d.getTtNguyenLieu());
+        e.setNgayVeNguyenLieu(d.getNgayVeNguyenLieu());
+        e.setTtBbc1(d.getTtBbc1());
+        e.setNgayVeBbc1(d.getNgayVeBbc1());
+        e.setTtBbc2(d.getTtBbc2());
+        e.setNgayVeBbc2(d.getNgayVeBbc2());
+        if (d.getSlSanXuat() != null) e.setSlSanXuat(d.getSlSanXuat());
     }
 
     private DonHangDto toDto(DonHang e) {
@@ -459,6 +466,13 @@ public class DonHangService {
         d.setDaLenLichLam(e.getDaLenLichLam());
         d.setGhiChu(e.getGhiChu());
         d.setDaDgVaXepLichDg(e.getDaDgVaXepLichDg());
+        d.setTtNguyenLieu(e.getTtNguyenLieu());
+        d.setNgayVeNguyenLieu(e.getNgayVeNguyenLieu());
+        d.setTtBbc1(e.getTtBbc1());
+        d.setNgayVeBbc1(e.getNgayVeBbc1());
+        d.setTtBbc2(e.getTtBbc2());
+        d.setNgayVeBbc2(e.getNgayVeBbc2());
+        d.setSlSanXuat(e.getSlSanXuat());
         d.setTrangThaiDuyet(e.getTrangThaiDuyet());
         d.setCreatedAt(e.getCreatedAt());
         d.setUpdatedAt(e.getUpdatedAt());

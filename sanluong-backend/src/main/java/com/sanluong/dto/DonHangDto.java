@@ -23,6 +23,13 @@ public class DonHangDto {
     private Boolean daLenLichLam;
     private String ghiChu;
     private Boolean daDgVaXepLichDg;
+    private String ttNguyenLieu;
+    private LocalDate ngayVeNguyenLieu;
+    private String ttBbc1;
+    private LocalDate ngayVeBbc1;
+    private String ttBbc2;
+    private LocalDate ngayVeBbc2;
+    private BigDecimal slSanXuat;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String createdBy;
@@ -66,6 +73,20 @@ public class DonHangDto {
     public void setGhiChu(String ghiChu) { this.ghiChu = ghiChu; }
     public Boolean getDaDgVaXepLichDg() { return daDgVaXepLichDg; }
     public void setDaDgVaXepLichDg(Boolean daDgVaXepLichDg) { this.daDgVaXepLichDg = daDgVaXepLichDg; }
+    public String getTtNguyenLieu() { return ttNguyenLieu; }
+    public void setTtNguyenLieu(String v) { this.ttNguyenLieu = v; }
+    public LocalDate getNgayVeNguyenLieu() { return ngayVeNguyenLieu; }
+    public void setNgayVeNguyenLieu(LocalDate v) { this.ngayVeNguyenLieu = v; }
+    public String getTtBbc1() { return ttBbc1; }
+    public void setTtBbc1(String v) { this.ttBbc1 = v; }
+    public LocalDate getNgayVeBbc1() { return ngayVeBbc1; }
+    public void setNgayVeBbc1(LocalDate v) { this.ngayVeBbc1 = v; }
+    public String getTtBbc2() { return ttBbc2; }
+    public void setTtBbc2(String v) { this.ttBbc2 = v; }
+    public LocalDate getNgayVeBbc2() { return ngayVeBbc2; }
+    public void setNgayVeBbc2(LocalDate v) { this.ngayVeBbc2 = v; }
+    public BigDecimal getSlSanXuat() { return slSanXuat; }
+    public void setSlSanXuat(BigDecimal v) { this.slSanXuat = v; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime v) { this.createdAt = v; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

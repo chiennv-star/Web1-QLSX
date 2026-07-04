@@ -951,6 +951,87 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
   )
 }
 
+// ── Xu Hướng Tab: Editable Cells ─────────────────────────────────────────────
+function SlSanXuatCell({ record, onSave }) {
+  const init = Number(record.slSanXuat ?? record.soLuongDatHang) || null
+  const [val, setVal] = useState(init)
+  useEffect(() => {
+    setVal(Number(record.slSanXuat ?? record.soLuongDatHang) || null)
+  }, [record.slSanXuat, record.soLuongDatHang])
+  return (
+    <InputNumber
+      size="small"
+      value={val}
+      style={{ width: 100 }}
+      min={0}
+      formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
+      parser={v => v ? v.replace(/[^\d]/g, '') : ''}
+      onChange={setVal}
+      onBlur={() => {
+        const cur = Number(record.slSanXuat ?? record.soLuongDatHang) || null
+        if (val != null && val !== cur) onSave({ slSanXuat: val })
+      }}
+      onClick={e => e.stopPropagation()}
+    />
+  )
+}
+
+function GhiChuCell({ record, onSave }) {
+  const [val, setVal] = useState(record.ghiChu || '')
+  useEffect(() => { setVal(record.ghiChu || '') }, [record.ghiChu])
+  return (
+    <Input.TextArea
+      size="small"
+      value={val}
+      autoSize={{ minRows: 1, maxRows: 3 }}
+      style={{ fontSize: 12 }}
+      onChange={e => setVal(e.target.value)}
+      onBlur={() => {
+        const trimmed = val.trim()
+        if (trimmed !== (record.ghiChu || '')) onSave({ ghiChu: trimmed })
+      }}
+      onClick={e => e.stopPropagation()}
+    />
+  )
+}
+
+function TtStatusCell({ record, field, dateField, onSave, saving }) {
+  const val     = record[field]
+  const dateVal = record[dateField]
+  const TT_OPTS = [
+    { value: 'du',       label: <span style={{ color: '#389e0d', fontWeight: 700 }}>✓ Đủ</span> },
+    { value: 'chua_du',  label: <span style={{ color: '#cf1322', fontWeight: 700 }}>✗ Chưa đủ</span> },
+  ]
+  return (
+    <div onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 110 }}>
+      <Select
+        size="small"
+        value={val || null}
+        placeholder="—"
+        style={{ width: '100%' }}
+        loading={saving}
+        options={TT_OPTS}
+        allowClear
+        onChange={v => {
+          const patch = { [field]: v || null }
+          if (!v || v === 'du') patch[dateField] = null
+          onSave(patch)
+        }}
+      />
+      {val === 'chua_du' && (
+        <DatePicker
+          size="small"
+          value={dateVal ? dayjs(dateVal) : null}
+          placeholder="Ngày về..."
+          format="DD/MM/YY"
+          style={{ width: '100%' }}
+          onChange={d => onSave({ [dateField]: d ? d.format('YYYY-MM-DD') : null })}
+        />
+      )}
+    </div>
+  )
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function DonHangPage() {
   const { isAdmin, isAdminKH } = useAuth()
@@ -994,6 +1075,26 @@ export default function DonHangPage() {
   const [analysisFullscreen, setAnalysisFullscreen] = useState(false)
   const [employeeCounts,    setEmployeeCounts]    = useState({})
   const [collapsedLoaiSp,   setCollapsedLoaiSp]   = useState(new Set())
+  const [trendSaving,       setTrendSaving]       = useState({}) // `${id}_field` → bool
+
+  // ── Lưu field trong tab Xu Hướng ────────────────────────────────────────────
+  const saveDhTrend = useCallback(async (record, fieldMap) => {
+    const key = `${record.id}_${Object.keys(fieldMap)[0]}`
+    setTrendSaving(s => ({ ...s, [key]: true }))
+    try {
+      await api.put(`/don-hang/${record.id}`, {
+        ...record,
+        ngayDatHang:         record.ngayDatHang         || null,
+        ngayPhatLenh:        record.ngayPhatLenh        || null,
+        ngayVeNguyenLieu:    record.ngayVeNguyenLieu    || null,
+        ngayVeBbc1:          record.ngayVeBbc1          || null,
+        ngayVeBbc2:          record.ngayVeBbc2          || null,
+        ...fieldMap,
+      })
+      setData(prev => prev.map(r => r.id === record.id ? { ...r, ...fieldMap } : r))
+    } catch { message.error('Lưu thất bại') }
+    finally { setTrendSaving(s => { const n = { ...s }; delete n[key]; return n }) }
+  }, [])
 
   // Sticky header offset
   const headerWrapRef = useRef(null)
@@ -1873,6 +1974,51 @@ export default function DonHangPage() {
             },
           },
           {
+            title: 'SL Sản Xuất', key: 'slSanXuat', width: 120, align: 'right',
+            render: (_, r) => (
+              <SlSanXuatCell record={r} onSave={fm => saveDhTrend(r, fm)} />
+            ),
+          },
+          {
+            title: <div style={{ lineHeight: 1.3, textAlign: 'center' }}>TT<br/>Nguyên Liệu</div>,
+            key: 'ttNl', width: 130,
+            render: (_, r) => (
+              <TtStatusCell
+                record={r} field="ttNguyenLieu" dateField="ngayVeNguyenLieu"
+                onSave={fm => saveDhTrend(r, fm)}
+                saving={!!trendSaving[`${r.id}_ttNguyenLieu`]}
+              />
+            ),
+          },
+          {
+            title: <div style={{ lineHeight: 1.3, textAlign: 'center' }}>TT<br/>BBC1</div>,
+            key: 'ttBbc1Col', width: 130,
+            render: (_, r) => (
+              <TtStatusCell
+                record={r} field="ttBbc1" dateField="ngayVeBbc1"
+                onSave={fm => saveDhTrend(r, fm)}
+                saving={!!trendSaving[`${r.id}_ttBbc1`]}
+              />
+            ),
+          },
+          {
+            title: <div style={{ lineHeight: 1.3, textAlign: 'center' }}>TT<br/>BBC2</div>,
+            key: 'ttBbc2Col', width: 130,
+            render: (_, r) => (
+              <TtStatusCell
+                record={r} field="ttBbc2" dateField="ngayVeBbc2"
+                onSave={fm => saveDhTrend(r, fm)}
+                saving={!!trendSaving[`${r.id}_ttBbc2`]}
+              />
+            ),
+          },
+          {
+            title: 'Ghi Chú', key: 'ghiChuTrend', width: 170,
+            render: (_, r) => (
+              <GhiChuCell record={r} onSave={fm => saveDhTrend(r, fm)} />
+            ),
+          },
+          {
             title: 'KL/ĐV (g)', key: 'khoiLuong', width: 95, align: 'right',
             render: (_, r) => <span style={{ color: '#0369a1', fontWeight: 600 }}>{fmtNum(r._pm.khoiLuong)}</span>,
           },
@@ -1933,7 +2079,7 @@ export default function DonHangPage() {
             rowKey="id"
             loading={loading || loadingMaster}
             size="small"
-            scroll={{ x: 2310 }}
+            scroll={{ x: 3000 }}
             sticky={{ offsetHeader: headerOffset }}
             rowHoverable={false}
             rowClassName={rowClassName}
