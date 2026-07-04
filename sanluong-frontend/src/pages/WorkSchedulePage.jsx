@@ -2850,6 +2850,163 @@ function MobileScheduleCard({ record, congDoan, nsMap, onClick }) {
   )
 }
 
+// ── StageSummaryBar ──────────────────────────────────────────────────────────
+function StageSummaryBar({ congDoan, liveData }) {
+  const slField = SL_FIELD_MAP[congDoan]
+  const [weekStats, setWeekStats] = useState(null)
+  const [fetching, setFetching] = useState(true)
+  const [open, setOpen] = useState(() => {
+    try { return localStorage.getItem(`ws_sumbar_${congDoan}`) !== '0' } catch { return true }
+  })
+
+  useEffect(() => {
+    let cancelled = false
+    setFetching(true)
+    const today = dayjs()
+    const dow = today.day() // 0=Sun, 1=Mon, ..., 6=Sat
+    const daysToMon = dow === 0 ? 6 : dow - 1
+    const monThis = today.subtract(daysToMon, 'day').startOf('day')
+    const monPrev = monThis.subtract(7, 'day')
+    const sunPrev = monThis.subtract(1, 'day')
+
+    Promise.all([
+      api.get('/work-schedule', { params: {
+        congDoan, source: 'SCHEDULE', tinhTrang: 'done',
+        fromDate: monThis.format('YYYY-MM-DD'),
+        toDate:   today.format('YYYY-MM-DD'),
+        page: 0, size: 500,
+      }}),
+      api.get('/work-schedule', { params: {
+        congDoan, source: 'SCHEDULE', tinhTrang: 'done',
+        fromDate: monPrev.format('YYYY-MM-DD'),
+        toDate:   sunPrev.format('YYYY-MM-DD'),
+        page: 0, size: 500,
+      }}),
+    ]).then(([currRes, prevRes]) => {
+      if (cancelled) return
+      const calc = ({ content = [] }) => ({
+        count: content.length,
+        sl:    content.reduce((s, r) => s + (slField ? Number(r[slField]) || 0 : 0), 0),
+        nk:    content.filter(r => Number(r.tpNhapKho) > 0).length,
+      })
+      setWeekStats({ curr: calc(currRes.data), prev: calc(prevRes.data) })
+    }).catch(() => {
+      setWeekStats({ curr: { count: 0, sl: 0, nk: 0 }, prev: { count: 0, sl: 0, nk: 0 } })
+    }).finally(() => { if (!cancelled) setFetching(false) })
+    return () => { cancelled = true }
+  }, [congDoan]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const doDang  = liveData.filter(r => r.tinhTrang === 'doing').length
+  const chuaSX  = liveData.filter(r => !r.tinhTrang).length
+  const tangSL  = slField ? liveData.filter(r => Number(r[slField]) > 0).length : 0
+  const saiLech = liveData.filter(r => r.saiLech).length
+
+  const toggle = () => {
+    const next = !open
+    setOpen(next)
+    try { localStorage.setItem(`ws_sumbar_${congDoan}`, next ? '1' : '0') } catch {}
+  }
+
+  const card = (extra = {}) => ({
+    background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8,
+    padding: '7px 14px', minWidth: 108, textAlign: 'center', ...extra,
+  })
+  const lbl  = (extra = {}) => ({ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', color: '#94a3b8', marginBottom: 2, ...extra })
+  const big  = (extra = {}) => ({ fontSize: 22, fontWeight: 800, lineHeight: 1.15, ...extra })
+  const sub  = { fontSize: 11, color: '#94a3b8', marginTop: 1 }
+
+  return (
+    <div style={{ background: '#f8faff', borderBottom: '1.5px solid #dde3f5', padding: open ? '6px 12px 10px' : '5px 12px' }}>
+      <div
+        onClick={toggle}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none', marginBottom: open ? 7 : 0 }}
+      >
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', letterSpacing: 0.8, textTransform: 'uppercase' }}>Tổng hợp</span>
+        <span style={{ fontSize: 10, color: '#9ca3af' }}>{open ? '▴ thu gọn' : '▾ xem'}</span>
+      </div>
+
+      {open && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'stretch' }}>
+
+          {/* Tuần trước */}
+          <div style={card({ borderColor: '#c7d2fe' })}>
+            <div style={lbl()}>Tuần trước</div>
+            {fetching ? <Spin size="small" style={{ margin: '6px 0' }} /> : (
+              <>
+                <div style={big({ color: '#4f46e5' })}>{weekStats?.prev?.count ?? 0} <span style={{ fontSize: 12, fontWeight: 500 }}>lô</span></div>
+                <div style={sub}>hoàn thành</div>
+                {slField && (weekStats?.prev?.sl ?? 0) > 0 && (
+                  <div style={{ fontSize: 11, color: '#6366f1', fontWeight: 600, marginTop: 2 }}>
+                    {(weekStats.prev.sl).toLocaleString('vi-VN')} sp
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Tuần này */}
+          <div style={card({ borderColor: '#93c5fd', background: '#eff6ff' })}>
+            <div style={lbl({ color: '#3b82f6' })}>Tuần này</div>
+            {fetching ? <Spin size="small" style={{ margin: '6px 0' }} /> : (
+              <>
+                <div style={big({ color: '#1d4ed8' })}>{weekStats?.curr?.count ?? 0} <span style={{ fontSize: 12, fontWeight: 500 }}>lô</span></div>
+                <div style={sub}>hoàn thành</div>
+                {slField && (weekStats?.curr?.sl ?? 0) > 0 && (
+                  <div style={{ fontSize: 11, color: '#2563eb', fontWeight: 600, marginTop: 2 }}>
+                    {(weekStats.curr.sl).toLocaleString('vi-VN')} sp
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Mới tăng SL */}
+          {slField && tangSL > 0 && (
+            <div style={card({ borderColor: '#86efac', background: '#f0fdf4' })}>
+              <div style={lbl({ color: '#16a34a' })}>Mới tăng SL</div>
+              <div style={big({ color: '#15803d' })}>{tangSL} <span style={{ fontSize: 12, fontWeight: 500 }}>lô</span></div>
+              <div style={sub}>đã có sản lượng</div>
+            </div>
+          )}
+
+          {/* Dở dang */}
+          <div style={card({ borderColor: doDang > 0 ? '#fcd34d' : '#e2e8f0', background: doDang > 0 ? '#fffbeb' : '#fff' })}>
+            <div style={lbl({ color: doDang > 0 ? '#d97706' : '#94a3b8' })}>Dở dang</div>
+            <div style={big({ color: doDang > 0 ? '#b45309' : '#94a3b8' })}>{doDang} <span style={{ fontSize: 12, fontWeight: 500 }}>lô</span></div>
+            <div style={sub}>đang sản xuất</div>
+          </div>
+
+          {/* Chưa SX */}
+          <div style={card()}>
+            <div style={lbl()}>Chưa SX</div>
+            <div style={big({ color: '#475569' })}>{chuaSX} <span style={{ fontSize: 12, fontWeight: 500 }}>lô</span></div>
+            <div style={sub}>chờ thực hiện</div>
+          </div>
+
+          {/* NK tuần này — DG stage */}
+          {congDoan === 'DG' && !fetching && (weekStats?.curr?.nk ?? 0) > 0 && (
+            <div style={card({ borderColor: '#6ee7b7', background: '#ecfdf5' })}>
+              <div style={lbl({ color: '#059669' })}>NK tuần này</div>
+              <div style={big({ color: '#065f46' })}>{weekStats.curr.nk} <span style={{ fontSize: 12, fontWeight: 500 }}>lô</span></div>
+              <div style={sub}>thành phẩm nhập kho</div>
+            </div>
+          )}
+
+          {/* Sai lệch */}
+          {saiLech > 0 && (
+            <div style={card({ borderColor: '#fca5a5', background: '#fff1f2' })}>
+              <div style={lbl({ color: '#dc2626' })}>Sai lệch</div>
+              <div style={big({ color: '#dc2626' })}>{saiLech} <span style={{ fontSize: 12, fontWeight: 500 }}>lô</span></div>
+              <div style={sub}>cần kiểm tra</div>
+            </div>
+          )}
+
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── StageTab ──────────────────────────────────────────────────────────────────
 function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved, jumpTarget }) {
   const navigate = useNavigate()
@@ -3869,6 +4026,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       {/* ── Tab: Danh sách / PCPL1 / PCPL3 ── */}
       {isListLikeTab && (
         <>
+          <StageSummaryBar congDoan={congDoan} liveData={data} />
           {/* ── Desktop table ── */}
           <div className="ws-desktop-view">
           <SkeletonTable

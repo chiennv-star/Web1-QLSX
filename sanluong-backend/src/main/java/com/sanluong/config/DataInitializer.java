@@ -48,24 +48,16 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void create(String username, String password, String fullName, User.Role role) {
-        userRepository.findByUsername(username).ifPresentOrElse(
-            u -> {
-                // TEMP: force-reset password on startup
-                u.setPassword(passwordEncoder.encode(password));
-                userRepository.save(u);
-                System.out.println("Đã reset mật khẩu: " + username);
-            },
-            () -> {
-                User u = User.builder()
-                        .username(username)
-                        .password(passwordEncoder.encode(password))
-                        .fullName(fullName)
-                        .role(role)
-                        .enabled(true)
-                        .build();
-                userRepository.save(u);
-                System.out.println("Đã tạo tài khoản: " + username);
-            }
-        );
+        if (!userRepository.existsByUsername(username)) {
+            User u = User.builder()
+                    .username(username)
+                    .password(passwordEncoder.encode(password))
+                    .fullName(fullName)
+                    .role(role)
+                    .enabled(true)
+                    .build();
+            userRepository.save(u);
+            System.out.println("Đã tạo tài khoản: " + username);
+        }
     }
 }
