@@ -210,15 +210,31 @@ function DonHangModal({ open, editItem, onClose, onSaved, existingMaDonHangs = [
 
   const handleBravoSelect = (val, option) => {
     justSelected.current = true
-    const p = option.raw
-    form.setFieldsValue({
-      maBravo:    p.maBravo,
-      maSp:       p.maTp       || '',
-      tenSanPham: p.tienTrinh  || '',
-    })
-    setLookupStatus('found')
-    setBravoOptions([])
-    setTimeout(() => { justSelected.current = false }, 150)
+    if (timerRef.current) clearTimeout(timerRef.current)
+    // option.raw có thể không được Ant Design truyền đúng khi label là JSX → ưu tiên tìm trong state
+    const found = bravoOptions.find(o => o.value === val)
+    const p = found?.raw ?? option?.raw
+    if (p) {
+      form.setFieldsValue({
+        maBravo:    p.maBravo,
+        maSp:       p.maTp       || '',
+        tenSanPham: p.tienTrinh  || '',
+      })
+      setLookupStatus('found')
+      setBravoOptions([])
+      setTimeout(() => { justSelected.current = false }, 150)
+    } else {
+      // Fallback: gọi API trực tiếp
+      setBravoOptions([])
+      setLookupStatus('loading')
+      api.get(`/product-master/lookup-by-bravo/${encodeURIComponent(val)}`)
+        .then(({ data: master }) => {
+          form.setFieldsValue({ maSp: master.maTp, tenSanPham: master.tienTrinh })
+          setLookupStatus('found')
+        })
+        .catch(() => setLookupStatus('not_found'))
+        .finally(() => setTimeout(() => { justSelected.current = false }, 150))
+    }
   }
 
   const handleBravoChange = (val) => {

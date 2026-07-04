@@ -33,9 +33,9 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        create("admin",    "admin123",   "Quản trị viên",       User.Role.ADMIN);
-        create("TKSX",     "TKSX",       "Tài khoản Sản Xuất",  User.Role.TKSX);
-        create("QuanDoc",  "QuanDoc123", "Quản lý Đọc",         User.Role.QUAN_DOC);
+        create("admin",    "SongAn@2025", "Quản trị viên",       User.Role.ADMIN);
+        create("TKSX",     "TKSX",        "Tài khoản Sản Xuất",  User.Role.TKSX);
+        create("QuanDoc",  "QuanDoc123",  "Quản lý Đọc",         User.Role.QUAN_DOC);
         initPhong();
     }
 
@@ -48,16 +48,24 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void create(String username, String password, String fullName, User.Role role) {
-        if (!userRepository.existsByUsername(username)) {
-            User u = User.builder()
-                    .username(username)
-                    .password(passwordEncoder.encode(password))
-                    .fullName(fullName)
-                    .role(role)
-                    .enabled(true)
-                    .build();
-            userRepository.save(u);
-            System.out.println("Đã tạo tài khoản: " + username);
-        }
+        userRepository.findByUsername(username).ifPresentOrElse(
+            u -> {
+                // TEMP: force-reset password on startup
+                u.setPassword(passwordEncoder.encode(password));
+                userRepository.save(u);
+                System.out.println("Đã reset mật khẩu: " + username);
+            },
+            () -> {
+                User u = User.builder()
+                        .username(username)
+                        .password(passwordEncoder.encode(password))
+                        .fullName(fullName)
+                        .role(role)
+                        .enabled(true)
+                        .build();
+                userRepository.save(u);
+                System.out.println("Đã tạo tài khoản: " + username);
+            }
+        );
     }
 }
