@@ -1130,7 +1130,8 @@ export default function DonHangPage() {
         api.get('/work-schedule', { params: { source: 'SCHEDULE', page: 0, size: 5000 } }),
       ])
       const allKhoach   = (khRes.data?.content  || []).filter(r => r.maBravo && r.maDonHang)
-      const allSchedule = (schRes.data?.content || []).filter(r => r.maBravo && r.maDonHang)
+      // SCHEDULE records: chỉ cần maBravo (maDonHang có thể null nếu không được link khi auto-sync)
+      const allSchedule = (schRes.data?.content || []).filter(r => r.maBravo)
 
       // Tính lại soLuongDaXepKh và tinhTrangSx từ Kế hoạch PLAN (coLo) — đồng bộ với BẢNG ĐƠN HÀNG
       const computeTinhTrangSx = (slXep, slDat) => {
@@ -1159,8 +1160,10 @@ export default function DonHangPage() {
         const hasKhoach = matched.length > 0
 
         // Tình trạng từng công đoạn — lấy từ SCHEDULE (sản lượng thực tế), không phải PLAN
+        // Ưu tiên match maBravo + maDonHang; nếu record không có maDonHang thì match maBravo alone
         const matchedSch = allSchedule.filter(r =>
-          r.maBravo === dh.maBravo && r.maDonHang === dh.maDonHang
+          r.maBravo === dh.maBravo &&
+          (!r.maDonHang || r.maDonHang === dh.maDonHang)
         )
         const _st = { PCPL1: [], PCPL2: [], PL: [], BBC1: [], DG: [] }
         for (const r of matchedSch) {
