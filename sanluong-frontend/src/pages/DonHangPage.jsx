@@ -1281,8 +1281,9 @@ function QuickScheduleModal({ open, order, planRecs, machine, congField, nsF, pr
 
 // ── Machine Plan Calendar (mini weekly grid) ──────────────────────────────────
 function MachinePlanCalendar({ records, onEdit, machineOrders = [] }) {
-  const [collapsedWeeks, setCollapsedWeeks] = useState(new Set())
-  const [extraWeeks, setExtraWeeks] = useState(1)
+  const [collapsedWeeks,    setCollapsedWeeks]    = useState(new Set())
+  const [extraWeeks,        setExtraWeeks]        = useState(1)
+  const [showUnscheduled,   setShowUnscheduled]   = useState(true)
 
   const sortedRecs = [...(records || [])].sort((a, b) => (a.ngayThucHien || '').localeCompare(b.ngayThucHien || ''))
   const hasRecs = sortedRecs.length > 0
@@ -1332,24 +1333,35 @@ function MachinePlanCalendar({ records, onEdit, machineOrders = [] }) {
     <div>
       {/* ── Chưa xếp lịch ── */}
       {unscheduledOrders.length > 0 && (
-        <div style={{ marginBottom: 10, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '8px 12px' }}>
-          <div style={{ fontWeight: 700, fontSize: 11, color: '#92400e', marginBottom: 6 }}>
-            Chưa xếp lịch ({unscheduledOrders.length} đơn)
+        <div style={{ marginBottom: 10, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, overflow: 'hidden' }}>
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', cursor: 'pointer', userSelect: 'none' }}
+            onClick={() => setShowUnscheduled(v => !v)}
+          >
+            <span style={{ fontSize: 10, color: '#92400e' }}>{showUnscheduled ? '▼' : '▶'}</span>
+            <span style={{ fontWeight: 700, fontSize: 11, color: '#92400e' }}>
+              Chưa xếp lịch ({unscheduledOrders.length} đơn)
+            </span>
+            <span style={{ fontSize: 11, color: '#b45309', fontWeight: 400, marginLeft: 2 }}>
+              — click chip để xếp lịch
+            </span>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {unscheduledOrders.map(o => (
-              <div key={o.key}
-                style={{ background: '#fff', border: '1px solid #fcd34d', borderRadius: 5, padding: '4px 8px', cursor: 'pointer', fontSize: 11 }}
-                title="Click để xếp lịch"
-                onClick={() => onEdit(o, [])}
-              >
-                <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{o.maBravo}</span>
-                {o.maDonHang && <span style={{ color: 'rgb(0,0,205)', marginLeft: 4, fontFamily: 'monospace', fontSize: 10 }}>[{o.maDonHang}]</span>}
-                <span style={{ color: '#374151', marginLeft: 4, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block', verticalAlign: 'bottom' }}>{o.tenSp}</span>
-                {o.sl != null && <span style={{ color: '#cf1322', fontWeight: 600, marginLeft: 4 }}>· {Number(o.sl).toLocaleString('vi-VN')}</span>}
-              </div>
-            ))}
-          </div>
+          {showUnscheduled && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '0 12px 10px' }}>
+              {unscheduledOrders.map(o => (
+                <div key={o.key}
+                  style={{ background: '#fff', border: '1px solid #fcd34d', borderRadius: 5, padding: '4px 8px', cursor: 'pointer', fontSize: 11 }}
+                  title="Click để xếp lịch"
+                  onClick={() => onEdit(o, [])}
+                >
+                  <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{o.maBravo}</span>
+                  {o.maDonHang && <span style={{ color: 'rgb(0,0,205)', marginLeft: 4, fontFamily: 'monospace', fontSize: 10 }}>[{o.maDonHang}]</span>}
+                  <span style={{ color: '#374151', marginLeft: 4, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block', verticalAlign: 'bottom' }}>{o.tenSp}</span>
+                  {o.sl != null && <span style={{ color: '#cf1322', fontWeight: 600, marginLeft: 4 }}>· {Number(o.sl).toLocaleString('vi-VN')}</span>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -1458,6 +1470,7 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose, o
   const [planDelLoading, setPlanDelLoading] = useState(false)
   const [isFullscreen,  setIsFullscreen]  = useState(false)
   const [hideScheduled, setHideScheduled] = useState(true)
+  const [showLichKH,    setShowLichKH]    = useState(true)
   // Dynamic table height: ensure horizontal scrollbar stays visible in viewport
   const tableBodyH = Math.max(260, window.innerHeight - 460)
   if (!machine) return null
@@ -1759,15 +1772,27 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose, o
     >
       {/* Date timeline strip */}
       {dateRows.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16, padding: '10px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 10 }}>
-          <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, alignSelf: 'center', marginRight: 4 }}>Lịch KH:</span>
-          {dateRows.map(dg => (
-            <Tooltip key={dg.date} title={`${dg.records.length} lô · SL: ${dg.totalSL.toLocaleString('vi-VN')}`}>
-              <div style={{ background: '#1677ff', color: '#fff', borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 600, cursor: 'default', fontFamily: 'monospace' }}>
-                {dg.date} <span style={{ opacity: 0.8 }}>({dg.records.length})</span>
-              </div>
-            </Tooltip>
-          ))}
+        <div style={{ marginBottom: 16, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 10, overflow: 'hidden' }}>
+          <div
+            style={{ display: 'flex', alignItems: 'center', padding: '6px 12px', cursor: 'pointer', userSelect: 'none', gap: 6 }}
+            onClick={() => setShowLichKH(v => !v)}
+          >
+            <span style={{ fontSize: 10, color: '#94a3b8' }}>{showLichKH ? '▼' : '▶'}</span>
+            <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Lịch KH:</span>
+            <span style={{ fontSize: 11, color: '#94a3b8' }}>({dateRows.length} ngày)</span>
+            {!showLichKH && <span style={{ fontSize: 11, color: '#1677ff', marginLeft: 4 }}>— click để xem</span>}
+          </div>
+          {showLichKH && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '0 12px 10px' }}>
+              {dateRows.map(dg => (
+                <Tooltip key={dg.date} title={`${dg.records.length} lô · SL: ${dg.totalSL.toLocaleString('vi-VN')}`}>
+                  <div style={{ background: '#1677ff', color: '#fff', borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 600, cursor: 'default', fontFamily: 'monospace' }}>
+                    {dg.date} <span style={{ opacity: 0.8 }}>({dg.records.length})</span>
+                  </div>
+                </Tooltip>
+              ))}
+            </div>
+          )}
         </div>
       )}
       <Tabs
