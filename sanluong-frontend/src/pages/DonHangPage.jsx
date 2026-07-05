@@ -1270,11 +1270,22 @@ function QuickScheduleModal({ open, order, planRecs, machine, congField, nsF, pr
 // ── Machine Detail Modal ──────────────────────────────────────────────────────
 function MachineDetailModal({ machine, planRecords, productMasterMap, onClose, onPlanChange }) {
   const [activeDetailTab, setActiveDetailTab] = useState('orders')
-  const [scheduleRow,   setScheduleRow]   = useState(null) // { row, planRecs }
+  const [scheduleRow,   setScheduleRow]   = useState(null)
   const [scheduleOpen,  setScheduleOpen]  = useState(false)
+  const [planDelLoading, setPlanDelLoading] = useState(false)
   // Dynamic table height: ensure horizontal scrollbar stays visible in viewport
   const tableBodyH = Math.max(260, window.innerHeight - 460)
   if (!machine) return null
+
+  const handlePlanDelete = async id => {
+    setPlanDelLoading(true)
+    try {
+      await api.delete(`/work-schedule/${id}`)
+      message.success('Đã xóa')
+      await onPlanChange?.()
+    } catch { message.error('Xóa thất bại') }
+    finally { setPlanDelLoading(false) }
+  }
 
   const bravoSet = new Set(machine.orders.map(o => o.maBravo))
   // Filter PLAN records for this machine's maBravos + stage
@@ -1503,6 +1514,28 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose, o
       title: 'Ghi Chú', dataIndex: 'ghiChu', key: 'ghiChu', ellipsis: true,
       render: v => v ? <span style={{ fontSize: 12, color: '#64748b' }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
+    {
+      title: 'Thao Tác', key: 'action', width: 80, align: 'center', fixed: 'right',
+      render: (_, r) => (
+        <Space size={2}>
+          <Button
+            size="small" type="text" icon={<EditOutlined />}
+            style={{ padding: '0 4px', color: '#10b981' }}
+            title="Sửa"
+            onClick={() => {
+              const orderObj = { maBravo: r.maBravo, maDonHang: r.maDonHang, tenSanPham: r._pm?.tenTrinh || r.maBravo, sl: 0 }
+              const recs = orderPlanMap[`${r.maBravo}|${r.maDonHang || ''}`] || [r]
+              setScheduleRow({ ...orderObj, _planRecs: recs })
+              setScheduleOpen(true)
+            }}
+          />
+          <Popconfirm title="Xóa ca kế hoạch này?" okText="Xóa" cancelText="Hủy" okType="danger"
+            onConfirm={() => handlePlanDelete(r.id)}>
+            <Button size="small" type="text" danger icon={<DeleteOutlined />} style={{ padding: '0 4px' }} loading={planDelLoading} />
+          </Popconfirm>
+        </Space>
+      ),
+    },
   ]
 
   // Date summary timeline
@@ -1633,7 +1666,7 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose, o
                 dataSource={machinePlanRecords.map((r, i) => ({ ...r, key: r.id || i }))}
                 columns={planColumns}
                 pagination={{ defaultPageSize: 50, showSizeChanger: true, showTotal: t => `${t} bản ghi` }}
-                scroll={{ x: 960, y: Math.max(200, window.innerHeight - 510) }}
+                scroll={{ x: 1050, y: Math.max(200, window.innerHeight - 510) }}
                 rowHoverable={false}
                 locale={{ emptyText: 'Không có dữ liệu kế hoạch' }}
                 summary={() => (
