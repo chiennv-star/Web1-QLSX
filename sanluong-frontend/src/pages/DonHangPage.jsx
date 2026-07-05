@@ -1108,6 +1108,21 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose })
       render: v => <span style={{ fontWeight: 700, color: '#cf1322' }}>{fmtNum(v)}</span>,
     },
     {
+      title: 'TT Xếp Lịch', key: 'ttXep', width: 100, align: 'center',
+      filters: [{ text: 'Đã xếp', value: 1 }, { text: 'Chưa xếp', value: 0 }],
+      onFilter: (val, r) => val === 1 ? r._soCa > 0 : r._soCa === 0,
+      render: (_, r) => r._soCa > 0
+        ? <Tag color="success"  style={{ fontWeight: 700, margin: 0 }}>Đã xếp</Tag>
+        : <Tag color="warning"  style={{ fontWeight: 700, margin: 0 }}>Chưa xếp</Tag>,
+    },
+    {
+      title: 'Cỡ Lô KH', key: 'coLoKH', width: 95, align: 'right',
+      sorter: (a, b) => (a._totalCoLo||0) - (b._totalCoLo||0),
+      render: (_, r) => r._totalCoLo
+        ? <span style={{ fontWeight: 700, color: '#374151' }}>{r._totalCoLo.toLocaleString('vi-VN')}</span>
+        : <span style={{ color: '#d9d9d9' }}>—</span>,
+    },
+    {
       title: 'NS/Ca', key: 'ns', width: 90, align: 'right',
       render: (_, r) => {
         const ns = Number((productMasterMap[r.maBravo] || {})[nsF]) || 0
@@ -1117,15 +1132,23 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose })
     {
       title: 'Tổng Công', key: 'cong', width: 90, align: 'right',
       sorter: (a, b) => {
-        const pmA = productMasterMap[a.maBravo] || {}; const pmB = productMasterMap[b.maBravo] || {}
-        return ((a.sl||0) / (Number(pmA[nsF])||1)) - ((b.sl||0) / (Number(pmB[nsF])||1))
+        const nsA = Number((productMasterMap[a.maBravo] || {})[nsF]) || 1
+        const nsB = Number((productMasterMap[b.maBravo] || {})[nsF]) || 1
+        const slA = a._soCa > 0 ? (a._totalCoLo || 0) : (a.sl || 0)
+        const slB = b._soCa > 0 ? (b._totalCoLo || 0) : (b.sl || 0)
+        return (slA / nsA) - (slB / nsB)
       },
       render: (_, r) => {
         const ns = Number((productMasterMap[r.maBravo] || {})[nsF]) || 0
-        if (!ns || !r.sl) return <span style={{ color: '#d9d9d9' }}>—</span>
-        const c = r.sl / ns
+        const sl = r._soCa > 0 ? (r._totalCoLo || 0) : (r.sl || 0)
+        if (!ns || !sl) return <span style={{ color: '#d9d9d9' }}>—</span>
+        const c = sl / ns
         const color = c > 5 ? '#cf1322' : c > 2 ? '#d46b08' : '#389e0d'
-        return <span style={{ fontWeight: 700, color }}>{c.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</span>
+        return (
+          <Tooltip title={r._soCa > 0 ? `Cỡ lô KH (${sl.toLocaleString('vi-VN')}) / NS (${ns.toLocaleString('vi-VN')})` : `SL còn lại (${sl.toLocaleString('vi-VN')}) / NS (${ns.toLocaleString('vi-VN')})`}>
+            <span style={{ fontWeight: 700, color }}>{c.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</span>
+          </Tooltip>
+        )
       },
     },
     {
@@ -1268,41 +1291,55 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose })
                   const k = `${o.maBravo}|${o.maDonHang || ''}`
                   const planRecs = orderPlanMap[k] || []
                   const tongCong = cf ? planRecs.reduce((s, r) => s + (Number(r[cf]) || 0), 0) : 0
+                  const totalCoLo = planRecs.reduce((s, r) => s + (Number(r.coLo) || 0), 0)
                   return {
                     ...o, key: o.id || i,
                     _soCa: planRecs.length,
                     _tongCong: tongCong || null,
+                    _totalCoLo: totalCoLo || null,
                     _dates: [...new Set(planRecs.map(r => r.ngayThucHien).filter(Boolean))].sort(),
                     _ttKH: aggTT(planRecs),
                   }
                 })}
                 columns={orderColumns}
                 pagination={false}
-                scroll={{ x: 1320, y: 500 }}
+                scroll={{ x: 1560, y: 500 }}
                 rowHoverable={false}
                 locale={{ emptyText: 'Không có dữ liệu' }}
                 summary={ds => {
-                  const totalCongKH = ds.reduce((s, r) => s + (r._tongCong || 0), 0)
-                  const totalCaKH   = ds.reduce((s, r) => s + (r._soCa || 0), 0)
+                  const totalCongKH  = ds.reduce((s, r) => s + (r._tongCong || 0), 0)
+                  const totalCaKH    = ds.reduce((s, r) => s + (r._soCa || 0), 0)
+                  const totalCoLoKH  = ds.reduce((s, r) => s + (r._totalCoLo || 0), 0)
+                  const daXep        = ds.filter(r => r._soCa > 0).length
+                  const chuaXep      = ds.filter(r => r._soCa === 0).length
                   return (
                   <Table.Summary.Row>
                     <Table.Summary.Cell index={0} colSpan={4}><span style={{ fontWeight: 700, fontSize: 12 }}>Tổng</span></Table.Summary.Cell>
                     <Table.Summary.Cell index={4} align="right">
                       <span style={{ fontWeight: 700, color: '#cf1322' }}>{machine.totalSL.toLocaleString('vi-VN')}</span>
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={5} />
+                    <Table.Summary.Cell index={5} align="center">
+                      <Space size={4}>
+                        {daXep > 0   && <Tag color="success" style={{ margin: 0, fontWeight: 600 }}>{daXep} đã xếp</Tag>}
+                        {chuaXep > 0 && <Tag color="warning" style={{ margin: 0, fontWeight: 600 }}>{chuaXep} chưa xếp</Tag>}
+                      </Space>
+                    </Table.Summary.Cell>
                     <Table.Summary.Cell index={6} align="right">
+                      {totalCoLoKH ? <span style={{ fontWeight: 700, color: '#374151' }}>{totalCoLoKH.toLocaleString('vi-VN')}</span> : null}
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={7} />
+                    <Table.Summary.Cell index={8} align="right">
                       <span style={{ fontWeight: 700, color: machine.totalCong > 10 ? '#cf1322' : machine.totalCong > 5 ? '#d46b08' : '#389e0d' }}>
                         {machine.totalCong.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}
                       </span>
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={7} align="center">
+                    <Table.Summary.Cell index={9} align="center">
                       {totalCaKH ? <Tag color="blue" style={{ fontWeight: 700, margin: 0 }}>{totalCaKH}</Tag> : null}
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={8} align="right">
+                    <Table.Summary.Cell index={10} align="right">
                       {totalCongKH ? <span style={{ fontWeight: 700, color: '#d46b08' }}>{totalCongKH.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</span> : null}
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={9} colSpan={3} />
+                    <Table.Summary.Cell index={11} colSpan={3} />
                   </Table.Summary.Row>
                 )
                 }}
