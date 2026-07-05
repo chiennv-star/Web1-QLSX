@@ -3,7 +3,7 @@ import { Rnd } from 'react-rnd'
 import {
   Table, Button, Space, Input, Select, DatePicker, Modal, Form,
   InputNumber, Tag, Popconfirm, message, Badge, Tooltip, Alert,
-  Checkbox, Progress, List as AntList, Typography, Upload, Result, Dropdown, AutoComplete,
+  Checkbox, Progress, List as AntList, Typography, Upload, Result, Dropdown, AutoComplete, Tabs, Statistic,
 } from 'antd'
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined,
@@ -1032,6 +1032,238 @@ function TtStatusCell({ record, field, dateField, onSave, saving }) {
   )
 }
 
+// ── Machine Detail Modal ──────────────────────────────────────────────────────
+function MachineDetailModal({ machine, planRecords, productMasterMap, onClose }) {
+  const [activeDetailTab, setActiveDetailTab] = useState('orders')
+  if (!machine) return null
+
+  const bravoSet = new Set(machine.orders.map(o => o.maBravo))
+  // Filter PLAN records for this machine's maBravos + stage
+  const stagePlanFilter = r => {
+    const cd = r.congDoan?.toUpperCase()
+    const tn = r.toNhom?.toUpperCase()
+    if (machine.label === 'PC')   return cd === 'PC' && (tn === 'PCPL1' || tn === 'PCPL2')
+    if (machine.label === 'PL')   return cd === 'PC' && (tn === 'PL' || tn === 'PCPL3')
+    if (machine.label === 'BBC1') return cd === 'BBC1'
+    if (machine.label === 'ĐG')   return cd === 'DG' || cd === 'ĐG'
+    return true
+  }
+  const machinePlanRecords = planRecords
+    .filter(r => bravoSet.has(r.maBravo) && stagePlanFilter(r))
+    .map(r => ({ ...r, _pm: productMasterMap[r.maBravo] || {} }))
+    .sort((a, b) => (a.ngayThucHien || '').localeCompare(b.ngayThucHien || ''))
+
+  // Group plan records by date for summary
+  const dateGroups = {}
+  machinePlanRecords.forEach(r => {
+    const d = r.ngayThucHien || 'Chưa xác định'
+    if (!dateGroups[d]) dateGroups[d] = { date: d, records: [], totalSL: 0 }
+    dateGroups[d].records.push(r)
+    dateGroups[d].totalSL += Number(r.coLo || 0)
+  })
+  const fmtNum = v => (v != null && v !== '') ? Number(v).toLocaleString('vi-VN') : '—'
+  const tagColorOf = lbl => ({ PC: 'blue', PL: 'cyan', BBC1: 'purple', ĐG: 'geekblue' }[lbl] || 'default')
+  const ttTag = tt => {
+    if (tt === 'done')    return <Tag color="success" style={{ margin: 0 }}>Xong</Tag>
+    if (tt === 'doing')   return <Tag color="processing" style={{ margin: 0 }}>Đang SX</Tag>
+    if (tt === 'pending') return <Tag color="default" style={{ margin: 0, color: '#94a3b8' }}>Chờ</Tag>
+    return <Tag style={{ margin: 0, color: '#d9d9d9' }}>—</Tag>
+  }
+
+  const orderColumns = [
+    { title: '#', key: 'stt', width: 44, align: 'center', render: (_, __, i) => <span style={{ fontSize: 11, color: '#94a3b8' }}>{i + 1}</span> },
+    {
+      title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 110, align: 'center',
+      render: v => <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', fontSize: 12 }}>{v}</span>,
+    },
+    {
+      title: 'Mã Đơn Hàng', dataIndex: 'maDonHang', key: 'maDonHang', width: 110, align: 'center',
+      render: v => v ? <span style={{ fontFamily: 'monospace', color: 'rgb(0,0,205)', fontWeight: 600, fontSize: 12 }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>,
+    },
+    {
+      title: 'Tên Sản Phẩm', dataIndex: 'tenSanPham', key: 'tenSanPham', width: 220, ellipsis: true,
+      render: v => <span style={{ fontSize: 13, color: '#1e293b', fontWeight: 500 }}>{v || '—'}</span>,
+    },
+    {
+      title: 'SL Còn Lại', dataIndex: 'sl', key: 'sl', width: 110, align: 'right',
+      sorter: (a, b) => (a.sl || 0) - (b.sl || 0),
+      render: v => <span style={{ fontWeight: 700, color: '#cf1322' }}>{fmtNum(v)}</span>,
+    },
+    {
+      title: 'Tổng Công', key: 'cong', width: 110, align: 'right',
+      sorter: (a, b) => {
+        const nsF = machine.label === 'PC' ? 'nangSuatPc' : machine.label === 'PL' ? 'nangSuatPl' : machine.label === 'BBC1' ? 'nangSuatBbc1' : 'slTrungBinh'
+        const pmA = productMasterMap[a.maBravo] || {}; const pmB = productMasterMap[b.maBravo] || {}
+        return ((a.sl||0) / (Number(pmA[nsF])||1)) - ((b.sl||0) / (Number(pmB[nsF])||1))
+      },
+      render: (_, r) => {
+        const nsF = machine.label === 'PC' ? 'nangSuatPc' : machine.label === 'PL' ? 'nangSuatPl' : machine.label === 'BBC1' ? 'nangSuatBbc1' : 'slTrungBinh'
+        const pm = productMasterMap[r.maBravo] || {}
+        const ns = Number(pm[nsF]) || 0
+        if (!ns || !r.sl) return <span style={{ color: '#d9d9d9' }}>—</span>
+        const c = r.sl / ns
+        const color = c > 5 ? '#cf1322' : c > 2 ? '#d46b08' : '#389e0d'
+        return <span style={{ fontWeight: 700, color }}>{c.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</span>
+      },
+    },
+    {
+      title: 'Loại Máy (NS)', key: 'ns', width: 130, align: 'right',
+      render: (_, r) => {
+        const nsF = machine.label === 'PC' ? 'nangSuatPc' : machine.label === 'PL' ? 'nangSuatPl' : machine.label === 'BBC1' ? 'nangSuatBbc1' : 'slTrungBinh'
+        const pm = productMasterMap[r.maBravo] || {}
+        const ns = Number(pm[nsF]) || 0
+        return ns ? <span style={{ color: '#0369a1', fontWeight: 600 }}>{ns.toLocaleString('vi-VN')}/ca</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+      },
+    },
+  ]
+
+  const planColumns = [
+    { title: '#', key: 'stt', width: 44, align: 'center', render: (_, __, i) => <span style={{ fontSize: 11, color: '#94a3b8' }}>{i + 1}</span> },
+    {
+      title: 'Ngày KH', dataIndex: 'ngayThucHien', key: 'ngay', width: 105, align: 'center',
+      render: v => v ? <Tag color="blue" style={{ fontWeight: 600, margin: 0, fontFamily: 'monospace' }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>,
+    },
+    {
+      title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 110, align: 'center',
+      render: v => <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', fontSize: 12 }}>{v}</span>,
+    },
+    {
+      title: 'Mã Đơn Hàng', dataIndex: 'maDonHang', key: 'maDonHang', width: 110, align: 'center',
+      render: v => v ? <span style={{ fontFamily: 'monospace', color: 'rgb(0,0,205)', fontWeight: 600, fontSize: 12 }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>,
+    },
+    {
+      title: 'Tên Sản Phẩm', key: 'tenSp', width: 200, ellipsis: true,
+      render: (_, r) => <span style={{ fontSize: 12, color: '#1e293b' }}>{r._pm.tenTrinh || r.maBravo}</span>,
+    },
+    {
+      title: 'Số Lô', dataIndex: 'soLo', key: 'soLo', width: 80, align: 'center',
+      render: v => v ? <Tag color="geekblue" style={{ fontFamily: 'monospace', fontWeight: 600, margin: 0 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>,
+    },
+    {
+      title: 'Cỡ Lô (SL)', dataIndex: 'coLo', key: 'coLo', width: 100, align: 'right',
+      sorter: (a, b) => (Number(a.coLo)||0) - (Number(b.coLo)||0),
+      render: v => <span style={{ fontWeight: 700, color: '#374151' }}>{fmtNum(v)}</span>,
+    },
+    {
+      title: 'Nhóm', dataIndex: 'toNhom', key: 'toNhom', width: 80, align: 'center',
+      render: v => v ? <Tag style={{ fontWeight: 600, margin: 0 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>,
+    },
+    {
+      title: 'Tình Trạng', dataIndex: 'tinhTrang', key: 'tinhTrang', width: 90, align: 'center',
+      render: v => ttTag(v),
+    },
+    {
+      title: 'Ghi Chú', dataIndex: 'ghiChu', key: 'ghiChu', ellipsis: true,
+      render: v => v ? <span style={{ fontSize: 12, color: '#64748b' }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>,
+    },
+  ]
+
+  // Date summary timeline
+  const dateRows = Object.values(dateGroups).sort((a, b) => a.date.localeCompare(b.date))
+
+  return (
+    <Modal
+      open
+      onCancel={onClose}
+      destroyOnHidden
+      transitionName=""
+      width={1100}
+      footer={<Button onClick={onClose}>Đóng</Button>}
+      title={
+        <Space>
+          <Tag color={tagColorOf(machine.label)} style={{ fontWeight: 700, fontSize: 13 }}>{machine.stageName}</Tag>
+          <span style={{ fontSize: 15, fontWeight: 700, color: '#1e293b' }}>{machine.machineName}</span>
+          <Tag color="blue">{machine.orders.length} đơn</Tag>
+          <span style={{ fontSize: 12, color: '#64748b', fontWeight: 400 }}>
+            Tổng SL: <b style={{ color: '#cf1322' }}>{machine.totalSL.toLocaleString('vi-VN')}</b>
+            {' · '}Tổng công: <b style={{ color: machine.totalCong > 10 ? '#cf1322' : machine.totalCong > 5 ? '#d46b08' : '#389e0d' }}>
+              {machine.totalCong.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} ngày
+            </b>
+          </span>
+        </Space>
+      }
+    >
+      {/* Date timeline strip */}
+      {dateRows.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16, padding: '10px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+          <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, alignSelf: 'center', marginRight: 4 }}>Lịch KH:</span>
+          {dateRows.map(dg => (
+            <Tooltip key={dg.date} title={`${dg.records.length} lô · SL: ${dg.totalSL.toLocaleString('vi-VN')}`}>
+              <div style={{ background: '#1677ff', color: '#fff', borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 600, cursor: 'default', fontFamily: 'monospace' }}>
+                {dg.date} <span style={{ opacity: 0.8 }}>({dg.records.length})</span>
+              </div>
+            </Tooltip>
+          ))}
+        </div>
+      )}
+      <Tabs
+        activeKey={activeDetailTab}
+        onChange={setActiveDetailTab}
+        size="small"
+        items={[
+          {
+            key: 'orders',
+            label: <span style={{ fontWeight: 600 }}>Theo Đơn Hàng <Tag color="blue" style={{ marginLeft: 4 }}>{machine.orders.length}</Tag></span>,
+            children: (
+              <Table
+                size="small"
+                dataSource={machine.orders.map((o, i) => ({ ...o, key: o.id || i }))}
+                columns={orderColumns}
+                pagination={false}
+                scroll={{ x: 840, y: 420 }}
+                rowHoverable={false}
+                locale={{ emptyText: 'Không có dữ liệu' }}
+                summary={() => (
+                  <Table.Summary.Row>
+                    <Table.Summary.Cell index={0} colSpan={4}><span style={{ fontWeight: 700, fontSize: 12 }}>Tổng</span></Table.Summary.Cell>
+                    <Table.Summary.Cell index={4} align="right">
+                      <span style={{ fontWeight: 700, color: '#cf1322' }}>{machine.totalSL.toLocaleString('vi-VN')}</span>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={5} align="right">
+                      <span style={{ fontWeight: 700, color: machine.totalCong > 10 ? '#cf1322' : machine.totalCong > 5 ? '#d46b08' : '#389e0d' }}>
+                        {machine.totalCong.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}
+                      </span>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={6} />
+                  </Table.Summary.Row>
+                )}
+              />
+            ),
+          },
+          {
+            key: 'plan',
+            label: <span style={{ fontWeight: 600 }}>Lịch Kế Hoạch <Tag color="geekblue" style={{ marginLeft: 4 }}>{machinePlanRecords.length}</Tag></span>,
+            children: machinePlanRecords.length === 0 ? (
+              <div style={{ padding: 32, textAlign: 'center', color: '#94a3b8' }}>Chưa có bản ghi kế hoạch nào cho máy này</div>
+            ) : (
+              <Table
+                size="small"
+                dataSource={machinePlanRecords.map((r, i) => ({ ...r, key: r.id || i }))}
+                columns={planColumns}
+                pagination={{ defaultPageSize: 50, showSizeChanger: true, showTotal: t => `${t} bản ghi` }}
+                scroll={{ x: 960, y: 400 }}
+                rowHoverable={false}
+                locale={{ emptyText: 'Không có dữ liệu kế hoạch' }}
+                summary={() => (
+                  <Table.Summary.Row>
+                    <Table.Summary.Cell index={0} colSpan={6}><span style={{ fontWeight: 700, fontSize: 12 }}>Tổng</span></Table.Summary.Cell>
+                    <Table.Summary.Cell index={6} align="right">
+                      <span style={{ fontWeight: 700, color: '#374151' }}>
+                        {machinePlanRecords.reduce((s, r) => s + (Number(r.coLo)||0), 0).toLocaleString('vi-VN')}
+                      </span>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={7} colSpan={3} />
+                  </Table.Summary.Row>
+                )}
+              />
+            ),
+          },
+        ]}
+      />
+    </Modal>
+  )
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function DonHangPage() {
   const { isAdmin, isAdminKH } = useAuth()
@@ -1076,6 +1308,8 @@ export default function DonHangPage() {
   const [employeeCounts,    setEmployeeCounts]    = useState({})
   const [collapsedLoaiSp,   setCollapsedLoaiSp]   = useState(new Set())
   const [trendSaving,       setTrendSaving]       = useState({}) // `${id}_field` → bool
+  const [planRecords,       setPlanRecords]       = useState([])
+  const [selectedMachine,   setSelectedMachine]   = useState(null)
 
   // ── Lưu field trong tab Xu Hướng ────────────────────────────────────────────
   const saveDhTrend = useCallback(async (record, fieldMap) => {
@@ -1192,6 +1426,7 @@ export default function DonHangPage() {
       })
 
       setData(enriched)
+      setPlanRecords(allKhoach)
 
       // Cập nhật DB ngầm cho các bản ghi có tinhTrangSx thay đổi
       const changed = enriched.filter(dh => {
@@ -2511,8 +2746,8 @@ export default function DonHangPage() {
                 rowKey="key"
                 pagination={false}
                 scroll={{ x: 900 }}
-                rowHoverable={false}
                 columns={machineColumns}
+                onRow={r => ({ onClick: () => setSelectedMachine(r), style: { cursor: 'pointer' } })}
                 locale={{ emptyText: <span style={{ color: '#d9d9d9' }}>Chưa có đơn nào đủ điều kiện</span> }}
                 rowClassName={(r) => `machine-row-${r.label.toLowerCase()}`}
                 summary={() => machineData.length > 0 ? (
@@ -3623,6 +3858,16 @@ export default function DonHangPage() {
         onClose={() => setDetailOpen(false)}
         onSaved={onDetailSaved}
       />
+
+      {/* ── Machine Detail Modal ── */}
+      {selectedMachine && (
+        <MachineDetailModal
+          machine={selectedMachine}
+          planRecords={planRecords}
+          productMasterMap={productMasterMap}
+          onClose={() => setSelectedMachine(null)}
+        />
+      )}
     </>
   )
 }
