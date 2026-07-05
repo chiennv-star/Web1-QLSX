@@ -1929,7 +1929,10 @@ export default function DonHangPage() {
     localStorage.setItem('donhang_hidden_ids', JSON.stringify([...hiddenIds]))
   }, [hiddenIds])
   const [showHidden,        setShowHidden]        = useState(false)
-  const [activeTab,         setActiveTab]         = useState('active') // 'active' | 'done' | 'trend' | 'analysis'
+  const [activeTab,         setActiveTab]         = useState(() => {
+    const dtab = new URLSearchParams(window.location.search).get('dtab')
+    return dtab || 'active'
+  })
   const [productMasterMap,  setProductMasterMap]  = useState({})
   const [loadingMaster,     setLoadingMaster]     = useState(false)
   const [analysisFullscreen, setAnalysisFullscreen] = useState(false)
@@ -2106,6 +2109,100 @@ export default function DonHangPage() {
     })
   // Completed table: tinhTrangSx === 'done' (always from full data, no hidden filter)
   const completedData = data.filter(r => r.tinhTrangSx === 'done' && baseFilter(r))
+
+  // ── Memoize allStatusData + machineData để dùng trong useEffect restore ─────
+  const allStatusData = useMemo(() => {
+    const calcStageOverall = ss => {
+      if (!ss) return null
+      const vals = [ss.PC, ss.PL, ss.BBC1, ss.DG].filter(Boolean)
+      if (!vals.length) return null
+      if (vals.every(s => s === 'done')) return 'done'
+      if (vals.some(s => s === 'done' || s === 'doing')) return 'doing'
+      return 'pending'
+    }
+    const ttScore = v => v === 'du' ? 2 : v === 'chua_du' ? 1 : 0
+    return [...displayData, ...completedData]
+      .map(r => {
+        const isDone = r.tinhTrangSx === 'done'
+        return {
+          ...r,
+          _pm:           productMasterMap[r.maBravo] || {},
+          ttNguyenLieu:  isDone ? 'du' : r.ttNguyenLieu,
+          ttBbc1:        isDone ? 'du' : r.ttBbc1,
+          ttBbc2:        isDone ? 'du' : r.ttBbc2,
+          _stageOverall: calcStageOverall(r.stageStatus),
+        }
+      })
+      .sort((a, b) => {
+        const sa = ttScore(a.ttNguyenLieu) + ttScore(a.ttBbc1) + ttScore(a.ttBbc2)
+        const sb = ttScore(b.ttNguyenLieu) + ttScore(b.ttBbc1) + ttScore(b.ttBbc2)
+        if (sb !== sa) return sb - sa
+        return (Number(b.soLuongConLai) || 0) - (Number(a.soLuongConLai) || 0)
+      })
+  }, [displayData, completedData, productMasterMap])
+
+  const machineDataMemo = useMemo(() => {
+    const machineStages = [
+      { field: 'mayMocPc',   nsField: 'nangSuatPc',   label: 'PC',   tagColor: 'blue',     stageName: 'Pha Chế',   accentColor: '#1d4ed8' },
+      { field: 'mayMocPl',   nsField: 'nangSuatPl',   label: 'PL',   tagColor: 'cyan',     stageName: 'Phân Liều', accentColor: '#0e7490' },
+      { field: 'mayMocBbc1', nsField: 'nangSuatBbc1', label: 'BBC1', tagColor: 'purple',   stageName: 'BBC1',      accentColor: '#6d28d9' },
+      { field: 'mayMocDg',   nsField: 'slTrungBinh',  label: 'ĐG',   tagColor: 'geekblue', stageName: 'Đóng Gói', accentColor: '#2563eb' },
+    ]
+    const qualifiedRows = allStatusData.filter(r => r.ttNguyenLieu && r.ttBbc1 && r.ttBbc2)
+    const machineMap = {}
+    qualifiedRows.forEach(r => {
+      machineStages.forEach(({ field, nsField, label, tagColor, stageName, accentColor }) => {
+        const machineName = r._pm[field]
+        if (!machineName) return
+        const key = `${field}::${machineName}`
+        if (!machineMap[key]) {
+          machineMap[key] = { key, machineName, label, tagColor, stageName, accentColor, orders: [], totalSL: 0, totalCong: 0 }
+        }
+        const m = machineMap[key]
+        const sl = Number(r.soLuongConLai) || 0
+        const ns = Number(r._pm[nsField]) || 0
+        m.orders.push({ id: r.id, maBravo: r.maBravo, tenSanPham: r.tenSanPham, sl, maDonHang: r.maDonHang, stageStatus: r.stageStatus })
+        m.totalSL += sl
+        if (ns > 0) m.totalCong += sl / ns
+      })
+    })
+    const stageOrder = { PC: 0, PL: 1, BBC1: 2, ĐG: 3 }
+    return Object.values(machineMap).sort((a, b) => {
+      const sd = (stageOrder[a.label] ?? 9) - (stageOrder[b.label] ?? 9)
+      return sd !== 0 ? sd : b.totalCong - a.totalCong
+    })
+  }, [allStatusData])
+
+  // ── Persist activeTab (inner) in URL as dtab ────────────────────────────
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    url.searchParams.set('dtab', activeTab)
+    window.history.replaceState({}, '', url)
+  }, [activeTab])
+
+  // ── Persist selected machine key in URL ─────────────────────────────────
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (selectedMachine?.key) url.searchParams.set('machine', selectedMachine.key)
+    else url.searchParams.delete('machine')
+    window.history.replaceState({}, '', url)
+  }, [selectedMachine])
+
+  // ── Restore machine modal from URL on data load ──────────────────────────
+  const pendingMachineKey = useRef(new URLSearchParams(window.location.search).get('machine'))
+  useEffect(() => {
+    if (!pendingMachineKey.current) return
+    // Ensure product master is loaded so machineDataMemo can be built
+    loadProductMaster()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!pendingMachineKey.current || !machineDataMemo.length) return
+    const match = machineDataMemo.find(m => m.key === pendingMachineKey.current)
+    if (match) {
+      setSelectedMachine(match)
+      pendingMachineKey.current = null
+    }
+  }, [machineDataMemo])
 
   // ── Load product master cho tab Xu hướng ─────────────────────────────────
   const loadProductMaster = useCallback(async ({ force = false } = {}) => {
@@ -3247,36 +3344,8 @@ export default function DonHangPage() {
               : <span style={{ color: '#d9d9d9' }}>—</span>,
           },
         ]
-        // ── Phân tích tải máy — đơn đủ NL/BBC ─────────────────────────────────
-        const qualifiedRows = allStatusData.filter(r => r.ttNguyenLieu && r.ttBbc1 && r.ttBbc2)
-        const machineStages = [
-          { field: 'mayMocPc',   nsField: 'nangSuatPc',   label: 'PC',   tagColor: 'blue',     stageName: 'Pha Chế',   accentColor: '#1d4ed8' },
-          { field: 'mayMocPl',   nsField: 'nangSuatPl',   label: 'PL',   tagColor: 'cyan',     stageName: 'Phân Liều', accentColor: '#0e7490' },
-          { field: 'mayMocBbc1', nsField: 'nangSuatBbc1', label: 'BBC1', tagColor: 'purple',   stageName: 'BBC1',      accentColor: '#6d28d9' },
-          { field: 'mayMocDg',   nsField: 'slTrungBinh',  label: 'ĐG',   tagColor: 'geekblue', stageName: 'Đóng Gói', accentColor: '#2563eb' },
-        ]
-        const machineMap = {}
-        qualifiedRows.forEach(r => {
-          machineStages.forEach(({ field, nsField, label, tagColor, stageName, accentColor }) => {
-            const machineName = r._pm[field]
-            if (!machineName) return
-            const key = `${field}::${machineName}`
-            if (!machineMap[key]) {
-              machineMap[key] = { key, machineName, label, tagColor, stageName, accentColor, orders: [], totalSL: 0, totalCong: 0 }
-            }
-            const m = machineMap[key]
-            const sl = Number(r.soLuongConLai) || 0
-            const ns = Number(r._pm[nsField]) || 0
-            m.orders.push({ id: r.id, maBravo: r.maBravo, tenSanPham: r.tenSanPham, sl, maDonHang: r.maDonHang, stageStatus: r.stageStatus })
-            m.totalSL += sl
-            if (ns > 0) m.totalCong += sl / ns
-          })
-        })
-        const stageOrder = { PC: 0, PL: 1, BBC1: 2, ĐG: 3 }
-        const machineData = Object.values(machineMap).sort((a, b) => {
-          const sd = (stageOrder[a.label] ?? 9) - (stageOrder[b.label] ?? 9)
-          return sd !== 0 ? sd : b.totalCong - a.totalCong
-        })
+        // ── Phân tích tải máy — dùng memoized machineDataMemo ──────────────────
+        const machineData = machineDataMemo
         const sumCong = lbl => machineData.filter(m => m.label === lbl).reduce((s, m) => s + m.totalCong, 0)
         const machineColumns = [
           { title: '#', key: 'stt', width: 44, align: 'center', render: (_, __, i) => <span style={{ fontSize: 11, color: '#94a3b8' }}>{i + 1}</span> },
