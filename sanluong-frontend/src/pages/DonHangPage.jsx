@@ -1111,6 +1111,8 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose })
       title: 'TT Xếp Lịch', key: 'ttXep', width: 100, align: 'center',
       filters: [{ text: 'Đã xếp', value: 1 }, { text: 'Chưa xếp', value: 0 }],
       onFilter: (val, r) => val === 1 ? r._soCa > 0 : r._soCa === 0,
+      sorter: (a, b) => (a._soCa > 0 ? 1 : 0) - (b._soCa > 0 ? 1 : 0),
+      defaultSortOrder: 'ascend',
       render: (_, r) => r._soCa > 0
         ? <Tag color="success"  style={{ fontWeight: 700, margin: 0 }}>Đã xếp</Tag>
         : <Tag color="warning"  style={{ fontWeight: 700, margin: 0 }}>Chưa xếp</Tag>,
