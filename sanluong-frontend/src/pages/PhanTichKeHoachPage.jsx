@@ -355,6 +355,75 @@ export default function PhanTichKeHoachPage() {
     dedupedByLo.length > 0 ? Math.round(grandSLAll / dedupedByLo.length) : 0,
   [dedupedByLo, grandSLAll])
 
+  // ── Danh sách đơn hàng phân tích ─────────────────────────────────────────────
+  const orderListData = useMemo(() => {
+    const map = {}
+    dedupedByLo.forEach(r => {
+      const key = r.maDonHang ? r.maDonHang : `__${r.maBravo}|${r.soLo || r.id}`
+      if (!map[key]) {
+        map[key] = {
+          key, maDonHang: r.maDonHang || null,
+          maBravo: r.maBravo, tenTrinh: r.tenTrinh,
+          records: [], soLoSet: new Set(), soLoSLMap: new Map(), stageSet: new Set(),
+          doneCount: 0, doingCount: 0, pendingCount: 0, gapCount: 0, ratGapCount: 0,
+          congPc: 0, congPl: 0, ngayMin: null, ngayMax: null,
+        }
+      }
+      const e = map[key]
+      e.records.push(r)
+      if (r.soLo) {
+        e.soLoSet.add(r.soLo)
+        if (!e.soLoSLMap.has(r.soLo)) e.soLoSLMap.set(r.soLo, Number(r.coLo || 0))
+      }
+      e.stageSet.add(resolveStage(r))
+      const tt = r.tinhTrang || 'pending'
+      if (tt === 'done') e.doneCount++
+      else if (tt === 'doing') e.doingCount++
+      else if (tt === 'gap') e.gapCount++
+      else if (tt === 'rat_gap') e.ratGapCount++
+      else e.pendingCount++
+      const nsPc = Number(productMap[r.maSp]?.nangSuatPc || 0)
+      const nsPl = Number(productMap[r.maSp]?.nangSuatPl || 0)
+      const cl   = Number(r.coLo || 0)
+      if (nsPc && cl) e.congPc += cl / nsPc
+      if (nsPl && cl) e.congPl += cl / nsPl
+      if (r.ngayThucHien) {
+        if (!e.ngayMin || r.ngayThucHien < e.ngayMin) e.ngayMin = r.ngayThucHien
+        if (!e.ngayMax || r.ngayThucHien > e.ngayMax) e.ngayMax = r.ngayThucHien
+      }
+    })
+    return Object.values(map).map(e => {
+      const total = e.records.length
+      const slValues = [...e.soLoSLMap.values()]
+      const totalSL  = slValues.length > 0
+        ? slValues.reduce((s, v) => s + v, 0)
+        : e.records.reduce((s, r) => s + Number(r.coLo || 0), 0)
+      const ttPriority = e.ratGapCount > 0 ? 'rat_gap'
+        : e.gapCount > 0 ? 'gap'
+        : e.doingCount > 0 ? 'doing'
+        : e.doneCount === total && total > 0 ? 'done'
+        : 'pending'
+      return {
+        key: e.key, maDonHang: e.maDonHang, maBravo: e.maBravo, tenTrinh: e.tenTrinh,
+        soLoCount: e.soLoSet.size || 1, stages: [...e.stageSet], totalSL,
+        totalStages: total,
+        doneCount: e.doneCount, doingCount: e.doingCount,
+        gapCount: e.gapCount, ratGapCount: e.ratGapCount,
+        congPc: e.congPc, congPl: e.congPl,
+        ngayMin: e.ngayMin, ngayMax: e.ngayMax, ttPriority,
+        pctDone: total > 0 ? e.doneCount / total * 100 : 0,
+        soNgay: (e.ngayMin && e.ngayMax && e.ngayMin !== e.ngayMax)
+          ? dayjs(e.ngayMax).diff(dayjs(e.ngayMin), 'day') + 1 : 1,
+      }
+    }).sort((a, b) => {
+      const pri = { rat_gap: 0, gap: 1, doing: 2, pending: 3, done: 4 }
+      const pa = pri[a.ttPriority] ?? 3
+      const pb = pri[b.ttPriority] ?? 3
+      if (pa !== pb) return pa - pb
+      return b.totalSL - a.totalSL
+    })
+  }, [dedupedByLo, productMap])
+
   // ── Sub-tabs ─────────────────────────────────────────────────────────────────
   const subTabItems = [
     {
@@ -707,6 +776,190 @@ export default function PhanTichKeHoachPage() {
           </ResponsiveContainer>
         </div>
       ),
+    },
+    {
+      key: 'donhang',
+      label: 'Danh Sách ĐH',
+      children: (() => {
+        const ttCfg = {
+          rat_gap: { color: '#f5222d', bg: '#fff1f0', label: 'Rất gấp' },
+          gap:     { color: '#fa8c16', bg: '#fff7e6', label: 'Gấp' },
+          doing:   { color: '#1677ff', bg: '#e6f4ff', label: 'Đang SX' },
+          done:    { color: '#52c41a', bg: '#f6ffed', label: 'Done' },
+          pending: { color: '#9ca3af', bg: '#f9fafb', label: 'Chờ' },
+        }
+        const kpiCards = [
+          { label: 'Tổng đơn hàng',   value: orderListData.length,                                                         unit: 'đơn',  color: '#1d4ed8' },
+          { label: 'Rất gấp / Gấp',   value: orderListData.filter(r => r.ttPriority === 'rat_gap' || r.ttPriority === 'gap').length, unit: 'đơn', color: '#f5222d' },
+          { label: 'Đang sản xuất',   value: orderListData.filter(r => r.ttPriority === 'doing').length,                   unit: 'đơn',  color: '#1677ff' },
+          { label: 'Chưa bắt đầu',    value: orderListData.filter(r => r.ttPriority === 'pending').length,                 unit: 'đơn',  color: '#6b7280' },
+          { label: 'Đã hoàn thành',   value: orderListData.filter(r => r.ttPriority === 'done').length,                    unit: 'đơn',  color: '#52c41a' },
+          { label: 'Tổng SL kế hoạch',value: fmtSL(orderListData.reduce((s, r) => s + r.totalSL, 0)),                     unit: 'SP',   color: '#0369a1' },
+        ]
+        const orderColumns = [
+          { title: '#', key: 'stt', width: 40, align: 'center', fixed: 'left',
+            render: (_, __, i) => <span style={{ fontSize: 11, color: '#94a3b8' }}>{i + 1}</span> },
+          { title: 'Mã ĐH', dataIndex: 'maDonHang', width: 105, fixed: 'left',
+            render: v => v
+              ? <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#7c3aed', fontSize: 12 }}>{v}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span> },
+          { title: 'Mã Bravo', dataIndex: 'maBravo', width: 100, fixed: 'left',
+            render: v => <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#374151', fontSize: 11 }}>{v || '—'}</span> },
+          { title: 'Tên sản phẩm', dataIndex: 'tenTrinh', width: 210, fixed: 'left', ellipsis: true,
+            render: v => <Tooltip title={v}><span style={{ fontSize: 12 }}>{v || '—'}</span></Tooltip> },
+          { title: 'Số lô', dataIndex: 'soLoCount', align: 'center', width: 65,
+            sorter: (a, b) => a.soLoCount - b.soLoCount,
+            render: v => <Tag color="geekblue" style={{ fontWeight: 700, marginRight: 0 }}>{v}</Tag> },
+          { title: 'Tổng SL KH', dataIndex: 'totalSL', align: 'right', width: 115,
+            sorter: (a, b) => a.totalSL - b.totalSL,
+            render: v => <span style={{ fontWeight: 700, color: '#1e5fa3' }}>{fmtSL(v)}</span> },
+          { title: 'Ngày KH', key: 'ngayKh', width: 150, align: 'center',
+            render: (_, r) => {
+              if (!r.ngayMin) return <span style={{ color: '#d9d9d9' }}>—</span>
+              if (r.ngayMin === r.ngayMax)
+                return <span style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>{dayjs(r.ngayMin).format('DD/MM/YYYY')}</span>
+              return <span style={{ fontSize: 11, color: '#374151' }}>{dayjs(r.ngayMin).format('DD/MM')} → {dayjs(r.ngayMax).format('DD/MM')}</span>
+            } },
+          { title: 'Số ngày', dataIndex: 'soNgay', align: 'center', width: 70,
+            sorter: (a, b) => a.soNgay - b.soNgay,
+            render: v => <span style={{ color: '#6d28d9', fontWeight: 600 }}>{v}n</span> },
+          { title: 'Tiến độ', key: 'tiendo', width: 150, align: 'left',
+            sorter: (a, b) => a.pctDone - b.pctDone,
+            render: (_, r) => {
+              const pct = r.pctDone
+              const barColor = pct >= 100 ? '#52c41a' : pct > 0 ? '#1677ff' : '#e5e7eb'
+              return (
+                <div style={{ minWidth: 130 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3, fontSize: 10, color: '#6b7280' }}>
+                    <span>{r.doneCount}/{r.totalStages} công đoạn</span>
+                    <span style={{ fontWeight: 700, color: barColor }}>{pct.toFixed(0)}%</span>
+                  </div>
+                  <div style={{ background: '#e5e7eb', borderRadius: 4, height: 7, overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(100, pct)}%`, height: '100%', background: barColor, borderRadius: 4 }} />
+                  </div>
+                </div>
+              )
+            } },
+          { title: 'Done', key: 'done', align: 'center', width: 58,
+            sorter: (a, b) => a.doneCount - b.doneCount,
+            render: (_, r) => r.doneCount > 0
+              ? <Tag color="success" style={{ marginRight: 0, fontWeight: 700 }}>{r.doneCount}</Tag>
+              : <span style={{ color: '#d9d9d9' }}>—</span> },
+          { title: 'Đang', key: 'dang', align: 'center', width: 58,
+            render: (_, r) => r.doingCount > 0
+              ? <Tag color="processing" style={{ marginRight: 0, fontWeight: 700 }}>{r.doingCount}</Tag>
+              : <span style={{ color: '#d9d9d9' }}>—</span> },
+          { title: 'Gấp', key: 'gap', align: 'center', width: 58,
+            render: (_, r) => {
+              const n = r.gapCount + r.ratGapCount
+              return n > 0
+                ? <Tag color="error" style={{ marginRight: 0, fontWeight: 700 }}>{n}</Tag>
+                : <span style={{ color: '#d9d9d9' }}>—</span>
+            } },
+          { title: 'Công đoạn', key: 'stages', width: 145,
+            render: (_, r) => (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                {r.stages.map(s => {
+                  const st = STAGES.find(x => x.key === s)
+                  return (
+                    <Tag key={s} style={{
+                      marginRight: 0, fontSize: 10, fontWeight: 700, lineHeight: '18px',
+                      background: (st?.color || '#888') + '18',
+                      color: st?.color || '#888',
+                      borderColor: (st?.color || '#888') + '55',
+                    }}>{s}</Tag>
+                  )
+                })}
+              </div>
+            ) },
+          { title: 'Tình trạng', key: 'tinhTrang', align: 'center', width: 100,
+            sorter: (a, b) => {
+              const pri = { rat_gap: 0, gap: 1, doing: 2, pending: 3, done: 4 }
+              return (pri[a.ttPriority] ?? 3) - (pri[b.ttPriority] ?? 3)
+            },
+            render: (_, r) => {
+              const c = ttCfg[r.ttPriority] || ttCfg.pending
+              return (
+                <span style={{
+                  display: 'inline-block', padding: '2px 8px', borderRadius: 4,
+                  fontSize: 11, fontWeight: 700,
+                  background: c.bg, color: c.color,
+                  border: `1px solid ${c.color}40`,
+                }}>{c.label}</span>
+              )
+            } },
+          { title: 'Công PC', key: 'congPc', align: 'right', width: 82,
+            sorter: (a, b) => a.congPc - b.congPc,
+            render: (_, r) => r.congPc > 0
+              ? <span style={{ color: '#0369a1', fontWeight: 700 }}>{r.congPc.toFixed(1)}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span> },
+          { title: 'Công PL', key: 'congPl', align: 'right', width: 82,
+            sorter: (a, b) => a.congPl - b.congPl,
+            render: (_, r) => r.congPl > 0
+              ? <span style={{ color: '#0e7490', fontWeight: 700 }}>{r.congPl.toFixed(1)}</span>
+              : <span style={{ color: '#d9d9d9' }}>—</span> },
+        ]
+        return (
+          <div style={{ padding: '12px 0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 16 }}>
+              {kpiCards.map(c => (
+                <div key={c.label} style={{
+                  background: '#fff', border: '1px solid #e5e7eb',
+                  borderLeft: `4px solid ${c.color}`, borderRadius: 6,
+                  padding: '10px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                }}>
+                  <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 5 }}>{c.label}</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: c.color, lineHeight: 1.1 }}>{c.value}</div>
+                  <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 3 }}>{c.unit}</div>
+                </div>
+              ))}
+            </div>
+            <Table
+              size="small"
+              dataSource={orderListData}
+              rowKey="key"
+              scroll={{ x: 1480, y: 'calc(100vh - 420px)' }}
+              pagination={{ pageSize: 25, showSizeChanger: true, showTotal: t => `${t} đơn hàng` }}
+              rowClassName={r => r.ttPriority === 'rat_gap' ? 'row-rat-gap' : r.ttPriority === 'gap' ? 'row-gap' : ''}
+              columns={orderColumns}
+              summary={() => {
+                const totSL  = orderListData.reduce((s, r) => s + r.totalSL, 0)
+                const totLo  = orderListData.reduce((s, r) => s + r.soLoCount, 0)
+                const totPc  = orderListData.reduce((s, r) => s + r.congPc, 0)
+                const totPl  = orderListData.reduce((s, r) => s + r.congPl, 0)
+                const totDone  = orderListData.reduce((s, r) => s + r.doneCount, 0)
+                const totDoing = orderListData.reduce((s, r) => s + r.doingCount, 0)
+                const totGap   = orderListData.reduce((s, r) => s + r.gapCount + r.ratGapCount, 0)
+                return (
+                  <Table.Summary.Row style={{ fontWeight: 700, background: '#f0f5ff', fontSize: 12 }}>
+                    <Table.Summary.Cell index={0} colSpan={4}>TỔNG ({orderListData.length} đơn hàng)</Table.Summary.Cell>
+                    <Table.Summary.Cell index={4} align="center"><strong style={{ color: '#1d4ed8' }}>{totLo}</strong></Table.Summary.Cell>
+                    <Table.Summary.Cell index={5} align="right"><span style={{ color: '#1e5fa3' }}>{fmtSL(totSL)}</span></Table.Summary.Cell>
+                    <Table.Summary.Cell index={6} colSpan={2} />
+                    <Table.Summary.Cell index={8} align="center" />
+                    <Table.Summary.Cell index={9} align="center">
+                      {totDone > 0 && <Tag color="success" style={{ marginRight: 0 }}>{totDone}</Tag>}
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={10} align="center">
+                      {totDoing > 0 && <Tag color="processing" style={{ marginRight: 0 }}>{totDoing}</Tag>}
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={11} align="center">
+                      {totGap > 0 && <Tag color="error" style={{ marginRight: 0 }}>{totGap}</Tag>}
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={12} colSpan={2} />
+                    <Table.Summary.Cell index={14} align="right">
+                      <span style={{ color: '#0369a1' }}>{totPc > 0 ? totPc.toFixed(1) : '—'}</span>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={15} align="right">
+                      <span style={{ color: '#0e7490' }}>{totPl > 0 ? totPl.toFixed(1) : '—'}</span>
+                    </Table.Summary.Cell>
+                  </Table.Summary.Row>
+                )
+              }}
+            />
+          </div>
+        )
+      })(),
     },
     {
       key: 'chitiet',
