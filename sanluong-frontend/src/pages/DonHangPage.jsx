@@ -1050,6 +1050,7 @@ function QuickScheduleModal({ open, order, planRecs, machine, congField, nsF, pr
   const [loading,    setLoading]    = useState(false)
   const [editingId,  setEditingId]  = useState(null)
   const [showForm,   setShowForm]   = useState(false)
+  const [soLoOptions, setSoLoOptions] = useState([])
 
   const congDoan     = CONG_DOAN_BY_LABEL[machine.label]  || 'PC'
   const defaultToNhom = TO_NHOM_BY_LABEL[machine.label] || null
@@ -1073,6 +1074,21 @@ function QuickScheduleModal({ open, order, planRecs, machine, congField, nsF, pr
       setShowForm(!hasRecs)
       setEditingId(null)
       resetForm(null)
+      // Fetch soLo suggestions từ tất cả PLAN records cùng maDonHang
+      if (order?.maDonHang) {
+        setSoLoOptions([])
+        api.get('/work-schedule', { params: { maDonHang: order.maDonHang, source: 'PLAN', page: 0, size: 200 } })
+          .then(({ data }) => {
+            const recs = (data.content || []).filter(r => r.soLo)
+            const seen = new Set()
+            const unique = recs
+              .sort((a, b) => (b.ngayThucHien || '').localeCompare(a.ngayThucHien || ''))
+              .filter(r => { if (seen.has(r.soLo)) return false; seen.add(r.soLo); return true })
+            setSoLoOptions(unique.map(r => ({ value: r.soLo, label: r.soLo })))
+            // Auto-fill nếu chỉ có 1 số lô duy nhất và chưa có record nào
+            if (unique.length === 1 && !hasRecs) form.setFieldsValue({ soLo: unique[0].value })
+          }).catch(() => {})
+      }
     }
   }, [open])
 
@@ -1209,7 +1225,13 @@ function QuickScheduleModal({ open, order, planRecs, machine, congField, nsF, pr
               <InputNumber style={{ width: 100 }} min={0} formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''} parser={v => v?.replace(/[^\d]/g, '')} />
             </Form.Item>
             <Form.Item name="soLo" label="Số lô">
-              <Input style={{ width: 85 }} placeholder="VD: 270526" />
+              <AutoComplete
+                options={soLoOptions}
+                style={{ width: 100 }}
+                placeholder="VD: 270526"
+                allowClear
+                filterOption={(input, opt) => (opt?.value || '').toLowerCase().includes(input.toLowerCase())}
+              />
             </Form.Item>
             {congField && (
               <Form.Item name="cong" label="Công">
