@@ -1035,6 +1035,8 @@ function TtStatusCell({ record, field, dateField, onSave, saving }) {
 // ── Machine Detail Modal ──────────────────────────────────────────────────────
 function MachineDetailModal({ machine, planRecords, productMasterMap, onClose }) {
   const [activeDetailTab, setActiveDetailTab] = useState('orders')
+  // Dynamic table height: ensure horizontal scrollbar stays visible in viewport
+  const tableBodyH = Math.max(260, window.innerHeight - 460)
   if (!machine) return null
 
   const bravoSet = new Set(machine.orders.map(o => o.maBravo))
@@ -1328,7 +1330,7 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose })
                 })}
                 columns={orderColumns}
                 pagination={false}
-                scroll={{ x: 1780, y: 500 }}
+                scroll={{ x: 1780, y: tableBodyH }}
                 rowHoverable={false}
                 locale={{ emptyText: 'Không có dữ liệu' }}
                 summary={ds => {
@@ -1383,7 +1385,7 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose })
                 dataSource={machinePlanRecords.map((r, i) => ({ ...r, key: r.id || i }))}
                 columns={planColumns}
                 pagination={{ defaultPageSize: 50, showSizeChanger: true, showTotal: t => `${t} bản ghi` }}
-                scroll={{ x: 960, y: 400 }}
+                scroll={{ x: 960, y: Math.max(200, window.innerHeight - 510) }}
                 rowHoverable={false}
                 locale={{ emptyText: 'Không có dữ liệu kế hoạch' }}
                 summary={() => (
