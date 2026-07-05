@@ -1032,9 +1032,224 @@ function TtStatusCell({ record, field, dateField, onSave, saving }) {
   )
 }
 
+// ── Shared helpers (module-level) ─────────────────────────────────────────────
+const ttTagHelper = tt => {
+  if (tt === 'done')    return <Tag color="success"    style={{ margin: 0 }}>Xong</Tag>
+  if (tt === 'doing')   return <Tag color="processing" style={{ margin: 0 }}>Đang SX</Tag>
+  if (tt === 'pending') return <Tag color="default"    style={{ margin: 0, color: '#94a3b8' }}>Chờ</Tag>
+  return <Tag style={{ margin: 0, color: '#d9d9d9' }}>—</Tag>
+}
+
+const CONG_DOAN_BY_LABEL  = { PC: 'PC', PL: 'PL', BBC1: 'BBC1', ĐG: 'DG' }
+const CONG_FIELD_BY_LABEL = { PC: 'congPc', PL: 'congPl', BBC1: 'congBbc1', ĐG: 'congDg' }
+const TO_NHOM_BY_LABEL    = { PL: 'PCPL3', BBC1: 'BBC1' } // PC → user picks, ĐG → null
+
+// ── Quick Schedule Modal ───────────────────────────────────────────────────────
+function QuickScheduleModal({ open, order, planRecs, machine, congField, nsF, productMasterMap, onClose, onRefresh }) {
+  const [form]       = Form.useForm()
+  const [loading,    setLoading]    = useState(false)
+  const [editingId,  setEditingId]  = useState(null)
+  const [showForm,   setShowForm]   = useState(false)
+
+  const congDoan     = CONG_DOAN_BY_LABEL[machine.label]  || 'PC'
+  const defaultToNhom = TO_NHOM_BY_LABEL[machine.label] || null
+  const isPcStage    = machine.label === 'PC'
+  const ns           = Number((productMasterMap[order?.maBravo] || {})[nsF]) || 0
+
+  const resetForm = (rec = null) => {
+    form.setFieldsValue({
+      ngayThucHien: rec?.ngayThucHien ? dayjs(rec.ngayThucHien) : dayjs(),
+      toNhom:       rec?.toNhom || defaultToNhom || (isPcStage ? 'PCPL1' : null),
+      coLo:         rec?.coLo != null ? Number(rec.coLo) : null,
+      soLo:         rec?.soLo || null,
+      cong:         congField && rec ? (Number(rec[congField]) || null) : null,
+      tinhTrang:    rec?.tinhTrang || '',
+    })
+  }
+
+  useEffect(() => {
+    if (open) {
+      const hasRecs = planRecs?.length > 0
+      setShowForm(!hasRecs)
+      setEditingId(null)
+      resetForm(null)
+    }
+  }, [open])
+
+  const startEdit = rec => {
+    setEditingId(rec.id)
+    setShowForm(false)
+    resetForm(rec)
+  }
+
+  const cancelForm = () => { setShowForm(false); setEditingId(null); resetForm(null) }
+
+  const handleSave = async () => {
+    let vals
+    try { vals = await form.validateFields() } catch { return }
+    setLoading(true)
+    try {
+      const payload = {
+        source:       'PLAN',
+        ngayThucHien: vals.ngayThucHien?.format('YYYY-MM-DD'),
+        congDoan,
+        toNhom:       vals.toNhom || null,
+        maBravo:      order.maBravo,
+        maDonHang:    order.maDonHang || null,
+        coLo:         vals.coLo  ?? null,
+        soLo:         vals.soLo  || null,
+        tinhTrang:    vals.tinhTrang || null,
+        ...(congField ? { [congField]: vals.cong ?? null } : {}),
+      }
+      if (editingId) {
+        await api.put(`/work-schedule/${editingId}`, payload)
+        message.success('Cập nhật thành công')
+      } else {
+        const { data: newWs } = await api.post('/work-schedule', payload)
+        message.success('Đã xếp lịch thành công')
+        if (newWs?.id) api.post(`/lenh-san-xuat/from-work-schedule/${newWs.id}`, {}).catch(() => {})
+      }
+      setEditingId(null)
+      setShowForm(false)
+      await onRefresh()
+    } catch (err) {
+      message.error(err?.response?.data?.message || 'Lưu thất bại')
+    } finally { setLoading(false) }
+  }
+
+  const handleDelete = async id => {
+    setLoading(true)
+    try {
+      await api.delete(`/work-schedule/${id}`)
+      message.success('Đã xóa')
+      if (editingId === id) cancelForm()
+      await onRefresh()
+    } catch { message.error('Xóa thất bại') }
+    finally { setLoading(false) }
+  }
+
+  if (!order) return null
+  return (
+    <Modal
+      open={open} onCancel={onClose} destroyOnHidden transitionName=""
+      width={620} footer={null}
+      title={
+        <Space>
+          <Tag color={{ PC: 'blue', PL: 'cyan', BBC1: 'purple', ĐG: 'geekblue' }[machine.label] || 'default'}
+               style={{ fontWeight: 700 }}>{machine.stageName}</Tag>
+          <span style={{ fontWeight: 700, fontFamily: 'monospace', color: '#1677ff' }}>{order.maBravo}</span>
+          <span style={{ color: '#64748b', fontSize: 12, fontWeight: 400 }}>
+            {order.tenSanPham?.length > 40 ? order.tenSanPham.slice(0, 40) + '…' : order.tenSanPham}
+          </span>
+        </Space>
+      }
+    >
+      {/* Order summary strip */}
+      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '7px 12px', marginBottom: 12, fontSize: 12 }}>
+        <Space split={<span style={{ color: '#cbd5e1' }}>·</span>}>
+          <span>ĐH: <b style={{ color: 'rgb(0,0,205)', fontFamily: 'monospace' }}>{order.maDonHang || '—'}</b></span>
+          <span>SL còn: <b style={{ color: '#cf1322' }}>{(order.sl || 0).toLocaleString('vi-VN')}</b></span>
+          {ns > 0 && <span>NS/ca: <b style={{ color: '#0369a1' }}>{ns.toLocaleString('vi-VN')}</b></span>}
+          {ns > 0 && order.sl > 0 && <span>Cần ≈ <b style={{ color: '#d46b08' }}>{(order.sl / ns).toFixed(1)} ca</b></span>}
+        </Space>
+      </div>
+
+      {/* Existing plan records */}
+      {planRecs?.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 6 }}>
+            Đã xếp <Tag color="blue" style={{ margin: '0 0 0 4px' }}>{planRecs.length} ca</Tag>
+          </div>
+          {planRecs.map(rec => (
+            <div key={rec.id} style={{
+              display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
+              padding: '5px 8px', borderRadius: 6, marginBottom: 4, fontSize: 12,
+              background: editingId === rec.id ? '#eff6ff' : '#f8fafc',
+              border: `1px solid ${editingId === rec.id ? '#93c5fd' : '#e2e8f0'}`,
+            }}>
+              <Tag color="blue"  style={{ margin: 0, fontFamily: 'monospace', fontWeight: 600, fontSize: 11 }}>{rec.ngayThucHien}</Tag>
+              {rec.toNhom && <Tag color="purple" style={{ margin: 0, fontSize: 10 }}>{rec.toNhom}</Tag>}
+              {rec.soLo   && <Tag color="cyan"   style={{ margin: 0, fontFamily: 'monospace', fontSize: 10 }}>{rec.soLo}</Tag>}
+              {rec.coLo   && <span style={{ color: '#374151', fontWeight: 600 }}>CL: {Number(rec.coLo).toLocaleString('vi-VN')}</span>}
+              {congField && rec[congField] != null && <span style={{ color: '#6b7280' }}>Công: {rec[congField]}</span>}
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
+                {ttTagHelper(rec.tinhTrang)}
+                <Button size="small" type="text" icon={<EditOutlined />}
+                  style={{ padding: '0 4px' }}
+                  onClick={() => editingId === rec.id ? cancelForm() : startEdit(rec)} />
+                <Popconfirm title="Xóa ca này?" okText="Xóa" cancelText="Hủy" okType="danger"
+                  onConfirm={() => handleDelete(rec.id)}>
+                  <Button size="small" type="text" danger icon={<DeleteOutlined />} style={{ padding: '0 4px' }} loading={loading} />
+                </Popconfirm>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Form (add new or edit) */}
+      {(showForm || editingId) && (
+        <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#0369a1', marginBottom: 8 }}>
+            {editingId ? 'Sửa ca kế hoạch' : 'Thêm ca kế hoạch mới'}
+          </div>
+          <Form form={form} layout="inline" size="small" style={{ rowGap: 8 }}>
+            <Form.Item name="ngayThucHien" label="Ngày" rules={[{ required: true, message: 'Chọn ngày' }]}>
+              <DatePicker format="YYYY-MM-DD" style={{ width: 135 }} />
+            </Form.Item>
+            {isPcStage && (
+              <Form.Item name="toNhom" label="Tổ" rules={[{ required: true }]}>
+                <Select style={{ width: 90 }}>
+                  <Option value="PCPL1">PCPL1</Option>
+                  <Option value="PCPL2">PCPL2</Option>
+                </Select>
+              </Form.Item>
+            )}
+            <Form.Item name="coLo" label="Cỡ lô">
+              <InputNumber style={{ width: 100 }} min={0} formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''} parser={v => v?.replace(/[^\d]/g, '')} />
+            </Form.Item>
+            <Form.Item name="soLo" label="Số lô">
+              <Input style={{ width: 85 }} placeholder="VD: 270526" />
+            </Form.Item>
+            {congField && (
+              <Form.Item name="cong" label="Công">
+                <InputNumber style={{ width: 70 }} min={0} step={0.5} />
+              </Form.Item>
+            )}
+            <Form.Item name="tinhTrang" label="TT">
+              <Select style={{ width: 95 }} allowClear placeholder="Chờ">
+                <Option value="">Chờ</Option>
+                <Option value="doing">Đang SX</Option>
+                <Option value="done">Xong</Option>
+              </Select>
+            </Form.Item>
+          </Form>
+          <div style={{ marginTop: 10, display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+            <Button size="small" onClick={cancelForm}>Hủy</Button>
+            <Button size="small" type="primary" onClick={handleSave} loading={loading}>
+              {editingId ? 'Cập nhật' : 'Lưu ca'}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Add button */}
+      {!showForm && !editingId && (
+        <Button type="dashed" icon={<PlusOutlined />} block size="small"
+          onClick={() => { setShowForm(true); resetForm(null) }}
+          style={{ marginBottom: 4 }}>
+          Thêm ca kế hoạch
+        </Button>
+      )}
+    </Modal>
+  )
+}
+
 // ── Machine Detail Modal ──────────────────────────────────────────────────────
-function MachineDetailModal({ machine, planRecords, productMasterMap, onClose }) {
+function MachineDetailModal({ machine, planRecords, productMasterMap, onClose, onPlanChange }) {
   const [activeDetailTab, setActiveDetailTab] = useState('orders')
+  const [scheduleRow,   setScheduleRow]   = useState(null) // { row, planRecs }
+  const [scheduleOpen,  setScheduleOpen]  = useState(false)
   // Dynamic table height: ensure horizontal scrollbar stays visible in viewport
   const tableBodyH = Math.max(260, window.innerHeight - 460)
   if (!machine) return null
@@ -1080,12 +1295,7 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose })
   })
   const fmtNum = v => (v != null && v !== '') ? Number(v).toLocaleString('vi-VN') : '—'
   const tagColorOf = lbl => ({ PC: 'blue', PL: 'cyan', BBC1: 'purple', ĐG: 'geekblue' }[lbl] || 'default')
-  const ttTag = tt => {
-    if (tt === 'done')    return <Tag color="success" style={{ margin: 0 }}>Xong</Tag>
-    if (tt === 'doing')   return <Tag color="processing" style={{ margin: 0 }}>Đang SX</Tag>
-    if (tt === 'pending') return <Tag color="default" style={{ margin: 0, color: '#94a3b8' }}>Chờ</Tag>
-    return <Tag style={{ margin: 0, color: '#d9d9d9' }}>—</Tag>
-  }
+  const ttTag = ttTagHelper
 
   const nsFieldOf = lbl => ({ PC: 'nangSuatPc', PL: 'nangSuatPl', BBC1: 'nangSuatBbc1', ĐG: 'slTrungBinh' }[lbl] || 'nangSuatPc')
   const nsF = nsFieldOf(machine.label)
@@ -1215,6 +1425,21 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose })
         )
       },
     },
+    {
+      title: 'Xếp', key: 'xep', width: 70, align: 'center', fixed: 'right',
+      render: (_, r) => (
+        <Button
+          size="small"
+          type={r._soCa > 0 ? 'default' : 'primary'}
+          style={r._soCa > 0
+            ? { fontSize: 11, padding: '0 8px', borderColor: '#10b981', color: '#10b981' }
+            : { fontSize: 11, padding: '0 8px' }}
+          onClick={() => { setScheduleRow(r); setScheduleOpen(true) }}
+        >
+          {r._soCa > 0 ? 'Sửa' : 'Xếp'}
+        </Button>
+      ),
+    },
   ]
 
   const planColumns = [
@@ -1326,11 +1551,12 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose })
                     _firstDate: planRecs.length ? ([...new Set(planRecs.map(r => r.ngayThucHien).filter(Boolean))].sort()[0] || '') : '',
                     _soLoList: [...new Set(planRecs.map(r => r.soLo).filter(Boolean))],
                     _schedStatus: o.stageStatus?.[stageStatusKey] || null,
+                    _planRecs: planRecs,
                   }
                 })}
                 columns={orderColumns}
                 pagination={false}
-                scroll={{ x: 1780, y: tableBodyH }}
+                scroll={{ x: 1850, y: tableBodyH }}
                 rowHoverable={false}
                 locale={{ emptyText: 'Không có dữ liệu' }}
                 summary={ds => {
@@ -1367,7 +1593,7 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose })
                     <Table.Summary.Cell index={11} align="right">
                       {totalCongKH ? <span style={{ fontWeight: 700, color: '#d46b08' }}>{totalCongKH.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</span> : null}
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={12} colSpan={4} />
+                    <Table.Summary.Cell index={12} colSpan={5} />
                   </Table.Summary.Row>
                 )
                 }}
@@ -1403,6 +1629,18 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose })
             ),
           },
         ]}
+      />
+      {/* Quick Schedule Modal — rendered inside MachineDetailModal */}
+      <QuickScheduleModal
+        open={scheduleOpen}
+        order={scheduleRow}
+        planRecs={scheduleRow?._planRecs || []}
+        machine={machine}
+        congField={cf}
+        nsF={nsF}
+        productMasterMap={productMasterMap}
+        onClose={() => setScheduleOpen(false)}
+        onRefresh={async () => { await onPlanChange?.(); }}
       />
     </Modal>
   )
@@ -1454,6 +1692,13 @@ export default function DonHangPage() {
   const [trendSaving,       setTrendSaving]       = useState({}) // `${id}_field` → bool
   const [planRecords,         setPlanRecords]         = useState([])
   const [selectedMachine,     setSelectedMachine]     = useState(null)
+
+  const refreshPlanRecords = useCallback(async () => {
+    try {
+      const { data: khRes } = await api.get('/work-schedule', { params: { source: 'PLAN', page: 0, size: 2000 } })
+      setPlanRecords((khRes?.content || []).filter(r => r.maBravo && r.maDonHang))
+    } catch { /* silent */ }
+  }, [])
   const [machineSchedPreset,  setMachineSchedPreset]  = useState('this_week')
   const [machineSchedCustom,  setMachineSchedCustom]  = useState([null, null])
   const [machineSchedStage,   setMachineSchedStage]   = useState('ALL')
@@ -4327,6 +4572,7 @@ export default function DonHangPage() {
           planRecords={planRecords}
           productMasterMap={productMasterMap}
           onClose={() => setSelectedMachine(null)}
+          onPlanChange={refreshPlanRecords}
         />
       )}
     </>
