@@ -1255,7 +1255,8 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose })
       <Tabs
         activeKey={activeDetailTab}
         onChange={setActiveDetailTab}
-        size="small"
+        size="middle"
+        className="machine-detail-tabs"
         items={[
           {
             key: 'orders',
@@ -1952,6 +1953,11 @@ export default function DonHangPage() {
         .machine-sched-table .ant-table-tbody > tr > td { vertical-align: top; padding: 4px 5px !important; background: #fff !important; }
         .machine-sched-table .ant-table-tbody > tr:hover > td { background: #f0fdf4 !important; }
         .machine-sched-table .ant-table-summary > tr > td { background: #f0f5ff !important; padding: 6px 8px !important; }
+        .machine-detail-tabs .ant-tabs-tab { padding: 8px 16px !important; font-size: 13px !important; font-weight: 500 !important; color: #64748b !important; }
+        .machine-detail-tabs .ant-tabs-tab-active { background: #e8f4fd !important; border-radius: 6px 6px 0 0 !important; }
+        .machine-detail-tabs .ant-tabs-tab-active .ant-tabs-tab-btn { color: #1677ff !important; font-weight: 700 !important; }
+        .machine-detail-tabs .ant-tabs-ink-bar { height: 3px !important; background: #1677ff !important; border-radius: 2px !important; }
+        .machine-detail-tabs .ant-tabs-nav { margin-bottom: 12px !important; border-bottom: 2px solid #e2e8f0 !important; }
       `}</style>
 
       {/* ── Sticky header wrapper ── */}
