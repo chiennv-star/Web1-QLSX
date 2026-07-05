@@ -1156,7 +1156,33 @@ export default function DonHangPage() {
         const toThucHienList = [...new Set(matched.map(r => r.toNhom).filter(Boolean))]
         const hasKhoach = matched.length > 0
 
-        return { ...dh, soLuongDaXepKh: slXep, soLuongConLai: slDat - slXep, tinhTrangSx: newSx, toThucHienList, hasKhoach }
+        // Tình trạng từng công đoạn
+        const _st = { PCPL1: [], PCPL2: [], PL: [], BBC1: [], DG: [] }
+        for (const r of matched) {
+          let stage = r.congDoan?.toUpperCase()
+          if (stage === 'PC') {
+            const nhom = r.toNhom?.toUpperCase()
+            if (nhom === 'PCPL1') stage = 'PCPL1'
+            else if (nhom === 'PCPL2') stage = 'PCPL2'
+            else if (nhom === 'PCPL3' || nhom === 'PL') stage = 'PL'
+            else stage = 'PCPL1'
+          } else if (stage === 'PCPL3') stage = 'PL'
+          if (_st[stage]) _st[stage].push(r.tinhTrang || 'pending')
+        }
+        const _calcStage = arr => {
+          if (!arr.length) return null
+          if (arr.every(s => s === 'done')) return 'done'
+          if (arr.some(s => s === 'done' || s === 'doing')) return 'doing'
+          return 'pending'
+        }
+        const stageStatus = {
+          PC:   _calcStage([..._st.PCPL1, ..._st.PCPL2]),
+          PL:   _calcStage(_st.PL),
+          BBC1: _calcStage(_st.BBC1),
+          DG:   _calcStage(_st.DG),
+        }
+
+        return { ...dh, soLuongDaXepKh: slXep, soLuongConLai: slDat - slXep, tinhTrangSx: newSx, toThucHienList, hasKhoach, stageStatus }
       })
 
       setData(enriched)
@@ -2107,8 +2133,23 @@ export default function DonHangPage() {
       /* ── Tab: Tình Trạng Đơn Hàng (tất cả) ── */
       (() => {
         const ttScore = v => v === 'du' ? 2 : v === 'chua_du' ? 1 : 0
+        const renderStageStatus = st => {
+          if (!st) return <span style={{ color: '#d9d9d9' }}>—</span>
+          if (st === 'done')    return <Badge status="success"    text={<span style={{ color: '#389e0d', fontWeight: 600, fontSize: 11 }}>Xong</span>} />
+          if (st === 'doing')   return <Badge status="processing" text={<span style={{ color: '#1677ff', fontWeight: 600, fontSize: 11 }}>Đang SX</span>} />
+          return <Badge status="default" text={<span style={{ color: '#94a3b8', fontSize: 11 }}>Chưa SX</span>} />
+        }
         const allStatusData = [...displayData, ...completedData]
-          .map(r => ({ ...r, _pm: productMasterMap[r.maBravo] || {} }))
+          .map(r => {
+            const isDone = r.tinhTrangSx === 'done'
+            return {
+              ...r,
+              _pm:           productMasterMap[r.maBravo] || {},
+              ttNguyenLieu:  isDone ? 'du' : r.ttNguyenLieu,
+              ttBbc1:        isDone ? 'du' : r.ttBbc1,
+              ttBbc2:        isDone ? 'du' : r.ttBbc2,
+            }
+          })
           .sort((a, b) => {
             const sa = ttScore(a.ttNguyenLieu) + ttScore(a.ttBbc1) + ttScore(a.ttBbc2)
             const sb = ttScore(b.ttNguyenLieu) + ttScore(b.ttBbc1) + ttScore(b.ttBbc2)
@@ -2243,6 +2284,26 @@ export default function DonHangPage() {
               : <span style={{ color: '#d9d9d9' }}>—</span>,
           },
           {
+            title: <div style={{ lineHeight: 1.3, textAlign: 'center' }}>TT<br/>PC</div>,
+            key: 'stPC', width: 95, align: 'center',
+            render: (_, r) => renderStageStatus(r.stageStatus?.PC),
+          },
+          {
+            title: <div style={{ lineHeight: 1.3, textAlign: 'center' }}>TT<br/>PL</div>,
+            key: 'stPL', width: 95, align: 'center',
+            render: (_, r) => renderStageStatus(r.stageStatus?.PL),
+          },
+          {
+            title: <div style={{ lineHeight: 1.3, textAlign: 'center' }}>TT<br/>BBC1</div>,
+            key: 'stBBC1', width: 95, align: 'center',
+            render: (_, r) => renderStageStatus(r.stageStatus?.BBC1),
+          },
+          {
+            title: <div style={{ lineHeight: 1.3, textAlign: 'center' }}>TT<br/>ĐG</div>,
+            key: 'stDG', width: 95, align: 'center',
+            render: (_, r) => renderStageStatus(r.stageStatus?.DG),
+          },
+          {
             title: 'Máy Móc PC', key: 'mmPc', width: 170,
             render: (_, r) => r._pm.mayMocPc
               ? <span style={{ fontSize: 12, color: '#374151' }}>{r._pm.mayMocPc}</span>
@@ -2275,7 +2336,7 @@ export default function DonHangPage() {
             rowKey="id"
             loading={loading || loadingMaster}
             size="small"
-            scroll={{ x: 3000 }}
+            scroll={{ x: 3380 }}
             sticky={{ offsetHeader: headerOffset }}
             rowHoverable={false}
             rowClassName={r => r.tinhTrangSx === 'done' ? 'dh-row-done' : rowClassName(r)}
