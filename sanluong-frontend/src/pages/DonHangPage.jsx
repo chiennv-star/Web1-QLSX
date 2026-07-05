@@ -1123,12 +1123,14 @@ export default function DonHangPage() {
       if (filterDH) params.tinhTrangDatHang = filterDH
       if (filterSx) params.tinhTrangSx      = filterSx
 
-      // Fetch đồng thời đơn hàng + WorkSchedule PLAN để tính SL đã xếp KH (cùng nguồn với tab Kế Hoạch)
-      const [dhRes, khRes] = await Promise.all([
+      // Fetch đồng thời đơn hàng + WorkSchedule PLAN (SL xếp KH) + SCHEDULE (stage status thực tế)
+      const [dhRes, khRes, schRes] = await Promise.all([
         api.get('/don-hang', { params }),
         api.get('/work-schedule', { params: { source: 'PLAN', page: 0, size: 2000 } }),
+        api.get('/work-schedule', { params: { source: 'SCHEDULE', page: 0, size: 5000 } }),
       ])
-      const allKhoach = (khRes.data?.content || []).filter(r => r.maBravo && r.maDonHang)
+      const allKhoach   = (khRes.data?.content  || []).filter(r => r.maBravo && r.maDonHang)
+      const allSchedule = (schRes.data?.content || []).filter(r => r.maBravo && r.maDonHang)
 
       // Tính lại soLuongDaXepKh và tinhTrangSx từ Kế hoạch PLAN (coLo) — đồng bộ với BẢNG ĐƠN HÀNG
       const computeTinhTrangSx = (slXep, slDat) => {
@@ -1156,12 +1158,15 @@ export default function DonHangPage() {
         const toThucHienList = [...new Set(matched.map(r => r.toNhom).filter(Boolean))]
         const hasKhoach = matched.length > 0
 
-        // Tình trạng từng công đoạn
+        // Tình trạng từng công đoạn — lấy từ SCHEDULE (sản lượng thực tế), không phải PLAN
+        const matchedSch = allSchedule.filter(r =>
+          r.maBravo === dh.maBravo && r.maDonHang === dh.maDonHang
+        )
         const _st = { PCPL1: [], PCPL2: [], PL: [], BBC1: [], DG: [] }
-        for (const r of matched) {
+        for (const r of matchedSch) {
           let stage = r.congDoan?.toUpperCase()
           if (stage === 'PC') {
-            const nhom = r.toNhom?.toUpperCase()
+            const nhom = (r.toNhom || r.nhomThucHien)?.toUpperCase()
             if (nhom === 'PCPL1') stage = 'PCPL1'
             else if (nhom === 'PCPL2') stage = 'PCPL2'
             else if (nhom === 'PCPL3' || nhom === 'PL') stage = 'PL'
