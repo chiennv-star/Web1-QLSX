@@ -2167,12 +2167,12 @@ export default function DonHangPage() {
             }
           })
           .sort((a, b) => {
-            // Done-stage rows xuống cuối
-            const aDone = a._stageOverall === 'done' ? 1 : 0
-            const bDone = b._stageOverall === 'done' ? 1 : 0
-            if (aDone !== bDone) return aDone - bDone
             const sa = ttScore(a.ttNguyenLieu) + ttScore(a.ttBbc1) + ttScore(a.ttBbc2)
             const sb = ttScore(b.ttNguyenLieu) + ttScore(b.ttBbc1) + ttScore(b.ttBbc2)
+            // Nhóm ưu tiên: 0=có TT NL/BBC, 1=đang SX, 2=khác, 3=done-stage xuống cuối
+            const aPri = a._stageOverall === 'done' ? 3 : sa > 0 ? 0 : a.tinhTrangSx === 'doing' ? 1 : 2
+            const bPri = b._stageOverall === 'done' ? 3 : sb > 0 ? 0 : b.tinhTrangSx === 'doing' ? 1 : 2
+            if (aPri !== bPri) return aPri - bPri
             if (sb !== sa) return sb - sa
             return (Number(b.soLuongConLai) || 0) - (Number(a.soLuongConLai) || 0)
           })
