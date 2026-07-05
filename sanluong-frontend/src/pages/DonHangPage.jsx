@@ -13,7 +13,9 @@ import {
   UploadOutlined, FileExcelOutlined, CloseCircleOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
+import isoWeek from 'dayjs/plugin/isoWeek'
 import * as XLSX from 'xlsx'
+dayjs.extend(isoWeek)
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
 
@@ -32,6 +34,15 @@ const TINH_TRANG_SX = {
 }
 
 const fmtNum = v => (v != null && v !== '') ? Number(v).toLocaleString('vi-VN') : '—'
+
+const DAY_VI = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
+const getCalDates = (from, to) => {
+  const dates = []
+  let cur = dayjs(from)
+  const end = dayjs(to)
+  while (!cur.isAfter(end)) { dates.push(cur.format('YYYY-MM-DD')); cur = cur.add(1, 'day') }
+  return dates
+}
 
 // ── Import Excel Modal ─────────────────────────────────────────────────────────
 function ImportExcelModal({ open, onClose, onDone }) {
@@ -1267,6 +1278,116 @@ function QuickScheduleModal({ open, order, planRecs, machine, congField, nsF, pr
   )
 }
 
+// ── Machine Plan Calendar (mini weekly grid) ──────────────────────────────────
+function MachinePlanCalendar({ records, onEdit }) {
+  if (!records?.length) return (
+    <div style={{ padding: 32, textAlign: 'center', color: '#94a3b8' }}>Chưa có bản ghi kế hoạch nào</div>
+  )
+
+  const sorted = [...records].sort((a, b) => (a.ngayThucHien || '').localeCompare(b.ngayThucHien || ''))
+  const fromDay = dayjs(sorted[0].ngayThucHien).startOf('isoWeek')
+  const toDay   = dayjs(sorted[sorted.length - 1].ngayThucHien).endOf('isoWeek')
+  const allDates = getCalDates(fromDay.format('YYYY-MM-DD'), toDay.format('YYYY-MM-DD'))
+
+  const weeks = []
+  for (let i = 0; i < allDates.length; i += 7) weeks.push(allDates.slice(i, i + 7))
+
+  const orderKeys = []
+  const seenKeys = new Set()
+  sorted.forEach(r => {
+    const k = `${r.maBravo}|${r.maDonHang || ''}`
+    if (!seenKeys.has(k)) {
+      seenKeys.add(k)
+      orderKeys.push({ key: k, maBravo: r.maBravo, maDonHang: r.maDonHang, tenSp: r._pm?.tenTrinh || r.maBravo })
+    }
+  })
+
+  const recLookup = {}
+  records.forEach(r => {
+    const k = `${r.maBravo}|${r.maDonHang || ''}|${r.ngayThucHien}`
+    if (!recLookup[k]) recLookup[k] = []
+    recLookup[k].push(r)
+  })
+
+  const todayStr = dayjs().format('YYYY-MM-DD')
+  const td = { border: '1px solid #e2e8f0', padding: '4px 6px', verticalAlign: 'top' }
+
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
+        {weeks.map((wDates, wIdx) => {
+          const weekHasAny = orderKeys.some(ord => wDates.some(d => recLookup[`${ord.key}|${d}`]?.length))
+          if (!weekHasAny) return null
+          return (
+            <tbody key={wIdx}>
+              <tr>
+                <td colSpan={8} style={{ ...td, background: '#334155', color: '#f1f5f9', fontWeight: 700, padding: '5px 10px', fontSize: 11 }}>
+                  Tuần {wIdx + 1} &nbsp;({dayjs(wDates[0]).format('DD/MM')} – {dayjs(wDates[6]).format('DD/MM/YYYY')})
+                </td>
+              </tr>
+              <tr>
+                <td style={{ ...td, background: '#f1f5f9', fontWeight: 600, width: 170, fontSize: 11, color: '#64748b' }}>Đơn hàng</td>
+                {wDates.map(date => {
+                  const dow = dayjs(date).day()
+                  const isToday = date === todayStr
+                  const isWe = dow === 0 || dow === 6
+                  return (
+                    <td key={date} style={{ ...td, background: isToday ? '#dbeafe' : isWe ? '#fef9ec' : '#f8fafc', textAlign: 'center', fontWeight: 700, fontSize: 11, color: isToday ? '#1d4ed8' : isWe ? '#92400e' : '#475569', minWidth: 90 }}>
+                      {DAY_VI[dow]}<br />
+                      <span style={{ fontWeight: 500, fontSize: 10 }}>{dayjs(date).format('DD/MM')}</span>
+                    </td>
+                  )
+                })}
+              </tr>
+              {orderKeys.map(ord => {
+                const hasRecs = wDates.some(d => recLookup[`${ord.key}|${d}`]?.length)
+                if (!hasRecs) return null
+                return (
+                  <tr key={ord.key}>
+                    <td style={{ ...td, background: '#fff' }}>
+                      <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', fontSize: 11 }}>{ord.maBravo}</div>
+                      {ord.maDonHang && <div style={{ color: 'rgb(0,0,205)', fontSize: 10, fontFamily: 'monospace' }}>{ord.maDonHang}</div>}
+                      <div style={{ color: '#64748b', fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>{ord.tenSp}</div>
+                    </td>
+                    {wDates.map(date => {
+                      const recs = recLookup[`${ord.key}|${date}`] || []
+                      const isToday = date === todayStr
+                      const isWe = dayjs(date).day() === 0 || dayjs(date).day() === 6
+                      if (!recs.length) return <td key={date} style={{ ...td, background: isToday ? '#eff6ff' : isWe ? '#fffdf5' : '#fff' }} />
+                      return (
+                        <td key={date} style={{ ...td, background: isToday ? '#eff6ff' : '#fff', padding: '3px 4px' }}>
+                          {recs.map(r => {
+                            const bgMap = { done: '#f6ffed', doing: '#e6f4ff' }
+                            const brMap = { done: '#b7eb8f', doing: '#91caff' }
+                            return (
+                              <div key={r.id}
+                                style={{ background: bgMap[r.tinhTrang] || '#fafafa', border: `1px solid ${brMap[r.tinhTrang] || '#e2e8f0'}`, borderRadius: 4, padding: '3px 5px', marginBottom: 2, cursor: 'pointer' }}
+                                onClick={() => onEdit(ord, records.filter(x => x.maBravo === ord.maBravo && x.maDonHang === ord.maDonHang))}
+                              >
+                                <div style={{ fontWeight: 700, color: '#1e293b', fontSize: 11 }}>{Number(r.coLo || 0).toLocaleString('vi-VN')}</div>
+                                {r.soLo && <div style={{ fontFamily: 'monospace', color: '#6b7280', fontSize: 10 }}>{r.soLo}</div>}
+                                {r.tinhTrang === 'done'
+                                  ? <Tag color="success" style={{ margin: 0, fontSize: 9, padding: '0 3px' }}>Xong</Tag>
+                                  : r.tinhTrang === 'doing'
+                                  ? <Tag color="processing" style={{ margin: 0, fontSize: 9, padding: '0 3px' }}>Đang SX</Tag>
+                                  : null}
+                              </div>
+                            )
+                          })}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                )
+              })}
+            </tbody>
+          )
+        })}
+      </table>
+    </div>
+  )
+}
+
 // ── Machine Detail Modal ──────────────────────────────────────────────────────
 function MachineDetailModal({ machine, planRecords, productMasterMap, onClose, onPlanChange }) {
   const [activeDetailTab, setActiveDetailTab] = useState('orders')
@@ -1680,6 +1801,20 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose, o
                     <Table.Summary.Cell index={7} colSpan={3} />
                   </Table.Summary.Row>
                 )}
+              />
+            ),
+          },
+          {
+            key: 'calendar',
+            label: <span style={{ fontWeight: 600 }}>Lịch Theo Tuần</span>,
+            children: (
+              <MachinePlanCalendar
+                records={machinePlanRecords}
+                onEdit={(ord, recs) => {
+                  const orderObj = { maBravo: ord.maBravo, maDonHang: ord.maDonHang, tenSanPham: ord.tenSp, sl: 0 }
+                  setScheduleRow({ ...orderObj, _planRecs: recs })
+                  setScheduleOpen(true)
+                }}
               />
             ),
           },
