@@ -1281,89 +1281,102 @@ function QuickScheduleModal({ open, order, planRecs, machine, congField, nsF, pr
 
 // ── Machine Plan Calendar (mini weekly grid) ──────────────────────────────────
 function MachinePlanCalendar({ records, onEdit, machineOrders = [] }) {
-  if (!records?.length) return (
-    <div style={{ padding: 32, textAlign: 'center', color: '#94a3b8' }}>Chưa có bản ghi kế hoạch nào</div>
-  )
+  const [collapsedWeeks, setCollapsedWeeks] = useState(new Set())
+  const [extraWeeks, setExtraWeeks] = useState(1)
 
-  const orderInfoMap = {}
-  machineOrders.forEach(o => { orderInfoMap[`${o.maBravo}|${o.maDonHang || ''}`] = o })
+  // Build date range from plan records + extra weeks
+  const sortedRecs = [...(records || [])].sort((a, b) => (a.ngayThucHien || '').localeCompare(b.ngayThucHien || ''))
+  const hasRecs = sortedRecs.length > 0
+  const fromDay   = hasRecs ? dayjs(sortedRecs[0].ngayThucHien).startOf('isoWeek') : dayjs().startOf('isoWeek')
+  const baseToDay = hasRecs ? dayjs(sortedRecs[sortedRecs.length - 1].ngayThucHien).endOf('isoWeek') : dayjs().endOf('isoWeek')
+  const toDay     = baseToDay.add(extraWeeks, 'week')
 
-  const sorted = [...records].sort((a, b) => (a.ngayThucHien || '').localeCompare(b.ngayThucHien || ''))
-  const fromDay = dayjs(sorted[0].ngayThucHien).startOf('isoWeek')
-  const toDay   = dayjs(sorted[sorted.length - 1].ngayThucHien).endOf('isoWeek')
   const allDates = getCalDates(fromDay.format('YYYY-MM-DD'), toDay.format('YYYY-MM-DD'))
-
   const weeks = []
   for (let i = 0; i < allDates.length; i += 7) weeks.push(allDates.slice(i, i + 7))
 
-  const orderKeys = []
-  const seenKeys = new Set()
-  sorted.forEach(r => {
-    const k = `${r.maBravo}|${r.maDonHang || ''}`
-    if (!seenKeys.has(k)) {
-      seenKeys.add(k)
-      const info = orderInfoMap[k]
-      orderKeys.push({
-        key: k, maBravo: r.maBravo, maDonHang: r.maDonHang,
-        tenSp: info?.tenSanPham || r._pm?.tenTrinh || r.maBravo,
-        sl: info?.sl ?? null,
-      })
-    }
-  })
+  // All machine orders as rows (scheduled + unscheduled)
+  const orderKeys = machineOrders.map(o => ({
+    key: `${o.maBravo}|${o.maDonHang || ''}`,
+    maBravo: o.maBravo,
+    maDonHang: o.maDonHang,
+    tenSp: o.tenSanPham || o.maBravo,
+    sl: o.sl ?? null,
+  }))
 
+  // Plan record lookup: `maBravo|maDonHang|date` → record[]
   const recLookup = {}
-  records.forEach(r => {
+  ;(records || []).forEach(r => {
     const k = `${r.maBravo}|${r.maDonHang || ''}|${r.ngayThucHien}`
     if (!recLookup[k]) recLookup[k] = []
     recLookup[k].push(r)
   })
 
+  if (!machineOrders.length) return (
+    <div style={{ padding: 32, textAlign: 'center', color: '#94a3b8' }}>Chưa có đơn hàng nào</div>
+  )
+
   const todayStr = dayjs().format('YYYY-MM-DD')
   const td = { border: '1px solid #e2e8f0', padding: '4px 6px', verticalAlign: 'top' }
+
+  const toggleWeek = idx => setCollapsedWeeks(prev => {
+    const next = new Set(prev)
+    if (next.has(idx)) next.delete(idx); else next.add(idx)
+    return next
+  })
 
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
         {weeks.map((wDates, wIdx) => {
           const weekHasAny = orderKeys.some(ord => wDates.some(d => recLookup[`${ord.key}|${d}`]?.length))
-          if (!weekHasAny) return null
+          const isCollapsed = collapsedWeeks.has(wIdx)
           return (
             <tbody key={wIdx}>
               <tr>
-                <td colSpan={8} style={{ ...td, background: '#334155', color: '#f1f5f9', fontWeight: 700, padding: '5px 10px', fontSize: 11 }}>
+                <td colSpan={8}
+                  style={{ ...td, background: '#334155', color: '#f1f5f9', fontWeight: 700, padding: '5px 10px', fontSize: 11, cursor: 'pointer', userSelect: 'none' }}
+                  onClick={() => toggleWeek(wIdx)}
+                >
+                  <span style={{ marginRight: 6, fontSize: 10 }}>{isCollapsed ? '▶' : '▼'}</span>
                   Tuần {wIdx + 1} &nbsp;({dayjs(wDates[0]).format('DD/MM')} – {dayjs(wDates[6]).format('DD/MM/YYYY')})
+                  {!weekHasAny && <span style={{ opacity: 0.55, marginLeft: 8, fontWeight: 400, fontSize: 10 }}>chưa xếp</span>}
                 </td>
               </tr>
-              <tr>
-                <td style={{ ...td, background: '#f1f5f9', fontWeight: 600, width: 170, fontSize: 11, color: '#64748b' }}>Đơn hàng</td>
-                {wDates.map(date => {
-                  const dow = dayjs(date).day()
-                  const isToday = date === todayStr
-                  const isWe = dow === 0 || dow === 6
-                  return (
-                    <td key={date} style={{ ...td, background: isToday ? '#dbeafe' : isWe ? '#fef9ec' : '#f8fafc', textAlign: 'center', fontWeight: 700, fontSize: 11, color: isToday ? '#1d4ed8' : isWe ? '#92400e' : '#475569', minWidth: 90 }}>
-                      {DAY_VI[dow]}<br />
-                      <span style={{ fontWeight: 500, fontSize: 10 }}>{dayjs(date).format('DD/MM')}</span>
-                    </td>
-                  )
-                })}
-              </tr>
-              {orderKeys.map(ord => {
-                const hasRecs = wDates.some(d => recLookup[`${ord.key}|${d}`]?.length)
-                if (!hasRecs) return null
-                return (
+              {!isCollapsed && <>
+                <tr>
+                  <td style={{ ...td, background: '#f1f5f9', fontWeight: 600, width: 182, fontSize: 11, color: '#64748b' }}>Đơn hàng</td>
+                  {wDates.map(date => {
+                    const dow = dayjs(date).day()
+                    const isToday = date === todayStr
+                    const isWe = dow === 0 || dow === 6
+                    return (
+                      <td key={date} style={{ ...td, background: isToday ? '#dbeafe' : isWe ? '#fef9ec' : '#f8fafc', textAlign: 'center', fontWeight: 700, fontSize: 11, color: isToday ? '#1d4ed8' : isWe ? '#92400e' : '#475569', minWidth: 90 }}>
+                        {DAY_VI[dow]}<br />
+                        <span style={{ fontWeight: 500, fontSize: 10 }}>{dayjs(date).format('DD/MM')}</span>
+                      </td>
+                    )
+                  })}
+                </tr>
+                {orderKeys.map(ord => (
                   <tr key={ord.key}>
                     <td style={{ ...td, background: '#fff' }}>
                       <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', fontSize: 11 }}>{ord.maBravo}</div>
                       {ord.maDonHang && <div style={{ color: 'rgb(0,0,205)', fontSize: 10, fontFamily: 'monospace' }}>{ord.maDonHang}</div>}
-                      <div style={{ color: '#1e293b', fontSize: 10, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>{ord.tenSp}</div>
+                      <div style={{ color: '#1e293b', fontSize: 10, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 170 }}>{ord.tenSp}</div>
                       {ord.sl != null && <div style={{ color: '#cf1322', fontSize: 10, fontWeight: 600 }}>SL: {Number(ord.sl).toLocaleString('vi-VN')}</div>}
                     </td>
                     {wDates.map(date => {
                       const recs = recLookup[`${ord.key}|${date}`] || []
                       const isToday = date === todayStr
                       const isWe = dayjs(date).day() === 0 || dayjs(date).day() === 6
-                      if (!recs.length) return <td key={date} style={{ ...td, background: isToday ? '#eff6ff' : isWe ? '#fffdf5' : '#fff' }} />
+                      if (!recs.length) return (
+                        <td key={date}
+                          style={{ ...td, background: isToday ? '#eff6ff' : isWe ? '#fffdf5' : '#fff', cursor: 'pointer' }}
+                          title="Click để xếp lịch"
+                          onClick={() => onEdit(ord, [])}
+                        />
+                      )
                       return (
                         <td key={date} style={{ ...td, background: isToday ? '#eff6ff' : '#fff', padding: '3px 4px' }}>
                           {recs.map(r => {
@@ -1372,10 +1385,10 @@ function MachinePlanCalendar({ records, onEdit, machineOrders = [] }) {
                             return (
                               <div key={r.id}
                                 style={{ background: bgMap[r.tinhTrang] || '#fafafa', border: `1px solid ${brMap[r.tinhTrang] || '#e2e8f0'}`, borderRadius: 4, padding: '3px 5px', marginBottom: 2, cursor: 'pointer' }}
-                                onClick={() => onEdit(ord, records.filter(x => x.maBravo === ord.maBravo && x.maDonHang === ord.maDonHang))}
+                                onClick={() => onEdit(ord, (records || []).filter(x => x.maBravo === ord.maBravo && x.maDonHang === ord.maDonHang))}
                               >
-                                <div style={{ fontWeight: 700, color: '#1e293b', fontSize: 11 }}>{Number(r.coLo || 0).toLocaleString('vi-VN')}</div>
-                                {r.soLo && <div style={{ fontFamily: 'monospace', color: '#6b7280', fontSize: 10 }}>{r.soLo}</div>}
+                                <div style={{ fontWeight: 700, color: '#1e293b', fontSize: 12 }}>{Number(r.coLo || 0).toLocaleString('vi-VN')}</div>
+                                {r.soLo && <div style={{ fontFamily: 'monospace', color: '#374151', fontSize: 11, fontWeight: 600 }}>{r.soLo}</div>}
                                 {r.tinhTrang === 'done'
                                   ? <Tag color="success" style={{ margin: 0, fontSize: 9, padding: '0 3px' }}>Xong</Tag>
                                   : r.tinhTrang === 'doing'
@@ -1388,12 +1401,18 @@ function MachinePlanCalendar({ records, onEdit, machineOrders = [] }) {
                       )
                     })}
                   </tr>
-                )
-              })}
+                ))}
+              </>}
             </tbody>
           )
         })}
       </table>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '12px 0', borderTop: '1px solid #e2e8f0' }}>
+        <Button size="small" onClick={() => setExtraWeeks(w => w + 1)}>+ Thêm tuần</Button>
+        {extraWeeks > 0 && (
+          <Button size="small" onClick={() => setExtraWeeks(w => Math.max(0, w - 1))}>− Bớt tuần</Button>
+        )}
+      </div>
     </div>
   )
 }
