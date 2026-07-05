@@ -11,6 +11,7 @@ import {
   CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined,
   EyeInvisibleOutlined, EyeOutlined, TrophyOutlined,
   UploadOutlined, FileExcelOutlined, CloseCircleOutlined,
+  FullscreenOutlined, FullscreenExitOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
@@ -1279,10 +1280,13 @@ function QuickScheduleModal({ open, order, planRecs, machine, congField, nsF, pr
 }
 
 // ── Machine Plan Calendar (mini weekly grid) ──────────────────────────────────
-function MachinePlanCalendar({ records, onEdit }) {
+function MachinePlanCalendar({ records, onEdit, machineOrders = [] }) {
   if (!records?.length) return (
     <div style={{ padding: 32, textAlign: 'center', color: '#94a3b8' }}>Chưa có bản ghi kế hoạch nào</div>
   )
+
+  const orderInfoMap = {}
+  machineOrders.forEach(o => { orderInfoMap[`${o.maBravo}|${o.maDonHang || ''}`] = o })
 
   const sorted = [...records].sort((a, b) => (a.ngayThucHien || '').localeCompare(b.ngayThucHien || ''))
   const fromDay = dayjs(sorted[0].ngayThucHien).startOf('isoWeek')
@@ -1298,7 +1302,12 @@ function MachinePlanCalendar({ records, onEdit }) {
     const k = `${r.maBravo}|${r.maDonHang || ''}`
     if (!seenKeys.has(k)) {
       seenKeys.add(k)
-      orderKeys.push({ key: k, maBravo: r.maBravo, maDonHang: r.maDonHang, tenSp: r._pm?.tenTrinh || r.maBravo })
+      const info = orderInfoMap[k]
+      orderKeys.push({
+        key: k, maBravo: r.maBravo, maDonHang: r.maDonHang,
+        tenSp: info?.tenSanPham || r._pm?.tenTrinh || r.maBravo,
+        sl: info?.sl ?? null,
+      })
     }
   })
 
@@ -1347,7 +1356,8 @@ function MachinePlanCalendar({ records, onEdit }) {
                     <td style={{ ...td, background: '#fff' }}>
                       <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', fontSize: 11 }}>{ord.maBravo}</div>
                       {ord.maDonHang && <div style={{ color: 'rgb(0,0,205)', fontSize: 10, fontFamily: 'monospace' }}>{ord.maDonHang}</div>}
-                      <div style={{ color: '#64748b', fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>{ord.tenSp}</div>
+                      <div style={{ color: '#1e293b', fontSize: 10, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>{ord.tenSp}</div>
+                      {ord.sl != null && <div style={{ color: '#cf1322', fontSize: 10, fontWeight: 600 }}>SL: {Number(ord.sl).toLocaleString('vi-VN')}</div>}
                     </td>
                     {wDates.map(date => {
                       const recs = recLookup[`${ord.key}|${date}`] || []
@@ -1394,6 +1404,8 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose, o
   const [scheduleRow,   setScheduleRow]   = useState(null)
   const [scheduleOpen,  setScheduleOpen]  = useState(false)
   const [planDelLoading, setPlanDelLoading] = useState(false)
+  const [isFullscreen,  setIsFullscreen]  = useState(false)
+  const [hideScheduled, setHideScheduled] = useState(true)
   // Dynamic table height: ensure horizontal scrollbar stays visible in viewport
   const tableBodyH = Math.max(260, window.innerHeight - 460)
   if (!machine) return null
@@ -1668,9 +1680,9 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose, o
       onCancel={onClose}
       destroyOnHidden
       transitionName=""
-      width="92vw"
-      style={{ top: 16, maxWidth: 1600 }}
-      styles={{ body: { padding: '12px 16px', maxHeight: 'calc(100vh - 140px)', overflowY: 'auto' } }}
+      width={isFullscreen ? '100vw' : '92vw'}
+      style={{ top: isFullscreen ? 0 : 16, maxWidth: isFullscreen ? '100vw' : 1600, margin: isFullscreen ? 0 : undefined, padding: isFullscreen ? 0 : undefined }}
+      styles={{ body: { padding: '12px 16px', maxHeight: isFullscreen ? 'calc(100vh - 110px)' : 'calc(100vh - 140px)', overflowY: 'auto' } }}
       footer={<Button onClick={onClose}>Đóng</Button>}
       title={
         <Space>
@@ -1683,12 +1695,19 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose, o
               {machine.totalCong.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} ngày
             </b>
           </span>
+          <Button
+            size="small" type="text"
+            icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+            onClick={() => setIsFullscreen(f => !f)}
+            title={isFullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}
+            style={{ color: '#64748b' }}
+          />
         </Space>
       }
     >
       {/* Date timeline strip */}
       {dateRows.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16, padding: '10px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16, padding: '10px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 10 }}>
           <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, alignSelf: 'center', marginRight: 4 }}>Lịch KH:</span>
           {dateRows.map(dg => (
             <Tooltip key={dg.date} title={`${dg.records.length} lô · SL: ${dg.totalSL.toLocaleString('vi-VN')}`}>
@@ -1709,9 +1728,25 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose, o
             key: 'orders',
             label: <span style={{ fontWeight: 600 }}>Theo Đơn Hàng <Tag color="blue" style={{ marginLeft: 4 }}>{machine.orders.length}</Tag></span>,
             children: (
+              <div>
+                <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 11, color: '#64748b' }}>
+                    {hideScheduled
+                      ? `Hiển thị ${machine.orders.filter(o => !(orderPlanMap[`${o.maBravo}|${o.maDonHang || ''}`]?.length)).length} chưa xếp`
+                      : `Hiển thị tất cả ${machine.orders.length} đơn`}
+                  </span>
+                  <Button
+                    size="small"
+                    type={hideScheduled ? 'primary' : 'default'}
+                    onClick={() => setHideScheduled(v => !v)}
+                    style={{ fontSize: 11 }}
+                  >
+                    {hideScheduled ? 'Đang ẩn đã xếp' : 'Hiện tất cả'}
+                  </Button>
+                </div>
               <Table
                 size="small"
-                dataSource={machine.orders.map((o, i) => {
+                dataSource={machine.orders.filter(o => !hideScheduled || !(orderPlanMap[`${o.maBravo}|${o.maDonHang || ''}`]?.length)).map((o, i) => {
                   const k = `${o.maBravo}|${o.maDonHang || ''}`
                   const planRecs = orderPlanMap[k] || []
                   const tongCong = cf ? planRecs.reduce((s, r) => s + (Number(r[cf]) || 0), 0) : 0
@@ -1774,6 +1809,7 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose, o
                 )
                 }}
               />
+              </div>
             ),
           },
           {
@@ -1810,6 +1846,7 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose, o
             children: (
               <MachinePlanCalendar
                 records={machinePlanRecords}
+                machineOrders={machine.orders}
                 onEdit={(ord, recs) => {
                   const orderObj = { maBravo: ord.maBravo, maDonHang: ord.maDonHang, tenSanPham: ord.tenSp, sl: 0 }
                   setScheduleRow({ ...orderObj, _planRecs: recs })
