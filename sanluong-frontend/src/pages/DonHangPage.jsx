@@ -1308,8 +1308,11 @@ export default function DonHangPage() {
   const [employeeCounts,    setEmployeeCounts]    = useState({})
   const [collapsedLoaiSp,   setCollapsedLoaiSp]   = useState(new Set())
   const [trendSaving,       setTrendSaving]       = useState({}) // `${id}_field` → bool
-  const [planRecords,       setPlanRecords]       = useState([])
-  const [selectedMachine,   setSelectedMachine]   = useState(null)
+  const [planRecords,         setPlanRecords]         = useState([])
+  const [selectedMachine,     setSelectedMachine]     = useState(null)
+  const [machineSchedPreset,  setMachineSchedPreset]  = useState('this_week')
+  const [machineSchedCustom,  setMachineSchedCustom]  = useState([null, null])
+  const [machineSchedStage,   setMachineSchedStage]   = useState('ALL')
 
   // ── Lưu field trong tab Xu Hướng ────────────────────────────────────────────
   const saveDhTrend = useCallback(async (record, fieldMap) => {
@@ -1861,6 +1864,16 @@ export default function DonHangPage() {
         .dh-row-done:hover > td { background: #dcfce7 !important; }
         .dh-row-hidden { opacity: 0.5; }
         .dh-table-done .ant-table-thead > tr > th { background: #006666 !important; border-right: 1px solid #005555 !important; }
+        .machine-analysis-table .ant-table-thead > tr > th { background: #0f5f6e !important; color: #fff !important; font-size: 11px !important; font-weight: 700 !important; text-transform: uppercase; white-space: nowrap; border-right: 1px solid rgba(255,255,255,0.25) !important; }
+        .machine-analysis-table .ant-table-thead > tr > th::before { display: none !important; }
+        .machine-analysis-table .ant-table-tbody > tr > td { background: #f8fafc !important; border-bottom: 1px solid #e2e8f0 !important; }
+        .machine-analysis-table .ant-table-tbody > tr:hover > td { background: #dbeafe !important; }
+        .machine-analysis-table .ant-table-tbody > tr.machine-row-active > td { background: #bfdbfe !important; border-left: 3px solid #1d4ed8 !important; }
+        .machine-sched-table .ant-table-thead > tr > th { background: #006666 !important; color: #fff !important; font-weight: 700 !important; font-size: 11px !important; padding: 5px 6px !important; white-space: nowrap; border-right: 1px solid rgba(255,255,255,0.25) !important; }
+        .machine-sched-table .ant-table-thead > tr > th::before { display: none !important; }
+        .machine-sched-table .ant-table-tbody > tr > td { vertical-align: top; padding: 4px 5px !important; background: #fff !important; }
+        .machine-sched-table .ant-table-tbody > tr:hover > td { background: #f0fdf4 !important; }
+        .machine-sched-table .ant-table-summary > tr > td { background: #f0f5ff !important; padding: 6px 8px !important; }
       `}</style>
 
       {/* ── Sticky header wrapper ── */}
@@ -2741,6 +2754,7 @@ export default function DonHangPage() {
               </div>
               {/* Machine analysis table */}
               <Table
+                className="machine-analysis-table"
                 size="small"
                 dataSource={machineData}
                 rowKey="key"
@@ -2749,7 +2763,7 @@ export default function DonHangPage() {
                 columns={machineColumns}
                 onRow={r => ({ onClick: () => setSelectedMachine(r), style: { cursor: 'pointer' } })}
                 locale={{ emptyText: <span style={{ color: '#d9d9d9' }}>Chưa có đơn nào đủ điều kiện</span> }}
-                rowClassName={(r) => `machine-row-${r.label.toLowerCase()}`}
+                rowClassName={r => selectedMachine?.key === r.key ? 'machine-row-active' : ''}
                 summary={() => machineData.length > 0 ? (
                   <Table.Summary.Row>
                     <Table.Summary.Cell index={0} colSpan={3}>
@@ -2768,6 +2782,304 @@ export default function DonHangPage() {
                 ) : null}
               />
             </div>
+
+            {/* ══════════════════════════════════════════════════════════════
+                Lịch Sản Xuất Máy — Dashboard pivot calendar
+            ══════════════════════════════════════════════════════════════ */}
+            {(() => {
+              // ── Date range ─────────────────────────────────────────────
+              const today = dayjs()
+              let schedFrom, schedTo
+              if (machineSchedPreset === 'last_week') {
+                schedFrom = today.subtract(1,'week').startOf('week').add(1,'day')
+                schedTo   = schedFrom.add(6,'day')
+              } else if (machineSchedPreset === 'this_week') {
+                schedFrom = today.startOf('week').add(1,'day')
+                schedTo   = schedFrom.add(6,'day')
+              } else if (machineSchedPreset === 'next_week') {
+                schedFrom = today.add(1,'week').startOf('week').add(1,'day')
+                schedTo   = schedFrom.add(6,'day')
+              } else if (machineSchedPreset === 'month') {
+                schedFrom = today.startOf('month')
+                schedTo   = today.endOf('month')
+              } else {
+                schedFrom = machineSchedCustom[0] ? dayjs(machineSchedCustom[0]) : null
+                schedTo   = machineSchedCustom[1] ? dayjs(machineSchedCustom[1]) : null
+              }
+
+              // ── Map PLAN records → machines ────────────────────────────
+              const machSchedCfg = [
+                { label:'PC',   toNhomIn:['PCPL1','PCPL2'], pmField:'mayMocPc',   nsField:'nangSuatPc',   congField:'congPc', accent:'#0e6e6e', tagColor:'blue'     },
+                { label:'PL',   toNhomIn:['PL','PCPL3'],    pmField:'mayMocPl',   nsField:'nangSuatPl',   congField:'congPl', accent:'#0e7490', tagColor:'cyan'     },
+                { label:'BBC1', congDoanIn:['BBC1'],         pmField:'mayMocBbc1', nsField:'nangSuatBbc1', congField:null,     accent:'#6d28d9', tagColor:'purple'   },
+                { label:'ĐG',   congDoanIn:['DG','ĐG'],     pmField:'mayMocDg',   nsField:'slTrungBinh',  congField:null,     accent:'#2563eb', tagColor:'geekblue' },
+              ]
+              const machRowsMap = {}
+              planRecords.forEach(r => {
+                if (!r.ngayThucHien) return
+                const d = dayjs(r.ngayThucHien)
+                if (schedFrom && d.isBefore(schedFrom,'day')) return
+                if (schedTo   && d.isAfter(schedTo,'day'))   return
+                const pm = productMasterMap[r.maBravo] || {}
+                const cd = r.congDoan?.toUpperCase()
+                const tn = r.toNhom?.toUpperCase()
+                for (const cfg of machSchedCfg) {
+                  if (machineSchedStage !== 'ALL' && cfg.label !== machineSchedStage) continue
+                  const matches = cfg.toNhomIn
+                    ? (cd === 'PC' && cfg.toNhomIn.includes(tn))
+                    : (cfg.congDoanIn || []).includes(cd)
+                  if (!matches) continue
+                  const machineName = pm[cfg.pmField]
+                  if (!machineName) break
+                  const key = `${cfg.label}::${machineName}`
+                  if (!machRowsMap[key]) machRowsMap[key] = { key, label:cfg.label, machineName, accent:cfg.accent, tagColor:cfg.tagColor, dates:{} }
+                  const ds = r.ngayThucHien
+                  if (!machRowsMap[key].dates[ds]) machRowsMap[key].dates[ds] = []
+                  const cl       = Number(r.coLo || 0)
+                  const ns       = Number(pm[cfg.nsField] || 0)
+                  const soNguoi  = cfg.congField ? Number(r[cfg.congField] || 0) : 0
+                  const congTH   = ns && cl ? cl / ns : 0
+                  const soCa     = congTH && soNguoi ? congTH / soNguoi : 0
+                  machRowsMap[key].dates[ds].push({ ...r, _pm:pm, _cl:cl, _ns:ns, _soNguoi:soNguoi, _congTH:congTH, _soCa:soCa })
+                  break
+                }
+              })
+              const labelOrd  = { PC:0, PL:1, BBC1:2, ĐG:3 }
+              const schedRows = Object.values(machRowsMap).sort((a,b) => {
+                const lo = (labelOrd[a.label]??9)-(labelOrd[b.label]??9)
+                if (lo!==0) return lo
+                const ta = Object.values(a.dates).reduce((s,rr)=>s+rr.length,0)
+                const tb = Object.values(b.dates).reduce((s,rr)=>s+rr.length,0)
+                return tb - ta
+              })
+              const schedDates = [...new Set(
+                planRecords
+                  .filter(r => {
+                    if (!r.ngayThucHien) return false
+                    const d = dayjs(r.ngayThucHien)
+                    if (schedFrom && d.isBefore(schedFrom,'day')) return false
+                    if (schedTo   && d.isAfter(schedTo,'day'))   return false
+                    return true
+                  })
+                  .map(r => r.ngayThucHien)
+              )].sort()
+              const schedDS = schedRows.map(row => {
+                const obj = { key:row.key, _row:row }
+                schedDates.forEach(d => { obj[d] = row.dates[d] || [] })
+                return obj
+              })
+
+              // ── Machine load stats (for summary sidebar) ───────────────
+              const machStats = schedRows.map(row => {
+                const daysUsed = schedDates.filter(d => (row.dates[d]||[]).length > 0).length
+                const totalLo  = schedDates.reduce((s,d) => s+(row.dates[d]||[]).length, 0)
+                const totalSL  = schedDates.reduce((s,d) => s+(row.dates[d]||[]).reduce((ss,r)=>ss+r._cl,0),0)
+                const totalCong= schedDates.reduce((s,d) => s+(row.dates[d]||[]).reduce((ss,r)=>ss+r._congTH,0),0)
+                const totalNguoi=schedDates.reduce((s,d) => s+(row.dates[d]||[]).reduce((ss,r)=>ss+r._soNguoi,0),0)
+                return { ...row, daysUsed, totalLo, totalSL, totalCong, totalNguoi }
+              }).filter(m => m.totalLo > 0)
+
+              const presets = [
+                { key:'last_week', label:'Tuần trước' },
+                { key:'this_week', label:'Tuần này' },
+                { key:'next_week', label:'Tuần sau' },
+                { key:'month',     label:'Tháng' },
+              ]
+              const stageFilters = ['ALL','PC','PL','BBC1','ĐG']
+
+              return (
+                <div style={{ marginTop: 40, padding: '0 2px' }}>
+                  {/* ── Section header ── */}
+                  <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16, flexWrap:'wrap' }}>
+                    <div style={{ width:4, height:22, background:'linear-gradient(180deg,#006666,#1677ff)', borderRadius:3 }} />
+                    <span style={{ fontSize:15, fontWeight:700, color:'#1e293b' }}>Lịch Sản Xuất Máy</span>
+                    <Tag color="geekblue" style={{ fontWeight:600 }}>{schedRows.length} máy · {schedDates.length} ngày</Tag>
+                    {/* Preset buttons */}
+                    <div style={{ display:'flex', gap:6, marginLeft:8 }}>
+                      {presets.map(p => (
+                        <Button key={p.key} size="small"
+                          type={machineSchedPreset===p.key ? 'primary' : 'default'}
+                          style={{ fontWeight:600, fontSize:12, borderRadius:6 }}
+                          onClick={() => setMachineSchedPreset(p.key)}
+                        >{p.label}</Button>
+                      ))}
+                      <RangePicker size="small" style={{ borderRadius:6 }}
+                        value={machineSchedPreset==='custom' ? machineSchedCustom.map(d=>d?dayjs(d):null) : [null,null]}
+                        onChange={vals => {
+                          setMachineSchedCustom(vals ? [vals[0]?.format('YYYY-MM-DD'), vals[1]?.format('YYYY-MM-DD')] : [null,null])
+                          setMachineSchedPreset('custom')
+                        }}
+                      />
+                    </div>
+                    {/* Stage filter */}
+                    <div style={{ display:'flex', gap:4, marginLeft:12 }}>
+                      {stageFilters.map(s => (
+                        <Button key={s} size="small"
+                          style={{ fontWeight:700, fontSize:11, borderRadius:6,
+                            background: machineSchedStage===s ? '#006666' : undefined,
+                            color:      machineSchedStage===s ? '#fff'    : undefined,
+                            borderColor:machineSchedStage===s ? '#006666' : undefined,
+                          }}
+                          onClick={() => setMachineSchedStage(s)}
+                        >{s}</Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ── Machine stats KPI row ── */}
+                  {machStats.length > 0 && (
+                    <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:16, padding:'10px 14px', background:'#f8fafc', borderRadius:10, border:'1px solid #e2e8f0' }}>
+                      {machStats.map(m => (
+                        <div key={m.key} style={{ background:'#fff', borderRadius:8, border:'1px solid #e2e8f0', borderLeft:`4px solid ${m.accent}`, padding:'6px 14px', minWidth:140 }}>
+                          <div style={{ fontSize:10, color:'#64748b', fontWeight:600, marginBottom:3 }}>
+                            <Tag color={m.tagColor} style={{ fontSize:9, padding:'0 4px', margin:'0 4px 0 0' }}>{m.label}</Tag>
+                            {m.machineName}
+                          </div>
+                          <div style={{ display:'flex', gap:12 }}>
+                            <div>
+                              <div style={{ fontSize:16, fontWeight:700, color:m.accent }}>{m.totalLo}</div>
+                              <div style={{ fontSize:9, color:'#94a3b8' }}>Lô</div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize:14, fontWeight:700, color:'#cf1322' }}>{m.totalSL.toLocaleString('vi-VN')}</div>
+                              <div style={{ fontSize:9, color:'#94a3b8' }}>Tổng SL</div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize:14, fontWeight:700, color: m.totalCong>10?'#cf1322':m.totalCong>5?'#d46b08':'#389e0d' }}>
+                                {m.totalCong.toLocaleString('vi-VN',{maximumFractionDigits:1})}
+                              </div>
+                              <div style={{ fontSize:9, color:'#94a3b8' }}>Tổng Công</div>
+                            </div>
+                            {m.totalNguoi > 0 && (
+                              <div>
+                                <div style={{ fontSize:14, fontWeight:700, color:'#7c3aed' }}>{m.totalNguoi}</div>
+                                <div style={{ fontSize:9, color:'#94a3b8' }}>Người</div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* ── Pivot calendar table ── */}
+                  {schedDates.length === 0 ? (
+                    <div style={{ padding:'32px 0', textAlign:'center', color:'#94a3b8', fontSize:13 }}>
+                      Không có dữ liệu kế hoạch trong khoảng thời gian này
+                    </div>
+                  ) : (
+                    <Table
+                      className="machine-sched-table"
+                      size="small"
+                      dataSource={schedDS}
+                      rowKey="key"
+                      pagination={false}
+                      bordered
+                      scroll={{ x:'max-content', y:'calc(100vh - 560px)' }}
+                      columns={[
+                        {
+                          title: 'Máy Thực Hiện', key:'machine', width:195, fixed:'left',
+                          onHeaderCell: ()=>({ style:{ background:'#006666', color:'#fff', fontSize:12, fontWeight:700 } }),
+                          render: (_,row) => (
+                            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                              <Tag color={row._row.tagColor} style={{ fontWeight:700, fontSize:10, margin:0 }}>{row._row.label}</Tag>
+                              <span style={{ fontWeight:700, fontSize:12, color:'#004466' }}>{row._row.machineName}</span>
+                            </div>
+                          ),
+                        },
+                        ...schedDates.map(date => {
+                          const dow = ['CN','T2','T3','T4','T5','T6','T7'][dayjs(date).day()]
+                          const isWeekend = dayjs(date).day()===0 || dayjs(date).day()===6
+                          const isToday   = dayjs(date).isSame(dayjs(),'day')
+                          return {
+                            key: date,
+                            title: (
+                              <div style={{ textAlign:'center', minWidth:160 }}>
+                                <div style={{ fontWeight:700, color:'#fff', fontSize:12 }}>
+                                  {isToday && <span style={{ background:'#facc15', color:'#000', borderRadius:3, padding:'0 4px', fontSize:10, marginRight:4 }}>Hôm nay</span>}
+                                  {dayjs(date).format('DD/MM')}
+                                </div>
+                                <div style={{ fontSize:10, color:'rgba(255,255,255,0.85)' }}>{dow}</div>
+                              </div>
+                            ),
+                            dataIndex: date,
+                            width: 185,
+                            onHeaderCell: ()=>({ style:{ background: isWeekend?'#c25700':isToday?'#0f5f6e':'#006666', padding:'4px 8px' } }),
+                            onCell: ()=>({ style:{ background:'#fff', verticalAlign:'top', padding:'4px 5px' } }),
+                            render: records => {
+                              if (!records?.length) return <span style={{ color:'#e2e8f0', display:'block', textAlign:'center', fontSize:18 }}>—</span>
+                              return (
+                                <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                                  {records.map((r,ri) => {
+                                    const ttColor = r.tinhTrang==='done'?'#059669':r.tinhTrang==='doing'?'#1d4ed8':'#94a3b8'
+                                    const ttBg    = r.tinhTrang==='done'?'#f0fdf4':r.tinhTrang==='doing'?'#eff6ff':'#f8fafc'
+                                    return (
+                                      <Tooltip
+                                        key={r.id||ri}
+                                        title={
+                                          <div style={{ fontSize:12 }}>
+                                            <div style={{ fontWeight:700, color:'#93c5fd' }}>{r._pm.tenTrinh || r.maBravo}</div>
+                                            {r.maDonHang && <div style={{ color:'#fde68a' }}>ĐH: {r.maDonHang}</div>}
+                                            <div>Lô: <b>{r.soLo}</b> · SL: <b>{r._cl.toLocaleString('vi-VN')} SP</b></div>
+                                            {r._ns > 0 && <div>NS: {r._ns.toLocaleString('vi-VN')}/ca</div>}
+                                            {r._congTH > 0 && <div>Công: {r._congTH.toFixed(2)} ngày</div>}
+                                            {r._soNguoi > 0 && <div>Người: {r._soNguoi}</div>}
+                                          </div>
+                                        }
+                                      >
+                                        <div style={{ background:ttBg, border:`1px solid ${ttColor}22`, borderLeft:`3px solid ${ttColor}`, borderRadius:'0 5px 5px 0', padding:'5px 7px', cursor:'default' }}>
+                                          <div style={{ fontWeight:700, color:'#1a3a6b', fontSize:11, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:160 }}>
+                                            {r._pm.tenTrinh || r.maBravo || '—'}
+                                          </div>
+                                          <div style={{ fontSize:10, color:'#475569', marginTop:2 }}>
+                                            Lô <b style={{ color:'#1e5fa3', fontFamily:'monospace' }}>{r.soLo||'—'}</b>
+                                            {' · '}<b style={{ color:'#1e5fa3' }}>{r._cl.toLocaleString('vi-VN')} SP</b>
+                                          </div>
+                                          <div style={{ display:'flex', gap:5, marginTop:3, fontSize:10, flexWrap:'nowrap' }}>
+                                            {r._soNguoi>0 && <span style={{ color:'#7c3aed' }}>👤 {r._soNguoi}</span>}
+                                            {r._congTH>0  && <span style={{ color:'#0369a1' }}>⏱ {r._congTH.toFixed(2)}</span>}
+                                            {r._soCa>0    && <span style={{ color:'#059669' }}>🔄 {r._soCa.toFixed(2)}</span>}
+                                            <span style={{ color:ttColor, fontWeight:600, marginLeft:'auto' }}>
+                                              {r.tinhTrang==='done'?'✓':r.tinhTrang==='doing'?'▶':'◌'}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </Tooltip>
+                                    )
+                                  })}
+                                </div>
+                              )
+                            },
+                          }
+                        }),
+                      ]}
+                      summary={() => (
+                        <Table.Summary.Row>
+                          <Table.Summary.Cell index={0} style={{ fontWeight:700, color:'#0f4c81', fontSize:12, position:'sticky', left:0, zIndex:2, background:'#e8f0fe' }}>
+                            Tổng người / ngày
+                          </Table.Summary.Cell>
+                          {schedDates.map((date,i) => {
+                            const totalNguoi = schedDS.reduce((sum,row) =>
+                              sum + (row[date]||[]).reduce((s,r)=>s+r._soNguoi,0), 0)
+                            const totalLo = schedDS.reduce((sum,row) => sum+(row[date]||[]).length, 0)
+                            return (
+                              <Table.Summary.Cell key={date} index={i+1} align="center">
+                                {totalLo > 0 ? (
+                                  <div style={{ lineHeight:1.3 }}>
+                                    {totalNguoi > 0 && <div style={{ color:'#7c3aed', fontWeight:700 }}>👤 {totalNguoi}</div>}
+                                    <div style={{ color:'#0369a1', fontSize:10 }}>{totalLo} lô</div>
+                                  </div>
+                                ) : <span style={{ color:'#d9d9d9' }}>—</span>}
+                              </Table.Summary.Cell>
+                            )
+                          })}
+                        </Table.Summary.Row>
+                      )}
+                    />
+                  )}
+                </div>
+              )
+            })()}
           </>
         )
       })()
