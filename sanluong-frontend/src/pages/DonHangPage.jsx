@@ -2144,18 +2144,32 @@ export default function DonHangPage() {
           if (st === 'doing')   return <Badge status="processing" text={<span style={{ color: '#1677ff', fontWeight: 600, fontSize: 11 }}>Đang SX</span>} />
           return <Badge status="default" text={<span style={{ color: '#94a3b8', fontSize: 11 }}>Chưa SX</span>} />
         }
+        const calcStageOverall = ss => {
+          if (!ss) return null
+          const vals = [ss.PC, ss.PL, ss.BBC1, ss.DG].filter(Boolean)
+          if (!vals.length) return null
+          if (vals.every(s => s === 'done')) return 'done'
+          if (vals.some(s => s === 'done' || s === 'doing')) return 'doing'
+          return 'pending'
+        }
         const allStatusData = [...displayData, ...completedData]
           .map(r => {
             const isDone = r.tinhTrangSx === 'done'
+            const _stageOverall = calcStageOverall(r.stageStatus)
             return {
               ...r,
-              _pm:           productMasterMap[r.maBravo] || {},
-              ttNguyenLieu:  isDone ? 'du' : r.ttNguyenLieu,
-              ttBbc1:        isDone ? 'du' : r.ttBbc1,
-              ttBbc2:        isDone ? 'du' : r.ttBbc2,
+              _pm:            productMasterMap[r.maBravo] || {},
+              ttNguyenLieu:   isDone ? 'du' : r.ttNguyenLieu,
+              ttBbc1:         isDone ? 'du' : r.ttBbc1,
+              ttBbc2:         isDone ? 'du' : r.ttBbc2,
+              _stageOverall,
             }
           })
           .sort((a, b) => {
+            // Done-stage rows xuống cuối
+            const aDone = a._stageOverall === 'done' ? 1 : 0
+            const bDone = b._stageOverall === 'done' ? 1 : 0
+            if (aDone !== bDone) return aDone - bDone
             const sa = ttScore(a.ttNguyenLieu) + ttScore(a.ttBbc1) + ttScore(a.ttBbc2)
             const sb = ttScore(b.ttNguyenLieu) + ttScore(b.ttBbc1) + ttScore(b.ttBbc2)
             if (sb !== sa) return sb - sa
@@ -2309,6 +2323,17 @@ export default function DonHangPage() {
             render: (_, r) => renderStageStatus(r.stageStatus?.DG),
           },
           {
+            title: <div style={{ lineHeight: 1.3, textAlign: 'center', fontWeight: 700 }}>TT<br/>Tổng</div>,
+            key: 'stOverall', width: 105, align: 'center',
+            render: (_, r) => {
+              const s = r._stageOverall
+              if (!s) return <span style={{ color: '#d9d9d9' }}>—</span>
+              if (s === 'done')  return <Tag color="success"   style={{ fontWeight: 700, fontSize: 11, margin: 0 }}>✓ Done</Tag>
+              if (s === 'doing') return <Tag color="processing" style={{ fontWeight: 700, fontSize: 11, margin: 0 }}>Đang SX</Tag>
+              return <Tag style={{ color: '#94a3b8', fontSize: 11, margin: 0 }}>Chưa SX</Tag>
+            },
+          },
+          {
             title: 'Máy Móc PC', key: 'mmPc', width: 170,
             render: (_, r) => r._pm.mayMocPc
               ? <span style={{ fontSize: 12, color: '#374151' }}>{r._pm.mayMocPc}</span>
@@ -2341,7 +2366,7 @@ export default function DonHangPage() {
             rowKey="id"
             loading={loading || loadingMaster}
             size="small"
-            scroll={{ x: 3380 }}
+            scroll={{ x: 3485 }}
             sticky={{ offsetHeader: headerOffset }}
             rowHoverable={false}
             rowClassName={r => r.tinhTrangSx === 'done' ? 'dh-row-done' : rowClassName(r)}
