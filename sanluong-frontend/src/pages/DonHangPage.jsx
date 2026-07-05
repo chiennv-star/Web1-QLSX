@@ -2174,6 +2174,10 @@ export default function DonHangPage() {
       })
   }, [displayData, completedData, productMasterMap])
 
+  const qualifiedRowsMemo = useMemo(() =>
+    allStatusData.filter(r => r.ttNguyenLieu && r.ttBbc1 && r.ttBbc2)
+  , [allStatusData])
+
   const machineDataMemo = useMemo(() => {
     const machineStages = [
       { field: 'mayMocPc',   nsField: 'nangSuatPc',   label: 'PC',   tagColor: 'blue',     stageName: 'Pha Chế',   accentColor: '#1d4ed8' },
@@ -3379,6 +3383,7 @@ export default function DonHangPage() {
         ]
         // ── Phân tích tải máy — dùng memoized machineDataMemo ──────────────────
         const machineData = machineDataMemo
+        const qualifiedRows = qualifiedRowsMemo
         const sumCong = lbl => machineData.filter(m => m.label === lbl).reduce((s, m) => s + m.totalCong, 0)
         const machineColumns = [
           { title: '#', key: 'stt', width: 44, align: 'center', render: (_, __, i) => <span style={{ fontSize: 11, color: '#94a3b8' }}>{i + 1}</span> },
