@@ -1087,6 +1087,7 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose })
 
   const nsFieldOf = lbl => ({ PC: 'nangSuatPc', PL: 'nangSuatPl', BBC1: 'nangSuatBbc1', ĐG: 'slTrungBinh' }[lbl] || 'nangSuatPc')
   const nsF = nsFieldOf(machine.label)
+  const stageStatusKey = { PC: 'PC', PL: 'PL', BBC1: 'BBC1', ĐG: 'DG' }[machine.label] || 'PC'
 
   const orderColumns = [
     { title: '#', key: 'stt', width: 40, align: 'center', render: (_, __, i) => <span style={{ fontSize: 11, color: '#94a3b8' }}>{i + 1}</span> },
@@ -1122,6 +1123,19 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose })
       render: (_, r) => r._totalCoLo
         ? <span style={{ fontWeight: 700, color: '#374151' }}>{r._totalCoLo.toLocaleString('vi-VN')}</span>
         : <span style={{ color: '#d9d9d9' }}>—</span>,
+    },
+    {
+      title: 'Số Lô', key: 'soLo', width: 130,
+      render: (_, r) => {
+        if (!r._soLoList?.length) return <span style={{ color: '#d9d9d9' }}>—</span>
+        return (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+            {r._soLoList.map(s => (
+              <Tag key={s} color="cyan" style={{ fontFamily: 'monospace', fontWeight: 600, margin: 0, fontSize: 10, padding: '1px 5px' }}>{s}</Tag>
+            ))}
+          </div>
+        )
+      },
     },
     {
       title: 'NS/Ca', key: 'ns', width: 90, align: 'right',
@@ -1177,10 +1191,14 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose })
       },
     },
     {
-      title: 'Tình Trạng', key: 'ttKH', width: 100, align: 'center',
+      title: 'TT KH', key: 'ttKH', width: 90, align: 'center',
       sorter: (a, b) => a._ttOrder - b._ttOrder || (a._firstDate || '').localeCompare(b._firstDate || ''),
       defaultSortOrder: 'ascend',
       render: (_, r) => ttTag(r._ttKH),
+    },
+    {
+      title: 'TT SX', key: 'ttSX', width: 90, align: 'center',
+      render: (_, r) => ttTag(r._schedStatus),
     },
     {
       title: 'Ngày Thực Hiện', key: 'ngayTH', width: 220,
@@ -1304,11 +1322,13 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose })
                     _ttKH: aggTT(planRecs),
                     _ttOrder: ({ doing: 0, pending: 1, done: 2 }[aggTT(planRecs)] ?? 3),
                     _firstDate: planRecs.length ? ([...new Set(planRecs.map(r => r.ngayThucHien).filter(Boolean))].sort()[0] || '') : '',
+                    _soLoList: [...new Set(planRecs.map(r => r.soLo).filter(Boolean))],
+                    _schedStatus: o.stageStatus?.[stageStatusKey] || null,
                   }
                 })}
                 columns={orderColumns}
                 pagination={false}
-                scroll={{ x: 1560, y: 500 }}
+                scroll={{ x: 1780, y: 500 }}
                 rowHoverable={false}
                 locale={{ emptyText: 'Không có dữ liệu' }}
                 summary={ds => {
@@ -1332,19 +1352,20 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose })
                     <Table.Summary.Cell index={6} align="right">
                       {totalCoLoKH ? <span style={{ fontWeight: 700, color: '#374151' }}>{totalCoLoKH.toLocaleString('vi-VN')}</span> : null}
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={7} />
-                    <Table.Summary.Cell index={8} align="right">
+                    <Table.Summary.Cell index={7} />{/* Số Lô */}
+                    <Table.Summary.Cell index={8} />{/* NS/Ca */}
+                    <Table.Summary.Cell index={9} align="right">
                       <span style={{ fontWeight: 700, color: machine.totalCong > 10 ? '#cf1322' : machine.totalCong > 5 ? '#d46b08' : '#389e0d' }}>
                         {machine.totalCong.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}
                       </span>
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={9} align="center">
+                    <Table.Summary.Cell index={10} align="center">
                       {totalCaKH ? <Tag color="blue" style={{ fontWeight: 700, margin: 0 }}>{totalCaKH}</Tag> : null}
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={10} align="right">
+                    <Table.Summary.Cell index={11} align="right">
                       {totalCongKH ? <span style={{ fontWeight: 700, color: '#d46b08' }}>{totalCongKH.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</span> : null}
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={11} colSpan={3} />
+                    <Table.Summary.Cell index={12} colSpan={4} />
                   </Table.Summary.Row>
                 )
                 }}
@@ -2753,7 +2774,7 @@ export default function DonHangPage() {
             const m = machineMap[key]
             const sl = Number(r.soLuongConLai) || 0
             const ns = Number(r._pm[nsField]) || 0
-            m.orders.push({ id: r.id, maBravo: r.maBravo, tenSanPham: r.tenSanPham, sl, maDonHang: r.maDonHang })
+            m.orders.push({ id: r.id, maBravo: r.maBravo, tenSanPham: r.tenSanPham, sl, maDonHang: r.maDonHang, stageStatus: r.stageStatus })
             m.totalSL += sl
             if (ns > 0) m.totalCong += sl / ns
           })
