@@ -559,6 +559,11 @@ function LenhDetailModal({ open, record, onClose, onSaved }) {
   useEffect(() => {
     if (!open || !record) return
     setDetailLookup(null)
+    setRnd(() => {
+      const w = Math.min(window.innerWidth * 0.72, 860)
+      const h = Math.min(window.innerHeight * 0.82, 680)
+      return { x: Math.max(20, (window.innerWidth - w) / 2), y: 40, width: w, height: h }
+    })
     form.setFieldsValue({
       tenSanPham:     record.tenSanPham     || '',
       maBravo:        record.maBravo        || '',
