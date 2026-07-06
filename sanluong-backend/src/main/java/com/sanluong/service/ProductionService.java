@@ -490,12 +490,13 @@ public class ProductionService {
         List<ProductionRecord> masters = repository.findAllPhatLenh();
         List<ProductionRecord> allNk   = repository.findAllNhapKhoEntries();
 
-        // Group nhapkho entries by "maBravo|lsx"
+        // Group nhapkho entries by "maBravo|lsx|maDonHang" to avoid double-counting
+        // when multiple lệnh share the same maBravo+lsx but differ in maDonHang
         java.util.Map<String, Integer>             sumMap     = new java.util.HashMap<>();
         java.util.Map<String, Integer>             cntMap     = new java.util.HashMap<>();
         java.util.Map<String, java.time.LocalDate> maxDateMap = new java.util.HashMap<>();
         for (ProductionRecord r : allNk) {
-            String key = mkKey(r.getMaBravo(), r.getLsx());
+            String key = mkKey(r.getMaBravo(), r.getLsx(), r.getMaDonHang());
             sumMap.merge(key, r.getTpNhapKho() != null ? r.getTpNhapKho() : 0, Integer::sum);
             cntMap.merge(key, 1, Integer::sum);
             if (r.getNgayXuatKho() != null) {
@@ -506,7 +507,7 @@ public class ProductionService {
 
         java.util.List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
         for (ProductionRecord r : masters) {
-            String key = mkKey(r.getMaBravo(), r.getLsx());
+            String key = mkKey(r.getMaBravo(), r.getLsx(), r.getMaDonHang());
             java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
             row.put("id",                  r.getId());
             row.put("maBravo",             r.getMaBravo());
@@ -527,6 +528,10 @@ public class ProductionService {
 
     private static String mkKey(String maBravo, String lsx) {
         return (maBravo == null ? "" : maBravo) + "|" + (lsx == null ? "" : lsx);
+    }
+
+    private static String mkKey(String maBravo, String lsx, String maDonHang) {
+        return (maBravo == null ? "" : maBravo) + "|" + (lsx == null ? "" : lsx) + "|" + (maDonHang == null ? "" : maDonHang);
     }
 
     public ProductionRecord createNhapKhoEntry(Long sourceId, java.util.Map<String, String> body, String username) {
