@@ -1327,13 +1327,30 @@ function MachinePlanCalendar({ records, onEdit, machineOrders = [], congField = 
   // Set of orderKeys that have any plan record at all
   const scheduledKeySet = new Set((records || []).map(r => `${r.maBravo}|${r.maDonHang || ''}`))
 
-  const allOrderKeys = machineOrders.map(o => ({
-    key: `${o.maBravo}|${o.maDonHang || ''}`,
-    maBravo: o.maBravo,
-    maDonHang: o.maDonHang,
-    tenSp: o.tenSanPham || o.maBravo,
-    sl: o.sl ?? null,
-  }))
+  // Precompute earliest scheduled date per order for sorting
+  const orderFirstDate = {}
+  ;(records || []).forEach(r => {
+    const k = `${r.maBravo}|${r.maDonHang || ''}`
+    if (r.ngayThucHien && (!orderFirstDate[k] || r.ngayThucHien < orderFirstDate[k]))
+      orderFirstDate[k] = r.ngayThucHien
+  })
+
+  const allOrderKeys = machineOrders
+    .map(o => ({
+      key: `${o.maBravo}|${o.maDonHang || ''}`,
+      maBravo: o.maBravo,
+      maDonHang: o.maDonHang,
+      tenSp: o.tenSanPham || o.maBravo,
+      sl: o.sl ?? null,
+    }))
+    .sort((a, b) => {
+      const da = orderFirstDate[a.key] || ''
+      const db = orderFirstDate[b.key] || ''
+      if (!da && !db) return 0
+      if (!da) return 1   // unscheduled goes below scheduled
+      if (!db) return -1
+      return da.localeCompare(db)
+    })
 
   const unscheduledOrders = allOrderKeys.filter(o => !scheduledKeySet.has(o.key))
 
@@ -1354,7 +1371,7 @@ function MachinePlanCalendar({ records, onEdit, machineOrders = [], congField = 
     <div>
       {/* ── Chưa xếp lịch ── */}
       {unscheduledOrders.length > 0 && (
-        <div style={{ marginBottom: 10, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, overflow: 'hidden' }}>
+        <div style={{ marginBottom: 10, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, overflow: 'hidden', position: 'sticky', top: 0, zIndex: 10 }}>
           <div
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', cursor: 'pointer', userSelect: 'none' }}
             onClick={() => setShowUnscheduled(v => !v)}
