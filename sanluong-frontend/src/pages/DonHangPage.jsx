@@ -1280,7 +1280,7 @@ function QuickScheduleModal({ open, order, planRecs, machine, congField, nsF, pr
 }
 
 // ── Machine Plan Calendar (mini weekly grid) ──────────────────────────────────
-function MachinePlanCalendar({ records, onEdit, machineOrders = [] }) {
+function MachinePlanCalendar({ records, onEdit, machineOrders = [], congField = null, nsField = null }) {
   const [collapsedWeeks,    setCollapsedWeeks]    = useState(new Set())
   const [extraWeeks,        setExtraWeeks]        = useState(1)
   const [showUnscheduled,   setShowUnscheduled]   = useState(true)
@@ -1433,6 +1433,16 @@ function MachinePlanCalendar({ records, onEdit, machineOrders = [] }) {
                                 >
                                   <div style={{ fontWeight: 700, color: '#1e293b', fontSize: 12 }}>{Number(r.coLo || 0).toLocaleString('vi-VN')}</div>
                                   {r.soLo && <div style={{ fontFamily: 'monospace', color: '#374151', fontSize: 11, fontWeight: 600 }}>{r.soLo}</div>}
+                                  {congField && Number(r[congField]) > 0 && (
+                                    <div style={{ color: '#6d28d9', fontSize: 10, fontWeight: 600 }}>
+                                      👤 {Number(r[congField])} công
+                                    </div>
+                                  )}
+                                  {nsField && r._pm && Number(r._pm[nsField]) > 0 && Number(r.coLo) > 0 && (
+                                    <div style={{ color: '#0369a1', fontSize: 10 }}>
+                                      ⚙ {(Number(r.coLo) / Number(r._pm[nsField])).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} ca
+                                    </div>
+                                  )}
                                   {r.tinhTrang === 'done'
                                     ? <Tag color="success" style={{ margin: 0, fontSize: 9, padding: '0 3px' }}>Xong</Tag>
                                     : r.tinhTrang === 'doing'
@@ -1499,7 +1509,7 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose, o
   const machinePlanRecords = planRecords
     .filter(r => bravoSet.has(r.maBravo) && stagePlanFilter(r))
     .map(r => ({ ...r, _pm: productMasterMap[r.maBravo] || {} }))
-    .sort((a, b) => (a.ngayThucHien || '').localeCompare(b.ngayThucHien || ''))
+    .sort((a, b) => (b.ngayThucHien || '').localeCompare(a.ngayThucHien || ''))
 
   // Lookup plan records per order (maBravo + maDonHang)
   const cf = { PC: 'congPc', PL: 'congPl' }[machine.label] || null
@@ -1924,6 +1934,8 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose, o
               <MachinePlanCalendar
                 records={machinePlanRecords}
                 machineOrders={machine.orders}
+                congField={cf}
+                nsField={nsF}
                 onEdit={(ord, recs) => {
                   const orderObj = { maBravo: ord.maBravo, maDonHang: ord.maDonHang, tenSanPham: ord.tenSp, sl: 0 }
                   setScheduleRow({ ...orderObj, _planRecs: recs })
