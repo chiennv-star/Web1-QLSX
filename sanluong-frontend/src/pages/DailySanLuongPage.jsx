@@ -1730,11 +1730,23 @@ function TongHopTab() {
       title: 'NGÀY', dataIndex: 'ngay', key: 'ngay',
       width: 110, fixed: 'left', align: 'center',
       onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#ffffff', fontSize: 11 } }),
-      render: v => (
-        <span style={{ fontWeight: 700, color: '#1D4ED8' }}>
-          {dayjs(v).format('DD/MM/YYYY')}
-        </span>
-      ),
+      render: v => {
+        const d = dayjs(v)
+        const isSun = d.day() === 0
+        return (
+          <span style={{
+            fontWeight: 700,
+            color: isSun ? '#dc2626' : '#1D4ED8',
+            background: isSun ? '#fef2f2' : 'transparent',
+            borderRadius: 4,
+            padding: isSun ? '1px 5px' : undefined,
+            display: 'inline-block',
+          }}>
+            {d.format('DD/MM/YYYY')}
+            {isSun && <span style={{ fontSize: 10, marginLeft: 4, fontWeight: 600, opacity: 0.8 }}>CN</span>}
+          </span>
+        )
+      },
       sorter: (a, b) => a.ngay.localeCompare(b.ngay),
       defaultSortOrder: 'descend',
     },
