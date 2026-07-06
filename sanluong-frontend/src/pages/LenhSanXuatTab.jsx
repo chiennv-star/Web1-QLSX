@@ -551,6 +551,17 @@ function LenhDetailModal({ open, record, onClose, onSaved }) {
       tinhTrang:      record.tinhTrang      || null,
       chuY:           record.chuY           || '',
     })
+    // Auto-fill tenSanPham + maSp từ danh mục nếu record chưa có (isFromKhoach)
+    if (!record.tenSanPham && record.maBravo) {
+      api.get(`/product-master/lookup-by-bravo/${encodeURIComponent(record.maBravo)}`)
+        .then(({ data: master }) => {
+          const updates = {}
+          if (master.tienTrinh) updates.tenSanPham = master.tienTrinh
+          if (!record.maSp && master.maTp) updates.maSp = master.maTp
+          if (Object.keys(updates).length) form.setFieldsValue(updates)
+        })
+        .catch(() => {})
+    }
   }, [open, record, form])
 
   const handleSave = async () => {
