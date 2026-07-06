@@ -1057,7 +1057,7 @@ const CONG_FIELD_BY_LABEL = { PC: 'congPc', PL: 'congPl', BBC1: 'congBbc1', ĐG:
 const TO_NHOM_BY_LABEL    = { PL: 'PCPL3', BBC1: 'BBC1' } // PC → user picks, ĐG → null
 
 // ── Quick Schedule Modal ───────────────────────────────────────────────────────
-function QuickScheduleModal({ open, order, planRecs, machine, congField, nsF, productMasterMap, onClose, onRefresh }) {
+function QuickScheduleModal({ open, order, planRecs, machine, congField, nsF, productMasterMap, onClose, onRefresh, initialDate }) {
   const [form]       = Form.useForm()
   const [loading,    setLoading]    = useState(false)
   const [editingId,  setEditingId]  = useState(null)
@@ -1071,7 +1071,7 @@ function QuickScheduleModal({ open, order, planRecs, machine, congField, nsF, pr
 
   const resetForm = (rec = null) => {
     form.setFieldsValue({
-      ngayThucHien: rec?.ngayThucHien ? dayjs(rec.ngayThucHien) : dayjs(),
+      ngayThucHien: rec?.ngayThucHien ? dayjs(rec.ngayThucHien) : (initialDate ? dayjs(initialDate) : dayjs()),
       toNhom:       rec?.toNhom || defaultToNhom || (isPcStage ? 'PCPL1' : null),
       coLo:         rec?.coLo != null ? Number(rec.coLo) : null,
       soLo:         rec?.soLo || null,
@@ -1369,10 +1369,11 @@ function MachinePlanCalendar({ records, onEdit, machineOrders = [], congField = 
       <div style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
           {weeks.map((wDates, wIdx) => {
-            // Only rows that have at least one record in this week
-            const weekOrderKeys = allOrderKeys.filter(ord =>
+            // Rows with records this week; for empty weeks show unscheduled orders so cells are clickable
+            const weekScheduledKeys = allOrderKeys.filter(ord =>
               wDates.some(d => recLookup[`${ord.key}|${d}`]?.length)
             )
+            const weekOrderKeys = weekScheduledKeys.length > 0 ? weekScheduledKeys : unscheduledOrders
             const isCollapsed = collapsedWeeks.has(wIdx)
             return (
               <tbody key={wIdx}>
@@ -1418,7 +1419,7 @@ function MachinePlanCalendar({ records, onEdit, machineOrders = [], congField = 
                           <td key={date}
                             style={{ ...td, background: isToday ? '#eff6ff' : isWe ? '#fffdf5' : '#fff', cursor: 'pointer' }}
                             title="Click để xếp lịch"
-                            onClick={() => onEdit(ord, (records || []).filter(x => x.maBravo === ord.maBravo && x.maDonHang === ord.maDonHang))}
+                            onClick={() => onEdit(ord, (records || []).filter(x => x.maBravo === ord.maBravo && x.maDonHang === ord.maDonHang), date)}
                           />
                         )
                         return (
@@ -1429,7 +1430,7 @@ function MachinePlanCalendar({ records, onEdit, machineOrders = [], congField = 
                               return (
                                 <div key={r.id}
                                   style={{ background: bgMap[r.tinhTrang] || '#fafafa', border: `1px solid ${brMap[r.tinhTrang] || '#e2e8f0'}`, borderRadius: 4, padding: '3px 5px', marginBottom: 2, cursor: 'pointer' }}
-                                  onClick={() => onEdit(ord, (records || []).filter(x => x.maBravo === ord.maBravo && x.maDonHang === ord.maDonHang))}
+                                  onClick={() => onEdit(ord, (records || []).filter(x => x.maBravo === ord.maBravo && x.maDonHang === ord.maDonHang), date)}
                                 >
                                   <div style={{ fontWeight: 700, color: '#1e293b', fontSize: 12 }}>{Number(r.coLo || 0).toLocaleString('vi-VN')}</div>
                                   {r.soLo && <div style={{ fontFamily: 'monospace', color: '#374151', fontSize: 11, fontWeight: 600 }}>{r.soLo}</div>}
@@ -1936,9 +1937,9 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose, o
                 machineOrders={machine.orders}
                 congField={cf}
                 nsField={nsF}
-                onEdit={(ord, recs) => {
+                onEdit={(ord, recs, date) => {
                   const orderObj = { maBravo: ord.maBravo, maDonHang: ord.maDonHang, tenSanPham: ord.tenSp, sl: 0 }
-                  setScheduleRow({ ...orderObj, _planRecs: recs })
+                  setScheduleRow({ ...orderObj, _planRecs: recs, _initialDate: date })
                   setScheduleOpen(true)
                 }}
               />
@@ -1957,6 +1958,7 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose, o
         productMasterMap={productMasterMap}
         onClose={() => setScheduleOpen(false)}
         onRefresh={async () => { await onPlanChange?.(); }}
+        initialDate={scheduleRow?._initialDate}
       />
     </Modal>
   )

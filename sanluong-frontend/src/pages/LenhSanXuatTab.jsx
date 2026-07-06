@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Table, Input, Select, Tag, Tooltip, message, Button, Badge, Progress,
-  Modal, Form, DatePicker, InputNumber, Divider, AutoComplete, Spin, Dropdown,
+  Modal, Form, DatePicker, InputNumber, Divider, AutoComplete, Spin, Dropdown, Alert,
 } from 'antd'
 import { Rnd } from 'react-rnd'
 import SkeletonTable from '../components/SkeletonTable'
@@ -226,13 +226,15 @@ function LenhModal({ open, editItem, onClose, onSaved }) {
   const [saving, setSaving] = useState(false)
   const [bravoOptions, setBravoOptions] = useState([])
   const [bravoStatus,  setBravoStatus]  = useState(null) // null | 'loading' | 'found' | 'not_found'
+  const [latestTienTrinh, setLatestTienTrinh] = useState(null) // non-null = catalog has newer value
   const bravoTimerRef       = useRef(null)
   const justSelectedBravo   = useRef(false)
 
   useEffect(() => {
-    if (!open) return
+    if (!open) { setLatestTienTrinh(null); return }
     setBravoOptions([])
     setBravoStatus(null)
+    setLatestTienTrinh(null)
     if (editItem) {
       form.setFieldsValue({
         ...editItem,
@@ -241,6 +243,16 @@ function LenhModal({ open, editItem, onClose, onSaved }) {
         ngayPhatLenh: editItem.ngayPhatLenh ? dayjs(editItem.ngayPhatLenh) : null,
         soLuong: editItem.soLuong != null ? Number(editItem.soLuong) : null,
       })
+      // Check if tienTrinh has changed in catalog since lenh was created
+      if (editItem.maBravo) {
+        api.get(`/product-master/lookup-by-bravo/${encodeURIComponent(editItem.maBravo)}`)
+          .then(({ data: master }) => {
+            const latest = (master.tienTrinh || '').trim()
+            const current = (editItem.tenSanPham || '').trim()
+            if (latest && latest !== current) setLatestTienTrinh(latest)
+          })
+          .catch(() => {})
+      }
     } else {
       form.resetFields()
     }
@@ -465,6 +477,30 @@ function LenhModal({ open, editItem, onClose, onSaved }) {
           </LVCell>
 
         </div>
+
+        {/* Cảnh báo tienTrinh thay đổi */}
+        {latestTienTrinh && (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 8, fontSize: 12 }}
+            message={
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span>Tên/Tiến trình trong danh mục đã thay đổi:</span>
+                <span style={{ color: '#888', textDecoration: 'line-through', fontStyle: 'italic' }}>{editItem?.tenSanPham || '(trống)'}</span>
+                <span>→</span>
+                <span style={{ color: '#1677ff', fontWeight: 600 }}>{latestTienTrinh}</span>
+                <Button
+                  size="small" type="primary"
+                  onClick={() => { form.setFieldsValue({ tenSanPham: latestTienTrinh }); setLatestTienTrinh(null) }}
+                >
+                  Cập nhật
+                </Button>
+                <Button size="small" onClick={() => setLatestTienTrinh(null)}>Bỏ qua</Button>
+              </div>
+            }
+          />
+        )}
 
         {/* Chú ý + Ghi chú */}
         <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
