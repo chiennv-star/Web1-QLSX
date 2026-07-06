@@ -526,6 +526,7 @@ function LenhModal({ open, editItem, onClose, onSaved }) {
 function LenhDetailModal({ open, record, onClose, onSaved }) {
   const [form] = Form.useForm()
   const [saving, setSaving] = useState(false)
+  const [detailLookup, setDetailLookup] = useState(null) // null | 'loading' | 'found' | 'not_found'
 
   const defaultRnd = useMemo(() => {
     const w = Math.min(window.innerWidth * 0.72, 860)
@@ -534,8 +535,30 @@ function LenhDetailModal({ open, record, onClose, onSaved }) {
   }, [])
   const [rnd, setRnd] = useState(defaultRnd)
 
+  const handleDetailLookup = async () => {
+    const bravo = (form.getFieldValue('maBravo') || '').trim()
+    if (!bravo) { message.warning('Chưa có Mã Bravo để tra cứu'); return }
+    setDetailLookup('loading')
+    try {
+      const { data: master } = await api.get(`/product-master/lookup-by-bravo/${encodeURIComponent(bravo)}`)
+      if (master?.maTp || master?.tienTrinh) {
+        form.setFieldsValue({ maSp: master.maTp || '', tenSanPham: master.tienTrinh || '' })
+        setDetailLookup('found')
+      } else {
+        message.warning('Không tìm thấy trong danh mục')
+        setDetailLookup('not_found')
+      }
+    } catch {
+      message.error('Lỗi tra cứu danh mục')
+      setDetailLookup('not_found')
+    } finally {
+      setTimeout(() => setDetailLookup(null), 2500)
+    }
+  }
+
   useEffect(() => {
     if (!open || !record) return
+    setDetailLookup(null)
     form.setFieldsValue({
       tenSanPham:     record.tenSanPham     || '',
       maBravo:        record.maBravo        || '',
@@ -683,7 +706,22 @@ function LenhDetailModal({ open, record, onClose, onSaved }) {
       {/* Form body */}
       <Form form={form} component="div" autoComplete="off" style={{ flex: 1, overflow: 'auto', padding: '14px 16px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 130px 1fr', border: '1px solid #e2e8f0', borderRadius: 7, overflow: 'hidden', marginBottom: 12 }}>
-          <LCell>Tên Sản Phẩm</LCell>
+          <LCell>
+            Tên Sản Phẩm
+            <Tooltip title="Lấy từ danh mục theo Mã Bravo">
+              <SyncOutlined
+                spin={detailLookup === 'loading'}
+                onClick={handleDetailLookup}
+                style={{
+                  marginLeft: 6, cursor: 'pointer', fontSize: 11,
+                  color: detailLookup === 'loading' ? '#1677ff'
+                       : detailLookup === 'found'   ? '#52c41a'
+                       : detailLookup === 'not_found' ? '#ff4d4f'
+                       : '#94a3b8',
+                }}
+              />
+            </Tooltip>
+          </LCell>
           <VCell span={3} last>
             <Form.Item name="tenSanPham" noStyle>
               <Input size="small" style={{ fontSize: 13, width: '100%' }} />
@@ -696,7 +734,22 @@ function LenhDetailModal({ open, record, onClose, onSaved }) {
               <Input size="small" style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0284c7', fontSize: 13, width: '100%' }} />
             </Form.Item>
           </VCell>
-          <LCell>Mã SP</LCell>
+          <LCell>
+            Mã SP
+            <Tooltip title="Lấy từ danh mục theo Mã Bravo">
+              <SyncOutlined
+                spin={detailLookup === 'loading'}
+                onClick={handleDetailLookup}
+                style={{
+                  marginLeft: 6, cursor: 'pointer', fontSize: 11,
+                  color: detailLookup === 'loading' ? '#1677ff'
+                       : detailLookup === 'found'   ? '#52c41a'
+                       : detailLookup === 'not_found' ? '#ff4d4f'
+                       : '#94a3b8',
+                }}
+              />
+            </Tooltip>
+          </LCell>
           <VCell last>
             <Form.Item name="maSp" noStyle>
               <Input size="small" style={{ color: '#1D4ED8', fontWeight: 600, fontSize: 13, width: '100%' }} />
