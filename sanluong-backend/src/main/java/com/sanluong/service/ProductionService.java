@@ -505,9 +505,13 @@ public class ProductionService {
             }
         }
 
+        // Track which keys have been assigned to avoid double-counting
+        // when multiple master records share the same maBravo+lsx+maDonHang
+        java.util.Set<String> assignedKeys = new java.util.HashSet<>();
         java.util.List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
         for (ProductionRecord r : masters) {
             String key = mkKey(r.getMaBravo(), r.getLsx(), r.getMaDonHang());
+            boolean firstAssign = assignedKeys.add(key);
             java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
             row.put("id",                  r.getId());
             row.put("maBravo",             r.getMaBravo());
@@ -518,9 +522,9 @@ public class ProductionService {
             row.put("maDonHang",           r.getMaDonHang());
             row.put("dg2",                 r.getDg2());
             row.put("pcPl",                r.getPcPl());
-            row.put("totalNhapKho",        sumMap.getOrDefault(key, 0));
-            row.put("soLanNhapKho",        cntMap.getOrDefault(key, 0));
-            row.put("ngayNhapKhoMoiNhat",  maxDateMap.get(key));
+            row.put("totalNhapKho",        firstAssign ? sumMap.getOrDefault(key, 0) : 0);
+            row.put("soLanNhapKho",        firstAssign ? cntMap.getOrDefault(key, 0) : 0);
+            row.put("ngayNhapKhoMoiNhat",  firstAssign ? maxDateMap.get(key) : null);
             result.add(row);
         }
         return result;
