@@ -447,6 +447,7 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
   const [lichSuSl, setLichSuSl]       = useState([])
   const [lichSuLoading, setLichSuLoading] = useState(false)
   const [autoFilling, setAutoFilling] = useState(false)
+  const [bravoLookup, setBravoLookup] = useState(null) // null | 'loading' | 'found' | 'not_found'
 
   useEffect(() => {
     if (!open || !record) return
@@ -494,6 +495,21 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
       onSaved({ ...rec, ...patch })
     } catch {}
     finally { setAutoFilling(false) }
+  }
+
+  const handleBravoBlur = async () => {
+    const val = (form.getFieldValue('maBravo') || '').trim()
+    if (!val) return
+    setBravoLookup('loading')
+    try {
+      const { data: pm } = await api.get(`/product-master/lookup-by-bravo/${encodeURIComponent(val)}`)
+      if (pm?.maTp || pm?.tienTrinh) {
+        form.setFieldsValue({ maSp: pm.maTp || '', tenSanPham: pm.tienTrinh || '' })
+        setBravoLookup('found')
+      } else {
+        setBravoLookup('not_found')
+      }
+    } catch { setBravoLookup('not_found') }
   }
 
   const loadKhoach = async () => {
@@ -672,10 +688,15 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
                 <Input size="small" style={{ fontSize: 13, width: '100%' }} />
               </Form.Item>
             </VCell>
-            <LCell><span style={{ color: '#cf1322', marginRight: 3 }}>*</span>Mã Bravo</LCell>
+            <LCell>
+              <span style={{ color: '#cf1322', marginRight: 3 }}>*</span>Mã Bravo
+              {bravoLookup === 'loading'   && <SyncOutlined spin style={{ color: '#1D4ED8', fontSize: 10, marginLeft: 4 }} />}
+              {bravoLookup === 'found'     && <CheckCircleOutlined style={{ color: '#389e0d', fontSize: 10, marginLeft: 4 }} />}
+              {bravoLookup === 'not_found' && <ExclamationCircleOutlined style={{ color: '#cf1322', fontSize: 10, marginLeft: 4 }} />}
+            </LCell>
             <VCell last>
               <Form.Item name="maBravo" noStyle>
-                <Input size="small" style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', fontSize: 13, width: '100%' }} />
+                <Input size="small" style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', fontSize: 13, width: '100%' }} onBlur={handleBravoBlur} />
               </Form.Item>
             </VCell>
 
