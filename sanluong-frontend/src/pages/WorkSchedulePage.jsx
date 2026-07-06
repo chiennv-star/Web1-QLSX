@@ -236,7 +236,11 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const [renameSaving, setRenameSaving] = useState(false)
   // ── Inline edit form ──
   const [infoForm] = Form.useForm()
-  const watchedToNhom = Form.useWatch('toNhom', infoForm)
+  const watchedToNhom       = Form.useWatch('toNhom',        infoForm)
+  const watchedQaKn         = Form.useWatch('qaKiemNghiem', infoForm)
+  const watchedQaLm         = Form.useWatch('qaLuuMau',     infoForm)
+  const watchedQaKh         = Form.useWatch('qaKhac',       infoForm)
+  const computedQaTotal     = (Number(watchedQaKn) || 0) + (Number(watchedQaLm) || 0) + (Number(watchedQaKh) || 0)
   const [infoSaving, setInfoSaving] = useState(false)
   const [isInfoEditing, setIsInfoEditing] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
@@ -378,6 +382,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
         maBravo:   schedule.maBravo   ?? null,
         // Form fields override base values
         ...values,
+        // Compute qaLayMau = sum of sub-fields
+        qaLayMau: (Number(values.qaKiemNghiem) || 0) + (Number(values.qaLuuMau) || 0) + (Number(values.qaKhac) || 0) || null,
         // Current session-computed totals override for this stage
         ...(congField ? { [congField]: tongCong || null } : {}),
         ...(slField   ? { [slField]:   tongSanLuong || null } : {}),
@@ -2276,13 +2282,27 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                     })()}
                   </VC>
                   <LC accent="#0891b2">🔬 QA Lấy mẫu</LC>
-                  <VC style={{ borderRight: 'none' }}>
-                    <Form.Item name="qaLayMau" noStyle>
-                      <InputNumber size="small" min={0} step={1} disabled={!isInfoEditing}
-                        formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
-                        parser={v => v ? v.replace(/[^\d]/g, '') : 0}
-                        style={{ width: '100%', fontWeight: 700 }} placeholder="0" />
-                    </Form.Item>
+                  <VC span={7} style={{ borderRight: 'none', gap: 12, flexWrap: 'wrap' }}>
+                    {[
+                      { name: 'qaKiemNghiem', label: 'KN' },
+                      { name: 'qaLuuMau',     label: 'Lưu mẫu' },
+                      { name: 'qaKhac',       label: 'Khác' },
+                    ].map(({ name, label }) => (
+                      <span key={name} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ fontSize: 11, color: '#0891b2', fontWeight: 700, whiteSpace: 'nowrap' }}>{label}</span>
+                        <Form.Item name={name} noStyle>
+                          <InputNumber size="small" min={0} step={1} disabled={!isInfoEditing}
+                            formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
+                            parser={v => v ? v.replace(/[^\d]/g, '') : 0}
+                            style={{ width: 80, fontWeight: 700 }} placeholder="0" />
+                        </Form.Item>
+                      </span>
+                    ))}
+                    <span style={{ marginLeft: 8, fontSize: 12, color: '#64748b' }}>
+                      Tổng: <b style={{ color: '#0891b2', fontFamily: 'monospace' }}>
+                        {computedQaTotal ? computedQaTotal.toLocaleString('vi-VN') : '—'}
+                      </b>
+                    </span>
                   </VC>
 
                   {schedule?.congDoan === 'DG' && (
