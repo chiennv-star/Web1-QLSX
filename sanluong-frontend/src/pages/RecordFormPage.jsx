@@ -343,8 +343,8 @@ export default function RecordFormPage() {
     const trimmed = (typeof val === 'string' ? val : val?.target?.value)?.trim()
     if (lookupTimer.current) clearTimeout(lookupTimer.current)
     if (!trimmed) { setLookupStatus(null); return }
-    setLookupStatus('loading')
     lookupTimer.current = setTimeout(async () => {
+      setLookupStatus('loading')
       try {
         const { data } = await api.get(`/product-master/lookup-by-bravo/${encodeURIComponent(trimmed)}`)
         applyMasterData(data)
@@ -389,8 +389,8 @@ export default function RecordFormPage() {
     const val = e.target.value?.trim()
     if (lookupTimer.current) clearTimeout(lookupTimer.current)
     if (!val) { setLookupStatus(null); return }
-    setLookupStatus('loading')
     lookupTimer.current = setTimeout(async () => {
+      setLookupStatus('loading')
       try {
         const { data } = await api.get(`/product-master/lookup/${encodeURIComponent(val)}`)
         applyMasterData(data, { setBravo: true })
