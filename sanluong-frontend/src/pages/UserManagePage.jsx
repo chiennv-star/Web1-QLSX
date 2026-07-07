@@ -13,6 +13,7 @@ const ROLE_MAP = {
   TKSX:             { color: 'blue',     label: 'Tài khoản SX' },
   TPSX:             { color: 'purple',   label: 'Trưởng Phòng SX' },
   QUAN_DOC:         { color: 'default',  label: 'Quản lý (đọc)' },
+  GD:               { color: 'red',      label: 'Giám Đốc' },
   NHAN_VIEN:        { color: 'green',    label: 'Nhân viên' },
   NHAN_VIEN_PCPL1:  { color: 'cyan',     label: 'NV PCPL1' },
   NHAN_VIEN_PCPL2:  { color: 'cyan',     label: 'NV PCPL2' },
@@ -411,6 +412,7 @@ export default function UserManagePage() {
             rules={[{ required: true, message: 'Chọn vai trò' }]}>
             <Select>
               <Option value="ADMIN">Quản trị viên (toàn quyền)</Option>
+              <Option value="GD">Giám Đốc (Dashboard tổng quan)</Option>
               <Option value="TKSX">Tài khoản SX (như ADMIN, trừ Lệnh Sản Xuất)</Option>
               <Option value="TPSX">Trưởng Phòng SX (xem tất cả như ADMIN, không thêm/sửa/xóa)</Option>
               <Option value="QUAN_DOC">Quản lý đọc (chỉ xem, không sửa)</Option>
