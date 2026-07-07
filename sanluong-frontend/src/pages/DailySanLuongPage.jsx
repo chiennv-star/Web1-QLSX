@@ -6190,6 +6190,8 @@ function DashboardGDTab() {
   const [loading, setLoading]   = useState(false)
   const [period, setPeriod]     = useState('month')
   const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs()])
+  const [loaiMap, setLoaiMap]   = useState({}) // maSp → loaiSanPham
+  const [analysisTab, setAnalysisTab] = useState('chung')
 
   const fetchGD = useCallback(async (range = dateRange) => {
     setLoading(true)
@@ -6197,7 +6199,18 @@ function DashboardGDTab() {
       const { data } = await api.get('/work-schedule-session/daily-report', {
         params: { fromDate: range[0].format('YYYY-MM-DD'), toDate: range[1].format('YYYY-MM-DD') },
       })
-      setRaw(Array.isArray(data) ? data.filter(r => r.status === 'SAVED' || r.status === 'PENDING') : [])
+      const rows = Array.isArray(data) ? data.filter(r => r.status === 'SAVED' || r.status === 'PENDING') : []
+      setRaw(rows)
+      const codes = [...new Set(rows.map(r => r.maSp).filter(Boolean))]
+      if (codes.length > 0) {
+        api.get('/product-master/lookup-batch', { params: { codes } })
+          .then(({ data: bm }) => {
+            const m = {}
+            codes.forEach(c => { if (bm[c]?.loaiSanPham) m[c] = bm[c].loaiSanPham })
+            setLoaiMap(m)
+          })
+          .catch(() => {})
+      }
     } catch { message.error('Không thể tải dữ liệu') }
     finally { setLoading(false) }
   }, [dateRange])
@@ -6210,17 +6223,17 @@ function DashboardGDTab() {
     setPeriod(key); setDateRange(r); fetchGD(r)
   }
 
-  const { byTo, kpi, dailyTrend, topSP } = useMemo(() => {
+  const { byTo, kpi, dailyTrend, byLoai, bySpDetail } = useMemo(() => {
     const byTo = {}
     GD_TO.forEach(t => { byTo[t.key] = { sl: 0, cong: 0, lo: 0 } })
-    const dayMap = {}, spMap = {}
+    const dayMap = {}, loaiAgg = {}, spAgg = {}
     const days = new Set(), cas = new Set()
     let totalSl = 0, totalCong = 0, slDg = 0
 
     raw.forEach(r => {
       const cd = resolveGdCd(r)
       if (!byTo[cd]) return
-      const sl   = Number(r.sanLuong       || 0)
+      const sl   = Number(r.sanLuong      || 0)
       const cong = Number(r.congThucHien  || 0)
       byTo[cd].sl += sl; byTo[cd].cong += cong; byTo[cd].lo++
       totalSl += sl; totalCong += cong
@@ -6231,9 +6244,17 @@ function DashboardGDTab() {
         dayMap[r.ngay].sl += sl; dayMap[r.ngay].cong += cong
       }
       if (r.caSanXuat) cas.add(r.ngay + '_' + r.caSanXuat)
-      const sp = r.tienTrinh || r.maSp || 'Khác'
-      if (!spMap[sp]) spMap[sp] = { name: sp, sl: 0, lo: 0 }
-      spMap[sp].sl += sl; spMap[sp].lo++
+      // Phân tích theo loại SP
+      const loai = loaiMap[r.maSp] || '(Chưa phân loại)'
+      if (!loaiAgg[loai]) { loaiAgg[loai] = { loai, sl: 0, cong: 0 }; GD_TO.forEach(t => { loaiAgg[loai][t.key] = { sl: 0, cong: 0 } }) }
+      loaiAgg[loai].sl += sl; loaiAgg[loai].cong += cong
+      if (loaiAgg[loai][cd]) { loaiAgg[loai][cd].sl += sl; loaiAgg[loai][cd].cong += cong }
+      // Phân tích theo từng SP
+      const spKey = r.maSp || 'Khác'
+      const spName = r.tienTrinh || r.maSp || 'Khác'
+      if (!spAgg[spKey]) { spAgg[spKey] = { key: spKey, name: spName, sl: 0, cong: 0, loai }; GD_TO.forEach(t => { spAgg[spKey][t.key] = { sl: 0, cong: 0 } }) }
+      spAgg[spKey].sl += sl; spAgg[spKey].cong += cong
+      if (spAgg[spKey][cd]) { spAgg[spKey][cd].sl += sl; spAgg[spKey][cd].cong += cong }
     })
 
     return {
@@ -6241,9 +6262,10 @@ function DashboardGDTab() {
       kpi: { tongSl: totalSl, slDg, tongCong: totalCong, nsTb: totalCong > 0 ? slDg / totalCong : 0, soNgay: days.size, soCa: cas.size },
       dailyTrend: Object.values(dayMap).sort((a, b) => a.ngay.localeCompare(b.ngay))
         .map(d => ({ ...d, label: dayjs(d.ngay).format('DD/MM') })),
-      topSP: Object.values(spMap).sort((a, b) => b.sl - a.sl).slice(0, 10),
+      byLoai: Object.values(loaiAgg).sort((a, b) => b.sl - a.sl),
+      bySpDetail: Object.values(spAgg).sort((a, b) => b.sl - a.sl),
     }
-  }, [raw])
+  }, [raw, loaiMap])
 
   const barData = GD_TO.map(t => ({ name: t.label, sl: byTo[t.key]?.sl || 0, cong: byTo[t.key]?.cong || 0 }))
 
@@ -6429,38 +6451,155 @@ function DashboardGDTab() {
           </div>
         )}
 
-        {/* ── Top sản phẩm ── */}
-        {topSP.length > 0 && (
-          <div style={{ background: '#fff', borderRadius: 12, padding: '16px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)' }}>
-            <div style={{ fontWeight: 700, fontSize: 13, color: '#1e3a5f', marginBottom: 14 }}>
-              🏆 Top sản phẩm theo sản lượng
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0 32px' }}>
-              {topSP.map((sp, i) => {
-                const maxSl = topSP[0]?.sl || 1
-                const pct   = (sp.sl / maxSl * 100)
-                const medal = ['🥇', '🥈', '🥉'][i] || null
-                return (
-                  <div key={sp.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
-                    <div style={{ width: 28, textAlign: 'center', fontSize: i < 3 ? 18 : 12, fontWeight: i >= 3 ? 700 : undefined, color: '#94a3b8', flexShrink: 0 }}>
-                      {medal || (i + 1)}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: '#1e3a5f', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 3 }}>{sp.name}</div>
-                      <div style={{ height: 4, background: '#f1f5f9', borderRadius: 2, overflow: 'hidden' }}>
-                        <div style={{ width: `${pct}%`, height: '100%', background: i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : '#b45309', borderRadius: 2 }} />
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: '#0e7490' }}>{sp.sl.toLocaleString('vi-VN')}</div>
-                      <div style={{ fontSize: 10, color: '#94a3b8' }}>{sp.lo} lô</div>
-                    </div>
+        {/* ── Phân tích sản lượng ── */}
+        {bySpDetail.length > 0 && (() => {
+          const TABS = [{ key: 'chung', label: 'Chung' }, ...GD_TO.map(t => ({ key: t.key, label: t.label }))]
+          const activeStage = analysisTab === 'chung' ? null : analysisTab
+
+          // Data theo tab đang chọn
+          const loaiRows = activeStage
+            ? byLoai.map(l => ({ ...l, sl: l[activeStage]?.sl || 0, cong: l[activeStage]?.cong || 0 }))
+              .filter(l => l.sl > 0).sort((a, b) => b.sl - a.sl)
+            : byLoai
+
+          const spRows = activeStage
+            ? bySpDetail.map(s => ({ ...s, sl: s[activeStage]?.sl || 0, cong: s[activeStage]?.cong || 0 }))
+              .filter(s => s.sl > 0).sort((a, b) => b.sl - a.sl).slice(0, 12)
+            : bySpDetail.slice(0, 12)
+
+          const totalSl  = loaiRows.reduce((s, r) => s + r.sl,   0)
+          const totalCong = loaiRows.reduce((s, r) => s + r.cong, 0)
+
+          const fmtN = v => v > 0 ? v.toLocaleString('vi-VN') : '—'
+          const fmtC = v => v > 0 ? v.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
+          const fmtP = (v, total) => total > 0 && v > 0 ? (v / total * 100).toFixed(1) + '%' : '—'
+
+          const LOAI_COLORS = ['#1d4ed8','#0369a1','#0e7490','#b45309','#6d28d9','#059669','#be123c','#92400e']
+
+          return (
+            <div style={{ background: '#fff', borderRadius: 12, padding: '16px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)' }}>
+              {/* Header + tab bar */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#1e3a5f', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <BarChartOutlined style={{ color: '#0e7490' }} />
+                  Phân tích Sản lượng theo Loại SP &amp; Công đoạn
+                </div>
+                <div style={{ display: 'flex', gap: 4, marginLeft: 'auto', flexWrap: 'wrap' }}>
+                  {TABS.map(t => {
+                    const gdTo = GD_TO.find(g => g.key === t.key)
+                    return (
+                      <button key={t.key} onClick={() => setAnalysisTab(t.key)}
+                        style={{
+                          padding: '3px 11px', borderRadius: 16, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: 'none',
+                          background: analysisTab === t.key ? (gdTo?.slColor || '#0e7490') : '#f1f5f9',
+                          color: analysisTab === t.key ? '#fff' : '#475569',
+                          transition: 'all 0.15s',
+                        }}>
+                        {t.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: 20 }}>
+
+                {/* Bảng loại SP */}
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                    Theo Loại Sản Phẩm
                   </div>
-                )
-              })}
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc' }}>
+                        {['Loại SP', 'SL', 'Công', '% SL', '% Công'].map(h => (
+                          <th key={h} style={{ padding: '6px 8px', textAlign: h === 'Loại SP' ? 'left' : 'right', fontWeight: 700, color: '#64748b', fontSize: 10, borderBottom: '2px solid #e2e8f0', textTransform: 'uppercase' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loaiRows.map((row, i) => (
+                        <tr key={row.loai} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
+                          <td style={{ padding: '8px 8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <div style={{ width: 3, height: 16, borderRadius: 2, background: LOAI_COLORS[i % LOAI_COLORS.length], flexShrink: 0 }} />
+                              <span style={{ fontWeight: 600, color: '#1e3a5f', fontSize: 12 }}>{row.loai}</span>
+                            </div>
+                            {/* mini bar */}
+                            <div style={{ height: 3, background: '#f1f5f9', borderRadius: 2, marginTop: 4, overflow: 'hidden' }}>
+                              <div style={{ width: `${totalSl > 0 ? row.sl / totalSl * 100 : 0}%`, height: '100%', background: LOAI_COLORS[i % LOAI_COLORS.length], borderRadius: 2 }} />
+                            </div>
+                          </td>
+                          <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>{fmtN(row.sl)}</td>
+                          <td style={{ padding: '8px 8px', textAlign: 'right', color: '#374151' }}>{fmtC(row.cong)}</td>
+                          <td style={{ padding: '8px 8px', textAlign: 'right', color: LOAI_COLORS[i % LOAI_COLORS.length], fontWeight: 700 }}>{fmtP(row.sl, totalSl)}</td>
+                          <td style={{ padding: '8px 8px', textAlign: 'right', color: '#64748b' }}>{fmtP(row.cong, totalCong)}</td>
+                        </tr>
+                      ))}
+                      {loaiRows.length === 0 && (
+                        <tr><td colSpan={5} style={{ padding: 20, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>Không có dữ liệu</td></tr>
+                      )}
+                      <tr style={{ background: '#f0f9ff', borderTop: '2px solid #bae6fd' }}>
+                        <td style={{ padding: '7px 8px', fontWeight: 800, color: '#0e7490', fontSize: 11 }}>TỔNG</td>
+                        <td style={{ padding: '7px 8px', textAlign: 'right', fontWeight: 900, color: '#0e7490' }}>{fmtN(totalSl)}</td>
+                        <td style={{ padding: '7px 8px', textAlign: 'right', fontWeight: 700, color: '#0e7490' }}>{fmtC(totalCong)}</td>
+                        <td style={{ padding: '7px 8px', textAlign: 'right', color: '#94a3b8' }}>100%</td>
+                        <td style={{ padding: '7px 8px', textAlign: 'right', color: '#94a3b8' }}>100%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Top sản phẩm */}
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                    Top 12 Sản Phẩm
+                  </div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc' }}>
+                        {['#', 'Sản phẩm', 'SL', 'Công', 'NS', '% SL'].map(h => (
+                          <th key={h} style={{ padding: '6px 6px', textAlign: h === 'Sản phẩm' || h === '#' ? 'left' : 'right', fontWeight: 700, color: '#64748b', fontSize: 10, borderBottom: '2px solid #e2e8f0', textTransform: 'uppercase' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {spRows.map((sp, i) => {
+                        const ns = sp.cong > 0 ? sp.sl / sp.cong : 0
+                        const pctSl = totalSl > 0 ? sp.sl / totalSl * 100 : 0
+                        const medal = ['🥇','🥈','🥉'][i]
+                        const stageColor = GD_TO.find(g => g.key === sp.loai)?.slColor
+                        return (
+                          <tr key={sp.key} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
+                            <td style={{ padding: '6px 6px', fontSize: i < 3 ? 16 : 11, fontWeight: i >= 3 ? 700 : undefined, color: '#94a3b8', width: 28 }}>
+                              {medal || (i + 1)}
+                            </td>
+                            <td style={{ padding: '6px 6px', maxWidth: 0 }}>
+                              <div style={{ fontWeight: 700, color: '#1e3a5f', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sp.key}</div>
+                              <div style={{ fontSize: 10, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sp.name !== sp.key ? sp.name : ''}</div>
+                              {/* mini progress */}
+                              <div style={{ height: 2, background: '#f1f5f9', borderRadius: 1, marginTop: 3, overflow: 'hidden' }}>
+                                <div style={{ width: `${Math.min(pctSl * 5, 100)}%`, height: '100%', background: stageColor || '#0e7490', borderRadius: 1 }} />
+                              </div>
+                            </td>
+                            <td style={{ padding: '6px 6px', textAlign: 'right', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>{fmtN(sp.sl)}</td>
+                            <td style={{ padding: '6px 6px', textAlign: 'right', color: '#374151', whiteSpace: 'nowrap' }}>{fmtC(sp.cong)}</td>
+                            <td style={{ padding: '6px 6px', textAlign: 'right', color: '#475569', whiteSpace: 'nowrap' }}>{ns > 0 ? ns.toLocaleString('vi-VN', { maximumFractionDigits: 0 }) : '—'}</td>
+                            <td style={{ padding: '6px 6px', textAlign: 'right', fontWeight: 700, color: '#0e7490', whiteSpace: 'nowrap' }}>{pctSl > 0 ? pctSl.toFixed(1) + '%' : '—'}</td>
+                          </tr>
+                        )
+                      })}
+                      {spRows.length === 0 && (
+                        <tr><td colSpan={6} style={{ padding: 20, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>Không có dữ liệu</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
 
       </Spin>
     </div>
