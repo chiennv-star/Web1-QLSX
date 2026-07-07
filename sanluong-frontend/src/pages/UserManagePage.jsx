@@ -410,32 +410,40 @@ export default function UserManagePage() {
           </Form.Item>
           <Form.Item label="Vai trò" name="role"
             rules={[{ required: true, message: 'Chọn vai trò' }]}>
-            <Select>
-              <Option value="ADMIN">Quản trị viên (toàn quyền)</Option>
-              <Option value="GD">Giám Đốc (Dashboard tổng quan)</Option>
-              <Option value="TKSX">Tài khoản SX (như ADMIN, trừ Lệnh Sản Xuất)</Option>
-              <Option value="TPSX">Trưởng Phòng SX (xem tất cả như ADMIN, không thêm/sửa/xóa)</Option>
-              <Option value="QUAN_DOC">Quản lý đọc (chỉ xem, không sửa)</Option>
-              <optgroup label="── Nhân viên ──" />
-              <Option value="NHAN_VIEN">Nhân viên (tất cả nhóm)</Option>
-              <Option value="NHAN_VIEN_PCPL1">Nhân viên PCPL1</Option>
-              <Option value="NHAN_VIEN_PCPL2">Nhân viên PCPL2</Option>
-              <Option value="NHAN_VIEN_PCPL3">Nhân viên PCPL3</Option>
-              <Option value="NHAN_VIEN_BBC1">Nhân viên BBC1</Option>
-              <Option value="NHAN_VIEN_DG">Nhân viên ĐG</Option>
-              <optgroup label="── Admin công đoạn ──" />
-              <Option value="ADMIN_KH">Admin Kế hoạch (sản lượng, kế hoạch, danh mục, WIP)</Option>
-              <Option value="ADMIN_PC">Admin PC (Lịch làm việc PC, xem toàn bộ Hiệu quả)</Option>
-              <Option value="ADMIN_BBC1">Admin BBC1 (Lịch làm việc BBC1, chỉ xem Hiệu quả BBC1)</Option>
-              <Option value="ADMIN_PL">Admin PL (Lịch làm việc PL, xem toàn bộ Hiệu quả PL)</Option>
-              <Option value="ADMIN_DG">Admin ĐG (Lịch làm việc ĐG, chỉ xem Hiệu quả ĐG)</Option>
-              <Option value="ADMIN_PCPL1">Admin PCPL1 (Lịch làm việc, chỉ xem Hiệu quả PCPL1)</Option>
-              <Option value="ADMIN_PCPL2">Admin PCPL2 (Lịch làm việc, chỉ xem Hiệu quả PCPL2)</Option>
-              <Option value="ADMIN_PCPL3">Admin PCPL3 (Lịch làm việc, chỉ xem Hiệu quả PCPL3)</Option>
-              <optgroup label="── Bộ phận hỗ trợ ──" />
-              <Option value="HCNS">HCNS (chỉ xem nhân viên)</Option>
-              <Option value="KE_TOAN">Kế toán (sản lượng, sản lượng theo ngày, chấm công)</Option>
-              <Option value="MAN_HINH">Màn hình hiển thị (chỉ xem Báo cáo tổng hợp ngày)</Option>
+            <Select
+              optionRender={opt => (
+                <Tag color={ROLE_MAP[opt.value]?.color || 'default'} style={{ marginRight: 0 }}>
+                  {ROLE_MAP[opt.value]?.label || opt.value}
+                </Tag>
+              )}
+              labelRender={({ value }) => value ? (
+                <Tag color={ROLE_MAP[value]?.color || 'default'} style={{ marginRight: 0 }}>
+                  {ROLE_MAP[value]?.label || value}
+                </Tag>
+              ) : null}
+            >
+              <Option value="ADMIN">Quản trị viên</Option>
+              <Option value="GD">Giám Đốc</Option>
+              <Option value="TKSX">TKSX</Option>
+              <Option value="TPSX">Trưởng Phòng SX</Option>
+              <Option value="QUAN_DOC">Quản lý Đọc</Option>
+              <Option value="NHAN_VIEN">Nhân viên</Option>
+              <Option value="NHAN_VIEN_PCPL1">NV PCPL1</Option>
+              <Option value="NHAN_VIEN_PCPL2">NV PCPL2</Option>
+              <Option value="NHAN_VIEN_PCPL3">NV PCPL3</Option>
+              <Option value="NHAN_VIEN_BBC1">NV BBC1</Option>
+              <Option value="NHAN_VIEN_DG">NV ĐG</Option>
+              <Option value="ADMIN_KH">Admin Kế hoạch</Option>
+              <Option value="ADMIN_PC">Admin PC</Option>
+              <Option value="ADMIN_BBC1">Admin BBC1</Option>
+              <Option value="ADMIN_PL">Admin PL</Option>
+              <Option value="ADMIN_DG">Admin ĐG</Option>
+              <Option value="ADMIN_PCPL1">Admin PCPL1</Option>
+              <Option value="ADMIN_PCPL2">Admin PCPL2</Option>
+              <Option value="ADMIN_PCPL3">Admin PCPL3</Option>
+              <Option value="HCNS">HCNS</Option>
+              <Option value="KE_TOAN">Kế toán</Option>
+              <Option value="MAN_HINH">Màn hình hiển thị</Option>
             </Select>
           </Form.Item>
           {watchedRole?.startsWith('NHAN_VIEN') && (
