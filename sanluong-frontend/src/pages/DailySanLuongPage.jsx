@@ -6215,7 +6215,7 @@ function DashboardGDTab() {
     GD_TO.forEach(t => { byTo[t.key] = { sl: 0, cong: 0, lo: 0 } })
     const dayMap = {}, spMap = {}
     const days = new Set(), cas = new Set()
-    let totalSl = 0, totalCong = 0
+    let totalSl = 0, totalCong = 0, slDg = 0
 
     raw.forEach(r => {
       const cd = resolveGdCd(r)
@@ -6224,6 +6224,7 @@ function DashboardGDTab() {
       const cong = Number(r.tongCong  || 0)
       byTo[cd].sl += sl; byTo[cd].cong += cong; byTo[cd].lo++
       totalSl += sl; totalCong += cong
+      if (cd === 'DG') slDg += sl
       if (r.ngay) {
         days.add(r.ngay)
         if (!dayMap[r.ngay]) dayMap[r.ngay] = { ngay: r.ngay, sl: 0, cong: 0 }
@@ -6237,7 +6238,7 @@ function DashboardGDTab() {
 
     return {
       byTo,
-      kpi: { tongSl: totalSl, tongCong: totalCong, nsTb: totalCong > 0 ? totalSl / totalCong : 0, soNgay: days.size, soCa: cas.size },
+      kpi: { tongSl: totalSl, slDg, tongCong: totalCong, nsTb: totalCong > 0 ? slDg / totalCong : 0, soNgay: days.size, soCa: cas.size },
       dailyTrend: Object.values(dayMap).sort((a, b) => a.ngay.localeCompare(b.ngay))
         .map(d => ({ ...d, label: dayjs(d.ngay).format('DD/MM') })),
       topSP: Object.values(spMap).sort((a, b) => b.sl - a.sl).slice(0, 10),
@@ -6294,7 +6295,7 @@ function DashboardGDTab() {
         {/* ── KPI Cards ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 16 }}>
           {[
-            { label: 'TỔNG SẢN LƯỢNG', val: fmtSL(kpi.tongSl), unit: 'sản phẩm', icon: '📦', grad: 'linear-gradient(135deg,#1e3a8a,#1d4ed8)', acc: '#93c5fd' },
+            { label: 'SL ĐÓNG GÓI', val: fmtSL(kpi.slDg), unit: 'sản phẩm (ĐG)', icon: '📦', grad: 'linear-gradient(135deg,#1e3a8a,#1d4ed8)', acc: '#93c5fd' },
             { label: 'TỔNG CÔNG',       val: fmtCong(kpi.tongCong, 2), unit: 'công', icon: '👷', grad: 'linear-gradient(135deg,#064e3b,#059669)', acc: '#6ee7b7' },
             { label: 'NĂNG SUẤT TB',    val: kpi.nsTb > 0 ? kpi.nsTb.toLocaleString('vi-VN',{maximumFractionDigits:1}) : '—', unit: 'SP / công', icon: '⚡', grad: 'linear-gradient(135deg,#78350f,#d97706)', acc: '#fde68a' },
             { label: 'SỐ NGÀY SX',      val: kpi.soNgay, unit: 'ngày', icon: '📅', grad: 'linear-gradient(135deg,#3b0764,#7c3aed)', acc: '#d8b4fe' },
