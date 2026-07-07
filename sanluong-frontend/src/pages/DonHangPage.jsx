@@ -1474,12 +1474,12 @@ function MachinePlanCalendar({ records, onEdit, machineOrders = [], congField = 
                                   {r.soLo && <div style={{ fontFamily: 'monospace', color: '#374151', fontSize: 11, fontWeight: 600 }}>{r.soLo}</div>}
                                   {congField && Number(r[congField]) > 0 && (
                                     <div style={{ color: '#6d28d9', fontSize: 10, fontWeight: 600 }}>
-                                      👤 {Number(r[congField])} công
+                                      👤 {Number(r[congField])} người
                                     </div>
                                   )}
-                                  {nsField && r._pm && Number(r._pm[nsField]) > 0 && Number(r.coLo) > 0 && (
+                                  {nsField && congField && r._pm && Number(r._pm[nsField]) > 0 && Number(r.coLo) > 0 && Number(r[congField]) > 0 && (
                                     <div style={{ color: '#0369a1', fontSize: 10 }}>
-                                      ⚙ {(Number(r.coLo) / Number(r._pm[nsField])).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} ca
+                                      ⚙ {(Number(r.coLo) / Number(r._pm[nsField]) / Number(r[congField])).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} ca
                                     </div>
                                   )}
                                   {r.tinhTrang === 'done'

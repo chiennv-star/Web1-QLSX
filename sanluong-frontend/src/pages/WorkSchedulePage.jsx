@@ -77,12 +77,12 @@ const NHOM_TAG_COLOR = {
 }
 
 const TO_NHOM_OPTIONS = {
-  PC:    ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
-  PCPL1: ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
-  PCPL2: ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
-  PL:    ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
-  DG:    ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
-  BBC1:  ['PCPL1', 'PCPL2', 'PCPL3', 'ĐG', 'BBC1'],
+  PC:    ['PCPL1', 'PCPL2', 'PCPL3'],
+  PCPL1: ['PCPL1', 'PCPL2', 'PCPL3'],
+  PCPL2: ['PCPL1', 'PCPL2', 'PCPL3'],
+  PL:    ['PCPL1', 'PCPL3'],
+  DG:    ['PCPL1', 'PCPL2', 'PCPL3'],
+  BBC1:  ['PCPL1', 'PCPL2', 'PCPL3'],
 }
 
 const tinhTrangTag = (val) => {
@@ -4085,7 +4085,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
               onClick={e => e.stopPropagation()}
               onChange={val => saveInlineEdit(record.id, 'toNhom', val || null)}
               onBlur={() => { if (!inlineSaving) setInlineEdit(null) }}
-              options={['PCPL1','PCPL2','PCPL3','BBC1','ĐG','PL'].map(o => ({ value: o, label: o }))}
+              options={(TO_NHOM_OPTIONS[congDoan] || ['PCPL1','PCPL2','PCPL3']).map(o => ({ value: o, label: o }))}
             />
           )
         }
@@ -4440,7 +4440,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
               {
                 key: 'pl_pcpl3',
                 color: '#7c3aed',
-                label: <span>PCPL3 <Badge count={data.filter(r => r.tinhTrang !== 'done' && r.toNhom === 'PCPL3').length} color="#7c3aed" size="small" style={{ marginLeft: 4 }} /></span>,
+                label: <span>PCPL3 <Badge count={data.filter(r => r.tinhTrang !== 'done' && (r.toNhom === 'PCPL3' || r.toNhom === 'PCPL2')).length} color="#7c3aed" size="small" style={{ marginLeft: 4 }} /></span>,
               },
             ] : []),
             {
@@ -4640,7 +4640,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                 if (congDoan !== 'PL') return true
                 if (innerTab === 'list')     return !r.toNhom?.trim()
                 if (innerTab === 'pl_pcpl1') return r.toNhom === 'PCPL1'
-                if (innerTab === 'pl_pcpl3') return r.toNhom === 'PCPL3'
+                if (innerTab === 'pl_pcpl3') return r.toNhom === 'PCPL3' || r.toNhom === 'PCPL2'
                 return true
               })
               .sort((a, b) => {
@@ -4705,7 +4705,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                 if (congDoan !== 'PL') return true
                 if (innerTab === 'list')     return !r.toNhom?.trim()
                 if (innerTab === 'pl_pcpl1') return r.toNhom === 'PCPL1'
-                if (innerTab === 'pl_pcpl3') return r.toNhom === 'PCPL3'
+                if (innerTab === 'pl_pcpl3') return r.toNhom === 'PCPL3' || r.toNhom === 'PCPL2'
                 return true
               })
               .sort((a, b) => {
