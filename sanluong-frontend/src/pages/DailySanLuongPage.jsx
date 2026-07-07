@@ -5370,16 +5370,16 @@ function NhapKhoTab() {
 
   const handleBravoEditStart = useCallback(async (r) => {
     setBravoEdit({ id: r.id, maBravo: r.maBravo || '', maTp: r.maTp || '', tienTrinh: r.tienTrinh || '' })
-    // Nếu có Mã Bravo nhưng thiếu Tên SP hoặc Mã SP → tự lookup từ danh mục
-    if (r.maBravo && (!r.maTp || !r.tienTrinh)) {
+    // Luôn lookup từ danh mục khi có Mã Bravo để điền/xác nhận Tên SP và Mã SP
+    if (r.maBravo) {
       try {
         const { data: pm } = await api.get('/product-master/lookup-batch', { params: { codes: r.maBravo } })
         const entry = pm?.[r.maBravo] || pm?.[r.maBravo.toUpperCase()] || Object.values(pm || {})[0]
         if (entry) {
           setBravoEdit(prev => prev?.id === r.id ? {
             ...prev,
-            maTp:      prev.maTp      || entry.maTp      || '',
-            tienTrinh: prev.tienTrinh || entry.tienTrinh || '',
+            maTp:      entry.maTp      || prev.maTp      || '',
+            tienTrinh: entry.tienTrinh || prev.tienTrinh || '',
           } : prev)
         }
       } catch { /* silent */ }
