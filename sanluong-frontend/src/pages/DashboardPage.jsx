@@ -1991,7 +1991,7 @@ export default function DashboardPage() {
           render: (_, r) => {
             const wsKey = (r.maBravo || '') + '|' + (r.lsx || '')
             const ws = qaMap[wsKey]
-            const v = ws ? (ws.kiemNghiem || 0) : ((r.plQaKiemNghiem || 0) + (r.dgQaKiemNghiem || 0))
+            const v = (ws ? (ws.kiemNghiem || 0) : 0) || ((r.plQaKiemNghiem || 0) + (r.dgQaKiemNghiem || 0))
             return v > 0
               ? <span style={{ color: '#0891b2' }}>{v.toLocaleString('vi-VN')}</span>
               : <span style={{ color: '#d9d9d9' }}>—</span>
@@ -2002,7 +2002,7 @@ export default function DashboardPage() {
           render: (_, r) => {
             const wsKey = (r.maBravo || '') + '|' + (r.lsx || '')
             const ws = qaMap[wsKey]
-            const v = ws ? (ws.luuMau || 0) : ((r.plQaLuuMau || 0) + (r.dgQaLuuMau || 0))
+            const v = (ws ? (ws.luuMau || 0) : 0) || ((r.plQaLuuMau || 0) + (r.dgQaLuuMau || 0))
             return v > 0
               ? <span style={{ color: '#0891b2' }}>{v.toLocaleString('vi-VN')}</span>
               : <span style={{ color: '#d9d9d9' }}>—</span>
@@ -2013,7 +2013,7 @@ export default function DashboardPage() {
           render: (_, r) => {
             const wsKey = (r.maBravo || '') + '|' + (r.lsx || '')
             const ws = qaMap[wsKey]
-            const v = ws ? (ws.khac || 0) : ((r.plQaKhac || 0) + (r.dgQaKhac || 0))
+            const v = (ws ? (ws.khac || 0) : 0) || ((r.plQaKhac || 0) + (r.dgQaKhac || 0))
             return v > 0
               ? <span style={{ color: '#0891b2' }}>{v.toLocaleString('vi-VN')}</span>
               : <span style={{ color: '#d9d9d9' }}>—</span>
@@ -2024,9 +2024,9 @@ export default function DashboardPage() {
           render: (_, r) => {
             const wsKey = (r.maBravo || '') + '|' + (r.lsx || '')
             const ws = qaMap[wsKey]
-            const total = ws
-              ? (ws.kiemNghiem || 0) + (ws.luuMau || 0) + (ws.khac || 0)
-              : ((r.plQaLayMau || 0) + (r.dgQaLayMau || 0))
+            const wsTotal = ws ? (ws.kiemNghiem || 0) + (ws.luuMau || 0) + (ws.khac || 0) : 0
+            const recTotal = (r.plQaLayMau || 0) + (r.dgQaLayMau || 0)
+            const total = wsTotal || recTotal
             return total > 0
               ? <span style={{ fontWeight: 700, color: '#0891b2' }}>{total.toLocaleString('vi-VN')}</span>
               : <span style={{ color: '#d9d9d9' }}>—</span>
