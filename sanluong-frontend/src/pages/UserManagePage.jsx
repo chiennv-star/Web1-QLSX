@@ -411,40 +411,31 @@ export default function UserManagePage() {
           <Form.Item label="Vai trò" name="role"
             rules={[{ required: true, message: 'Chọn vai trò' }]}>
             <Select
-              optionRender={opt => (
-                <Tag color={ROLE_MAP[opt.value]?.color || 'default'} style={{ marginRight: 0 }}>
-                  {ROLE_MAP[opt.value]?.label || opt.value}
-                </Tag>
-              )}
-              labelRender={({ value }) => value ? (
-                <Tag color={ROLE_MAP[value]?.color || 'default'} style={{ marginRight: 0 }}>
-                  {ROLE_MAP[value]?.label || value}
-                </Tag>
-              ) : null}
-            >
-              <Option value="ADMIN">Quản trị viên</Option>
-              <Option value="GD">Giám Đốc</Option>
-              <Option value="TKSX">TKSX</Option>
-              <Option value="TPSX">Trưởng Phòng SX</Option>
-              <Option value="QUAN_DOC">Quản lý Đọc</Option>
-              <Option value="NHAN_VIEN">Nhân viên</Option>
-              <Option value="NHAN_VIEN_PCPL1">NV PCPL1</Option>
-              <Option value="NHAN_VIEN_PCPL2">NV PCPL2</Option>
-              <Option value="NHAN_VIEN_PCPL3">NV PCPL3</Option>
-              <Option value="NHAN_VIEN_BBC1">NV BBC1</Option>
-              <Option value="NHAN_VIEN_DG">NV ĐG</Option>
-              <Option value="ADMIN_KH">Admin Kế hoạch</Option>
-              <Option value="ADMIN_PC">Admin PC</Option>
-              <Option value="ADMIN_BBC1">Admin BBC1</Option>
-              <Option value="ADMIN_PL">Admin PL</Option>
-              <Option value="ADMIN_DG">Admin ĐG</Option>
-              <Option value="ADMIN_PCPL1">Admin PCPL1</Option>
-              <Option value="ADMIN_PCPL2">Admin PCPL2</Option>
-              <Option value="ADMIN_PCPL3">Admin PCPL3</Option>
-              <Option value="HCNS">HCNS</Option>
-              <Option value="KE_TOAN">Kế toán</Option>
-              <Option value="MAN_HINH">Màn hình hiển thị</Option>
-            </Select>
+              options={[
+                { value: 'ADMIN',           label: <Tag color="blue">Quản trị viên</Tag> },
+                { value: 'GD',              label: <Tag color="red">Giám Đốc</Tag> },
+                { value: 'TKSX',            label: <Tag color="blue">TKSX</Tag> },
+                { value: 'TPSX',            label: <Tag color="purple">Trưởng Phòng SX</Tag> },
+                { value: 'QUAN_DOC',        label: <Tag>Quản lý Đọc</Tag> },
+                { value: 'NHAN_VIEN',       label: <Tag color="green">Nhân viên</Tag> },
+                { value: 'NHAN_VIEN_PCPL1', label: <Tag color="cyan">NV PCPL1</Tag> },
+                { value: 'NHAN_VIEN_PCPL2', label: <Tag color="cyan">NV PCPL2</Tag> },
+                { value: 'NHAN_VIEN_PCPL3', label: <Tag color="cyan">NV PCPL3</Tag> },
+                { value: 'NHAN_VIEN_BBC1',  label: <Tag color="volcano">NV BBC1</Tag> },
+                { value: 'NHAN_VIEN_DG',    label: <Tag color="gold">NV ĐG</Tag> },
+                { value: 'ADMIN_KH',        label: <Tag color="cyan">Admin Kế hoạch</Tag> },
+                { value: 'ADMIN_PC',        label: <Tag color="purple">Admin PC</Tag> },
+                { value: 'ADMIN_BBC1',      label: <Tag color="volcano">Admin BBC1</Tag> },
+                { value: 'ADMIN_PL',        label: <Tag color="purple">Admin PL</Tag> },
+                { value: 'ADMIN_DG',        label: <Tag color="gold">Admin ĐG</Tag> },
+                { value: 'ADMIN_PCPL1',     label: <Tag color="geekblue">Admin PCPL1</Tag> },
+                { value: 'ADMIN_PCPL2',     label: <Tag color="geekblue">Admin PCPL2</Tag> },
+                { value: 'ADMIN_PCPL3',     label: <Tag color="geekblue">Admin PCPL3</Tag> },
+                { value: 'HCNS',            label: <Tag color="magenta">HCNS</Tag> },
+                { value: 'KE_TOAN',         label: <Tag color="orange">Kế toán</Tag> },
+                { value: 'MAN_HINH',        label: <Tag color="cyan">Màn hình hiển thị</Tag> },
+              ]}
+            />
           </Form.Item>
           {watchedRole?.startsWith('NHAN_VIEN') && (
             <Form.Item label="Mã nhân viên" name="maNhanVien"
