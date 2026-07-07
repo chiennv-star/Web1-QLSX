@@ -6153,13 +6153,324 @@ function NhapKhoTab() {
   )
 }
 
+// ─── Tab: Dashboard Giám Đốc Sản Xuất ────────────────────────────────────────
+
+const GD_PERIODS = [
+  { key: 'today', label: 'Hôm nay',   range: () => [dayjs(), dayjs()] },
+  { key: 'week',  label: 'Tuần này',  range: () => [dayjs().startOf('isoWeek'), dayjs()] },
+  { key: 'month', label: 'Tháng này', range: () => [dayjs().startOf('month'), dayjs()] },
+  { key: 'q3',    label: '3 Tháng',   range: () => [dayjs().subtract(3, 'month'), dayjs()] },
+  { key: 'h6',    label: '6 Tháng',   range: () => [dayjs().subtract(6, 'month'), dayjs()] },
+  { key: 'year',  label: 'Năm nay',   range: () => [dayjs().startOf('year'), dayjs()] },
+]
+
+const GD_TO = [
+  { key: 'PCPL1', label: 'PCPL1', slColor: '#1d4ed8', bg: '#eff6ff' },
+  { key: 'PCPL2', label: 'PCPL2', slColor: '#0369a1', bg: '#e0f2fe' },
+  { key: 'PL',    label: 'PL',    slColor: '#0e7490', bg: '#ecfeff' },
+  { key: 'DG',    label: 'ĐG',    slColor: '#b45309', bg: '#fffbeb' },
+  { key: 'BBC1',  label: 'BBC1',  slColor: '#6d28d9', bg: '#f5f3ff' },
+]
+
+function resolveGdCd(r) {
+  let cd = r.congDoan?.toUpperCase()
+  if (cd === 'PC') {
+    const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
+    if (nhom === 'PCPL1') cd = 'PCPL1'
+    else if (nhom === 'PCPL2') cd = 'PCPL2'
+    else if (nhom === 'PCPL3' || nhom === 'PL') cd = 'PL'
+    else cd = 'PCPL1'
+  }
+  if (cd === 'PCPL3' || cd === 'CC') cd = 'PL'
+  return cd
+}
+
+function DashboardGDTab() {
+  const [raw, setRaw]           = useState([])
+  const [loading, setLoading]   = useState(false)
+  const [period, setPeriod]     = useState('month')
+  const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs()])
+
+  const fetchGD = useCallback(async (range = dateRange) => {
+    setLoading(true)
+    try {
+      const { data } = await api.get('/work-schedule-session/daily-report', {
+        params: { fromDate: range[0].format('YYYY-MM-DD'), toDate: range[1].format('YYYY-MM-DD') },
+      })
+      setRaw(Array.isArray(data) ? data.filter(r => r.status === 'SAVED' || r.status === 'PENDING') : [])
+    } catch { message.error('Không thể tải dữ liệu') }
+    finally { setLoading(false) }
+  }, [dateRange])
+
+  useEffect(() => { fetchGD() }, []) // eslint-disable-line
+
+  const handlePeriod = (key) => {
+    const p = GD_PERIODS.find(x => x.key === key)
+    const r = p.range()
+    setPeriod(key); setDateRange(r); fetchGD(r)
+  }
+
+  const { byTo, kpi, dailyTrend, topSP } = useMemo(() => {
+    const byTo = {}
+    GD_TO.forEach(t => { byTo[t.key] = { sl: 0, cong: 0, lo: 0 } })
+    const dayMap = {}, spMap = {}
+    const days = new Set(), cas = new Set()
+    let totalSl = 0, totalCong = 0
+
+    raw.forEach(r => {
+      const cd = resolveGdCd(r)
+      if (!byTo[cd]) return
+      const sl   = Number(r.sanLuong  || 0)
+      const cong = Number(r.tongCong  || 0)
+      byTo[cd].sl += sl; byTo[cd].cong += cong; byTo[cd].lo++
+      totalSl += sl; totalCong += cong
+      if (r.ngay) {
+        days.add(r.ngay)
+        if (!dayMap[r.ngay]) dayMap[r.ngay] = { ngay: r.ngay, sl: 0, cong: 0 }
+        dayMap[r.ngay].sl += sl; dayMap[r.ngay].cong += cong
+      }
+      if (r.caSanXuat) cas.add(r.ngay + '_' + r.caSanXuat)
+      const sp = r.tienTrinh || r.maSp || 'Khác'
+      if (!spMap[sp]) spMap[sp] = { name: sp, sl: 0, lo: 0 }
+      spMap[sp].sl += sl; spMap[sp].lo++
+    })
+
+    return {
+      byTo,
+      kpi: { tongSl: totalSl, tongCong: totalCong, nsTb: totalCong > 0 ? totalSl / totalCong : 0, soNgay: days.size, soCa: cas.size },
+      dailyTrend: Object.values(dayMap).sort((a, b) => a.ngay.localeCompare(b.ngay))
+        .map(d => ({ ...d, label: dayjs(d.ngay).format('DD/MM') })),
+      topSP: Object.values(spMap).sort((a, b) => b.sl - a.sl).slice(0, 10),
+    }
+  }, [raw])
+
+  const barData = GD_TO.map(t => ({ name: t.label, sl: byTo[t.key]?.sl || 0, cong: byTo[t.key]?.cong || 0 }))
+
+  return (
+    <div style={{ padding: '16px 20px', background: '#f0f4f8', minHeight: 'calc(100vh - 50px)' }}>
+
+      {/* ── Header ── */}
+      <div style={{
+        background: 'linear-gradient(135deg, #0f2a4a 0%, #1e3a5f 60%, #0e7490 100%)',
+        borderRadius: 12, padding: '18px 24px', marginBottom: 16,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
+      }}>
+        <div>
+          <div style={{ color: '#7dd3fc', fontSize: 10, fontWeight: 700, letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 4 }}>
+            QTSX SONG AN · PRODUCTION INTELLIGENCE
+          </div>
+          <div style={{ color: '#fff', fontSize: 22, fontWeight: 800 }}>Dashboard Giám Đốc Sản Xuất</div>
+          <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>
+            {dateRange[0]?.format('DD/MM/YYYY')} – {dateRange[1]?.format('DD/MM/YYYY')}
+            {' · '}{raw.length.toLocaleString('vi-VN')} ca · {kpi.soNgay} ngày sản xuất
+          </div>
+        </div>
+        <Button icon={<ReloadOutlined />} loading={loading} onClick={() => fetchGD()}
+          style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', borderRadius: 8 }} />
+      </div>
+
+      {/* ── Period selector ── */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        {GD_PERIODS.map(p => (
+          <Button key={p.key} size="small"
+            onClick={() => handlePeriod(p.key)}
+            style={{
+              borderRadius: 20, fontWeight: 600, fontSize: 12,
+              background: period === p.key ? '#0e7490' : '#fff',
+              borderColor: period === p.key ? '#0e7490' : '#d9d9d9',
+              color: period === p.key ? '#fff' : '#374151',
+            }}>
+            {p.label}
+          </Button>
+        ))}
+        <RangePicker size="small" value={dateRange} format="DD/MM/YYYY"
+          onChange={r => { if (r) { setDateRange(r); setPeriod(null); fetchGD(r) } }}
+          style={{ marginLeft: 8, borderRadius: 8 }} />
+      </div>
+
+      <Spin spinning={loading}>
+
+        {/* ── KPI Cards ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 16 }}>
+          {[
+            { label: 'TỔNG SẢN LƯỢNG', val: fmtSL(kpi.tongSl), unit: 'sản phẩm', icon: '📦', grad: 'linear-gradient(135deg,#1e3a8a,#1d4ed8)', acc: '#93c5fd' },
+            { label: 'TỔNG CÔNG',       val: fmtCong(kpi.tongCong, 2), unit: 'công', icon: '👷', grad: 'linear-gradient(135deg,#064e3b,#059669)', acc: '#6ee7b7' },
+            { label: 'NĂNG SUẤT TB',    val: kpi.nsTb > 0 ? kpi.nsTb.toLocaleString('vi-VN',{maximumFractionDigits:1}) : '—', unit: 'SP / công', icon: '⚡', grad: 'linear-gradient(135deg,#78350f,#d97706)', acc: '#fde68a' },
+            { label: 'SỐ NGÀY SX',      val: kpi.soNgay, unit: 'ngày', icon: '📅', grad: 'linear-gradient(135deg,#3b0764,#7c3aed)', acc: '#d8b4fe' },
+            { label: 'SỐ CA SX',        val: kpi.soCa,   unit: 'ca',   icon: '🔄', grad: 'linear-gradient(135deg,#7f1d1d,#dc2626)', acc: '#fca5a5' },
+          ].map(c => (
+            <div key={c.label} style={{ background: c.grad, borderRadius: 12, padding: '16px 18px', boxShadow: '0 4px 16px rgba(0,0,0,0.18)', color: '#fff' }}>
+              <div style={{ fontSize: 24, marginBottom: 6 }}>{c.icon}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: c.acc, textTransform: 'uppercase', marginBottom: 4 }}>{c.label}</div>
+              <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1 }}>{c.val}</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 4 }}>{c.unit}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Chart + Table ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.15fr', gap: 12, marginBottom: 12 }}>
+
+          {/* Bar chart SL by tổ */}
+          <div style={{ background: '#fff', borderRadius: 12, padding: '16px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)' }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: '#1e3a5f', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <BarChartOutlined style={{ color: '#0e7490', fontSize: 16 }} />
+              Sản lượng theo Tổ / Công đoạn
+            </div>
+            <ResponsiveContainer width="100%" height={230}>
+              <BarChart data={barData} layout="vertical" margin={{ left: 6, right: 50, top: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                <XAxis type="number" tickFormatter={v => v >= 1000 ? (v/1000).toFixed(0)+'k' : v} fontSize={11} tick={{ fill: '#94a3b8' }} />
+                <YAxis type="category" dataKey="name" width={48} fontSize={12} fontWeight={700} />
+                <RcTooltip formatter={v => [v.toLocaleString('vi-VN') + ' SP', 'Sản lượng']} />
+                <Bar dataKey="sl" name="Sản lượng" radius={[0, 6, 6, 0]}>
+                  {GD_TO.map((t, i) => <Cell key={i} fill={t.slColor} />)}
+                  <LabelList dataKey="sl" position="right" fontSize={11} fontWeight={700}
+                    formatter={v => v > 0 ? v.toLocaleString('vi-VN') : ''} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Breakdown table */}
+          <div style={{ background: '#fff', borderRadius: 12, padding: '16px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)' }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: '#1e3a5f', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <TeamOutlined style={{ color: '#0e7490', fontSize: 16 }} />
+              Chi tiết Sản lượng &amp; Công theo Tổ
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: '#f8fafc' }}>
+                  {['Tổ', 'Sản Lượng', 'Công', 'NS (SP/cg)', '% SL', '% Công'].map(h => (
+                    <th key={h} style={{ padding: '7px 10px', textAlign: h === 'Tổ' ? 'left' : 'right', fontWeight: 700, color: '#64748b', fontSize: 10, borderBottom: '2px solid #e2e8f0', textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {GD_TO.map((t, i) => {
+                  const d   = byTo[t.key] || { sl: 0, cong: 0 }
+                  const ns  = d.cong > 0 ? d.sl / d.cong : 0
+                  const pSl   = kpi.tongSl   > 0 ? d.sl   / kpi.tongSl   * 100 : 0
+                  const pCong = kpi.tongCong > 0 ? d.cong / kpi.tongCong * 100 : 0
+                  return (
+                    <tr key={t.key} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa', borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '10px 10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 4, height: 22, borderRadius: 2, background: t.slColor, flexShrink: 0 }} />
+                          <span style={{ fontWeight: 800, color: t.slColor, fontSize: 13 }}>{t.label}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700, color: '#0f172a', fontSize: 13 }}>
+                        {d.sl > 0 ? d.sl.toLocaleString('vi-VN') : <span style={{ color: '#d9d9d9' }}>—</span>}
+                      </td>
+                      <td style={{ padding: '10px 10px', textAlign: 'right', color: '#374151' }}>
+                        {d.cong > 0 ? d.cong.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : <span style={{ color: '#d9d9d9' }}>—</span>}
+                      </td>
+                      <td style={{ padding: '10px 10px', textAlign: 'right', color: '#475569' }}>
+                        {ns > 0 ? ns.toLocaleString('vi-VN', { maximumFractionDigits: 1 }) : <span style={{ color: '#d9d9d9' }}>—</span>}
+                      </td>
+                      <td style={{ padding: '10px 10px', textAlign: 'right' }}>
+                        {pSl > 0 ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                            <div style={{ width: 48, height: 5, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
+                              <div style={{ width: `${Math.min(pSl, 100)}%`, height: '100%', background: t.slColor, borderRadius: 3 }} />
+                            </div>
+                            <span style={{ color: t.slColor, fontWeight: 700, minWidth: 38, textAlign: 'right' }}>{pSl.toFixed(1)}%</span>
+                          </div>
+                        ) : <span style={{ color: '#d9d9d9' }}>—</span>}
+                      </td>
+                      <td style={{ padding: '10px 10px', textAlign: 'right', color: '#64748b' }}>
+                        {pCong > 0 ? pCong.toFixed(1) + '%' : <span style={{ color: '#d9d9d9' }}>—</span>}
+                      </td>
+                    </tr>
+                  )
+                })}
+                <tr style={{ background: '#f0f9ff', borderTop: '2px solid #bae6fd' }}>
+                  <td style={{ padding: '10px', fontWeight: 800, color: '#0e7490', fontSize: 12, paddingLeft: 14 }}>TỔNG CỘNG</td>
+                  <td style={{ padding: '10px', textAlign: 'right', fontWeight: 900, color: '#0e7490', fontSize: 14 }}>{kpi.tongSl.toLocaleString('vi-VN')}</td>
+                  <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#0e7490' }}>{kpi.tongCong.toLocaleString('vi-VN',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+                  <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#0e7490' }}>{kpi.nsTb > 0 ? kpi.nsTb.toLocaleString('vi-VN',{maximumFractionDigits:1}) : '—'}</td>
+                  <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#0e7490' }}>100%</td>
+                  <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#0e7490' }}>100%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* ── Trend chart ── */}
+        {dailyTrend.length > 1 && (
+          <div style={{ background: '#fff', borderRadius: 12, padding: '16px 20px', marginBottom: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.07)' }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: '#1e3a5f', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <RiseOutlined style={{ color: '#0e7490', fontSize: 16 }} />
+              Xu hướng sản lượng theo ngày
+              <span style={{ marginLeft: 'auto', fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>
+                Cột xanh = SL · Đường cam = Công
+              </span>
+            </div>
+            <ResponsiveContainer width="100%" height={210}>
+              <ComposedChart data={dailyTrend} margin={{ left: 0, right: 24, top: 4, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="label" fontSize={11} tick={{ fill: '#64748b' }} />
+                <YAxis yAxisId="sl" tickFormatter={v => v >= 1000 ? (v/1000).toFixed(0)+'k' : v} fontSize={11} tick={{ fill: '#1d4ed8' }} />
+                <YAxis yAxisId="cong" orientation="right" fontSize={11} tick={{ fill: '#059669' }} />
+                <RcTooltip formatter={(v, n) => [v.toLocaleString('vi-VN') + (n === 'sl' ? ' SP' : ' công'), n === 'sl' ? 'Sản lượng' : 'Công']} />
+                <Legend formatter={v => v === 'sl' ? 'Sản lượng (SP)' : 'Công (ca)'} wrapperStyle={{ fontSize: 12 }} />
+                <Bar yAxisId="sl" dataKey="sl" name="sl" fill="#bfdbfe" radius={[3,3,0,0]} />
+                <Line yAxisId="sl" type="monotone" dataKey="sl" name="sl" stroke="#1d4ed8" strokeWidth={2.5} dot={{ r: 3, fill: '#1d4ed8' }} legendType="none" />
+                <Line yAxisId="cong" type="monotone" dataKey="cong" name="cong" stroke="#059669" strokeWidth={1.5} strokeDasharray="5 3" dot={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* ── Top sản phẩm ── */}
+        {topSP.length > 0 && (
+          <div style={{ background: '#fff', borderRadius: 12, padding: '16px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)' }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: '#1e3a5f', marginBottom: 14 }}>
+              🏆 Top sản phẩm theo sản lượng
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0 32px' }}>
+              {topSP.map((sp, i) => {
+                const maxSl = topSP[0]?.sl || 1
+                const pct   = (sp.sl / maxSl * 100)
+                const medal = ['🥇', '🥈', '🥉'][i] || null
+                return (
+                  <div key={sp.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
+                    <div style={{ width: 28, textAlign: 'center', fontSize: i < 3 ? 18 : 12, fontWeight: i >= 3 ? 700 : undefined, color: '#94a3b8', flexShrink: 0 }}>
+                      {medal || (i + 1)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#1e3a5f', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 3 }}>{sp.name}</div>
+                      <div style={{ height: 4, background: '#f1f5f9', borderRadius: 2, overflow: 'hidden' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', background: i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : '#b45309', borderRadius: 2 }} />
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: '#0e7490' }}>{sp.sl.toLocaleString('vi-VN')}</div>
+                      <div style={{ fontSize: 10, color: '#94a3b8' }}>{sp.lo} lô</div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+      </Spin>
+    </div>
+  )
+}
+
 // ─── Page chính: wrapper Tabs ─────────────────────────────────────────────────
 
 export default function DailySanLuongPage() {
-  const { user, isAdmin, isAdminKH, isManHinh, isTKSX, isTPSX } = useAuth()
+  const { user, isAdmin, isAdminKH, isManHinh, isTKSX, isTPSX, isGiamDoc } = useAuth()
   const canApprove     = isAdmin() || isAdminKH()
   const canViewAnalytics = isAdmin() || isTKSX() || isTPSX()
   const canViewNhapKho = isAdmin() || isAdminKH() || user?.role === 'ADMIN_DG'
+  const canViewDashboardGD = isAdmin() || isGiamDoc?.() || isTKSX() || isTPSX()
   const manHinh = isManHinh()
   const location = useLocation()
 
@@ -6276,6 +6587,16 @@ export default function DailySanLuongPage() {
         </span>
       ),
       children: <NhapKhoTab />,
+    }] : []),
+    ...(canViewDashboardGD ? [{
+      key: 'dashboardgd',
+      label: (
+        <span>
+          <RiseOutlined style={{ marginRight: 5 }} />
+          Dashboard GĐ
+        </span>
+      ),
+      children: <DashboardGDTab />,
     }] : []),
   ]
 
