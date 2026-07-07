@@ -471,7 +471,14 @@ export default function RecordFormPage() {
   const onFinish = async (values) => {
     setSaving(true)
     try {
-      const payload = { ...values, phatLenh: phatLenh || false }
+      const plQaLayMau = (values.plQaLuuMau || 0) + (values.plQaKiemNghiem || 0) + (values.plQaKhac || 0)
+      const dgQaLayMau = (values.dgQaLuuMau || 0) + (values.dgQaKiemNghiem || 0) + (values.dgQaKhac || 0)
+      const payload = {
+        ...values,
+        phatLenh: phatLenh || false,
+        plQaLayMau: plQaLayMau || null,
+        dgQaLayMau: dgQaLayMau || null,
+      }
       if (isEdit) {
         await api.put(`/production/${id}`, payload)
         message.success('Cập nhật thành công')
