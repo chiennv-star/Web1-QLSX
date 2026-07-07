@@ -6190,7 +6190,8 @@ function DashboardGDTab() {
   const [loading, setLoading]   = useState(false)
   const [period, setPeriod]     = useState('month')
   const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs()])
-  const [loaiMap, setLoaiMap]   = useState({}) // maSp → loaiSanPham
+  const [loaiMap, setLoaiMap]     = useState({}) // maSp → loaiSanPham
+  const [machineMap, setMachineMap] = useState({}) // maSp → {pc, pl, bbc1, dg}
   const [analysisTab, setAnalysisTab] = useState('chung')
 
   const fetchGD = useCallback(async (range = dateRange) => {
@@ -6205,9 +6206,13 @@ function DashboardGDTab() {
       if (codes.length > 0) {
         api.get('/product-master/lookup-batch', { params: { codes } })
           .then(({ data: bm }) => {
-            const m = {}
-            codes.forEach(c => { if (bm[c]?.loaiSanPham) m[c] = bm[c].loaiSanPham })
-            setLoaiMap(m)
+            const lm = {}, mm = {}
+            codes.forEach(c => {
+              if (bm[c]?.loaiSanPham) lm[c] = bm[c].loaiSanPham
+              if (bm[c]) mm[c] = { pc: bm[c].mayMocPc, pl: bm[c].mayMocPl, bbc1: bm[c].mayMocBbc1, dg: bm[c].mayMocDg }
+            })
+            setLoaiMap(lm)
+            setMachineMap(mm)
           })
           .catch(() => {})
       }
@@ -6223,12 +6228,21 @@ function DashboardGDTab() {
     setPeriod(key); setDateRange(r); fetchGD(r)
   }
 
-  const { byTo, kpi, dailyTrend, byLoai, bySpDetail } = useMemo(() => {
+  const { byTo, kpi, dailyTrend, byLoai, byMay } = useMemo(() => {
     const byTo = {}
     GD_TO.forEach(t => { byTo[t.key] = { sl: 0, cong: 0, lo: 0 } })
-    const dayMap = {}, loaiAgg = {}, spAgg = {}
+    const dayMap = {}, loaiAgg = {}, mayAgg = {}
     const days = new Set(), cas = new Set()
     let totalSl = 0, totalCong = 0, slDg = 0
+
+    const getMachine = (cd, mSp) => {
+      if (!mSp) return null
+      if (cd === 'PCPL1' || cd === 'PCPL2') return mSp.pc
+      if (cd === 'PL') return mSp.pl
+      if (cd === 'DG') return mSp.dg
+      if (cd === 'BBC1') return mSp.bbc1
+      return null
+    }
 
     raw.forEach(r => {
       const cd = resolveGdCd(r)
@@ -6249,12 +6263,15 @@ function DashboardGDTab() {
       if (!loaiAgg[loai]) { loaiAgg[loai] = { loai, sl: 0, cong: 0 }; GD_TO.forEach(t => { loaiAgg[loai][t.key] = { sl: 0, cong: 0 } }) }
       loaiAgg[loai].sl += sl; loaiAgg[loai].cong += cong
       if (loaiAgg[loai][cd]) { loaiAgg[loai][cd].sl += sl; loaiAgg[loai][cd].cong += cong }
-      // Phân tích theo từng SP
-      const spKey = r.maSp || 'Khác'
-      const spName = r.tienTrinh || r.maSp || 'Khác'
-      if (!spAgg[spKey]) { spAgg[spKey] = { key: spKey, name: spName, sl: 0, cong: 0, loai }; GD_TO.forEach(t => { spAgg[spKey][t.key] = { sl: 0, cong: 0 } }) }
-      spAgg[spKey].sl += sl; spAgg[spKey].cong += cong
-      if (spAgg[spKey][cd]) { spAgg[spKey][cd].sl += sl; spAgg[spKey][cd].cong += cong }
+      // Phân tích theo máy móc
+      const rawMay = getMachine(cd, machineMap[r.maSp]) || '(Chưa có máy)'
+      const mayList = rawMay.split(',').map(m => m.trim()).filter(Boolean)
+      mayList.forEach(may => {
+        if (!mayAgg[may]) { mayAgg[may] = { may, sl: 0, cong: 0 }; GD_TO.forEach(t => { mayAgg[may][t.key] = { sl: 0, cong: 0 } }) }
+        mayAgg[may].sl += sl / mayList.length
+        mayAgg[may].cong += cong / mayList.length
+        if (mayAgg[may][cd]) { mayAgg[may][cd].sl += sl / mayList.length; mayAgg[may][cd].cong += cong / mayList.length }
+      })
     })
 
     return {
@@ -6263,9 +6280,9 @@ function DashboardGDTab() {
       dailyTrend: Object.values(dayMap).sort((a, b) => a.ngay.localeCompare(b.ngay))
         .map(d => ({ ...d, label: dayjs(d.ngay).format('DD/MM') })),
       byLoai: Object.values(loaiAgg).sort((a, b) => b.sl - a.sl),
-      bySpDetail: Object.values(spAgg).sort((a, b) => b.sl - a.sl),
+      byMay: Object.values(mayAgg).sort((a, b) => b.sl - a.sl),
     }
-  }, [raw, loaiMap])
+  }, [raw, loaiMap, machineMap])
 
   const barData = GD_TO.map(t => ({ name: t.label, sl: byTo[t.key]?.sl || 0, cong: byTo[t.key]?.cong || 0 }))
 
@@ -6452,7 +6469,7 @@ function DashboardGDTab() {
         )}
 
         {/* ── Phân tích sản lượng ── */}
-        {bySpDetail.length > 0 && (() => {
+        {(byLoai.length > 0 || byMay.length > 0) && (() => {
           const TABS = [{ key: 'chung', label: 'Chung' }, ...GD_TO.map(t => ({ key: t.key, label: t.label }))]
           const activeStage = analysisTab === 'chung' ? null : analysisTab
 
@@ -6462,19 +6479,22 @@ function DashboardGDTab() {
               .filter(l => l.sl > 0).sort((a, b) => b.sl - a.sl)
             : byLoai
 
-          const spRows = activeStage
-            ? bySpDetail.map(s => ({ ...s, sl: s[activeStage]?.sl || 0, cong: s[activeStage]?.cong || 0 }))
-              .filter(s => s.sl > 0).sort((a, b) => b.sl - a.sl).slice(0, 12)
-            : bySpDetail.slice(0, 12)
+          const mayRows = activeStage
+            ? byMay.map(m => ({ ...m, sl: m[activeStage]?.sl || 0, cong: m[activeStage]?.cong || 0 }))
+              .filter(m => m.sl > 0).sort((a, b) => b.sl - a.sl)
+            : byMay
 
-          const totalSl  = loaiRows.reduce((s, r) => s + r.sl,   0)
+          const totalSl   = loaiRows.reduce((s, r) => s + r.sl,   0)
           const totalCong = loaiRows.reduce((s, r) => s + r.cong, 0)
+          const totalMaySl   = mayRows.reduce((s, r) => s + r.sl,   0)
+          const totalMayCong = mayRows.reduce((s, r) => s + r.cong, 0)
 
-          const fmtN = v => v > 0 ? v.toLocaleString('vi-VN') : '—'
+          const fmtN = v => v > 0 ? Math.round(v).toLocaleString('vi-VN') : '—'
           const fmtC = v => v > 0 ? v.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
           const fmtP = (v, total) => total > 0 && v > 0 ? (v / total * 100).toFixed(1) + '%' : '—'
 
           const LOAI_COLORS = ['#1d4ed8','#0369a1','#0e7490','#b45309','#6d28d9','#059669','#be123c','#92400e']
+          const MAY_COLORS  = ['#0f766e','#0369a1','#7c3aed','#b45309','#047857','#0e7490','#be123c','#92400e','#1d4ed8','#6d28d9']
 
           return (
             <div style={{ background: '#fff', borderRadius: 12, padding: '16px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)' }}>
@@ -6482,7 +6502,7 @@ function DashboardGDTab() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
                 <div style={{ fontWeight: 700, fontSize: 13, color: '#1e3a5f', display: 'flex', alignItems: 'center', gap: 6 }}>
                   <BarChartOutlined style={{ color: '#0e7490' }} />
-                  Phân tích Sản lượng theo Loại SP &amp; Công đoạn
+                  Phân tích Sản lượng theo Loại SP &amp; Máy móc
                 </div>
                 <div style={{ display: 'flex', gap: 4, marginLeft: 'auto', flexWrap: 'wrap' }}>
                   {TABS.map(t => {
@@ -6525,7 +6545,6 @@ function DashboardGDTab() {
                               <div style={{ width: 3, height: 16, borderRadius: 2, background: LOAI_COLORS[i % LOAI_COLORS.length], flexShrink: 0 }} />
                               <span style={{ fontWeight: 600, color: '#1e3a5f', fontSize: 12 }}>{row.loai}</span>
                             </div>
-                            {/* mini bar */}
                             <div style={{ height: 3, background: '#f1f5f9', borderRadius: 2, marginTop: 4, overflow: 'hidden' }}>
                               <div style={{ width: `${totalSl > 0 ? row.sl / totalSl * 100 : 0}%`, height: '100%', background: LOAI_COLORS[i % LOAI_COLORS.length], borderRadius: 2 }} />
                             </div>
@@ -6550,48 +6569,52 @@ function DashboardGDTab() {
                   </table>
                 </div>
 
-                {/* Top sản phẩm */}
+                {/* Phân tích máy móc */}
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-                    Top 12 Sản Phẩm
+                    Theo Máy Móc Sử Dụng
                   </div>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                     <thead>
                       <tr style={{ background: '#f8fafc' }}>
-                        {['#', 'Sản phẩm', 'SL', 'Công', 'NS', '% SL'].map(h => (
-                          <th key={h} style={{ padding: '6px 6px', textAlign: h === 'Sản phẩm' || h === '#' ? 'left' : 'right', fontWeight: 700, color: '#64748b', fontSize: 10, borderBottom: '2px solid #e2e8f0', textTransform: 'uppercase' }}>{h}</th>
+                        {['Máy', 'SL', 'Công', 'NS', '% SL', '% Công'].map(h => (
+                          <th key={h} style={{ padding: '6px 7px', textAlign: h === 'Máy' ? 'left' : 'right', fontWeight: 700, color: '#64748b', fontSize: 10, borderBottom: '2px solid #e2e8f0', textTransform: 'uppercase' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {spRows.map((sp, i) => {
-                        const ns = sp.cong > 0 ? sp.sl / sp.cong : 0
-                        const pctSl = totalSl > 0 ? sp.sl / totalSl * 100 : 0
-                        const medal = ['🥇','🥈','🥉'][i]
-                        const stageColor = GD_TO.find(g => g.key === sp.loai)?.slColor
+                      {mayRows.map((row, i) => {
+                        const ns = row.cong > 0 ? row.sl / row.cong : 0
                         return (
-                          <tr key={sp.key} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
-                            <td style={{ padding: '6px 6px', fontSize: i < 3 ? 16 : 11, fontWeight: i >= 3 ? 700 : undefined, color: '#94a3b8', width: 28 }}>
-                              {medal || (i + 1)}
-                            </td>
-                            <td style={{ padding: '6px 6px', maxWidth: 0 }}>
-                              <div style={{ fontWeight: 700, color: '#1e3a5f', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sp.key}</div>
-                              <div style={{ fontSize: 10, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sp.name !== sp.key ? sp.name : ''}</div>
-                              {/* mini progress */}
-                              <div style={{ height: 2, background: '#f1f5f9', borderRadius: 1, marginTop: 3, overflow: 'hidden' }}>
-                                <div style={{ width: `${Math.min(pctSl * 5, 100)}%`, height: '100%', background: stageColor || '#0e7490', borderRadius: 1 }} />
+                          <tr key={row.may} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
+                            <td style={{ padding: '8px 7px', maxWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <div style={{ width: 3, height: 16, borderRadius: 2, background: MAY_COLORS[i % MAY_COLORS.length], flexShrink: 0 }} />
+                                <span style={{ fontWeight: 600, color: '#1e3a5f', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.may}</span>
+                              </div>
+                              <div style={{ height: 3, background: '#f1f5f9', borderRadius: 2, marginTop: 4, overflow: 'hidden' }}>
+                                <div style={{ width: `${totalMaySl > 0 ? row.sl / totalMaySl * 100 : 0}%`, height: '100%', background: MAY_COLORS[i % MAY_COLORS.length], borderRadius: 2 }} />
                               </div>
                             </td>
-                            <td style={{ padding: '6px 6px', textAlign: 'right', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>{fmtN(sp.sl)}</td>
-                            <td style={{ padding: '6px 6px', textAlign: 'right', color: '#374151', whiteSpace: 'nowrap' }}>{fmtC(sp.cong)}</td>
-                            <td style={{ padding: '6px 6px', textAlign: 'right', color: '#475569', whiteSpace: 'nowrap' }}>{ns > 0 ? ns.toLocaleString('vi-VN', { maximumFractionDigits: 0 }) : '—'}</td>
-                            <td style={{ padding: '6px 6px', textAlign: 'right', fontWeight: 700, color: '#0e7490', whiteSpace: 'nowrap' }}>{pctSl > 0 ? pctSl.toFixed(1) + '%' : '—'}</td>
+                            <td style={{ padding: '8px 7px', textAlign: 'right', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>{fmtN(row.sl)}</td>
+                            <td style={{ padding: '8px 7px', textAlign: 'right', color: '#374151', whiteSpace: 'nowrap' }}>{fmtC(row.cong)}</td>
+                            <td style={{ padding: '8px 7px', textAlign: 'right', color: '#475569', whiteSpace: 'nowrap' }}>{ns > 0 ? Math.round(ns).toLocaleString('vi-VN') : '—'}</td>
+                            <td style={{ padding: '8px 7px', textAlign: 'right', color: MAY_COLORS[i % MAY_COLORS.length], fontWeight: 700, whiteSpace: 'nowrap' }}>{fmtP(row.sl, totalMaySl)}</td>
+                            <td style={{ padding: '8px 7px', textAlign: 'right', color: '#64748b', whiteSpace: 'nowrap' }}>{fmtP(row.cong, totalMayCong)}</td>
                           </tr>
                         )
                       })}
-                      {spRows.length === 0 && (
-                        <tr><td colSpan={6} style={{ padding: 20, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>Không có dữ liệu</td></tr>
+                      {mayRows.length === 0 && (
+                        <tr><td colSpan={6} style={{ padding: 20, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>Không có dữ liệu — kiểm tra mục Máy móc trong danh mục SP</td></tr>
                       )}
+                      <tr style={{ background: '#f0fff4', borderTop: '2px solid #bbf7d0' }}>
+                        <td style={{ padding: '7px 7px', fontWeight: 800, color: '#059669', fontSize: 11 }}>TỔNG</td>
+                        <td style={{ padding: '7px 7px', textAlign: 'right', fontWeight: 900, color: '#059669' }}>{fmtN(totalMaySl)}</td>
+                        <td style={{ padding: '7px 7px', textAlign: 'right', fontWeight: 700, color: '#059669' }}>{fmtC(totalMayCong)}</td>
+                        <td style={{ padding: '7px 7px', textAlign: 'right', color: '#94a3b8' }}>—</td>
+                        <td style={{ padding: '7px 7px', textAlign: 'right', color: '#94a3b8' }}>100%</td>
+                        <td style={{ padding: '7px 7px', textAlign: 'right', color: '#94a3b8' }}>100%</td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
