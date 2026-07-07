@@ -139,7 +139,7 @@ export default function MainLayout() {
   const [pwModal, setPwModal] = useState(false)
   const [pwSaving, setPwSaving] = useState(false)
   const [pwForm] = Form.useForm()
-  const { user, logout, isAdmin, isAdminKH, isTKSX, isTPSX, isQuanDoc, isStageAdmin, canEditHangLoi, isNhanVien, isHCNS, isKeToan, isManHinh } = useAuth()
+  const { user, logout, isAdmin, isAdminKH, isTKSX, isTPSX, isQuanDoc, isGiamDoc, isStageAdmin, canEditHangLoi, isNhanVien, isHCNS, isKeToan, isManHinh } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const screens = useBreakpoint()
@@ -205,7 +205,14 @@ export default function MainLayout() {
     return KHT_TABS_ALL
   })()
 
-  const menuItems = isNhanVien()
+  const menuItems = isGiamDoc()
+    ? [
+        { key: '/giam-doc',    icon: <BarChartOutlined />, label: 'Dashboard' },
+        { key: '/daily-sl',    icon: <TableOutlined />,    label: 'Sản lượng theo ngày' },
+        { key: '/lenh-san-xuat', icon: <FileDoneOutlined />, label: 'Lệnh Sản Xuất' },
+        { key: '/don-hang',    icon: <AppstoreOutlined />, label: 'Đơn hàng' },
+      ]
+    : isNhanVien()
     ? [
         {
           key: '/work-schedule',
@@ -316,6 +323,7 @@ export default function MainLayout() {
     NHAN_VIEN_DG:       'Nhân viên ĐG',
     HCNS:               'HCNS',
     KE_TOAN:            'Kế toán',
+    GD:                 'Giám Đốc',
   }
 
   const handleNavigate = (key) => {

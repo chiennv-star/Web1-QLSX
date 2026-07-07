@@ -29,6 +29,9 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
+  // Giám đốc: chỉ xem, có dashboard riêng
+  const isGiamDoc = () => user?.role === 'GD'
+
   // Quản trị viên toàn quyền
   const isAdmin = () => user?.role === 'ADMIN'
 
@@ -192,7 +195,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, updateUser, isAdmin, isAdminKH, isTKSX, isTPSX, isQuanDoc, isNhanVien, isHCNS, isKeToan, isManHinh, getMaNhanVien, getToNhom, canEditProduction, canEditProductMaster, canEditPlan, canEditLenh, canEditStage, isStageAdmin, canEditHangLoi, canEditAttendance, canEditNhapKhoTarget, allowedEfficiencyTabs, getAllowedNhom, getAllowedStages, getAllowedEmployeeGroups, canDeleteSchedule, getLockedCongDoan }}>
+    <AuthContext.Provider value={{ user, login, logout, updateUser, isAdmin, isAdminKH, isTKSX, isTPSX, isQuanDoc, isGiamDoc, isNhanVien, isHCNS, isKeToan, isManHinh, getMaNhanVien, getToNhom, canEditProduction, canEditProductMaster, canEditPlan, canEditLenh, canEditStage, isStageAdmin, canEditHangLoi, canEditAttendance, canEditNhapKhoTarget, allowedEfficiencyTabs, getAllowedNhom, getAllowedStages, getAllowedEmployeeGroups, canDeleteSchedule, getLockedCongDoan }}>
       {children}
     </AuthContext.Provider>
   )

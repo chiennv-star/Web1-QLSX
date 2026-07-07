@@ -23,6 +23,7 @@ import LenhSanXuatOrderPage from './pages/LenhSanXuatOrderPage'
 import KeHoachToPage from './pages/KeHoachToPage'
 import PhanTichKeHoachPage from './pages/PhanTichKeHoachPage'
 import ForceChangePasswordPage from './pages/ForceChangePasswordPage'
+import DirectorDashboardPage from './pages/DirectorDashboardPage'
 import MainLayout from './components/MainLayout'
 
 function PrivateRoute({ children, adminOnly = false, allowedRoles = null }) {
@@ -38,6 +39,7 @@ function HomeRoute() {
   const { user, isNhanVien } = useAuth()
   if (isNhanVien()) return <Navigate to="/work-schedule" replace />
   if (user?.role === 'HCNS') return <Navigate to="/employees" replace />
+  if (user?.role === 'GD')   return <Navigate to="/giam-doc" replace />
   return <DashboardPage />
 }
 
@@ -92,6 +94,11 @@ export default function App() {
         <Route path="lenh-san-xuat" element={<LenhSanXuatPage />} />
         <Route path="lenh-san-xuat/:maBravo" element={<LenhSanXuatDetailPage />} />
         <Route path="lenh-san-xuat/:maBravo/don-hang/:orderId" element={<LenhSanXuatOrderPage />} />
+        <Route path="giam-doc" element={
+          <PrivateRoute allowedRoles={['GD', 'ADMIN', 'TKSX', 'TPSX', 'QUAN_DOC']}>
+            <DirectorDashboardPage />
+          </PrivateRoute>
+        } />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
