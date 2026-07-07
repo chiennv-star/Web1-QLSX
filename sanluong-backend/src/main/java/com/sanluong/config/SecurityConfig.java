@@ -105,7 +105,7 @@ public class SecurityConfig {
 
                 // ── Lệnh sản xuất: tất cả xem, ADMIN/ADMIN_KH sửa ─────────
                 .requestMatchers(HttpMethod.GET, "/api/lenh-san-xuat/**").hasAnyRole(ALL_ROLES)
-                .requestMatchers("/api/lenh-san-xuat/**").hasAnyRole("ADMIN", "ADMIN_KH")
+                .requestMatchers("/api/lenh-san-xuat/**").hasAnyRole("ADMIN", "ADMIN_KH", "ADMIN_BBC1")
 
                 // ── Trích xuất ảnh + lưu tờ lệnh sản xuất ──────────────────
                 .requestMatchers(HttpMethod.POST, "/api/lsx/extract").hasAnyRole(ALL_ROLES)

@@ -62,8 +62,8 @@ export function AuthProvider({ children }) {
   // Có thể thêm/sửa/xóa trong tab Kế hoạch (lịch kế hoạch): ADMIN + ADMIN_KH + TKSX
   const canEditPlan = () => ['ADMIN', 'ADMIN_KH', 'TKSX'].includes(user?.role)
 
-  // Có thể thêm/sửa/xóa Lệnh Sản Xuất: chỉ ADMIN và ADMIN_KH, không phải TKSX
-  const canEditLenh = () => ['ADMIN', 'ADMIN_KH'].includes(user?.role)
+  // Có thể thêm/sửa/xóa Lệnh Sản Xuất: ADMIN, ADMIN_KH, ADMIN_BBC1
+  const canEditLenh = () => ['ADMIN', 'ADMIN_KH', 'ADMIN_BBC1'].includes(user?.role)
 
   // Xóa bản ghi Lịch làm việc — chỉ ADMIN, ADMIN_KH, ADMIN_PC; các stage admin không được xóa
   const NO_DELETE_SCHEDULE_ROLES = ['ADMIN_PCPL1', 'ADMIN_PCPL2', 'ADMIN_PCPL3', 'ADMIN_BBC1', 'ADMIN_PL', 'ADMIN_DG']
