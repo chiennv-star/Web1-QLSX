@@ -34,6 +34,7 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
         create("admin",    "SongAn@2025", "Quản trị viên",       User.Role.ADMIN);
+        create("ChienNV",  "ChienNV123",  "ChienNV",             User.Role.ADMIN);
         create("TKSX",     "TKSX",        "Tài khoản Sản Xuất",  User.Role.TKSX);
         create("QuanDoc",  "QuanDoc123",  "Quản lý Đọc",         User.Role.QUAN_DOC);
         initPhong();
