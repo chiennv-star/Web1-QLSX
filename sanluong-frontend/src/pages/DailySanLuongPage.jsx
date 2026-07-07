@@ -5924,39 +5924,56 @@ function NhapKhoTab() {
                 <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden', alignSelf: 'start' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr' }}>
                     <LC>Tên sản phẩm</LC>
-                    <VC><span style={{ fontSize: 12, lineHeight: 1.4 }}>{r.tienTrinh || '—'}</span></VC>
+                    <VC>
+                      {bravoEdit?.id === r.id ? (
+                        <Input size="small" value={bravoEdit.tienTrinh}
+                          onChange={e => setBravoEdit(prev => ({ ...prev, tienTrinh: e.target.value }))}
+                          style={{ width: '100%', fontSize: 12 }} placeholder="Tên sản phẩm..." />
+                      ) : (
+                        <span onClick={() => setBravoEdit({ id: r.id, maBravo: r.maBravo || '', maTp: r.maTp || '', tienTrinh: r.tienTrinh || '' })}
+                          style={{ fontSize: 12, lineHeight: 1.4, cursor: 'pointer', textDecoration: 'underline dotted' }}>
+                          {r.tienTrinh || <span style={{ color: '#bbb' }}>Nhấn để sửa...</span>}
+                        </span>
+                      )}
+                    </VC>
                     <LC>Số lô</LC>
                     <VC><span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#6d28d9' }}>{r.lsx || '—'}</span></VC>
                     <LC>Mã Bravo</LC>
                     <VC>
                       {bravoEdit?.id === r.id ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
-                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                            <AutoComplete
-                              autoFocus
-                              options={bravoSearch}
-                              value={bravoEdit.maBravo}
-                              onChange={val => setBravoEdit(prev => ({ ...prev, maBravo: val, maTp: '', tienTrinh: '' }))}
-                              onSearch={searchBravo}
-                              onSelect={(val, opt) => { setBravoEdit(prev => ({ ...prev, maBravo: val, maTp: opt.maTp || '', tienTrinh: opt.tienTrinh || '' })); setBravoSearch([]) }}
-                              style={{ flex: 1 }}
-                              size="small"
-                              notFoundContent={bravoSearching ? <Spin size="small" /> : null}
-                            />
-                            <Button size="small" type="primary" onClick={saveBravoEdit} loading={saving[`${r.id}_maBravo`]}>Lưu</Button>
-                            <Button size="small" onClick={() => { setBravoEdit(null); setBravoSearch([]) }}>Hủy</Button>
-                          </div>
-                          {(bravoEdit.maTp || bravoEdit.tienTrinh) && (
-                            <div style={{ fontSize: 11, color: '#0369a1', background: '#e0f2fe', borderRadius: 3, padding: '2px 6px', lineHeight: 1.5 }}>
-                              <b>{bravoEdit.maTp}</b>{bravoEdit.maTp && bravoEdit.tienTrinh ? ' · ' : ''}{bravoEdit.tienTrinh}
-                            </div>
-                          )}
+                        <div style={{ display: 'flex', gap: 4, alignItems: 'center', width: '100%' }}>
+                          <AutoComplete
+                            autoFocus
+                            options={bravoSearch}
+                            value={bravoEdit.maBravo}
+                            onChange={val => setBravoEdit(prev => ({ ...prev, maBravo: val, maTp: '', tienTrinh: '' }))}
+                            onSearch={searchBravo}
+                            onSelect={(val, opt) => { setBravoEdit(prev => ({ ...prev, maBravo: val, maTp: opt.maTp || '', tienTrinh: opt.tienTrinh || '' })); setBravoSearch([]) }}
+                            style={{ flex: 1 }}
+                            size="small"
+                            notFoundContent={bravoSearching ? <Spin size="small" /> : null}
+                          />
+                          <Button size="small" type="primary" onClick={saveBravoEdit} loading={saving[`${r.id}_maBravo`]}>Lưu</Button>
+                          <Button size="small" onClick={() => { setBravoEdit(null); setBravoSearch([]) }}>Hủy</Button>
                         </div>
                       ) : (
                         <span
                           onClick={() => setBravoEdit({ id: r.id, maBravo: r.maBravo || '', maTp: r.maTp || '', tienTrinh: r.tienTrinh || '' })}
                           style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1d4ed8', cursor: 'pointer', textDecoration: 'underline dotted' }}>
                           {r.maBravo || <span style={{ color: '#bbb', fontFamily: 'inherit', fontWeight: 400 }}>Nhấn để sửa...</span>}
+                        </span>
+                      )}
+                    </VC>
+                    <LC>Mã SP</LC>
+                    <VC>
+                      {bravoEdit?.id === r.id ? (
+                        <Input size="small" value={bravoEdit.maTp}
+                          onChange={e => setBravoEdit(prev => ({ ...prev, maTp: e.target.value }))}
+                          style={{ width: '100%', fontWeight: 600, color: '#1d4ed8' }} placeholder="Mã SP..." />
+                      ) : (
+                        <span onClick={() => setBravoEdit({ id: r.id, maBravo: r.maBravo || '', maTp: r.maTp || '', tienTrinh: r.tienTrinh || '' })}
+                          style={{ fontWeight: 600, color: '#1d4ed8', cursor: 'pointer', textDecoration: 'underline dotted' }}>
+                          {r.maTp || <span style={{ color: '#bbb', fontWeight: 400 }}>Nhấn để sửa...</span>}
                         </span>
                       )}
                     </VC>
