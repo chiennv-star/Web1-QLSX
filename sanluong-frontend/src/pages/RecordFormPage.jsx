@@ -876,9 +876,13 @@ export default function RecordFormPage() {
                                 {[{ f: row.lmF, v: row.lm }, { f: row.knF, v: row.kn }, { f: row.khF, v: row.kh }].map(({ f, v }) => (
                                   <td key={f} style={{ padding: ro ? '6px 10px' : '2px 4px', textAlign: 'center' }}>
                                     {ro ? (
-                                      <span style={{ fontWeight: 600, color: v > 0 ? '#1d4ed8' : '#9ca3af' }}>
-                                        {v > 0 ? v.toLocaleString('vi-VN') : '—'}
-                                      </span>
+                                      <>
+                                        {/* hidden Form.Item giữ field registered để useWatch hoạt động khi không có input DOM */}
+                                        <Form.Item name={f} hidden><InputNumber /></Form.Item>
+                                        <span style={{ fontWeight: 600, color: v > 0 ? '#1d4ed8' : '#9ca3af' }}>
+                                          {v > 0 ? v.toLocaleString('vi-VN') : '—'}
+                                        </span>
+                                      </>
                                     ) : (
                                       <Form.Item name={f} style={{ marginBottom: 0 }}>
                                         <InputNumber size="small" min={0} precision={0} placeholder="0"
