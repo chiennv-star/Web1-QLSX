@@ -4466,9 +4466,8 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
                   <td style={{ ..._tdS, textAlign: 'center', fontWeight: 600,
                     color: isSundayRow ? '#9333ea' : '#374151',
                     background: selectedDay === day ? '#bae6fd' : isSundayRow ? '#faf5ff' : '#f0fdf4',
-                    fontSize: isSundayRow ? 10 : undefined,
                   }}>
-                    {day}{isSundayRow ? <span style={{ display: 'block', fontSize: 9, color: '#a855f7', lineHeight: 1 }}>CN</span> : null}
+                    {day}
                   </td>
                   {MONTHS.map(m => {
                     const valid   = day <= daysInMonth(m)
