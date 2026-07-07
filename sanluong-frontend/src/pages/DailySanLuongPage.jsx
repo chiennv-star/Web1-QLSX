@@ -5368,6 +5368,24 @@ function NhapKhoTab() {
     finally { setBravoSearching(false) }
   }, [])
 
+  const handleBravoEditStart = useCallback(async (r) => {
+    setBravoEdit({ id: r.id, maBravo: r.maBravo || '', maTp: r.maTp || '', tienTrinh: r.tienTrinh || '' })
+    // Nếu có Mã Bravo nhưng thiếu Tên SP hoặc Mã SP → tự lookup từ danh mục
+    if (r.maBravo && (!r.maTp || !r.tienTrinh)) {
+      try {
+        const { data: pm } = await api.get('/product-master/lookup-batch', { params: { codes: r.maBravo } })
+        const entry = pm?.[r.maBravo] || pm?.[r.maBravo.toUpperCase()] || Object.values(pm || {})[0]
+        if (entry) {
+          setBravoEdit(prev => prev?.id === r.id ? {
+            ...prev,
+            maTp:      prev.maTp      || entry.maTp      || '',
+            tienTrinh: prev.tienTrinh || entry.tienTrinh || '',
+          } : prev)
+        }
+      } catch { /* silent */ }
+    }
+  }, [])
+
   const saveBravoEdit = async () => {
     if (!bravoEdit) return
     let { id, maBravo, maTp, tienTrinh } = bravoEdit
@@ -5489,7 +5507,7 @@ function NhapKhoTab() {
         }
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}
-            onClick={e => { e.stopPropagation(); setBravoEdit({ id: r.id, maBravo: v || '', maTp: r.maTp || '', tienTrinh: r.tienTrinh || '' }) }}>
+            onClick={e => { e.stopPropagation(); handleBravoEditStart(r) }}>
             <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{v || '—'}</span>
             <span style={{ fontSize: 10, color: '#d1d5db' }}>✎</span>
           </div>
@@ -5930,7 +5948,7 @@ function NhapKhoTab() {
                           onChange={e => setBravoEdit(prev => ({ ...prev, tienTrinh: e.target.value }))}
                           style={{ width: '100%', fontSize: 12 }} placeholder="Tên sản phẩm..." />
                       ) : (
-                        <span onClick={() => setBravoEdit({ id: r.id, maBravo: r.maBravo || '', maTp: r.maTp || '', tienTrinh: r.tienTrinh || '' })}
+                        <span onClick={() => handleBravoEditStart(r)}
                           style={{ fontSize: 12, lineHeight: 1.4, cursor: 'pointer', textDecoration: 'underline dotted' }}>
                           {r.tienTrinh || <span style={{ color: '#bbb' }}>Nhấn để sửa...</span>}
                         </span>
@@ -5958,7 +5976,7 @@ function NhapKhoTab() {
                         </div>
                       ) : (
                         <span
-                          onClick={() => setBravoEdit({ id: r.id, maBravo: r.maBravo || '', maTp: r.maTp || '', tienTrinh: r.tienTrinh || '' })}
+                          onClick={() => handleBravoEditStart(r)}
                           style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1d4ed8', cursor: 'pointer', textDecoration: 'underline dotted' }}>
                           {r.maBravo || <span style={{ color: '#bbb', fontFamily: 'inherit', fontWeight: 400 }}>Nhấn để sửa...</span>}
                         </span>
@@ -5971,7 +5989,7 @@ function NhapKhoTab() {
                           onChange={e => setBravoEdit(prev => ({ ...prev, maTp: e.target.value }))}
                           style={{ width: '100%', fontWeight: 600, color: '#1d4ed8' }} placeholder="Mã SP..." />
                       ) : (
-                        <span onClick={() => setBravoEdit({ id: r.id, maBravo: r.maBravo || '', maTp: r.maTp || '', tienTrinh: r.tienTrinh || '' })}
+                        <span onClick={() => handleBravoEditStart(r)}
                           style={{ fontWeight: 600, color: '#1d4ed8', cursor: 'pointer', textDecoration: 'underline dotted' }}>
                           {r.maTp || <span style={{ color: '#bbb', fontWeight: 400 }}>Nhấn để sửa...</span>}
                         </span>
