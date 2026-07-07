@@ -171,9 +171,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/phong-thuc-hien/**").hasAnyRole(ALL_ROLES)
                 .requestMatchers("/api/phong-thuc-hien/**").hasAnyRole("ADMIN", "TKSX")
 
-                // ── App settings: tất cả xem, ADMIN_KH/TKSX/QUAN_DOC sửa ────
+                // ── App settings: tất cả xem, ADMIN/ADMIN_KH/TKSX/QUAN_DOC sửa ─
                 .requestMatchers(HttpMethod.GET, "/api/app-settings/**").hasAnyRole(ALL_ROLES)
-                .requestMatchers(HttpMethod.PUT, "/api/app-settings/**").hasAnyRole("ADMIN_KH", "TKSX", "QUAN_DOC")
+                .requestMatchers(HttpMethod.PUT, "/api/app-settings/**").hasAnyRole("ADMIN", "ADMIN_KH", "TKSX", "QUAN_DOC")
 
                 .anyRequest().authenticated()
             )

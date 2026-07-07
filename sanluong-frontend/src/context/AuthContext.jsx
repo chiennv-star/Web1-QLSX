@@ -93,8 +93,8 @@ export function AuthProvider({ children }) {
   // Có thể thêm/sửa/xóa bản ghi Công Ra Vào (chấm công giờ): ADMIN + HCNS
   const canEditAttendance = () => ['ADMIN', 'HCNS'].includes(user?.role)
 
-  // Có thể đặt mục tiêu Nhập Kho: ADMIN_KH, TKSX, QUAN_DOC
-  const canEditNhapKhoTarget = () => ['ADMIN_KH', 'TKSX', 'QUAN_DOC'].includes(user?.role)
+  // Có thể đặt mục tiêu Nhập Kho: ADMIN, ADMIN_KH, TKSX, QUAN_DOC
+  const canEditNhapKhoTarget = () => ['ADMIN', 'ADMIN_KH', 'TKSX', 'QUAN_DOC'].includes(user?.role)
 
   // Có thể nhập/sửa xử lý hàng lỗi: tất cả ADMIN_* + TKSX
   const canEditHangLoi = () => [
