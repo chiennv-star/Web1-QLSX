@@ -59,6 +59,9 @@ public class ProductMaster {
     @Column(name = "to_nhom_pcpl", length = 20)
     private String toNhomPcpl;
 
+    @Column(name = "ghi_chu", length = 500)
+    private String ghiChu;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -114,6 +117,8 @@ public class ProductMaster {
     public void setKhoiLuong(java.math.BigDecimal khoiLuong) { this.khoiLuong = khoiLuong; }
     public String getToNhomPcpl() { return toNhomPcpl; }
     public void setToNhomPcpl(String toNhomPcpl) { this.toNhomPcpl = toNhomPcpl; }
+    public String getGhiChu() { return ghiChu; }
+    public void setGhiChu(String ghiChu) { this.ghiChu = ghiChu; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 }

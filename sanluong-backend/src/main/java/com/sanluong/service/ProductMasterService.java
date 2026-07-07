@@ -39,6 +39,7 @@ public class ProductMasterService {
         FIELD_LABELS.put("mayMocBbc1",   "Máy Móc BBC1");
         FIELD_LABELS.put("mayMocDg",     "Máy Móc ĐG");
         FIELD_LABELS.put("toNhomPcpl",   "Tổ/Nhóm PCPL");
+        FIELD_LABELS.put("ghiChu",       "Ghi chú");
     }
 
     private final ProductMasterRepository repository;
@@ -123,6 +124,7 @@ public class ProductMasterService {
         addChange(entries, "mayMocBbc1",   old.getMayMocBbc1(),   dto.getMayMocBbc1());
         addChange(entries, "mayMocDg",     old.getMayMocDg(),     dto.getMayMocDg());
         addChange(entries, "toNhomPcpl",  old.getToNhomPcpl(),  dto.getToNhomPcpl());
+        addChange(entries, "ghiChu",      old.getGhiChu(),      dto.getGhiChu());
         if (entries.isEmpty()) return null;
         return "[" + String.join(",", entries) + "]";
     }
@@ -165,6 +167,7 @@ public class ProductMasterService {
         p.setLoaiSanPham(dto.getLoaiSanPham());
         p.setKhoiLuong(dto.getKhoiLuong());
         p.setToNhomPcpl(dto.getToNhomPcpl());
+        p.setGhiChu(dto.getGhiChu());
         return p;
     }
 

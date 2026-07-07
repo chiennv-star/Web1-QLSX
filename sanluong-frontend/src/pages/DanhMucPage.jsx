@@ -171,6 +171,7 @@ const FIELD_LABEL = {
   loaiSanPham: 'Loại SP', khoiLuong: 'KL/ĐV (g)', slTrungBinh: 'NS TB',
   nangSuatPc: 'NS PC', nangSuatPl: 'NS PL', nangSuatBbc1: 'NS BBC1',
   mayMocPc: 'Máy PC', mayMocPl: 'Máy PL', mayMocBbc1: 'Máy BBC1', mayMocDg: 'Máy ĐG',
+  ghiChu: 'Ghi chú',
 }
 
 const STATUS_CFG = {
@@ -1080,6 +1081,7 @@ function ProductMasterDrawer({ open, record, onClose, onEdit }) {
         <Row2 label="Khối lượng/ĐV (g)" value={fmtN(record.khoiLuong)} />
         <Row2 label="NS Trung Bình (sp/công)" value={fmtN(record.slTrungBinh)} />
         <Row2 label="Tên / Tiến trình" value={<span style={{ fontSize: 12 }}>{fmtT(record.tienTrinh)}</span>} full />
+        {record.ghiChu && <Row2 label="Ghi chú" value={<span style={{ fontSize: 12, color: '#6b7280' }}>{record.ghiChu}</span>} full />}
       </Section>
 
       <Section title="Máy móc" color="#6d28d9">
@@ -1436,6 +1438,7 @@ function ProductMasterTab() {
     { title: 'Máy Móc PL', dataIndex: 'mayMocPl', key: 'mayMocPl', width: 200, render: txtCell },
     { title: 'Máy Móc BBC1', dataIndex: 'mayMocBbc1', key: 'mayMocBbc1', width: 160, render: txtCell },
     { title: 'Máy Móc ĐG', dataIndex: 'mayMocDg', key: 'mayMocDg', width: 140, render: txtCell },
+    { title: 'Ghi chú', dataIndex: 'ghiChu', key: 'ghiChu', width: 200, ellipsis: true, render: txtCell },
     {
       title: '', key: 'action', width: canEdit ? 80 : 50, align: 'center', fixed: 'right',
       render: (_, r) => (
@@ -1685,6 +1688,11 @@ function ProductMasterTab() {
             <Col span={12}>
               <Form.Item label="Máy Móc ĐG" name="mayMocDg">
                 <Input placeholder="Tên máy móc ĐG" />
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item label="Ghi chú" name="ghiChu">
+                <Input.TextArea rows={2} placeholder="Ghi chú thêm về sản phẩm..." maxLength={500} showCount />
               </Form.Item>
             </Col>
           </Row>
