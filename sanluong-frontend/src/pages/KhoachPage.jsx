@@ -555,11 +555,10 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
           <VCell last>
             <Form.Item name="maSp" noStyle>
               <Input size="small"
-                onChange={editItem ? undefined : handleMaSpChange}
-                disabled={!!editItem}
-                allowClear={!editItem}
+                onChange={handleMaSpChange}
+                allowClear
                 placeholder="Tự điền khi tra Bravo"
-                style={{ color: '#1D4ED8', fontWeight: 600, width: '100%', background: editItem ? '#f8fafc' : undefined }}
+                style={{ color: '#1D4ED8', fontWeight: 600, width: '100%' }}
               />
             </Form.Item>
           </VCell>
@@ -568,33 +567,25 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
           <LCell>
             <Space size={4}>
               <span>Mã Bravo</span>
-              {!editItem && bravoStatus === 'loading'   && <SyncOutlined spin style={{ color: '#1677ff' }} />}
-              {!editItem && bravoStatus === 'found'     && <CheckCircleOutlined style={{ color: '#52c41a' }} />}
-              {!editItem && bravoStatus === 'not_found' && <Tag color="red" style={{ margin: 0, fontSize: 10 }}>?</Tag>}
+              {bravoStatus === 'loading'   && <SyncOutlined spin style={{ color: '#1677ff' }} />}
+              {bravoStatus === 'found'     && <CheckCircleOutlined style={{ color: '#52c41a' }} />}
+              {bravoStatus === 'not_found' && <Tag color="red" style={{ margin: 0, fontSize: 10 }}>?</Tag>}
             </Space>
           </LCell>
           <VCell relative>
             <Form.Item name="maBravo" noStyle>
-              {editItem ? (
-                <Input size="small"
-                  disabled
-                  placeholder="VD: 10602153"
-                  style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', background: '#f8fafc', width: '100%' }}
-                />
-              ) : (
-                <AutoComplete
-                  options={bravoOptions}
-                  onSearch={handleBravoSearch}
-                  onSelect={handleBravoSelect}
-                  onChange={handleBravoChange}
-                  allowClear
-                  placeholder="Gõ tên SP hoặc mã Bravo..."
-                  popupMatchSelectWidth={380}
-                  style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', width: '100%' }}
-                />
-              )}
+              <AutoComplete
+                options={bravoOptions}
+                onSearch={handleBravoSearch}
+                onSelect={handleBravoSelect}
+                onChange={handleBravoChange}
+                allowClear
+                placeholder="Gõ tên SP hoặc mã Bravo..."
+                popupMatchSelectWidth={380}
+                style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', width: '100%' }}
+              />
             </Form.Item>
-            {/* ── Dropdown gợi ý đơn hàng theo maBravo ── */}
+            {/* ── Dropdown gợi ý đơn hàng theo maBravo (chỉ khi tạo mới) ── */}
             {!editItem && bravoPickerOpen && (() => {
               const q = (bravoInput || '').toLowerCase()
               const filtered = q
@@ -688,10 +679,9 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
           <VCell span={3} last>
             <Form.Item name="tenTrinh" noStyle rules={[{ required: true, message: 'Nhập tiến trình' }]}>
               <TextArea
-                disabled={!!editItem}
                 rows={2}
                 placeholder="Tên sản phẩm / quy trình"
-                style={{ background: editItem ? '#f8fafc' : undefined, color: editItem ? '#374151' : undefined, width: '100%', resize: 'none' }}
+                style={{ width: '100%', resize: 'none' }}
               />
             </Form.Item>
           </VCell>
