@@ -6220,8 +6220,8 @@ function DashboardGDTab() {
     raw.forEach(r => {
       const cd = resolveGdCd(r)
       if (!byTo[cd]) return
-      const sl   = Number(r.sanLuong  || 0)
-      const cong = Number(r.tongCong  || 0)
+      const sl   = Number(r.sanLuong       || 0)
+      const cong = Number(r.congThucHien  || 0)
       byTo[cd].sl += sl; byTo[cd].cong += cong; byTo[cd].lo++
       totalSl += sl; totalCong += cong
       if (cd === 'DG') slDg += sl
@@ -6388,12 +6388,15 @@ function DashboardGDTab() {
                   )
                 })}
                 <tr style={{ background: '#f0f9ff', borderTop: '2px solid #bae6fd' }}>
-                  <td style={{ padding: '10px', fontWeight: 800, color: '#0e7490', fontSize: 12, paddingLeft: 14 }}>TỔNG CỘNG</td>
-                  <td style={{ padding: '10px', textAlign: 'right', fontWeight: 900, color: '#0e7490', fontSize: 14 }}>{kpi.tongSl.toLocaleString('vi-VN')}</td>
-                  <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#0e7490' }}>{kpi.tongCong.toLocaleString('vi-VN',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+                  <td style={{ padding: '10px', fontWeight: 800, color: '#0e7490', fontSize: 12, paddingLeft: 14 }}>TRUNG BÌNH</td>
+                  <td style={{ padding: '10px', textAlign: 'right', fontWeight: 900, color: '#0e7490', fontSize: 14 }}>
+                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 400, marginBottom: 1 }}>SL ĐG</div>
+                    {kpi.slDg > 0 ? kpi.slDg.toLocaleString('vi-VN') : <span style={{ color: '#d9d9d9' }}>—</span>}
+                  </td>
+                  <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#0e7490' }}>{kpi.tongCong > 0 ? kpi.tongCong.toLocaleString('vi-VN',{minimumFractionDigits:2,maximumFractionDigits:2}) : <span style={{ color: '#d9d9d9' }}>—</span>}</td>
                   <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#0e7490' }}>{kpi.nsTb > 0 ? kpi.nsTb.toLocaleString('vi-VN',{maximumFractionDigits:1}) : '—'}</td>
-                  <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#0e7490' }}>100%</td>
-                  <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#0e7490' }}>100%</td>
+                  <td style={{ padding: '10px', textAlign: 'right', color: '#94a3b8' }}>—</td>
+                  <td style={{ padding: '10px', textAlign: 'right', color: '#94a3b8' }}>—</td>
                 </tr>
               </tbody>
             </table>
