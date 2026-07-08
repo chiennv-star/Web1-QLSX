@@ -17,6 +17,10 @@ public class WorkScheduleDto {
     private BigDecimal coLo;
     private String toNhom;
     private String phongThucHien;
+    private String phongSanXuat;
+    private BigDecimal klDv;
+    private BigDecimal khoiLuongLo;
+    private Integer soMe;
     private String truongCa;
     private String nguoiHoTro;
     private String chuY;
@@ -64,6 +68,14 @@ public class WorkScheduleDto {
     public void setToNhom(String toNhom) { this.toNhom = toNhom; }
     public String getPhongThucHien() { return phongThucHien; }
     public void setPhongThucHien(String phongThucHien) { this.phongThucHien = phongThucHien; }
+    public String getPhongSanXuat() { return phongSanXuat; }
+    public void setPhongSanXuat(String phongSanXuat) { this.phongSanXuat = phongSanXuat; }
+    public BigDecimal getKlDv() { return klDv; }
+    public void setKlDv(BigDecimal klDv) { this.klDv = klDv; }
+    public BigDecimal getKhoiLuongLo() { return khoiLuongLo; }
+    public void setKhoiLuongLo(BigDecimal khoiLuongLo) { this.khoiLuongLo = khoiLuongLo; }
+    public Integer getSoMe() { return soMe; }
+    public void setSoMe(Integer soMe) { this.soMe = soMe; }
     public String getTruongCa() { return truongCa; }
     public void setTruongCa(String truongCa) { this.truongCa = truongCa; }
     public String getNguoiHoTro() { return nguoiHoTro; }

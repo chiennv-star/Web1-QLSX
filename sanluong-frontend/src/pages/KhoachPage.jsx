@@ -107,11 +107,23 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
   const [soLoSuggestions,    setSoLoSuggestions]    = useState([])    // danh sách soLo gợi ý từ PCPL1/PCPL2
   const [soLoLookupLoading,  setSoLoLookupLoading]  = useState(false) // đang tra cứu soLo từ PC
   const [soLoOptions,        setSoLoOptions]        = useState([])    // AutoComplete options cho Số lô
+  const [productMasterData,  setProductMasterData]  = useState(null)  // dữ liệu product master để hiển thị
+  const watchKlDv = Form.useWatch('klDv', form)
 
   // Đồng bộ currentCoLo khi mở modal với editItem mới
   useEffect(() => {
     setCurrentCoLo(editItem?.coLo ?? null)
   }, [editItem?.id]) // chỉ reset khi mở record khác, không reset sau doiCoLo
+
+  // Auto-compute Khối Lượng Lô = Cỡ lô × KL/ĐV
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (watchKlDv == null) return
+    const coLoVal = currentCoLo ?? form.getFieldValue('coLo')
+    if (coLoVal != null) {
+      form.setFieldValue('khoiLuongLo', Math.round(Number(watchKlDv) * Number(coLoVal) * 1000) / 1000)
+    }
+  }, [watchKlDv])
 
   useEffect(() => {
     if (!open) return
@@ -135,11 +147,23 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
         chuY:          editItem.chuY               || '',
         saiLech:       editItem.saiLech            || '',
         tinhTrang:     editItem.tinhTrang          || '',
+        klDv:        editItem.klDv        != null ? Number(editItem.klDv) : null,
+        khoiLuongLo: editItem.khoiLuongLo != null ? Number(editItem.khoiLuongLo) : null,
+        soMe:        editItem.soMe        != null ? Number(editItem.soMe) : null,
       })
       setLookupStatus(null)
       setBravoStatus(null)
       setDonHangStatus(null)
       setSoLuongDon(null)
+      // Fetch product master để hiển thị bảng thông tin
+      setProductMasterData(null)
+      if (editItem.maBravo) {
+        api.get(`/product-master/lookup-by-bravo/${encodeURIComponent(editItem.maBravo)}`)
+          .then(r => setProductMasterData(r.data)).catch(() => {})
+      } else if (editItem.maSp) {
+        api.get(`/product-master/lookup/${encodeURIComponent(editItem.maSp)}`)
+          .then(r => setProductMasterData(r.data)).catch(() => {})
+      }
       setDhInput('')
 
       // Auto-fetch SL đơn từ DonHang
@@ -170,6 +194,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
       setDhInput('')
       setSoLoSuggestions([])
       setSoLoOptions([])
+      setProductMasterData(null)
     }
   }, [open, editItem])
 
@@ -186,6 +211,8 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
       try {
         const { data: master } = await api.get(`/product-master/lookup-by-bravo/${encodeURIComponent(trimmed)}`)
         form.setFieldsValue({ maSp: master.maTp || '', tenTrinh: master.tienTrinh || '' })
+        if (master.khoiLuong != null) form.setFieldValue('klDv', Number(master.khoiLuong))
+        setProductMasterData(master)
         setBravoStatus('found')
         setLookupStatus(null)
       } catch { setBravoStatus('not_found') }
@@ -217,6 +244,8 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
     justSelectedBravo.current = true
     const p = option.raw
     form.setFieldsValue({ maBravo: p.maBravo, maSp: p.maTp || '', tenTrinh: p.tienTrinh || '' })
+    if (p.khoiLuong != null) form.setFieldValue('klDv', Number(p.khoiLuong))
+    setProductMasterData(p)
     setBravoStatus('found')
     setBravoOptions([])
     setBravoPickerOpen(false)
@@ -443,6 +472,9 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
         chuY:          values.chuY          || null,
         saiLech:       values.saiLech       || null,
         tinhTrang:     values.tinhTrang     || null,
+        klDv:          values.klDv          ?? null,
+        khoiLuongLo:   values.khoiLuongLo   ?? null,
+        soMe:          values.soMe          ?? null,
       }
       if (editItem) {
         await api.put(`/work-schedule/${editItem.id}`, payload)
@@ -520,6 +552,35 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
           )}
         </div>
       </div>
+
+      {/* ── Bảng thông tin sản phẩm (Product Master) ── */}
+      {productMasterData && (
+        <div style={{ padding: '8px 16px 0' }}>
+          <div style={{ border: '1px solid #bae0ff', borderRadius: 6, overflow: 'hidden', fontSize: 12 }}>
+            <div style={{ background: '#1677ff', color: '#fff', fontSize: 10, fontWeight: 700, padding: '4px 10px', letterSpacing: 0.5 }}>
+              📦 THÔNG TIN SẢN PHẨM
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 110px 1fr' }}>
+              {productMasterData.khoiLuong != null && (<>
+                <div style={{ padding: '4px 8px', background: '#f0f8ff', fontWeight: 600, color: '#4b5563', borderBottom: '1px solid #bae0ff', borderRight: '1px solid #bae0ff' }}>KL/ĐV</div>
+                <div style={{ padding: '4px 8px', borderBottom: '1px solid #bae0ff', borderRight: '1px solid #bae0ff' }}><b>{Number(productMasterData.khoiLuong).toLocaleString('vi-VN')}</b> g/sp</div>
+              </>)}
+              {productMasterData.nangSuatPc != null && (<>
+                <div style={{ padding: '4px 8px', background: '#f0f8ff', fontWeight: 600, color: '#4b5563', borderBottom: '1px solid #bae0ff', borderRight: '1px solid #bae0ff' }}>NS PC/ca</div>
+                <div style={{ padding: '4px 8px', borderBottom: '1px solid #bae0ff' }}><b>{Number(productMasterData.nangSuatPc).toLocaleString('vi-VN')}</b></div>
+              </>)}
+              {productMasterData.mayMocPc && (<>
+                <div style={{ padding: '4px 8px', background: '#f0f8ff', fontWeight: 600, color: '#4b5563', borderBottom: '1px solid #bae0ff', borderRight: '1px solid #bae0ff' }}>Máy móc PC</div>
+                <div style={{ padding: '4px 8px', borderBottom: '1px solid #bae0ff', borderRight: '1px solid #bae0ff', color: '#374151' }}>{productMasterData.mayMocPc}</div>
+              </>)}
+              {productMasterData.loaiSanPham && (<>
+                <div style={{ padding: '4px 8px', background: '#f0f8ff', fontWeight: 600, color: '#4b5563', borderBottom: '1px solid #bae0ff', borderRight: '1px solid #bae0ff' }}>Loại SP</div>
+                <div style={{ padding: '4px 8px', borderBottom: '1px solid #bae0ff', color: '#374151' }}>{productMasterData.loaiSanPham}</div>
+              </>)}
+            </div>
+          </div>
+        </div>
+      )}
 
       <Form form={form} component="div" autoComplete="off" style={{ padding: '12px 16px 4px' }} onValuesChange={() => setIsDirty(true)}>
         <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 120px 1fr', border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'visible', marginBottom: 10 }}>
@@ -763,6 +824,31 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
             <Form.Item name="phongThucHien" noStyle rules={[{ required: true, message: 'Bắt buộc chọn phòng' }]}>
               <PhongThucHienSelect size="small" style={{ width: '100%' }} placeholder="VD: Phòng 1, Khu A..." />
             </Form.Item>
+          </VCell>
+
+          {/* Row 6b: KL/ĐV — Số Mẻ */}
+          <LCell>KL/ĐV (g/sp)</LCell>
+          <VCell>
+            <Form.Item name="klDv" noStyle>
+              <InputNumber size="small" style={{ width: '100%' }} step={0.001} precision={3} min={0} placeholder="g/sp" />
+            </Form.Item>
+          </VCell>
+          <LCell>Số Mẻ</LCell>
+          <VCell last>
+            <Form.Item name="soMe" noStyle>
+              <InputNumber size="small" style={{ width: '100%' }} min={0} precision={0} />
+            </Form.Item>
+          </VCell>
+
+          {/* Row 6c: Khối Lượng Lô */}
+          <LCell>Khối Lượng Lô</LCell>
+          <VCell span={3} last>
+            <Space>
+              <Form.Item name="khoiLuongLo" noStyle>
+                <InputNumber size="small" style={{ width: 180 }} step={1} min={0} />
+              </Form.Item>
+              <span style={{ fontSize: 11, color: '#8c8c8c' }}>= Cỡ lô × KL/ĐV (tự tính, có thể sửa)</span>
+            </Space>
           </VCell>
 
           {/* Row 7: Tình trạng — Chú ý */}

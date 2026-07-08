@@ -810,6 +810,10 @@ public class WorkScheduleService {
         w.setCoLo(dto.getCoLo());
         w.setToNhom(dto.getToNhom());
         w.setPhongThucHien(dto.getPhongThucHien());
+        w.setPhongSanXuat(dto.getPhongSanXuat());
+        w.setKlDv(dto.getKlDv());
+        w.setKhoiLuongLo(dto.getKhoiLuongLo());
+        w.setSoMe(dto.getSoMe());
         w.setTruongCa(dto.getTruongCa());
         w.setNguoiHoTro(dto.getNguoiHoTro());
         w.setChuY(dto.getChuY());

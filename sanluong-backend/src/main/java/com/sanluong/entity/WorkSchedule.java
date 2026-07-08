@@ -48,6 +48,15 @@ public class WorkSchedule {
     @Column(name = "phong_san_xuat", length = 100)
     private String phongSanXuat;
 
+    @Column(name = "kl_dv", precision = 10, scale = 4)
+    private java.math.BigDecimal klDv;
+
+    @Column(name = "khoi_luong_lo", precision = 12, scale = 4)
+    private java.math.BigDecimal khoiLuongLo;
+
+    @Column(name = "so_me")
+    private Integer soMe;
+
     @Column(name = "truong_ca", length = 100)
     private String truongCa;
 
@@ -183,6 +192,12 @@ public class WorkSchedule {
     public void setPhongThucHien(String phongThucHien) { this.phongThucHien = phongThucHien; }
     public String getPhongSanXuat() { return phongSanXuat; }
     public void setPhongSanXuat(String phongSanXuat) { this.phongSanXuat = phongSanXuat; }
+    public java.math.BigDecimal getKlDv() { return klDv; }
+    public void setKlDv(java.math.BigDecimal klDv) { this.klDv = klDv; }
+    public java.math.BigDecimal getKhoiLuongLo() { return khoiLuongLo; }
+    public void setKhoiLuongLo(java.math.BigDecimal khoiLuongLo) { this.khoiLuongLo = khoiLuongLo; }
+    public Integer getSoMe() { return soMe; }
+    public void setSoMe(Integer soMe) { this.soMe = soMe; }
     public String getTruongCa() { return truongCa; }
     public void setTruongCa(String truongCa) { this.truongCa = truongCa; }
     public String getNguoiHoTro() { return nguoiHoTro; }
