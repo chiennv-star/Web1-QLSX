@@ -62,6 +62,9 @@ public class ProductMaster {
     @Column(name = "ghi_chu", length = 500)
     private String ghiChu;
 
+    @Column(name = "nang_suat_pc_me", columnDefinition = "TEXT")
+    private String nangSuatPcMe;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -119,6 +122,8 @@ public class ProductMaster {
     public void setToNhomPcpl(String toNhomPcpl) { this.toNhomPcpl = toNhomPcpl; }
     public String getGhiChu() { return ghiChu; }
     public void setGhiChu(String ghiChu) { this.ghiChu = ghiChu; }
+    public String getNangSuatPcMe() { return nangSuatPcMe; }
+    public void setNangSuatPcMe(String nangSuatPcMe) { this.nangSuatPcMe = nangSuatPcMe; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 }

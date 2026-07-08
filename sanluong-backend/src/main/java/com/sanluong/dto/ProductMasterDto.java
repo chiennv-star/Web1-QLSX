@@ -21,6 +21,7 @@ public class ProductMasterDto {
     private BigDecimal khoiLuong;
     private String toNhomPcpl;
     private String ghiChu;
+    private String nangSuatPcMe;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -56,4 +57,6 @@ public class ProductMasterDto {
     public void setToNhomPcpl(String toNhomPcpl) { this.toNhomPcpl = toNhomPcpl; }
     public String getGhiChu() { return ghiChu; }
     public void setGhiChu(String ghiChu) { this.ghiChu = ghiChu; }
+    public String getNangSuatPcMe() { return nangSuatPcMe; }
+    public void setNangSuatPcMe(String nangSuatPcMe) { this.nangSuatPcMe = nangSuatPcMe; }
 }

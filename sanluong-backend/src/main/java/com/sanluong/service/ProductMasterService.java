@@ -168,6 +168,7 @@ public class ProductMasterService {
         p.setKhoiLuong(dto.getKhoiLuong());
         p.setToNhomPcpl(dto.getToNhomPcpl());
         p.setGhiChu(dto.getGhiChu());
+        p.setNangSuatPcMe(dto.getNangSuatPcMe());
         return p;
     }
 

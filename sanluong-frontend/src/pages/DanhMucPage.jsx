@@ -1094,6 +1094,30 @@ function ProductMasterDrawer({ open, record, onClose, onEdit }) {
         <Row2 label="NS BBC1 (sp/công)" value={fmtN(record.nangSuatBbc1)} />
       </Section>
 
+      {(() => {
+        try {
+          const rows = JSON.parse(record.nangSuatPcMe || '[]')
+          if (!rows.length) return null
+          return (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontWeight: 700, fontSize: 12, color: '#1677ff', background: '#e6f4ff', borderLeft: '3px solid #1677ff',
+                padding: '4px 10px', marginBottom: 8, borderRadius: '0 4px 4px 0' }}>⚡ NS PC theo số mẻ</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', paddingLeft: 4 }}>
+                {rows.map((r, i) => (
+                  <div key={i}>
+                    <span style={{ fontSize: 11, color: '#8c8c8c' }}>{r.soMe} mẻ</span>
+                    <div style={{ fontSize: 12, marginTop: 1, fontWeight: 600, color: '#1D4ED8' }}>
+                      {r.nangSuat != null ? Math.round(Number(r.nangSuat)).toLocaleString('vi-VN') : '—'}
+                      <span style={{ fontWeight: 400, color: '#64748b', fontSize: 11 }}> sp/công</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        } catch { return null }
+      })()}
+
     </Drawer>
   )
 }
@@ -1189,6 +1213,11 @@ function ProductMasterTab() {
   const [history,           setHistory]           = useState([])
   const [historyLoading,    setHistoryLoading]    = useState(false)
   const [newItemId,         setNewItemId]         = useState(null)
+  const [nangSuatPcMeRows, setNangSuatPcMeRows] = useState([
+    { soMe: 1, nangSuat: null },
+    { soMe: 2, nangSuat: null },
+    { soMe: 3, nangSuat: null },
+  ])
   const [form] = Form.useForm()
 
   const fetchData = useCallback(async (page = 0, size = 20, kw = keyword, pcpl = filterPcpl, { silent = false } = {}) => {
@@ -1260,6 +1289,8 @@ function ProductMasterTab() {
   const onSave = async () => {
     const values = await form.validateFields()
     try {
+      const filtered = nangSuatPcMeRows.filter(r => r.nangSuat != null && r.nangSuat !== '')
+      values.nangSuatPcMe = filtered.length > 0 ? JSON.stringify(filtered) : null
       if (editItem) {
         await api.put(`/product-master/${editItem.id}`, values)
         message.success('Đã cập nhật')
@@ -1366,6 +1397,12 @@ function ProductMasterTab() {
     return [...new Set([...defaults, ...allLoaiSp, ...fromData])]
   }, [data, allLoaiSp])
 
+  const DEFAULT_NS_ROWS = [
+    { soMe: 1, nangSuat: null },
+    { soMe: 2, nangSuat: null },
+    { soMe: 3, nangSuat: null },
+  ]
+
   const openEdit = (r) => {
     setEditItem(r)
     form.setFieldsValue({
@@ -1376,6 +1413,11 @@ function ProductMasterTab() {
       nangSuatPl:   r.nangSuatPl   != null ? Number(r.nangSuatPl)   : null,
       nangSuatBbc1: r.nangSuatBbc1 != null ? Number(r.nangSuatBbc1) : null,
     })
+    // Parse nangSuatPcMe JSON
+    try {
+      const rows = JSON.parse(r.nangSuatPcMe || '[]')
+      setNangSuatPcMeRows(rows.length > 0 ? rows.map(x => ({ soMe: x.soMe, nangSuat: x.nangSuat != null ? Number(x.nangSuat) : null })) : DEFAULT_NS_ROWS)
+    } catch { setNangSuatPcMeRows(DEFAULT_NS_ROWS) }
     setHistory([])
     setModalOpen(true)
     // Load history async
@@ -1510,7 +1552,7 @@ function ProductMasterTab() {
             </Tooltip>
             <Button type="primary" size="small" icon={<PlusOutlined />}
               style={{ background: '#1D4ED8', borderColor: '#1D4ED8', fontWeight: 600 }}
-              onClick={() => { setEditItem(null); form.resetFields(); setModalOpen(true) }}>
+              onClick={() => { setEditItem(null); form.resetFields(); setNangSuatPcMeRows([{soMe:1,nangSuat:null},{soMe:2,nangSuat:null},{soMe:3,nangSuat:null}]); setModalOpen(true) }}>
               Thêm Mã TP
             </Button>
           </div>
@@ -1653,6 +1695,40 @@ function ProductMasterTab() {
               </Form.Item>
             </Col>
           </Row>
+
+          {/* ── Năng suất PC theo số mẻ ── */}
+          <div style={{ marginBottom: 12, border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
+            <div style={{ background: '#e6f4ff', padding: '6px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #bae0ff' }}>
+              <span style={{ fontWeight: 700, fontSize: 12, color: '#1677ff' }}>⚡ Năng suất PC theo số mẻ (sp/công)</span>
+              <Button size="small" icon={<PlusOutlined />} type="link"
+                onClick={() => setNangSuatPcMeRows(prev => [...prev, { soMe: (prev[prev.length - 1]?.soMe || 0) + 1, nangSuat: null }])}>
+                Thêm mẻ
+              </Button>
+            </div>
+            {nangSuatPcMeRows.map((row, idx) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: idx < nangSuatPcMeRows.length - 1 ? '1px solid #f0f0f0' : 'none', background: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
+                <span style={{ fontSize: 12, color: '#475569', fontWeight: 700, minWidth: 44, textAlign: 'center',
+                  background: '#f1f5f9', borderRadius: 4, padding: '2px 6px' }}>
+                  {row.soMe} mẻ
+                </span>
+                <InputNumber
+                  size="small" style={{ flex: 1 }} value={row.nangSuat} min={0}
+                  placeholder="Nhập năng suất..."
+                  formatter={v => v ? Math.round(Number(v)).toLocaleString('vi-VN') : ''}
+                  parser={v => v ? v.replace(/[^\d]/g, '') : ''}
+                  onChange={val => setNangSuatPcMeRows(prev => prev.map((r, i) => i === idx ? { ...r, nangSuat: val } : r))}
+                />
+                <span style={{ fontSize: 11, color: '#94a3b8', minWidth: 42 }}>sp/công</span>
+                <Button size="small" type="text" danger icon={<CloseCircleOutlined />}
+                  onClick={() => setNangSuatPcMeRows(prev => prev.filter((_, i) => i !== idx))} />
+              </div>
+            ))}
+            {nangSuatPcMeRows.length === 0 && (
+              <div style={{ padding: '10px 12px', fontSize: 12, color: '#94a3b8', textAlign: 'center' }}>
+                Chưa có dữ liệu. Nhấn "Thêm mẻ" để thêm.
+              </div>
+            )}
+          </div>
 
           <Form.Item label="Máy Móc PC" name="mayMocPc">
             <Select placeholder="Chọn máy móc PC" allowClear showSearch options={[
