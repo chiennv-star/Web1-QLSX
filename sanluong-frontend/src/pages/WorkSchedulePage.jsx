@@ -5120,7 +5120,7 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
       }
     },
     {
-      title: 'Tiến trình', dataIndex: 'tenTrinh', key: 'tenTrinh',
+      title: 'Tiến trình', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 160,
       render: v => <span style={{ wordBreak: 'break-word' }}>{v || '—'}</span>
     },
     {
@@ -5236,7 +5236,7 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
         rowKey="id"
         loading={loading}
         size="small"
-        scroll={{ x: 1750 }}
+        scroll={{ x: 1950 }}
         sticky={{ offsetHeader: headerOffset }}
         rowHoverable={false}
         onRow={r => ({
@@ -5352,7 +5352,7 @@ function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange, headerOffset = 8
       }
     },
     {
-      title: 'Tiến trình', dataIndex: 'tenTrinh', key: 'tenTrinh',
+      title: 'Tiến trình', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 160,
       render: v => <span style={{ wordBreak: 'break-word' }}>{v || '—'}</span>
     },
     {
@@ -5458,7 +5458,7 @@ function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange, headerOffset = 8
         rowKey="id"
         loading={loading}
         size="small"
-        scroll={{ x: 900 }}
+        scroll={{ x: 1150 }}
         sticky={{ offsetHeader: headerOffset }}
         rowHoverable={false}
         pagination={false}
