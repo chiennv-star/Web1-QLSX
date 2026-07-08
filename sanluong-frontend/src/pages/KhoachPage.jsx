@@ -102,6 +102,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
   const [bravoInput,      setBravoInput]      = useState('')    // giá trị đang gõ
   const [bravoOptions,    setBravoOptions]    = useState([])    // autocomplete suggestions
   const justSelectedBravo = useRef(false)
+  const justLoadedKlDvRef = useRef(false)
   const [isDirty, setIsDirty] = useState(false)
   const [dhInput,         setDhInput]         = useState('')    // giá trị đang gõ maDonHang
   const [soLoSuggestions,    setSoLoSuggestions]    = useState([])    // danh sách soLo gợi ý từ PCPL1/PCPL2
@@ -116,8 +117,10 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
   }, [editItem?.id]) // chỉ reset khi mở record khác, không reset sau doiCoLo
 
   // Auto-compute Khối Lượng Lô = Cỡ lô × KL/ĐV
+  // Skip lần đầu tiên khi mở edit (để không ghi đè khoiLuongLo đã sửa tay)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
+    if (justLoadedKlDvRef.current) { justLoadedKlDvRef.current = false; return }
     if (watchKlDv == null) return
     const coLoVal = currentCoLo ?? form.getFieldValue('coLo')
     if (coLoVal != null) {
@@ -151,6 +154,7 @@ function PlanModal({ open, editItem, defaultToNhom, defaultDate, onClose, onSave
         khoiLuongLo: editItem.khoiLuongLo != null ? Number(editItem.khoiLuongLo) : null,
         soMe:        editItem.soMe        != null ? Number(editItem.soMe) : null,
       })
+      if (editItem.klDv != null) justLoadedKlDvRef.current = true
       setLookupStatus(null)
       setBravoStatus(null)
       setDonHangStatus(null)
