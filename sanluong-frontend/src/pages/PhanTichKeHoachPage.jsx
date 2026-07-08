@@ -1147,25 +1147,25 @@ export default function PhanTichKeHoachPage() {
                 return {
                   key: date,
                   title: (
-                    <div style={{ textAlign: 'center', minWidth: 155 }}>
-                      <div style={{ fontWeight: 700, color: '#ffffff', fontSize: 12 }}>
+                    <div style={{ textAlign: 'center', width: 190 }}>
+                      <div style={{ fontWeight: 700, color: '#ffffff', fontSize: 13 }}>
                         {dayjs(date).format('DD/MM')}
                       </div>
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)' }}>{dow}</div>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>{dow}</div>
                     </div>
                   ),
                   dataIndex: date,
-                  width: 185,
+                  width: 210,
                   onHeaderCell: () => ({
-                    style: { background: isWeekend ? '#cc7700' : '#009999', padding: '4px 8px' },
+                    style: { background: isWeekend ? '#cc7700' : '#009999', padding: '6px 8px' },
                   }),
                   onCell: () => ({
-                    style: { background: '#ffffff', verticalAlign: 'top', padding: '4px 6px' },
+                    style: { background: '#f8fafc', verticalAlign: 'top', padding: '5px 7px' },
                   }),
                   render: records => {
-                    if (!records?.length) return <span style={{ color: '#d9d9d9', display: 'block', textAlign: 'center' }}>—</span>
+                    if (!records?.length) return <span style={{ color: '#cbd5e1', display: 'block', textAlign: 'center', fontSize: 16, lineHeight: '40px' }}>—</span>
                     return (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {records.map(r => {
                           const cl      = Number(r.coLo || 0)
                           const nsPc    = Number(productMap[r.maSp]?.nangSuatPc || 0)
@@ -1173,36 +1173,52 @@ export default function PhanTichKeHoachPage() {
                           const congTH  = nsPc && cl ? cl / nsPc : 0
                           const soCa    = congTH && soNguoi ? congTH / soNguoi : 0
                           return (
-                            <Tooltip
-                              key={r.id}
-                              title={`${r.tenTrinh || r.maBravo} — Lô ${r.soLo} — ${cl.toLocaleString('vi-VN')} SP`}
-                            >
+                            <div key={r.id} style={{
+                              background: '#fff',
+                              border: '1px solid #bfdbfe',
+                              borderLeft: '4px solid #009999',
+                              borderRadius: '0 7px 7px 0',
+                              padding: '7px 9px',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                            }}>
+                              {/* Tên sản phẩm — tự xuống dòng */}
                               <div style={{
-                                background: '#f6faff',
-                                border: '1px solid #c8dcf8',
-                                borderLeft: '3px solid #009999',
-                                borderRadius: '0 5px 5px 0',
-                                padding: '5px 8px',
-                                cursor: 'default',
+                                fontWeight: 700, color: '#1a3a6b', fontSize: 12,
+                                lineHeight: 1.4, wordBreak: 'break-word',
                               }}>
-                                <div style={{
-                                  fontWeight: 700, color: '#1a3a6b', fontSize: 11,
-                                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                                }}>
-                                  {r.tenTrinh || r.maBravo || '—'}
-                                </div>
-                                <div style={{ fontSize: 10, color: '#4a5568', marginTop: 2 }}>
-                                  Lô <b style={{ color: '#1e5fa3' }}>{r.soLo || '—'}</b>
-                                  {' · '}
-                                  <b style={{ color: '#1e5fa3' }}>{cl.toLocaleString('vi-VN')} SP</b>
-                                </div>
-                                <div style={{ display: 'flex', gap: 6, marginTop: 4, fontSize: 10, flexWrap: 'nowrap' }}>
-                                  <span style={{ color: '#7c3aed', whiteSpace: 'nowrap' }}>👤 {soNguoi > 0 ? soNguoi : '—'}</span>
-                                  <span style={{ color: '#0369a1', whiteSpace: 'nowrap' }}>⏱ {congTH > 0 ? congTH.toFixed(2) : '—'}</span>
-                                  <span style={{ color: '#059669', whiteSpace: 'nowrap' }}>🔄 {soCa > 0 ? soCa.toFixed(2) : '—'}</span>
-                                </div>
+                                {r.tenTrinh || r.maBravo || '—'}
                               </div>
-                            </Tooltip>
+                              {/* Lô + SL */}
+                              <div style={{ fontSize: 11, color: '#64748b', marginTop: 4, marginBottom: 6 }}>
+                                Lô <b style={{ color: '#1e5fa3' }}>{r.soLo || '—'}</b>
+                                {' · '}
+                                <b style={{ color: '#0369a1' }}>{cl.toLocaleString('vi-VN')} SP</b>
+                              </div>
+                              {/* Stats chips */}
+                              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                <span style={{
+                                  background: '#ede9fe', color: '#6d28d9',
+                                  padding: '3px 8px', borderRadius: 12,
+                                  fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap',
+                                }}>
+                                  👤 {soNguoi > 0 ? soNguoi : '—'}
+                                </span>
+                                <span style={{
+                                  background: '#dbeafe', color: '#1d4ed8',
+                                  padding: '3px 8px', borderRadius: 12,
+                                  fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap',
+                                }}>
+                                  ⏱ {congTH > 0 ? congTH.toFixed(2) : '—'}
+                                </span>
+                                <span style={{
+                                  background: '#dcfce7', color: '#15803d',
+                                  padding: '3px 8px', borderRadius: 12,
+                                  fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap',
+                                }}>
+                                  🔄 {soCa > 0 ? soCa.toFixed(2) : '—'}
+                                </span>
+                              </div>
+                            </div>
                           )
                         })}
                       </div>
