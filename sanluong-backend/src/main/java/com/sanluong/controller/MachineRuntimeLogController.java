@@ -117,7 +117,7 @@ public class MachineRuntimeLogController {
             List<MachineRuntimeLog> dayLogs = entry.getValue();
 
             long runMin = 0, downMin = 0;
-            List<String> stopInfos = new ArrayList<>();
+            java.util.LinkedHashSet<String> seenReasons = new java.util.LinkedHashSet<>();
 
             for (MachineRuntimeLog log : dayLogs) {
                 if (log.getTuGio() == null || log.getDenGio() == null) continue;
@@ -128,8 +128,8 @@ public class MachineRuntimeLogController {
                     runMin += dur;
                 } else {
                     downMin += dur;
-                    String lyDo = log.getLyDo() != null ? log.getLyDo() : "Không rõ";
-                    stopInfos.add(dur + "p - " + lyDo);
+                    String lyDo = (log.getLyDo() != null && !log.getLyDo().isBlank()) ? log.getLyDo() : "Không rõ";
+                    seenReasons.add(lyDo);
                 }
             }
 
@@ -150,7 +150,7 @@ public class MachineRuntimeLogController {
             row.put("gioDung", gioDung);
             row.put("availPct", avail);
             row.put("soLanDung", soLanDung);
-            row.put("lyDoDung", String.join("; ", stopInfos));
+            row.put("lyDoDung", String.join("; ", seenReasons));
             result.add(row);
         }
 

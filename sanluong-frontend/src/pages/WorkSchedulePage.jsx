@@ -5246,28 +5246,31 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       {/* ── Tab: Chỉ số A (machine OEE availability) ── */}
       {innerTab === 'machine_a' && (() => {
         const ths = [
-          { label: 'STT', w: 40 },
-          { label: 'Ngày', w: 90 },
-          { label: 'Tên máy', w: 180 },
-          { label: 'Mã máy', w: 80 },
-          { label: 'Tổ/Nhóm', w: 80 },
-          { label: 'Giờ KH (h)', w: 80 },
-          { label: 'Giờ chạy (h)', w: 90 },
-          { label: 'Giờ dừng (h)', w: 90 },
-          { label: 'A (%)', w: 70 },
-          { label: 'Số lần dừng', w: 90 },
-          { label: 'Lý do dừng', w: 260 },
+          { label: 'STT', w: 40, group: 'info' },
+          { label: 'Ngày', w: 90, group: 'info' },
+          { label: 'Tên máy', w: 180, group: 'info' },
+          { label: 'Mã máy', w: 80, group: 'info' },
+          { label: 'Tổ/Nhóm', w: 80, group: 'info' },
+          { label: 'Giờ KH (h)', w: 75, group: 'gio' },
+          { label: 'Giờ chạy thực tế (h)', w: 110, group: 'gio' },
+          { label: 'Giờ dừng (h)', w: 90, group: 'gio' },
+          { label: 'A (%)', w: 70, group: 'avail' },
+          { label: 'Số lần dừng', w: 85, group: 'suco' },
+          { label: 'Lý do dừng chính', w: 220, group: 'suco' },
+          { label: 'Ghi chú / CAPA', w: 180, group: 'suco' },
         ]
+        const year = (filters.dateRange?.[0] || dayjs()).year()
+        const tenTo = congDoan === 'BBC1' ? 'BBC1' : congDoan === 'DG' ? 'ĐG' : congDoan === 'CC' ? 'CC' : `Tổ ${congDoan}`
         return (
           <div style={{ padding: '14px 16px' }}>
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 15, color: '#78350f' }}>
-                  Biểu theo dõi chỉ số A (Availability) — {congDoan}
+                <div style={{ fontWeight: 800, fontSize: 16, color: '#1e3a5f', letterSpacing: 0.3, textTransform: 'uppercase' }}>
+                  Biểu máy theo dõi chỉ số A (Availability) – {tenTo}
                 </div>
-                <div style={{ fontSize: 11, color: '#92400e', marginTop: 2 }}>
-                  Availability = Giờ chạy thực tế / Tổng giờ vận hành · Mục tiêu ≥ 90% · Đơn vị: 2 ca × 8h = 16h/ngày
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>
+                  Availability = Giờ chạy thực tế / Tổng giờ kế hoạch &nbsp;·&nbsp; Mục tiêu ≥ 90% &nbsp;·&nbsp; Đơn vị: 2 ca × 8h = 16h/ngày &nbsp;·&nbsp; {year}
                 </div>
               </div>
               <button
@@ -5280,7 +5283,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                     .catch(() => message.error('Không thể tải'))
                     .finally(() => setMachineALoading(false))
                 }}
-                style={{ border: '1px solid #d97706', background: '#fffbeb', color: '#b45309', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}
+                style={{ border: '1px solid #d97706', background: '#fffbeb', color: '#b45309', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12, flexShrink: 0 }}
               >↺ Làm mới</button>
             </div>
             {/* Table */}
@@ -5293,14 +5296,13 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ borderCollapse: 'collapse', fontSize: 12, minWidth: 1100 }}>
+                <table style={{ borderCollapse: 'collapse', fontSize: 12, minWidth: 1200 }}>
                   <thead>
                     <tr>
-                      {/* Group headers */}
-                      <th colSpan={5} style={{ background: '#1e3a5f', color: '#fff', padding: '5px 8px', textAlign: 'center', border: '1px solid #9ca3af', fontWeight: 700, fontSize: 11 }}>THÔNG TIN MÁY</th>
-                      <th colSpan={3} style={{ background: '#166534', color: '#fff', padding: '5px 8px', textAlign: 'center', border: '1px solid #9ca3af', fontWeight: 700, fontSize: 11 }}>GIỜ VẬN HÀNH (h)</th>
-                      <th colSpan={1} style={{ background: '#92400e', color: '#fff', padding: '5px 8px', textAlign: 'center', border: '1px solid #9ca3af', fontWeight: 700, fontSize: 11 }}>AVAILABILITY</th>
-                      <th colSpan={2} style={{ background: '#7c3aed', color: '#fff', padding: '5px 8px', textAlign: 'center', border: '1px solid #9ca3af', fontWeight: 700, fontSize: 11 }}>SỰ CỐ / DỪNG MÁY</th>
+                      <th colSpan={5} style={{ background: '#1e3a5f', color: '#fff', padding: '6px 8px', textAlign: 'center', border: '1px solid #7f9ab5', fontWeight: 700, fontSize: 11, letterSpacing: 0.5 }}>THÔNG TIN MÁY</th>
+                      <th colSpan={3} style={{ background: '#166534', color: '#fff', padding: '6px 8px', textAlign: 'center', border: '1px solid #7f9ab5', fontWeight: 700, fontSize: 11, letterSpacing: 0.5 }}>GIỜ VẬN HÀNH (h)</th>
+                      <th colSpan={1} style={{ background: '#92400e', color: '#fff', padding: '6px 8px', textAlign: 'center', border: '1px solid #7f9ab5', fontWeight: 700, fontSize: 11, letterSpacing: 0.5 }}>AVAILABILITY</th>
+                      <th colSpan={3} style={{ background: '#6b21a8', color: '#fff', padding: '6px 8px', textAlign: 'center', border: '1px solid #7f9ab5', fontWeight: 700, fontSize: 11, letterSpacing: 0.5 }}>SỰ CỐ / DỪNG MÁY</th>
                     </tr>
                     <tr>
                       {ths.map(h => (
@@ -5314,6 +5316,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                     {machineAData.map((row, idx) => {
                       const avail = row.availPct
                       const availColor = avail == null ? '#6b7280' : avail >= 90 ? '#16a34a' : avail >= 70 ? '#d97706' : '#dc2626'
+                      const availBg = avail == null ? 'transparent' : avail >= 90 ? '#f0fdf4' : avail >= 70 ? '#fffbeb' : '#fef2f2'
                       return (
                         <tr key={idx} style={{ background: idx % 2 === 0 ? '#fff' : '#f8fafc' }}>
                           <td style={{ padding: '5px 8px', border: '1px solid #e2e8f0', textAlign: 'center', color: '#94a3b8', fontSize: 11 }}>{row.stt}</td>
@@ -5325,12 +5328,13 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                           <td style={{ padding: '5px 8px', border: '1px solid #e2e8f0', textAlign: 'center' }}>{row.toNhom || '—'}</td>
                           <td style={{ padding: '5px 8px', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 600 }}>{row.gioKH}</td>
                           <td style={{ padding: '5px 8px', border: '1px solid #e2e8f0', textAlign: 'center', color: '#16a34a', fontWeight: 700 }}>{row.gioChay}</td>
-                          <td style={{ padding: '5px 8px', border: '1px solid #e2e8f0', textAlign: 'center', color: '#dc2626', fontWeight: 700 }}>{row.gioDung}</td>
-                          <td style={{ padding: '5px 8px', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 700, color: availColor }}>
+                          <td style={{ padding: '5px 8px', border: '1px solid #e2e8f0', textAlign: 'center', color: row.gioDung > 0 ? '#dc2626' : '#6b7280', fontWeight: 700 }}>{row.gioDung}</td>
+                          <td style={{ padding: '5px 8px', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 800, fontSize: 13, color: availColor, background: availBg }}>
                             {avail != null ? `${avail}%` : '—'}
                           </td>
                           <td style={{ padding: '5px 8px', border: '1px solid #e2e8f0', textAlign: 'center', color: row.soLanDung > 0 ? '#dc2626' : '#6b7280', fontWeight: row.soLanDung > 0 ? 700 : 400 }}>{row.soLanDung}</td>
-                          <td style={{ padding: '5px 8px', border: '1px solid #e2e8f0', fontSize: 11, color: '#4b5563', maxWidth: 260 }}>{row.lyDoDung || '—'}</td>
+                          <td style={{ padding: '5px 8px', border: '1px solid #e2e8f0', fontSize: 11, color: '#4b5563' }}>{row.lyDoDung || '—'}</td>
+                          <td style={{ padding: '5px 8px', border: '1px solid #e2e8f0', fontSize: 11, color: '#9ca3af' }}>—</td>
                         </tr>
                       )
                     })}
