@@ -210,7 +210,7 @@ const NONPROD_CAT_COLOR = {
   'Sự cố': '#dc2626', 'Hành chính': '#059669', 'Khác': '#6b7280',
 }
 
-function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
+function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachineRuntimeSaved }) {
   const { isAdmin, isAdminKH, isStageAdmin, canEditStage, canDeleteSchedule } = useAuth()
   const canEditDetail = canEditStage(schedule?.congDoan)
   const [sessions, setSessions] = useState([])
@@ -235,7 +235,6 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const [machineRuntimeOpenDays, setMachineRuntimeOpenDays] = useState(new Set())
   const [machineRuntimeSaving, setMachineRuntimeSaving] = useState(new Set())
   const [machineRuntimeDirtyDays, setMachineRuntimeDirtyDays] = useState(new Set())
-  const [machineAVersion, setMachineAVersion] = useState(0)
 
   const [renamingDay, setRenamingDay] = useState(null)   // ngayKey đang đổi ngày
   const [renameDayVal, setRenameDayVal] = useState('')   // giá trị ngày mới
@@ -537,7 +536,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       )
       setMachineRuntimeMap(prev => ({ ...prev, [ngay]: data.map(r => ({ ...r, _id: r.id })) }))
       _rtMarkClean(ngay)
-      setMachineAVersion(v => v + 1)
+      onMachineRuntimeSaved?.()
       message.success('Đã lưu thời gian chạy máy')
     } catch { message.error('Lưu thời gian chạy máy thất bại') }
     finally { setMachineRuntimeSaving(prev => { const n = new Set(prev); n.delete(ngay); return n }) }
@@ -4024,6 +4023,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   // ── Chỉ số A (machine runtime summary) ──
   const [machineAData, setMachineAData] = useState([])
   const [machineALoading, setMachineALoading] = useState(false)
+  const [machineAVersion, setMachineAVersion] = useState(0)
   useEffect(() => {
     if (innerTab !== 'machine_a') return
     const tuNgay = filters.dateRange?.[0]?.format('YYYY-MM-DD') || dayjs().startOf('month').format('YYYY-MM-DD')
@@ -5354,6 +5354,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         onClose={closeDetailDrawer}
         onSaved={() => { closeDetailDrawer(); onSaved() }}
         onRefresh={onSaved}
+        onMachineRuntimeSaved={() => setMachineAVersion(v => v + 1)}
       />
 
       <WorkScheduleModal
