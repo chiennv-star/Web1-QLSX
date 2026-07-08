@@ -6636,7 +6636,7 @@ export default function DailySanLuongPage() {
   const canApprove     = isAdmin() || isAdminKH()
   const canViewAnalytics = isAdmin() || isTKSX() || isTPSX()
   const canViewNhapKho = isAdmin() || isAdminKH() || user?.role === 'ADMIN_DG'
-  const canViewDashboardGD = isAdmin() || isGiamDoc?.() || isTKSX() || isTPSX()
+  const canViewDashboardGD = isGiamDoc?.() || isTKSX() || isTPSX()
   const manHinh = isManHinh()
   const location = useLocation()
 
