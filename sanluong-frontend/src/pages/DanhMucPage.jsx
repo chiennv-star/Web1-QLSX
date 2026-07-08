@@ -2850,7 +2850,7 @@ function PhongSanXuatTab() {
   useEffect(() => { fetch() }, [])
 
   const openAdd = () => { setEditing(null); form.resetFields(); setModalOpen(true) }
-  const openEdit = (r) => { setEditing(r); form.setFieldsValue({ ten: r.ten, sortOrder: r.sortOrder }); setModalOpen(true) }
+  const openEdit = (r) => { setEditing(r); form.setFieldsValue({ ten: r.ten, sortOrder: r.sortOrder, maMay: r.maMay || '' }); setModalOpen(true) }
 
   const onSave = async () => {
     try {
@@ -2882,9 +2882,11 @@ function PhongSanXuatTab() {
   const columns = [
     { title: '#', key: 'stt', width: 50, align: 'center',
       render: (_, __, i) => <span style={{ color: '#94a3b8', fontSize: 12 }}>{i + 1}</span> },
-    { title: 'Tên phòng sản xuất', dataIndex: 'ten', key: 'ten',
+    { title: 'Tên phòng / máy', dataIndex: 'ten', key: 'ten',
       render: v => <span style={{ fontWeight: 600 }}>{v}</span> },
-    { title: 'Thứ tự', dataIndex: 'sortOrder', key: 'sortOrder', width: 90, align: 'center',
+    { title: 'Mã máy', dataIndex: 'maMay', key: 'maMay', width: 100,
+      render: v => v ? <span style={{ fontFamily: 'monospace', color: '#0369a1', fontWeight: 600 }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span> },
+    { title: 'Thứ tự', dataIndex: 'sortOrder', key: 'sortOrder', width: 80, align: 'center',
       render: v => v ?? <span style={{ color: '#d9d9d9' }}>—</span> },
     ...(canEdit ? [{
       title: '', key: 'action', width: 110, align: 'center',
@@ -2936,8 +2938,11 @@ function PhongSanXuatTab() {
         width={400}
       >
         <Form form={form} layout="vertical" style={{ marginTop: 12 }}>
-          <Form.Item name="ten" label="Tên phòng sản xuất" rules={[{ required: true, message: 'Nhập tên phòng' }]}>
-            <Input placeholder="VD: Xưởng A, Khu sản xuất 1..." autoFocus />
+          <Form.Item name="ten" label="Tên phòng / máy" rules={[{ required: true, message: 'Nhập tên phòng' }]}>
+            <Input placeholder="VD: Máy Nhũ hóa 500L, Xưởng A..." autoFocus />
+          </Form.Item>
+          <Form.Item name="maMay" label="Mã máy" extra="Mã ngắn dùng trong báo cáo OEE (VD: MNH-01, PC03)">
+            <Input placeholder="VD: MNH-01" style={{ textTransform: 'uppercase' }} />
           </Form.Item>
           <Form.Item name="sortOrder" label="Thứ tự hiển thị" extra="Số nhỏ hơn hiển thị trước (tuỳ chọn)">
             <InputNumber min={0} max={9999} style={{ width: '100%' }} placeholder="VD: 1" />

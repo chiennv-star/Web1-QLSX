@@ -400,4 +400,8 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
             @Param("maDonHang")  String maDonHang,
             @Param("soLo")       String soLo
     );
+
+    // For machine runtime daily summary
+    List<WorkSchedule> findByCongDoan(String congDoan);
+    List<WorkSchedule> findByCongDoanAndToNhomIn(String congDoan, List<String> toNhom);
 }

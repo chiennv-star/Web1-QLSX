@@ -33,7 +33,10 @@ public class PhongSanXuatController {
             return ResponseEntity.badRequest().body(Map.of("message", "Phòng \"" + ten + "\" đã tồn tại"));
         Integer sortOrder = body.get("sortOrder") != null
                 ? Integer.parseInt(body.get("sortOrder").toString()) : null;
+        String maMay = body.get("maMay") != null && !body.get("maMay").toString().isBlank()
+                ? body.get("maMay").toString().trim().toUpperCase() : null;
         PhongSanXuat p = new PhongSanXuat(ten, sortOrder);
+        p.setMaMay(maMay);
         return ResponseEntity.status(HttpStatus.CREATED).body(repo.save(p));
     }
 
@@ -49,6 +52,9 @@ public class PhongSanXuatController {
         p.setTen(ten);
         if (body.get("sortOrder") != null)
             p.setSortOrder(Integer.parseInt(body.get("sortOrder").toString()));
+        String maMay = body.get("maMay") != null && !body.get("maMay").toString().isBlank()
+                ? body.get("maMay").toString().trim().toUpperCase() : null;
+        p.setMaMay(maMay);
         return ResponseEntity.ok(repo.save(p));
     }
 

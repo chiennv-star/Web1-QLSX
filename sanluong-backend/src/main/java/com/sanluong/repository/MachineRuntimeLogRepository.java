@@ -4,6 +4,7 @@ import com.sanluong.entity.MachineRuntimeLog;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -17,4 +18,9 @@ public interface MachineRuntimeLogRepository extends JpaRepository<MachineRuntim
     @Transactional
     @Query("DELETE FROM MachineRuntimeLog r WHERE r.workScheduleId = :wsId AND r.ngay = :ngay")
     void deleteByWorkScheduleIdAndNgay(Long wsId, LocalDate ngay);
+
+    @Query("SELECT r FROM MachineRuntimeLog r WHERE r.workScheduleId IN :wsIds AND r.ngay BETWEEN :from AND :to ORDER BY r.ngay, r.sortOrder, r.id")
+    List<MachineRuntimeLog> findForSummary(@Param("wsIds") List<Long> wsIds,
+                                            @Param("from") LocalDate from,
+                                            @Param("to") LocalDate to);
 }
