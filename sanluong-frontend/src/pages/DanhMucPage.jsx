@@ -14,6 +14,7 @@ import dayjs from 'dayjs'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
 import { invalidatePhongCache } from '../components/PhongThucHienSelect'
+import { invalidatePhongSanXuatCache } from '../components/PhongSanXuatSelect'
 
 const { Option } = Select
 
@@ -2862,6 +2863,7 @@ function PhongSanXuatTab() {
         message.success('Thêm thành công')
       }
       setModalOpen(false)
+      invalidatePhongSanXuatCache()
       fetch()
     } catch (err) {
       if (err?.response?.data?.message) message.error(err.response.data.message)
@@ -2872,6 +2874,7 @@ function PhongSanXuatTab() {
     try {
       await api.delete(`/phong-san-xuat/${id}`)
       message.success('Đã xóa')
+      invalidatePhongSanXuatCache()
       fetch()
     } catch { message.error('Xóa thất bại') }
   }

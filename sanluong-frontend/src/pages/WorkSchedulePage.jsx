@@ -19,7 +19,7 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate, useLocation } from 'react-router-dom'
 import WipPage from './WipPage'
 import PhongThucHienSelect from '../components/PhongThucHienSelect'
-import PhongSanXuatSelect from '../components/PhongSanXuatSelect'
+import PhongSanXuatSelect, { warmPhongSanXuatCache } from '../components/PhongSanXuatSelect'
 import KphModal from './KphModal'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -5518,6 +5518,7 @@ export default function WorkSchedulePage() {
   const [jumpTarget] = useState(jumpInit)
 
   useEffect(() => {
+    warmPhongSanXuatCache()
     if (jumpInit) {
       navigate(location.pathname, { replace: true, state: {} })
       localStorage.setItem('ws_active_tab', activeTab)
