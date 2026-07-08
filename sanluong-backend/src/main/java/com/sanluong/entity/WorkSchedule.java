@@ -45,6 +45,9 @@ public class WorkSchedule {
     @Column(name = "phong_thuc_hien", length = 100)
     private String phongThucHien;
 
+    @Column(name = "phong_san_xuat", length = 100)
+    private String phongSanXuat;
+
     @Column(name = "truong_ca", length = 100)
     private String truongCa;
 
@@ -178,6 +181,8 @@ public class WorkSchedule {
     public void setToNhom(String toNhom) { this.toNhom = toNhom; }
     public String getPhongThucHien() { return phongThucHien; }
     public void setPhongThucHien(String phongThucHien) { this.phongThucHien = phongThucHien; }
+    public String getPhongSanXuat() { return phongSanXuat; }
+    public void setPhongSanXuat(String phongSanXuat) { this.phongSanXuat = phongSanXuat; }
     public String getTruongCa() { return truongCa; }
     public void setTruongCa(String truongCa) { this.truongCa = truongCa; }
     public String getNguoiHoTro() { return nguoiHoTro; }

@@ -2752,6 +2752,124 @@ function EmployeeTab() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Tab: Quản lý Phòng sản xuất
+// ─────────────────────────────────────────────────────────────────────────────
+function PhongSanXuatTab() {
+  const { isAdmin, isTKSX } = useAuth()
+  const canEdit = isAdmin() || isTKSX()
+  const [data, setData] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const [form] = Form.useForm()
+
+  const fetch = async () => {
+    setLoading(true)
+    try { const { data: r } = await api.get('/phong-san-xuat'); setData(r) }
+    catch { message.error('Không thể tải danh sách phòng') }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { fetch() }, [])
+
+  const openAdd = () => { setEditing(null); form.resetFields(); setModalOpen(true) }
+  const openEdit = (r) => { setEditing(r); form.setFieldsValue({ ten: r.ten, sortOrder: r.sortOrder }); setModalOpen(true) }
+
+  const onSave = async () => {
+    try {
+      const values = await form.validateFields()
+      if (editing) {
+        await api.put(`/phong-san-xuat/${editing.id}`, values)
+        message.success('Cập nhật thành công')
+      } else {
+        await api.post('/phong-san-xuat', values)
+        message.success('Thêm thành công')
+      }
+      setModalOpen(false)
+      fetch()
+    } catch (err) {
+      if (err?.response?.data?.message) message.error(err.response.data.message)
+    }
+  }
+
+  const onDelete = async (id) => {
+    try {
+      await api.delete(`/phong-san-xuat/${id}`)
+      message.success('Đã xóa')
+      fetch()
+    } catch { message.error('Xóa thất bại') }
+  }
+
+  const columns = [
+    { title: '#', key: 'stt', width: 50, align: 'center',
+      render: (_, __, i) => <span style={{ color: '#94a3b8', fontSize: 12 }}>{i + 1}</span> },
+    { title: 'Tên phòng sản xuất', dataIndex: 'ten', key: 'ten',
+      render: v => <span style={{ fontWeight: 600 }}>{v}</span> },
+    { title: 'Thứ tự', dataIndex: 'sortOrder', key: 'sortOrder', width: 90, align: 'center',
+      render: v => v ?? <span style={{ color: '#d9d9d9' }}>—</span> },
+    ...(canEdit ? [{
+      title: '', key: 'action', width: 110, align: 'center',
+      render: (_, r) => (
+        <Space size={4}>
+          <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(r)} />
+          <Popconfirm title={`Xóa phòng "${r.ten}"?`} onConfirm={() => onDelete(r.id)} okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }}>
+            <Button size="small" danger icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
+      )
+    }] : []),
+  ]
+
+  return (
+    <div style={{ padding: '16px 20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <span style={{ fontWeight: 700, fontSize: 15, color: '#1e4570' }}>
+          Danh sách Phòng sản xuất
+        </span>
+        <Space>
+          <Button icon={<ReloadOutlined />} onClick={fetch} />
+          {canEdit && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>
+              Thêm phòng
+            </Button>
+          )}
+        </Space>
+      </div>
+
+      <Table
+        className="dm-table"
+        columns={columns}
+        dataSource={data}
+        rowKey="id"
+        loading={loading}
+        size="small"
+        pagination={false}
+        style={{ maxWidth: 600 }}
+      />
+
+      <Modal
+        title={editing ? 'Sửa phòng sản xuất' : 'Thêm phòng sản xuất'}
+        open={modalOpen}
+        onOk={onSave}
+        onCancel={() => setModalOpen(false)}
+        okText={editing ? 'Lưu' : 'Thêm'}
+        cancelText="Hủy"
+        width={400}
+      >
+        <Form form={form} layout="vertical" style={{ marginTop: 12 }}>
+          <Form.Item name="ten" label="Tên phòng sản xuất" rules={[{ required: true, message: 'Nhập tên phòng' }]}>
+            <Input placeholder="VD: Xưởng A, Khu sản xuất 1..." autoFocus />
+          </Form.Item>
+          <Form.Item name="sortOrder" label="Thứ tự hiển thị" extra="Số nhỏ hơn hiển thị trước (tuỳ chọn)">
+            <InputNumber min={0} max={9999} style={{ width: '100%' }} placeholder="VD: 1" />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Page chính: Quản Lý Danh Mục
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -2903,6 +3021,11 @@ export default function DanhMucPage() {
       key: 'phong-thuc-hien',
       label: <span><HomeOutlined style={{ marginRight: 5 }} />Phòng Thực Hiện</span>,
       children: <PhongThucHienTab />,
+    },
+    {
+      key: 'phong-san-xuat',
+      label: <span><HomeOutlined style={{ marginRight: 5 }} />Phòng Sản Xuất</span>,
+      children: <PhongSanXuatTab />,
     },
   ]
 

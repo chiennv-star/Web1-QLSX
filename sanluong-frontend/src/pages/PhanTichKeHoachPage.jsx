@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { DatePicker, Button, Spin, message, Tabs, Table, Tag, Tooltip, Modal, Switch } from 'antd'
-import { SearchOutlined, ReloadOutlined, BarChartOutlined, SettingOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons'
+import { SearchOutlined, ReloadOutlined, BarChartOutlined, SettingOutlined, PlusOutlined, DeleteOutlined, EyeInvisibleOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RcTooltip, Legend,
@@ -291,9 +291,7 @@ export default function PhanTichKeHoachPage() {
     const allMachines = isPL
       ? [...MACHINES_PL_DEFAULT, ...machineConfig.custom]
       : [...MACHINES_PCPL2]
-    const visibleMachines = isPL
-      ? allMachines.filter(m => !machineConfig.hidden.includes(m))
-      : allMachines
+    const visibleMachines = allMachines.filter(m => !machineConfig.hidden.includes(m))
     const rows = visibleMachines.map(machine => {
       const row = { machine }
       dates.forEach(date => {
@@ -1083,7 +1081,22 @@ export default function PhanTichKeHoachPage() {
       label: 'Lịch Máy',
       children: (
         <div style={{ padding: '12px 0' }}>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div>
+              {machineConfig.hidden.filter(m => machineSchedule.allMachines.includes(m)).length > 0 && (
+                <span style={{ fontSize: 12, color: '#888' }}>
+                  {machineConfig.hidden.filter(m => machineSchedule.allMachines.includes(m)).length} máy đang ẩn
+                  {' · '}
+                  <Button type="link" size="small" style={{ padding: 0, fontSize: 12 }}
+                    onClick={() => saveMachineConfig({
+                      ...machineConfig,
+                      hidden: machineConfig.hidden.filter(m => !machineSchedule.allMachines.includes(m)),
+                    })}>
+                    Hiện tất cả
+                  </Button>
+                </span>
+              )}
+            </div>
             <Button size="small" icon={<SettingOutlined />} onClick={() => setMachineModalOpen(true)}>
               Quản lý máy
             </Button>
@@ -1138,7 +1151,18 @@ export default function PhanTichKeHoachPage() {
                 fixed: 'left',
                 onHeaderCell: () => ({ style: { background: '#009999', color: '#ffffff' } }),
                 render: v => (
-                  <span style={{ fontWeight: 700, fontSize: 12, color: '#000077' }}>{v}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                    <span style={{ fontWeight: 700, fontSize: 12, color: '#000077' }}>{v}</span>
+                    <Tooltip title="Ẩn hàng này">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<EyeInvisibleOutlined />}
+                        style={{ color: '#bbb', flexShrink: 0, padding: '0 2px' }}
+                        onClick={() => toggleMachineHidden(v, true)}
+                      />
+                    </Tooltip>
+                  </div>
                 ),
               },
               ...machineSchedule.dates.map(date => {

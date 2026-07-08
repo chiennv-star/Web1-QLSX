@@ -271,6 +271,18 @@ public class WorkScheduleController {
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/{id}/phong-san-xuat")
+    public ResponseEntity<Void> patchPhongSanXuat(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body,
+            Authentication auth) {
+        WorkSchedule w = service.getById(id);
+        checkStagePermission(auth, w.getCongDoan(), w.getSource());
+        String phong = body.get("phongSanXuat") != null ? body.get("phongSanXuat").toString() : null;
+        service.patchPhongSanXuat(id, phong);
+        return ResponseEntity.noContent().build();
+    }
+
     // Cập nhật tình trạng và sync ngay sang sản lượng
     @PatchMapping("/{id}/tinh-trang")
     public ResponseEntity<WorkSchedule> patchTinhTrang(

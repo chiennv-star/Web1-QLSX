@@ -6193,6 +6193,7 @@ function DashboardGDTab() {
   const [loaiMap, setLoaiMap]     = useState({}) // maSp → loaiSanPham
   const [machineMap, setMachineMap] = useState({}) // maSp → {pc, pl, bbc1, dg}
   const [analysisTab, setAnalysisTab] = useState('chung')
+  const [trendTab, setTrendTab] = useState('chung')
 
   const fetchGD = useCallback(async (range = dateRange) => {
     setLoading(true)
@@ -6254,8 +6255,14 @@ function DashboardGDTab() {
       if (cd === 'DG') slDg += sl
       if (r.ngay) {
         days.add(r.ngay)
-        if (!dayMap[r.ngay]) dayMap[r.ngay] = { ngay: r.ngay, sl: 0, cong: 0 }
+        if (!dayMap[r.ngay]) {
+          dayMap[r.ngay] = { ngay: r.ngay, sl: 0, cong: 0 }
+          GD_TO.forEach(t => { dayMap[r.ngay][t.key] = { sl: 0, cong: 0 } })
+        }
         dayMap[r.ngay].sl += sl; dayMap[r.ngay].cong += cong
+        if (dayMap[r.ngay][cd]) {
+          dayMap[r.ngay][cd].sl += sl; dayMap[r.ngay][cd].cong += cong
+        }
       }
       if (r.caSanXuat) cas.add(r.ngay + '_' + r.caSanXuat)
       // Phân tích theo loại SP
@@ -6443,30 +6450,64 @@ function DashboardGDTab() {
         </div>
 
         {/* ── Trend chart ── */}
-        {dailyTrend.length > 1 && (
-          <div style={{ background: '#fff', borderRadius: 12, padding: '16px 20px', marginBottom: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.07)' }}>
-            <div style={{ fontWeight: 700, fontSize: 13, color: '#1e3a5f', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <RiseOutlined style={{ color: '#0e7490', fontSize: 16 }} />
-              Xu hướng sản lượng theo ngày
-              <span style={{ marginLeft: 'auto', fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>
-                Cột xanh = SL · Đường cam = Công
-              </span>
+        {dailyTrend.length > 1 && (() => {
+          const TREND_TABS = [{ key: 'chung', label: 'Chung' }, ...GD_TO.map(t => ({ key: t.key, label: t.label }))]
+          const activeTrendGdTo = GD_TO.find(t => t.key === trendTab)
+          const trendData = trendTab === 'chung'
+            ? dailyTrend
+            : dailyTrend
+                .map(d => ({ ...d, sl: d[trendTab]?.sl || 0, cong: d[trendTab]?.cong || 0 }))
+                .filter(d => d.sl > 0 || d.cong > 0)
+          const lineColor  = activeTrendGdTo?.slColor || '#1d4ed8'
+          const barColor   = activeTrendGdTo ? activeTrendGdTo.slColor + '44' : '#bfdbfe'
+          return (
+            <div style={{ background: '#fff', borderRadius: 12, padding: '16px 20px', marginBottom: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.07)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+                <RiseOutlined style={{ color: '#0e7490', fontSize: 16 }} />
+                <span style={{ fontWeight: 700, fontSize: 13, color: '#1e3a5f' }}>Xu hướng sản lượng theo ngày</span>
+                <div style={{ display: 'flex', gap: 4, marginLeft: 'auto', flexWrap: 'wrap' }}>
+                  {TREND_TABS.map(t => {
+                    const gdTo = GD_TO.find(g => g.key === t.key)
+                    return (
+                      <button key={t.key} onClick={() => setTrendTab(t.key)}
+                        style={{
+                          padding: '3px 11px', borderRadius: 16, fontSize: 11, fontWeight: 700,
+                          cursor: 'pointer', border: 'none',
+                          background: trendTab === t.key ? (gdTo?.slColor || '#0e7490') : '#f1f5f9',
+                          color: trendTab === t.key ? '#fff' : '#475569',
+                          transition: 'all 0.15s',
+                        }}>
+                        {t.label}
+                      </button>
+                    )
+                  })}
+                </div>
+                <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400, whiteSpace: 'nowrap' }}>
+                  Cột = SL · Đường cam = Công
+                </span>
+              </div>
+              {trendData.length > 1 ? (
+                <ResponsiveContainer width="100%" height={210}>
+                  <ComposedChart data={trendData} margin={{ left: 0, right: 24, top: 4, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="label" fontSize={11} tick={{ fill: '#64748b' }} />
+                    <YAxis yAxisId="sl" tickFormatter={v => v >= 1000 ? (v/1000).toFixed(0)+'k' : v} fontSize={11} tick={{ fill: lineColor }} />
+                    <YAxis yAxisId="cong" orientation="right" fontSize={11} tick={{ fill: '#059669' }} />
+                    <RcTooltip formatter={(v, n) => [v.toLocaleString('vi-VN') + (n === 'sl' ? ' SP' : ' công'), n === 'sl' ? 'Sản lượng' : 'Công']} />
+                    <Legend formatter={v => v === 'sl' ? 'Sản lượng (SP)' : 'Công (ca)'} wrapperStyle={{ fontSize: 12 }} />
+                    <Bar yAxisId="sl" dataKey="sl" name="sl" fill={barColor} radius={[3,3,0,0]} />
+                    <Line yAxisId="sl" type="monotone" dataKey="sl" name="sl" stroke={lineColor} strokeWidth={2.5} dot={{ r: 3, fill: lineColor }} legendType="none" />
+                    <Line yAxisId="cong" type="monotone" dataKey="cong" name="cong" stroke="#059669" strokeWidth={1.5} strokeDasharray="5 3" dot={false} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{ height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
+                  Không có dữ liệu cho tổ {activeTrendGdTo?.label} trong khoảng thời gian này
+                </div>
+              )}
             </div>
-            <ResponsiveContainer width="100%" height={210}>
-              <ComposedChart data={dailyTrend} margin={{ left: 0, right: 24, top: 4, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="label" fontSize={11} tick={{ fill: '#64748b' }} />
-                <YAxis yAxisId="sl" tickFormatter={v => v >= 1000 ? (v/1000).toFixed(0)+'k' : v} fontSize={11} tick={{ fill: '#1d4ed8' }} />
-                <YAxis yAxisId="cong" orientation="right" fontSize={11} tick={{ fill: '#059669' }} />
-                <RcTooltip formatter={(v, n) => [v.toLocaleString('vi-VN') + (n === 'sl' ? ' SP' : ' công'), n === 'sl' ? 'Sản lượng' : 'Công']} />
-                <Legend formatter={v => v === 'sl' ? 'Sản lượng (SP)' : 'Công (ca)'} wrapperStyle={{ fontSize: 12 }} />
-                <Bar yAxisId="sl" dataKey="sl" name="sl" fill="#bfdbfe" radius={[3,3,0,0]} />
-                <Line yAxisId="sl" type="monotone" dataKey="sl" name="sl" stroke="#1d4ed8" strokeWidth={2.5} dot={{ r: 3, fill: '#1d4ed8' }} legendType="none" />
-                <Line yAxisId="cong" type="monotone" dataKey="cong" name="cong" stroke="#059669" strokeWidth={1.5} strokeDasharray="5 3" dot={false} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+          )
+        })()}
 
         {/* ── Phân tích sản lượng ── */}
         {(byLoai.length > 0 || byMay.length > 0) && (() => {

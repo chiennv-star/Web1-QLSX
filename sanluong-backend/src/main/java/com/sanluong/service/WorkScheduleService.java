@@ -666,6 +666,14 @@ public class WorkScheduleService {
     }
 
     @org.springframework.transaction.annotation.Transactional
+    public void patchPhongSanXuat(Long id, String phong) {
+        WorkSchedule w = getById(id);
+        w.setPhongSanXuat(phong == null || phong.isBlank() ? null : phong.trim());
+        repository.save(w);
+        eventPublisher.publishKhoachUpdated();
+    }
+
+    @org.springframework.transaction.annotation.Transactional
     public WorkSchedule patchTinhTrang(Long id, String tinhTrang, String username) {
         WorkSchedule w = getById(id);
         w.setTinhTrang((tinhTrang != null && !tinhTrang.isBlank()) ? tinhTrang : null);

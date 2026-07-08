@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate, useLocation } from 'react-router-dom'
 import WipPage from './WipPage'
 import PhongThucHienSelect from '../components/PhongThucHienSelect'
+import PhongSanXuatSelect from '../components/PhongSanXuatSelect'
 import KphModal from './KphModal'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -2202,10 +2203,16 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
                       </div>
                     )}
                   </VC>
-                  <LC>🏢 Phòng TH</LC>
-                  <VC style={{ borderRight: 'none' }}>
+                  <LC>⚙️ Máy Thực Hiện</LC>
+                  <VC>
                     <Form.Item name="phongThucHien" noStyle>
                       <PhongThucHienSelect size="small" disabled={!isInfoEditing} style={{ width: '100%' }} placeholder="VD: Pha chế 06" />
+                    </Form.Item>
+                  </VC>
+                  <LC>🏢 Phòng SX</LC>
+                  <VC style={{ borderRight: 'none' }}>
+                    <Form.Item name="phongSanXuat" noStyle>
+                      <PhongSanXuatSelect size="small" disabled={!isInfoEditing} style={{ width: '100%' }} placeholder="Chọn phòng SX..." />
                     </Form.Item>
                   </VC>
 
@@ -2733,8 +2740,13 @@ function WorkScheduleModal({ open, editItem, congDoan, defaultToNhom, extraFormF
             )}
           </Col>
           <Col xs={24} sm={12} md={8}>
-            <Form.Item label="Phòng thực hiện" name="phongThucHien">
+            <Form.Item label="Máy thực hiện" name="phongThucHien">
               <PhongThucHienSelect style={{ width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={12} md={8}>
+            <Form.Item label="Phòng sản xuất" name="phongSanXuat">
+              <PhongSanXuatSelect style={{ width: '100%' }} />
             </Form.Item>
           </Col>
           <Col xs={24} sm={12} md={8}>
@@ -3927,6 +3939,8 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         await api.patch('/work-schedule/bulk-to-nhom', { ids: [id], toNhom: val || null })
       } else if (field === 'phongThucHien') {
         await api.patch(`/work-schedule/${id}/phong-thuc-hien`, { phongThucHien: val || null })
+      } else if (field === 'phongSanXuat') {
+        await api.patch(`/work-schedule/${id}/phong-san-xuat`, { phongSanXuat: val || null })
       } else if (field === 'qaLayMau') {
         await api.patch(`/work-schedule/${id}/patch-field`, { field: 'qaLayMau', value: val ?? null })
       } else if (field === 'qaKiemNghiem' || field === 'qaLuuMau' || field === 'qaKhac') {
@@ -4104,7 +4118,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       }
     },
     {
-      title: 'Phòng TH', dataIndex: 'phongThucHien', key: 'phongThucHien', width: 120, align: 'center',
+      title: 'Máy Thực Hiện', dataIndex: 'phongThucHien', key: 'phongThucHien', width: 120, align: 'center',
       ...colSearch('phongThucHien'),
       render: (v, record) => {
         const canEdit = canEditStage(congDoan)
@@ -4132,6 +4146,42 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
           >
             {v
               ? <Tag color="cyan" style={{ marginRight: 0, cursor: canEdit ? 'pointer' : 'default' }}>{v}</Tag>
+              : canEdit
+                ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0, cursor: 'pointer' }}>Chọn máy</Tag>
+                : <span style={{ color: '#d9d9d9' }}>—</span>}
+          </div>
+        )
+      }
+    },
+    {
+      title: 'Phòng SX', dataIndex: 'phongSanXuat', key: 'phongSanXuat', width: 120, align: 'center',
+      ...colSearch('phongSanXuat'),
+      render: (v, record) => {
+        const canEdit = canEditStage(congDoan)
+        const isEditing = inlineEdit?.id === record.id && inlineEdit?.field === 'phongSanXuat'
+        if (isEditing) {
+          return (
+            <div onClick={e => e.stopPropagation()}>
+              <PhongSanXuatSelect
+                size="small"
+                autoFocus
+                open
+                defaultValue={v || undefined}
+                style={{ width: 120 }}
+                allowClear
+                onChange={val => saveInlineEdit(record.id, 'phongSanXuat', val || null)}
+                onBlur={() => { if (!inlineSaving) setInlineEdit(null) }}
+              />
+            </div>
+          )
+        }
+        return (
+          <div
+            onClick={canEdit ? e => { e.stopPropagation(); setInlineEdit({ id: record.id, field: 'phongSanXuat' }) } : undefined}
+            style={{ cursor: canEdit ? 'pointer' : 'default' }}
+          >
+            {v
+              ? <Tag color="geekblue" style={{ marginRight: 0, cursor: canEdit ? 'pointer' : 'default' }}>{v}</Tag>
               : canEdit
                 ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0, cursor: 'pointer' }}>Chọn phòng</Tag>
                 : <span style={{ color: '#d9d9d9' }}>—</span>}
@@ -4660,7 +4710,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
               })}
             rowKey="id"
             loading={loading}
-            scroll={{ x: 1600 + config.extraTableCols.length * 87 }}
+            scroll={{ x: 1720 + config.extraTableCols.length * 87 }}
             size="small"
             sticky={{ offsetHeader: headerOffset }}
             rowHoverable={false}
@@ -5113,6 +5163,30 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
       }
     },
     {
+      title: 'QA lấy mẫu', dataIndex: 'qaLayMau', key: 'qaLayMau', width: 95, align: 'right',
+      render: v => v != null && v !== 0 && v !== ''
+        ? <span style={{ color: '#0369a1', fontWeight: 600 }}>{Number(v).toLocaleString('vi-VN')}</span>
+        : <span style={{ color: '#d9d9d9' }}>—</span>
+    },
+    {
+      title: 'Máy Thực Hiện', dataIndex: 'phongThucHien', key: 'phongThucHien', width: 120, align: 'center',
+      render: v => v
+        ? <Tag color="cyan" style={{ marginRight: 0, fontSize: 11 }}>{v}</Tag>
+        : <span style={{ color: '#d9d9d9' }}>—</span>
+    },
+    {
+      title: 'Phòng SX', dataIndex: 'phongSanXuat', key: 'phongSanXuat', width: 120, align: 'center',
+      render: v => v
+        ? <Tag color="geekblue" style={{ marginRight: 0, fontSize: 11 }}>{v}</Tag>
+        : <span style={{ color: '#d9d9d9' }}>—</span>
+    },
+    {
+      title: 'Sai lệch', dataIndex: 'saiLech', key: 'saiLech', width: 160,
+      render: v => v
+        ? <span style={{ color: '#dc2626', fontSize: 11, wordBreak: 'break-word' }}>{v}</span>
+        : <span style={{ color: '#d9d9d9' }}>—</span>
+    },
+    {
       title: 'Ngày hoàn thiện', dataIndex: 'updatedAt', key: 'updatedAt', width: 120, align: 'center',
       render: v => v ? <span style={{ fontSize: 12, color: '#15803d' }}>{dayjs(v).format('DD/MM/YYYY')}</span> : '—'
     },
@@ -5162,7 +5236,7 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
         rowKey="id"
         loading={loading}
         size="small"
-        scroll={{ x: 1150 }}
+        scroll={{ x: 1750 }}
         sticky={{ offsetHeader: headerOffset }}
         rowHoverable={false}
         onRow={r => ({
