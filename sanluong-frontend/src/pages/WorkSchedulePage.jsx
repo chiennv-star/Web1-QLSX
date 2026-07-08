@@ -235,6 +235,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
   const [machineRuntimeOpenDays, setMachineRuntimeOpenDays] = useState(new Set())
   const [machineRuntimeSaving, setMachineRuntimeSaving] = useState(new Set())
   const [machineRuntimeDirtyDays, setMachineRuntimeDirtyDays] = useState(new Set())
+  const [machineAVersion, setMachineAVersion] = useState(0)
 
   const [renamingDay, setRenamingDay] = useState(null)   // ngayKey đang đổi ngày
   const [renameDayVal, setRenameDayVal] = useState('')   // giá trị ngày mới
@@ -536,6 +537,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh }) {
       )
       setMachineRuntimeMap(prev => ({ ...prev, [ngay]: data.map(r => ({ ...r, _id: r.id })) }))
       _rtMarkClean(ngay)
+      setMachineAVersion(v => v + 1)
       message.success('Đã lưu thời gian chạy máy')
     } catch { message.error('Lưu thời gian chạy máy thất bại') }
     finally { setMachineRuntimeSaving(prev => { const n = new Set(prev); n.delete(ngay); return n }) }
@@ -4031,7 +4033,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       .then(r => setMachineAData(r.data))
       .catch(() => message.error('Không thể tải dữ liệu chỉ số A'))
       .finally(() => setMachineALoading(false))
-  }, [innerTab, filters.dateRange]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [innerTab, filters.dateRange, machineAVersion]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch employees cho tab Không SX khi cần
   useEffect(() => {
