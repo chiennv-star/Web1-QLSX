@@ -2979,7 +2979,7 @@ function PhongThucHienTab() {
   useEffect(() => { fetch() }, [])
 
   const openAdd = () => { setEditing(null); form.resetFields(); setModalOpen(true) }
-  const openEdit = (r) => { setEditing(r); form.setFieldsValue({ ten: r.ten, sortOrder: r.sortOrder }); setModalOpen(true) }
+  const openEdit = (r) => { setEditing(r); form.setFieldsValue({ ten: r.ten, sortOrder: r.sortOrder, maMay: r.maMay }); setModalOpen(true) }
 
   const onSave = async () => {
     try {
@@ -3011,8 +3011,12 @@ function PhongThucHienTab() {
   const columns = [
     { title: '#', key: 'stt', width: 50, align: 'center',
       render: (_, __, i) => <span style={{ color: '#94a3b8', fontSize: 12 }}>{i + 1}</span> },
-    { title: 'Tên phòng / khu vực', dataIndex: 'ten', key: 'ten',
+    { title: 'Tên máy', dataIndex: 'ten', key: 'ten',
       render: v => <span style={{ fontWeight: 600 }}>{v}</span> },
+    { title: 'Mã máy', dataIndex: 'maMay', key: 'maMay', width: 120,
+      render: v => v
+        ? <span style={{ fontFamily: 'monospace', color: '#1677ff', fontWeight: 600 }}>{v}</span>
+        : <span style={{ color: '#d9d9d9' }}>—</span> },
     { title: 'Thứ tự', dataIndex: 'sortOrder', key: 'sortOrder', width: 90, align: 'center',
       render: v => v ?? <span style={{ color: '#d9d9d9' }}>—</span> },
     ...(canEdit ? [{
@@ -3020,7 +3024,7 @@ function PhongThucHienTab() {
       render: (_, r) => (
         <Space size={4}>
           <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(r)} />
-          <Popconfirm title={`Xóa phòng "${r.ten}"?`} onConfirm={() => onDelete(r.id)} okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }}>
+          <Popconfirm title={`Xóa máy "${r.ten}"?`} onConfirm={() => onDelete(r.id)} okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }}>
             <Button size="small" danger icon={<DeleteOutlined />} />
           </Popconfirm>
         </Space>
@@ -3032,13 +3036,13 @@ function PhongThucHienTab() {
     <div style={{ padding: '16px 20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <span style={{ fontWeight: 700, fontSize: 15, color: '#1e4570' }}>
-          Danh sách Phòng / Khu vực sản xuất
+          Danh sách Máy Thực Hiện
         </span>
         <Space>
           <Button icon={<ReloadOutlined />} onClick={fetch} />
           {canEdit && (
             <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>
-              Thêm phòng
+              Thêm máy
             </Button>
           )}
         </Space>
@@ -3052,11 +3056,11 @@ function PhongThucHienTab() {
         loading={loading}
         size="small"
         pagination={false}
-        style={{ maxWidth: 600 }}
+        style={{ maxWidth: 700 }}
       />
 
       <Modal
-        title={editing ? 'Sửa phòng thực hiện' : 'Thêm phòng thực hiện'}
+        title={editing ? 'Sửa máy thực hiện' : 'Thêm máy thực hiện'}
         open={modalOpen}
         onOk={onSave}
         onCancel={() => setModalOpen(false)}
@@ -3065,8 +3069,11 @@ function PhongThucHienTab() {
         width={400}
       >
         <Form form={form} layout="vertical" style={{ marginTop: 12 }}>
-          <Form.Item name="ten" label="Tên phòng / khu vực" rules={[{ required: true, message: 'Nhập tên phòng' }]}>
-            <Input placeholder="VD: Pha chế 09, Khu D..." autoFocus />
+          <Form.Item name="ten" label="Tên máy" rules={[{ required: true, message: 'Nhập tên máy' }]}>
+            <Input placeholder="VD: Máy Chiết 4 Vòi Bơm Từ..." autoFocus />
+          </Form.Item>
+          <Form.Item name="maMay" label="Mã máy" extra="Mã ngắn dùng trong báo cáo OEE (tuỳ chọn)">
+            <Input placeholder="VD: M01, MC4V..." style={{ fontFamily: 'monospace' }} />
           </Form.Item>
           <Form.Item name="sortOrder" label="Thứ tự hiển thị" extra="Số nhỏ hơn hiển thị trước (tuỳ chọn)">
             <InputNumber min={0} max={9999} style={{ width: '100%' }} placeholder="VD: 9" />
@@ -3103,7 +3110,7 @@ export default function DanhMucPage() {
     },
     {
       key: 'phong-thuc-hien',
-      label: <span><HomeOutlined style={{ marginRight: 5 }} />Phòng Thực Hiện</span>,
+      label: <span><HomeOutlined style={{ marginRight: 5 }} />Máy Thực Hiện</span>,
       children: <PhongThucHienTab />,
     },
     {

@@ -16,6 +16,9 @@ public class PhongThucHien {
     @Column(name = "sort_order")
     private Integer sortOrder;
 
+    @Column(name = "ma_may", length = 20)
+    private String maMay;
+
     public PhongThucHien() {}
 
     public PhongThucHien(String ten, Integer sortOrder) {
@@ -28,4 +31,6 @@ public class PhongThucHien {
     public void setTen(String ten) { this.ten = ten; }
     public Integer getSortOrder() { return sortOrder; }
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+    public String getMaMay() { return maMay; }
+    public void setMaMay(String maMay) { this.maMay = maMay; }
 }
