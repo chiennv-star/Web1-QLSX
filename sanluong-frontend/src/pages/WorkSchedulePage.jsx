@@ -5555,13 +5555,13 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                     </tbody>
                     <tfoot>
                       <tr style={{ borderTop: '2px solid #1e3a5f' }}>
-                        <td colSpan={2} style={{ padding: '10px 12px', background: '#1e3a5f', border: '1px solid #4a6fa5', color: '#fff', fontWeight: 700, fontSize: 13, letterSpacing: 0.3 }}>
+                        <td colSpan={2} style={{ padding: '10px 12px', background: '#1e3a5f', border: '1px solid #1e3a5f', color: '#fff', fontWeight: 700, fontSize: 13, letterSpacing: 0.3 }}>
                           HIỆU SUẤT TỔNG THỂ – {tenTo}
                         </td>
                         {periods.map(p => {
                           const v = computeOverallAPct(p.from, p.to || null)
                           return (
-                            <td key={p.key} style={{ padding: '10px 12px', background: v == null ? '#f8fafc' : aBg(v), border: '1px solid #cbd5e1', textAlign: 'center', fontWeight: 800, fontSize: 15, color: v == null ? '#9ca3af' : aColor(v) }}>
+                            <td key={p.key} style={{ padding: '10px 12px', background: v == null ? '#f8fafc' : aBg(v), border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 800, fontSize: 15, color: v == null ? '#9ca3af' : aColor(v) }}>
                               {v != null ? `${v}%` : '—'}
                             </td>
                           )
