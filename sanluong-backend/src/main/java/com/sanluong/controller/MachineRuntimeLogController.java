@@ -67,19 +67,15 @@ public class MachineRuntimeLogController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate tuNgay,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate denNgay) {
 
-        // Map frontend key → (congDoan DB, toNhom list)
-        String cd;
-        List<String> toNhoms;
+        // Map frontend key → WorkSchedule list
+        // Hỗ trợ cả record cũ (congDoan="PC") lẫn record mới (congDoan="PCPL1"/"PCPL2"/"PL")
+        List<WorkSchedule> wsList;
         switch (congDoanKey) {
-            case "PCPL1": cd = "PC"; toNhoms = List.of("PCPL1"); break;
-            case "PCPL2": cd = "PC"; toNhoms = List.of("PCPL2"); break;
-            case "PL":    cd = "PC"; toNhoms = List.of("PL", "PCPL3"); break;
-            default:      cd = congDoanKey; toNhoms = null; break;
+            case "PCPL1": wsList = wsRepo.findForMachineSummary("PCPL1", List.of("PCPL1")); break;
+            case "PCPL2": wsList = wsRepo.findForMachineSummary("PCPL2", List.of("PCPL2")); break;
+            case "PL":    wsList = wsRepo.findForMachineSummary("PL",    List.of("PL", "PCPL3")); break;
+            default:      wsList = wsRepo.findByCongDoan(congDoanKey); break;
         }
-
-        List<WorkSchedule> wsList = (toNhoms != null)
-                ? wsRepo.findByCongDoanAndToNhomIn(cd, toNhoms)
-                : wsRepo.findByCongDoan(cd);
 
         Map<Long, WorkSchedule> wsMap = wsList.stream()
                 .collect(Collectors.toMap(WorkSchedule::getId, w -> w, (a, b) -> a));

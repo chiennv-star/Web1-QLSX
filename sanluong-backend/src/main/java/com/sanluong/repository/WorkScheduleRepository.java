@@ -404,4 +404,9 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
     // For machine runtime daily summary
     List<WorkSchedule> findByCongDoan(String congDoan);
     List<WorkSchedule> findByCongDoanAndToNhomIn(String congDoan, List<String> toNhom);
+
+    /** Tìm WorkSchedule theo congDoan trực tiếp HOẶC congDoan="PC" + toNhom khớp.
+     *  Xử lý cả record cũ (congDoan="PC") lẫn record mới (congDoan="PCPL1"/"PCPL2"/"PL") */
+    @Query("SELECT w FROM WorkSchedule w WHERE w.deletedAt IS NULL AND (w.congDoan = :cd OR (w.congDoan = 'PC' AND w.toNhom IN :toNhoms))")
+    List<WorkSchedule> findForMachineSummary(@Param("cd") String cd, @Param("toNhoms") List<String> toNhoms);
 }
