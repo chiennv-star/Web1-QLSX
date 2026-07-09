@@ -161,6 +161,19 @@ public class MachineRuntimeLogController {
             List<Long> wsIds = new ArrayList<>(groupWsIds.getOrDefault(entry.getKey(), new java.util.LinkedHashSet<>()));
             row.put("workScheduleId", wsIds.isEmpty() ? null : wsIds.get(0));
             row.put("workScheduleIds", wsIds);
+            List<Map<String, Object>> wsInfos = new ArrayList<>();
+            for (Long wsId : wsIds) {
+                WorkSchedule ws = wsMap.get(wsId);
+                if (ws != null) {
+                    Map<String, Object> info = new LinkedHashMap<>();
+                    info.put("id", ws.getId());
+                    info.put("maSp", ws.getMaSp());
+                    info.put("tenTrinh", ws.getTenTrinh());
+                    info.put("soLo", ws.getSoLo());
+                    wsInfos.add(info);
+                }
+            }
+            row.put("workScheduleInfos", wsInfos);
             result.add(row);
         }
 

@@ -1679,14 +1679,14 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                             <thead>
                               <tr>
-                                {['#', 'Từ giờ', 'Đến giờ', 'Trạng thái', 'Sản phẩm', 'Lý do dừng', 'Ghi chú', ''].map((h, i) => (
+                                {['#', 'Từ giờ', 'Đến giờ', 'Trạng thái', 'Lý do dừng', 'Ghi chú', ''].map((h, i) => (
                                   <th key={i} style={{ padding: '6px 8px', background: '#e0f2fe', color: '#0c4a6e', fontWeight: 600, fontSize: 11, textAlign: 'left', borderBottom: '1px solid #bae6fd', whiteSpace: 'nowrap' }}>{h}</th>
                                 ))}
                               </tr>
                             </thead>
                             <tbody>
                               {rtEntries.length === 0 && (
-                                <tr><td colSpan={8} style={{ textAlign: 'center', color: '#aaa', padding: '12px 0', fontSize: 12 }}>Chưa có dữ liệu — nhấn "+ Thêm dòng"</td></tr>
+                                <tr><td colSpan={7} style={{ textAlign: 'center', color: '#aaa', padding: '12px 0', fontSize: 12 }}>Chưa có dữ liệu — nhấn "+ Thêm dòng"</td></tr>
                               )}
                               {rtEntries.map((row, idx) => {
                                 const isChay = row.trangThai !== 'Dừng máy'
@@ -1707,10 +1707,6 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                         <option value="Chạy máy">Chạy máy</option>
                                         <option value="Dừng máy">Dừng máy</option>
                                       </select>
-                                    </td>
-                                    <td style={{ padding: '3px 6px', width: 130 }}>
-                                      <input value={row.sanPham || ''} placeholder="Mã / tên SP..." style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 6px', fontSize: 12 }}
-                                        onChange={e => updateMachineRuntimeRow(k, row._id, { sanPham: e.target.value })} />
                                     </td>
                                     <td style={{ padding: '3px 6px', width: 170 }}>
                                       {(!isChay && !!row.lyDo && !PREDEFINED_REASONS.includes(row.lyDo)) ? (
@@ -4049,7 +4045,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   }
   const updateALog = (_id, patch) => setMachineADetailLogs(prev => prev.map(r => r._id === _id ? { ...r, ...patch } : r))
   const removeALog = (_id) => setMachineADetailLogs(prev => prev.filter(r => r._id !== _id))
-  const addALog = () => setMachineADetailLogs(prev => [...prev, { _id: Date.now(), id: null, tuGio: '', denGio: '', trangThai: 'Chạy máy', lyDo: '', ghiChu: '', sanPham: '' }])
+  const addALog = (wsId) => setMachineADetailLogs(prev => [...prev, { _id: Date.now(), id: null, workScheduleId: wsId, tuGio: '', denGio: '', trangThai: 'Chạy máy', lyDo: '', ghiChu: '' }])
   const saveMachineADetail = async () => {
     if (!machineADetailRow) return
     const wsIds = machineADetailRow.workScheduleIds?.length
@@ -5485,79 +5481,102 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                       </div>
                       {machineADetailLoading ? (
                         <div style={{ textAlign: 'center', padding: 24, color: '#9ca3af' }}>Đang tải...</div>
-                      ) : (
-                        <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                            <thead>
-                              <tr>
-                                {['#', 'Từ giờ', 'Đến giờ', 'Trạng thái', 'Sản phẩm', 'Lý do dừng', 'Ghi chú', ''].map((h, i) => (
-                                  <th key={i} style={{ padding: '6px 8px', background: '#e0f2fe', color: '#0c4a6e', fontWeight: 600, fontSize: 11, textAlign: 'left', borderBottom: '1px solid #bae6fd' }}>{h}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {machineADetailLogs.length === 0 && (
-                                <tr><td colSpan={8} style={{ textAlign: 'center', color: '#aaa', padding: '16px 0', fontSize: 12 }}>Chưa có dữ liệu — nhấn "+ Thêm dòng"</td></tr>
-                              )}
-                              {machineADetailLogs.map((log, idx) => {
-                                const isChay = log.trangThai !== 'Dừng máy'
-                                return (
-                                  <tr key={log._id} style={{ background: idx % 2 === 0 ? '#fff' : '#f0f9ff' }}>
-                                    <td style={{ padding: '4px 8px', color: '#94a3b8', fontSize: 11, textAlign: 'center', width: 28 }}>{idx + 1}</td>
-                                    <td style={{ padding: '3px 6px', width: 90 }}>
-                                      <input type="time" value={log.tuGio || ''} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12 }}
-                                        onChange={e => updateALog(log._id, { tuGio: e.target.value })} />
-                                    </td>
-                                    <td style={{ padding: '3px 6px', width: 90 }}>
-                                      <input type="time" value={log.denGio || ''} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12 }}
-                                        onChange={e => updateALog(log._id, { denGio: e.target.value })} />
-                                    </td>
-                                    <td style={{ padding: '3px 6px', width: 110 }}>
-                                      <select value={log.trangThai || 'Chạy máy'} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12, color: isChay ? '#16a34a' : '#dc2626', fontWeight: 600 }}
-                                        onChange={e => updateALog(log._id, { trangThai: e.target.value, lyDo: '' })}>
-                                        <option value="Chạy máy">Chạy máy</option>
-                                        <option value="Dừng máy">Dừng máy</option>
-                                      </select>
-                                    </td>
-                                    <td style={{ padding: '3px 6px', width: 130 }}>
-                                      <input value={log.sanPham || ''} placeholder="Mã / tên SP..." style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 6px', fontSize: 12 }}
-                                        onChange={e => updateALog(log._id, { sanPham: e.target.value })} />
-                                    </td>
-                                    <td style={{ padding: '3px 6px', width: 160 }}>
-                                      {(!isChay && !!log.lyDo && !PREDEFINED_REASONS_A.includes(log.lyDo)) ? (
-                                        <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                                          <input autoFocus value={log.lyDo} placeholder="Nhập lý do..."
-                                            style={{ flex: 1, border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 6px', fontSize: 12 }}
-                                            onChange={e => updateALog(log._id, { lyDo: e.target.value })} />
-                                          <button onClick={() => updateALog(log._id, { lyDo: '' })} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 15, padding: '0 2px' }}>↩</button>
-                                        </div>
-                                      ) : (
-                                        <select value={log.lyDo || ''} disabled={isChay} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12, background: isChay ? '#f3f4f6' : '#fff' }}
-                                          onChange={e => updateALog(log._id, { lyDo: e.target.value })}>
-                                          <option value="">—</option>
-                                          {PREDEFINED_REASONS_A.map(o => <option key={o} value={o}>{o}</option>)}
-                                          <option value="Khác">Khác...</option>
+                      ) : (() => {
+                        const wsInfos = dr.workScheduleInfos?.length
+                          ? dr.workScheduleInfos
+                          : (dr.workScheduleId ? [{ id: dr.workScheduleId, maSp: null, tenTrinh: null, soLo: null }] : [])
+                        const renderTable = (wsId, logs) => (
+                          <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden', marginBottom: 12 }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                              <thead>
+                                <tr>
+                                  {['#', 'Từ giờ', 'Đến giờ', 'Trạng thái', 'Lý do dừng', 'Ghi chú', ''].map((h, i) => (
+                                    <th key={i} style={{ padding: '6px 8px', background: '#e0f2fe', color: '#0c4a6e', fontWeight: 600, fontSize: 11, textAlign: 'left', borderBottom: '1px solid #bae6fd' }}>{h}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {logs.length === 0 && (
+                                  <tr><td colSpan={7} style={{ textAlign: 'center', color: '#aaa', padding: '12px 0', fontSize: 12 }}>Chưa có dữ liệu — nhấn "+ Thêm dòng"</td></tr>
+                                )}
+                                {logs.map((log, idx) => {
+                                  const isChay = log.trangThai !== 'Dừng máy'
+                                  return (
+                                    <tr key={log._id} style={{ background: idx % 2 === 0 ? '#fff' : '#f0f9ff' }}>
+                                      <td style={{ padding: '4px 8px', color: '#94a3b8', fontSize: 11, textAlign: 'center', width: 28 }}>{idx + 1}</td>
+                                      <td style={{ padding: '3px 6px', width: 90 }}>
+                                        <input type="time" value={log.tuGio || ''} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12 }}
+                                          onChange={e => updateALog(log._id, { tuGio: e.target.value })} />
+                                      </td>
+                                      <td style={{ padding: '3px 6px', width: 90 }}>
+                                        <input type="time" value={log.denGio || ''} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12 }}
+                                          onChange={e => updateALog(log._id, { denGio: e.target.value })} />
+                                      </td>
+                                      <td style={{ padding: '3px 6px', width: 110 }}>
+                                        <select value={log.trangThai || 'Chạy máy'} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12, color: isChay ? '#16a34a' : '#dc2626', fontWeight: 600 }}
+                                          onChange={e => updateALog(log._id, { trangThai: e.target.value, lyDo: '' })}>
+                                          <option value="Chạy máy">Chạy máy</option>
+                                          <option value="Dừng máy">Dừng máy</option>
                                         </select>
-                                      )}
-                                    </td>
-                                    <td style={{ padding: '3px 6px' }}>
-                                      <input value={log.ghiChu || ''} placeholder="Ghi chú..." style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 6px', fontSize: 12 }}
-                                        onChange={e => updateALog(log._id, { ghiChu: e.target.value })} />
-                                    </td>
-                                    <td style={{ padding: '3px 6px', width: 30, textAlign: 'center' }}>
-                                      <button onClick={() => removeALog(log._id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
-                                    </td>
-                                  </tr>
-                                )
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                      <button onClick={addALog}
-                        style={{ marginTop: 8, border: '1px dashed #3b82f6', background: '#eff6ff', color: '#1d4ed8', borderRadius: 5, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>
-                        + Thêm dòng
-                      </button>
+                                      </td>
+                                      <td style={{ padding: '3px 6px', width: 160 }}>
+                                        {(!isChay && !!log.lyDo && !PREDEFINED_REASONS_A.includes(log.lyDo)) ? (
+                                          <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                                            <input autoFocus value={log.lyDo} placeholder="Nhập lý do..."
+                                              style={{ flex: 1, border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 6px', fontSize: 12 }}
+                                              onChange={e => updateALog(log._id, { lyDo: e.target.value })} />
+                                            <button onClick={() => updateALog(log._id, { lyDo: '' })} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 15, padding: '0 2px' }}>↩</button>
+                                          </div>
+                                        ) : (
+                                          <select value={log.lyDo || ''} disabled={isChay} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12, background: isChay ? '#f3f4f6' : '#fff' }}
+                                            onChange={e => updateALog(log._id, { lyDo: e.target.value })}>
+                                            <option value="">—</option>
+                                            {PREDEFINED_REASONS_A.map(o => <option key={o} value={o}>{o}</option>)}
+                                            <option value="Khác">Khác...</option>
+                                          </select>
+                                        )}
+                                      </td>
+                                      <td style={{ padding: '3px 6px' }}>
+                                        <input value={log.ghiChu || ''} placeholder="Ghi chú..." style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 6px', fontSize: 12 }}
+                                          onChange={e => updateALog(log._id, { ghiChu: e.target.value })} />
+                                      </td>
+                                      <td style={{ padding: '3px 6px', width: 30, textAlign: 'center' }}>
+                                        <button onClick={() => removeALog(log._id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
+                                      </td>
+                                    </tr>
+                                  )
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )
+                        return (
+                          <div>
+                            {wsInfos.map(wsInfo => {
+                              const wsLogs = machineADetailLogs.filter(l => String(l.workScheduleId) === String(wsInfo.id))
+                              return (
+                                <div key={wsInfo.id} style={{ marginBottom: 16 }}>
+                                  {/* Sub-table header: product info */}
+                                  <div style={{ background: '#1e3a5f', color: '#fff', padding: '6px 12px', borderRadius: '6px 6px 0 0', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 0 }}>
+                                    {wsInfo.tenTrinh
+                                      ? <span style={{ fontWeight: 700, fontSize: 13 }}>{wsInfo.tenTrinh}</span>
+                                      : <span style={{ color: '#93c5fd', fontSize: 12 }}>WorkSchedule #{wsInfo.id}</span>
+                                    }
+                                    {wsInfo.maSp && <span style={{ background: '#2d4f7c', borderRadius: 4, padding: '1px 7px', fontSize: 11, color: '#bae6fd' }}>SP: {wsInfo.maSp}</span>}
+                                    {wsInfo.soLo && <span style={{ background: '#2d4f7c', borderRadius: 4, padding: '1px 7px', fontSize: 11, color: '#bae6fd' }}>Lô: {wsInfo.soLo}</span>}
+                                    <span style={{ marginLeft: 'auto', fontSize: 11, color: '#93c5fd' }}>{wsLogs.length} dòng</span>
+                                  </div>
+                                  {renderTable(wsInfo.id, wsLogs)}
+                                  <button onClick={() => addALog(wsInfo.id)}
+                                    style={{ border: '1px dashed #3b82f6', background: '#eff6ff', color: '#1d4ed8', borderRadius: 5, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>
+                                    + Thêm dòng
+                                  </button>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )
+                      })()}
                     </div>
 
                     {/* Footer */}
