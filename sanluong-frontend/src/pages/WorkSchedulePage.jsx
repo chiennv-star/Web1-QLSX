@@ -257,6 +257,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   const [openTabs, setOpenTabs] = useState(['list'])
   const [activeTabKey, setActiveTabKey] = useState('list')
   const [daySlMap, setDaySlMap] = useState({})
+  const [dayMachineMap, setDayMachineMap] = useState({})
   const [savingDay, setSavingDay] = useState(null)
   const [pendingDays, setPendingDays] = useState([])
   const [employees, setEmployees] = useState([])
@@ -451,14 +452,19 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
       setSessions(normalized)
       setKhToExists((khToResp.data || []).length > 0)
       const slMap = {}
+      const machineMap = {}
       normalized.forEach(s => {
         const key = s.ngay || 'unknown'
         if (slMap[key] === undefined && s.sanLuong != null) {
           slMap[key] = String(Math.round(parseFloat(s.sanLuong)))
         }
+        if (machineMap[key] === undefined && s.khac) {
+          machineMap[key] = s.khac
+        }
       })
       setDaySlMap(slMap)
       setSavedSlKeys(new Set(Object.keys(slMap)))
+      setDayMachineMap(machineMap)
       // Load machine runtime for all days (non-blocking)
       const days = [...new Set(normalized.map(s => s.ngay).filter(Boolean))]
       if (days.length > 0) {
@@ -1148,6 +1154,16 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     finally { setSavingDay(null) }
   }
 
+  const saveDayMachine = async (ngayKey, machineVal) => {
+    const rows = sessionsRef.current.filter(s => (s.ngay || 'unknown') === ngayKey)
+    const first = rows.find(r => r.id)
+    if (!first?.id) return
+    try {
+      await api.patch(`/work-schedule-session/${first.id}/khac`, { khac: machineVal || null })
+      setDayMachineMap(prev => ({ ...prev, [ngayKey]: machineVal || '' }))
+    } catch { message.error('Lưu máy thực hiện thất bại') }
+  }
+
   const cellStyle = { padding: '5px 8px', border: '1px solid #d9d9d9', verticalAlign: 'middle' }
   const headStyle = { ...cellStyle, background: '#e6f4ff', fontWeight: 600, color: '#1677ff', whiteSpace: 'nowrap' }
   const subHeadStyle = { ...cellStyle, background: '#fff7e6', fontWeight: 600, color: '#1890ff', whiteSpace: 'nowrap' }
@@ -1309,6 +1325,20 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                     return <b style={{ color }}>{nsNgay.toLocaleString('vi-VN')}{arrow}</b>
                   })() : <b style={{ color: '#aaa' }}>—</b>}
                 </span>
+                {/* Máy thực hiện — chỉ ĐG */}
+                {schedule?.congDoan === 'DG' && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#64748b', flexShrink: 0 }}>
+                    Máy:&nbsp;
+                    <PhongSanXuatSelect
+                      size="small"
+                      value={dayMachineMap[k] || null}
+                      onChange={v => saveDayMachine(k, v || null)}
+                      disabled={!canEditDetail}
+                      style={{ width: 170, fontSize: 11 }}
+                      placeholder="Chọn máy..."
+                    />
+                  </span>
+                )}
                 {/* Machine runtime stats */}
                 {(() => {
                   const { runMin, downMin } = computeRtStats(machineRuntimeMap[k])

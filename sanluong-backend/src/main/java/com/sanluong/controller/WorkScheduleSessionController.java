@@ -147,6 +147,18 @@ public class WorkScheduleSessionController {
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/{id}/khac")
+    public ResponseEntity<Void> patchKhac(@PathVariable Long id,
+                                           @RequestBody Map<String, Object> body,
+                                           Authentication auth) {
+        WorkScheduleSession existing = service.getById(id);
+        WorkSchedule schedule = resolveSchedule(existing.getWorkScheduleId());
+        checkStageWritePermission(auth, schedule.getCongDoan(), schedule.getSource(), schedule.isPlanned());
+        String khac = body.get("khac") != null ? body.get("khac").toString() : null;
+        service.patchKhac(id, khac);
+        return ResponseEntity.noContent().build();
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id, Authentication auth) {
         WorkScheduleSession existing = service.getById(id);

@@ -150,6 +150,13 @@ public class WorkScheduleSessionService {
     }
 
     @Transactional
+    public void patchKhac(Long id, String khac) {
+        WorkScheduleSession s = getById(id);
+        s.setKhac(khac);
+        repository.save(s);
+    }
+
+    @Transactional
     public void delete(Long id) {
         WorkScheduleSession existing = repository.findById(id).orElse(null);
         Long workScheduleId = existing != null ? existing.getWorkScheduleId() : null;
