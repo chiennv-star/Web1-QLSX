@@ -2929,7 +2929,7 @@ function PhongSanXuatTab() {
   const columns = [
     { title: '#', key: 'stt', width: 50, align: 'center',
       render: (_, __, i) => <span style={{ color: '#94a3b8', fontSize: 12 }}>{i + 1}</span> },
-    { title: 'Tên phòng / máy', dataIndex: 'ten', key: 'ten',
+    { title: 'Tên máy', dataIndex: 'ten', key: 'ten',
       render: v => <span style={{ fontWeight: 600 }}>{v}</span> },
     { title: 'Mã máy', dataIndex: 'maMay', key: 'maMay', width: 100,
       render: v => v ? <span style={{ fontFamily: 'monospace', color: '#0369a1', fontWeight: 600 }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span> },
@@ -2940,7 +2940,7 @@ function PhongSanXuatTab() {
       render: (_, r) => (
         <Space size={4}>
           <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(r)} />
-          <Popconfirm title={`Xóa phòng "${r.ten}"?`} onConfirm={() => onDelete(r.id)} okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }}>
+          <Popconfirm title={`Xóa máy "${r.ten}"?`} onConfirm={() => onDelete(r.id)} okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }}>
             <Button size="small" danger icon={<DeleteOutlined />} />
           </Popconfirm>
         </Space>
@@ -2952,13 +2952,13 @@ function PhongSanXuatTab() {
     <div style={{ padding: '16px 20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <span style={{ fontWeight: 700, fontSize: 15, color: '#1e4570' }}>
-          Danh sách Phòng sản xuất
+          Danh sách Máy sản xuất
         </span>
         <Space>
           <Button icon={<ReloadOutlined />} onClick={fetch} />
           {canEdit && (
             <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>
-              Thêm phòng
+              Thêm máy
             </Button>
           )}
         </Space>
@@ -2976,7 +2976,7 @@ function PhongSanXuatTab() {
       />
 
       <Modal
-        title={editing ? 'Sửa phòng sản xuất' : 'Thêm phòng sản xuất'}
+        title={editing ? 'Sửa máy sản xuất' : 'Thêm máy sản xuất'}
         open={modalOpen}
         onOk={onSave}
         onCancel={() => setModalOpen(false)}
@@ -2985,8 +2985,8 @@ function PhongSanXuatTab() {
         width={400}
       >
         <Form form={form} layout="vertical" style={{ marginTop: 12 }}>
-          <Form.Item name="ten" label="Tên phòng / máy" rules={[{ required: true, message: 'Nhập tên phòng' }]}>
-            <Input placeholder="VD: Máy Nhũ hóa 500L, Xưởng A..." autoFocus />
+          <Form.Item name="ten" label="Tên máy" rules={[{ required: true, message: 'Nhập tên máy' }]}>
+            <Input placeholder="VD: Máy Nhũ hóa 500L, Máy Khuấy 1500L..." autoFocus />
           </Form.Item>
           <Form.Item name="maMay" label="Mã máy" extra="Mã ngắn dùng trong báo cáo OEE (VD: MNH-01, PC03)">
             <Input placeholder="VD: MNH-01" style={{ textTransform: 'uppercase' }} />
@@ -3162,7 +3162,7 @@ export default function DanhMucPage() {
     },
     {
       key: 'phong-san-xuat',
-      label: <span><HomeOutlined style={{ marginRight: 5 }} />Phòng Sản Xuất</span>,
+      label: <span><HomeOutlined style={{ marginRight: 5 }} />Máy Sản Xuất</span>,
       children: <PhongSanXuatTab />,
     },
   ]
