@@ -1109,7 +1109,7 @@ function ProductMasterDrawer({ open, record, onClose, onEdit }) {
                     <span style={{ fontSize: 11, color: '#8c8c8c' }}>{r.soMe} mẻ</span>
                     <div style={{ fontSize: 12, marginTop: 1, fontWeight: 600, color: '#1D4ED8' }}>
                       {r.nangSuat != null ? Math.round(Number(r.nangSuat)).toLocaleString('vi-VN') : '—'}
-                      <span style={{ fontWeight: 400, color: '#64748b', fontSize: 11 }}> sp/công</span>
+                      <span style={{ fontWeight: 400, color: '#64748b', fontSize: 11 }}> số giờ</span>
                     </div>
                   </div>
                 ))}
@@ -1700,7 +1700,7 @@ function ProductMasterTab() {
           {/* ── Năng suất PC theo số mẻ ── */}
           <div style={{ marginBottom: 12, border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
             <div style={{ background: '#e6f4ff', padding: '6px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #bae0ff' }}>
-              <span style={{ fontWeight: 700, fontSize: 12, color: '#1677ff' }}>⚡ Năng suất PC theo số mẻ (sp/công)</span>
+              <span style={{ fontWeight: 700, fontSize: 12, color: '#1677ff' }}>⚡ Năng suất PC theo số mẻ (số giờ)</span>
               <Button size="small" icon={<PlusOutlined />} type="link"
                 onClick={() => setNangSuatPcMeRows(prev => [...prev, { soMe: (prev[prev.length - 1]?.soMe || 0) + 1, nangSuat: null }])}>
                 Thêm mẻ
@@ -1719,7 +1719,7 @@ function ProductMasterTab() {
                   parser={v => v ? v.replace(/[^\d]/g, '') : ''}
                   onChange={val => setNangSuatPcMeRows(prev => prev.map((r, i) => i === idx ? { ...r, nangSuat: val } : r))}
                 />
-                <span style={{ fontSize: 11, color: '#94a3b8', minWidth: 42 }}>sp/công</span>
+                <span style={{ fontSize: 11, color: '#94a3b8', minWidth: 42 }}>số giờ</span>
                 <Button size="small" type="text" danger icon={<CloseCircleOutlined />}
                   onClick={() => setNangSuatPcMeRows(prev => prev.filter((_, i) => i !== idx))} />
               </div>
