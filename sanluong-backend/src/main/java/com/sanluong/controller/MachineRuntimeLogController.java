@@ -180,6 +180,81 @@ public class MachineRuntimeLogController {
         return ResponseEntity.ok(result);
     }
 
+    /** Phân tích Pareto nguyên nhân dừng máy — trả về danh sách sắp xếp theo tổng giờ dừng giảm dần */
+    @GetMapping("/pareto")
+    public ResponseEntity<List<Map<String, Object>>> pareto(
+            @RequestParam String congDoanKey,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate tuNgay,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate denNgay) {
+
+        List<WorkSchedule> wsList;
+        switch (congDoanKey) {
+            case "PCPL1": wsList = wsRepo.findForMachineSummary("PCPL1", List.of("PCPL1")); break;
+            case "PCPL2": wsList = wsRepo.findForMachineSummary("PCPL2", List.of("PCPL2")); break;
+            case "PL":    wsList = wsRepo.findForMachineSummary("PL",    List.of("PL", "PCPL3")); break;
+            default:      wsList = wsRepo.findByCongDoan(congDoanKey); break;
+        }
+        Map<Long, WorkSchedule> wsMap = wsList.stream()
+                .collect(Collectors.toMap(WorkSchedule::getId, w -> w, (a, b) -> a));
+        if (wsMap.isEmpty()) return ResponseEntity.ok(List.of());
+
+        Map<String, String> maMayMap = new HashMap<>();
+        phongRepo.findAllSorted().forEach(p -> {
+            if (p.getMaMay() != null) maMayMap.put(p.getTen(), p.getMaMay());
+        });
+
+        List<MachineRuntimeLog> logs = repo.findForSummary(new ArrayList<>(wsMap.keySet()), tuNgay, denNgay);
+
+        // Aggregate: key = tenMay + § + lyDo, value = [count, totalMinutes]
+        Map<String, long[]> groups = new LinkedHashMap<>();
+        long totalDownMin = 0;
+
+        for (MachineRuntimeLog log : logs) {
+            if (!"Dừng máy".equals(log.getTrangThai())) continue;
+            if (log.getTuGio() == null || log.getDenGio() == null) continue;
+            int s = toMin(log.getTuGio()), e = toMin(log.getDenGio());
+            if (e <= s) continue;
+            int dur = e - s;
+            totalDownMin += dur;
+            WorkSchedule ws = wsMap.get(log.getWorkScheduleId());
+            if (ws == null) continue;
+            String tenMay = ws.getPhongThucHien() != null && !ws.getPhongThucHien().isBlank()
+                    ? ws.getPhongThucHien() : "(Chưa chọn)";
+            String lyDo = log.getLyDo() != null && !log.getLyDo().isBlank() ? log.getLyDo() : "Không rõ";
+            long[] g = groups.computeIfAbsent(tenMay + "§" + lyDo, k -> new long[]{0, 0});
+            g[0]++;
+            g[1] += dur;
+        }
+
+        long days = denNgay.toEpochDay() - tuNgay.toEpochDay() + 1;
+        double weeks = Math.max(1.0, days / 7.0);
+        final long totalMin = totalDownMin;
+
+        List<Map.Entry<String, long[]>> sorted = new ArrayList<>(groups.entrySet());
+        sorted.sort((a, b) -> Long.compare(b.getValue()[1], a.getValue()[1]));
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        int stt = 1;
+        for (Map.Entry<String, long[]> entry : sorted) {
+            String[] parts = entry.getKey().split("§", 2);
+            String tenMay = parts[0];
+            String lyDo = parts.length > 1 ? parts[1] : "Không rõ";
+            long cnt = entry.getValue()[0];
+            long min = entry.getValue()[1];
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("stt", stt++);
+            row.put("tenMay", tenMay);
+            row.put("maMay", maMayMap.getOrDefault(tenMay, ""));
+            row.put("lyDo", lyDo);
+            row.put("soLanDung", cnt);
+            row.put("tongGioDung", Math.round(min / 60.0 * 10) / 10.0);
+            row.put("phanTram", totalMin > 0 ? Math.round(min * 1000.0 / totalMin) / 10.0 : 0.0);
+            row.put("tanSuat", Math.round(cnt * 10.0 / weeks) / 10.0);
+            result.add(row);
+        }
+        return ResponseEntity.ok(result);
+    }
+
     private int toMin(String t) {
         String[] parts = t.split(":");
         return Integer.parseInt(parts[0]) * 60 + Integer.parseInt(parts[1]);

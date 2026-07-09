@@ -4028,6 +4028,11 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const [machineADetailLogs, setMachineADetailLogs] = useState([])
   const [machineADetailLoading, setMachineADetailLoading] = useState(false)
   const [machineADetailSaving, setMachineADetailSaving] = useState(false)
+  const [machineAInnerTab, setMachineAInnerTab] = useState('summary')
+  const [machineSummaryData, setMachineSummaryData] = useState([])
+  const [machineSummaryLoading, setMachineSummaryLoading] = useState(false)
+  const [machineParetoData, setMachineParetoData] = useState([])
+  const [machineParetoLoading, setMachineParetoLoading] = useState(false)
   const PREDEFINED_REASONS_A = ['Chờ nguyên liệu', 'Hỏng máy', 'Chuyển đổi mã', 'Vệ sinh / bảo trì']
   const openMachineADetail = async (row) => {
     setMachineADetailRow(row)
@@ -4086,6 +4091,24 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       .catch(() => message.error('Không thể tải dữ liệu chỉ số A'))
       .finally(() => setMachineALoading(false))
   }, [innerTab, filters.dateRange, machineAVersion]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load 6-month summary + pareto khi ở tab Chỉ số A
+  useEffect(() => {
+    if (innerTab !== 'machine_a') return
+    const today = dayjs()
+    const tuNgay = today.subtract(179, 'day').format('YYYY-MM-DD')
+    const denNgay = today.format('YYYY-MM-DD')
+    setMachineSummaryLoading(true)
+    setMachineParetoLoading(true)
+    api.get('/machine-runtime/daily-summary', { params: { congDoanKey: congDoan, tuNgay, denNgay } })
+      .then(r => setMachineSummaryData(r.data))
+      .catch(() => {})
+      .finally(() => setMachineSummaryLoading(false))
+    api.get('/machine-runtime/pareto', { params: { congDoanKey: congDoan, tuNgay, denNgay } })
+      .then(r => setMachineParetoData(r.data))
+      .catch(() => {})
+      .finally(() => setMachineParetoLoading(false))
+  }, [innerTab, congDoan, machineAVersion]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch employees cho tab Không SX khi cần
   useEffect(() => {
@@ -5317,17 +5340,9 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         const tenTo = congDoan === 'BBC1' ? 'BBC1' : congDoan === 'DG' ? 'ĐG' : congDoan === 'CC' ? 'CC' : `Tổ ${congDoan}`
         const NCOLS = ths.length
         const thBase = { padding: '6px 8px', textAlign: 'center', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 11, letterSpacing: 0.5, color: '#fff' }
-        const doRefresh = () => {
-          const tuNgay = filters.dateRange?.[0]?.format('YYYY-MM-DD') || dayjs().startOf('month').format('YYYY-MM-DD')
-          const denNgay = filters.dateRange?.[1]?.format('YYYY-MM-DD') || dayjs().endOf('month').format('YYYY-MM-DD')
-          setMachineALoading(true)
-          api.get('/machine-runtime/daily-summary', { params: { congDoanKey: congDoan, tuNgay, denNgay } })
-            .then(r => setMachineAData(r.data))
-            .catch(() => message.error('Không thể tải'))
-            .finally(() => setMachineALoading(false))
-        }
+        const doRefresh = () => setMachineAVersion(v => v + 1)
 
-        // Group rows by tenMay, preserving first-seen order
+        // Group machineAData by machine (for per-machine tabs)
         const machineOrder = []
         const machineMap = {}
         machineAData.forEach(row => {
@@ -5335,90 +5350,241 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
           machineMap[row.tenMay].push(row)
         })
 
-        const renderMachineTable = (tenMay, rows, isFirst) => {
-          // Re-number rows per machine table
-          return (
-            <table key={tenMay} style={{ borderCollapse: 'collapse', fontSize: 12, width: '100%', tableLayout: 'fixed', marginBottom: 20 }}>
-              <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
-                <tr>
-                  <th colSpan={NCOLS} style={{ background: '#1e3a5f', color: '#fff', padding: '8px 12px', border: '1px solid #4a6fa5', fontWeight: 800, fontSize: 13, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span>Biểu mẫu theo dõi chỉ số A (Availability) – {tenTo} &nbsp;·&nbsp; {tenMay}</span>
-                      {isFirst && (
-                        <button onClick={doRefresh} style={{ border: '1px solid #93c5fd', background: 'rgba(255,255,255,0.12)', color: '#dbeafe', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 600, flexShrink: 0 }}>↺ Làm mới</button>
-                      )}
-                    </div>
-                  </th>
-                </tr>
-                <tr>
-                  <th colSpan={NCOLS} style={{ background: '#2d4f7c', color: '#dbeafe', padding: '4px 12px', textAlign: 'center', border: '1px solid #4a6fa5', fontWeight: 400, fontSize: 11, fontStyle: 'italic' }}>
-                    Availability = Giờ chạy thực tế / Tổng giờ kế hoạch &nbsp;·&nbsp; Mục tiêu ≥ 90% &nbsp;·&nbsp; Đơn vị: 2 ca × 8h = 16h/ngày &nbsp;·&nbsp; {year}
-                  </th>
-                </tr>
-                <tr>
-                  <th colSpan={5} style={{ ...thBase, background: '#1e3a5f' }}>THÔNG TIN MÁY</th>
-                  <th colSpan={3} style={{ ...thBase, background: '#166534' }}>GIỜ VẬN HÀNH (h)</th>
-                  <th colSpan={1} style={{ ...thBase, background: '#b45309' }}>AVAILABILITY</th>
-                  <th colSpan={3} style={{ ...thBase, background: '#991b1b' }}>SỰ CỐ / DỪNG MÁY</th>
-                </tr>
-                <tr>
-                  {ths.map(h => (
-                    <th key={h.label} style={{ background: '#f1f5f9', color: '#1e293b', padding: '6px 6px', border: '1px solid #94a3b8', fontWeight: 700, fontSize: 11, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {h.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, idx) => {
-                  const avail = row.availPct
-                  const availColor = avail == null ? '#6b7280' : avail >= 90 ? '#16a34a' : '#dc2626'
-                  const availBg = avail == null ? 'transparent' : avail >= 90 ? '#f0fdf4' : '#fef2f2'
-                  const rowBg = idx % 2 === 0 ? '#fff' : '#f8fafc'
-                  const td = (extra = {}) => ({ padding: '6px 6px', border: '1px solid #e2e8f0', background: rowBg, overflow: 'hidden', textOverflow: 'ellipsis', ...extra })
-                  return (
-                    <tr key={idx} onClick={() => openMachineADetail(row)}
-                      style={{ cursor: 'pointer' }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
-                      onMouseLeave={e => e.currentTarget.style.background = ''}
-                    >
-                      <td style={td({ textAlign: 'center', color: '#94a3b8', fontSize: 11 })}>{idx + 1}</td>
-                      <td style={td({ whiteSpace: 'nowrap', fontWeight: 500 })}>
-                        {dayjs(row.ngay).isValid() ? dayjs(row.ngay).format('DD/MM/YYYY') : row.ngay}
-                      </td>
-                      <td style={td({ fontWeight: 600 })}>{row.tenMay}</td>
-                      <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#0369a1', fontWeight: 600 })}>{row.maMay || '—'}</td>
-                      <td style={td({ textAlign: 'center' })}>{row.toNhom || '—'}</td>
-                      <td style={td({ textAlign: 'center', fontWeight: 600 })}>{row.gioKH}</td>
-                      <td style={td({ textAlign: 'center', color: '#16a34a', fontWeight: 700 })}>{row.gioChay}</td>
-                      <td style={td({ textAlign: 'center', color: row.gioDung > 0 ? '#dc2626' : '#6b7280', fontWeight: 700 })}>{row.gioDung}</td>
-                      <td style={td({ textAlign: 'center', fontWeight: 800, fontSize: 13, color: availColor, background: availBg })}>
-                        {avail != null ? `${avail}%` : '—'}
-                      </td>
-                      <td style={td({ textAlign: 'center', color: row.soLanDung > 0 ? '#dc2626' : '#6b7280', fontWeight: row.soLanDung > 0 ? 700 : 400 })}>{row.soLanDung}</td>
-                      <td style={td({ fontSize: 11, color: '#4b5563' })}>{row.lyDoDung || '—'}</td>
-                      <td style={td({ fontSize: 11, color: '#9ca3af' })}>—</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          )
+        // Determine active inner tab (fallback to summary if machine not in current filtered data)
+        const activeTab = machineAInnerTab === 'summary' || machineOrder.includes(machineAInnerTab)
+          ? machineAInnerTab : 'summary'
+
+        // Color helpers for A%
+        const aColor = v => v == null ? '#9ca3af' : v >= 90 ? '#16a34a' : v >= 70 ? '#d97706' : '#dc2626'
+        const aBg   = v => v == null ? 'transparent' : v >= 90 ? '#f0fdf4' : v >= 70 ? '#fffbeb' : '#fef2f2'
+
+        // A% computation from 6-month summary data
+        const computeAPct = (tenMay, fromStr) => {
+          const rows = machineSummaryData.filter(r => r.tenMay === tenMay && r.ngay >= fromStr)
+          const run = rows.reduce((s, r) => s + (r.gioChay || 0), 0)
+          const kh  = rows.reduce((s, r) => s + (r.gioKH  || 0), 0)
+          return kh > 0 ? Math.round(run * 1000 / kh) / 10 : null
         }
+
+        // Unique machines from 6-month summary data
+        const sumMachines = [...new Map(machineSummaryData.map(r => [r.tenMay, { tenMay: r.tenMay, maMay: r.maMay }])).values()]
+
+        const today = dayjs()
+        const periods = [
+          { key: 'week',  label: 'Tuần (7 ngày)',  from: today.subtract(6,   'day').format('YYYY-MM-DD') },
+          { key: 'month', label: 'Tháng (30 ngày)', from: today.subtract(29,  'day').format('YYYY-MM-DD') },
+          { key: 'q3',    label: '3 Tháng',          from: today.subtract(89,  'day').format('YYYY-MM-DD') },
+          { key: 'half',  label: '6 Tháng',          from: today.subtract(179, 'day').format('YYYY-MM-DD') },
+        ]
+
+        // Pareto with cumulative %
+        let cumul = 0
+        const paretoRows = machineParetoData.map(r => {
+          cumul += (r.phanTram || 0)
+          return { ...r, cumul: Math.round(cumul * 10) / 10 }
+        })
+
+        const tabBtn = (active) => ({
+          background: active ? '#1e3a5f' : 'transparent',
+          color: active ? '#fff' : '#475569',
+          border: 'none', borderBottom: active ? '2px solid #1e3a5f' : '2px solid transparent',
+          padding: '8px 14px', cursor: 'pointer', fontSize: 12,
+          fontWeight: active ? 700 : 400, whiteSpace: 'nowrap', marginBottom: -2,
+        })
+
+        // Per-machine day-by-day table
+        const renderMachineTable = (tenMay, rows) => (
+          <table style={{ borderCollapse: 'collapse', fontSize: 12, width: '100%', tableLayout: 'fixed' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+              <tr>
+                <th colSpan={NCOLS} style={{ background: '#1e3a5f', color: '#fff', padding: '8px 12px', border: '1px solid #4a6fa5', fontWeight: 800, fontSize: 13, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                  BIỂU MẪU THEO DÕI CHỈ SỐ A (AVAILABILITY) – {tenTo} &nbsp;·&nbsp; {tenMay}
+                </th>
+              </tr>
+              <tr>
+                <th colSpan={NCOLS} style={{ background: '#2d4f7c', color: '#dbeafe', padding: '4px 12px', textAlign: 'center', border: '1px solid #4a6fa5', fontWeight: 400, fontSize: 11, fontStyle: 'italic' }}>
+                  Availability = Giờ chạy thực tế / Tổng giờ kế hoạch &nbsp;·&nbsp; Mục tiêu ≥ 90% &nbsp;·&nbsp; 2 ca × 8h = 16h/ngày &nbsp;·&nbsp; {year}
+                </th>
+              </tr>
+              <tr>
+                <th colSpan={5} style={{ ...thBase, background: '#1e3a5f' }}>THÔNG TIN MÁY</th>
+                <th colSpan={3} style={{ ...thBase, background: '#166534' }}>GIỜ VẬN HÀNH (h)</th>
+                <th colSpan={1} style={{ ...thBase, background: '#b45309' }}>AVAILABILITY</th>
+                <th colSpan={3} style={{ ...thBase, background: '#991b1b' }}>SỰ CỐ / DỪNG MÁY</th>
+              </tr>
+              <tr>
+                {ths.map(h => (
+                  <th key={h.label} style={{ background: '#f1f5f9', color: '#1e293b', padding: '6px 6px', border: '1px solid #94a3b8', fontWeight: 700, fontSize: 11, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {h.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr><td colSpan={NCOLS} style={{ textAlign: 'center', padding: '32px 8px', color: '#9ca3af', border: '1px solid #e2e8f0' }}>
+                  Không có dữ liệu trong khoảng thời gian đã chọn.
+                </td></tr>
+              ) : rows.map((row, idx) => {
+                const avail = row.availPct
+                const rowBg = idx % 2 === 0 ? '#fff' : '#f8fafc'
+                const td = (extra = {}) => ({ padding: '6px 6px', border: '1px solid #e2e8f0', background: rowBg, overflow: 'hidden', textOverflow: 'ellipsis', ...extra })
+                return (
+                  <tr key={idx} onClick={() => openMachineADetail(row)}
+                    style={{ cursor: 'pointer' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
+                    onMouseLeave={e => e.currentTarget.style.background = ''}
+                  >
+                    <td style={td({ textAlign: 'center', color: '#94a3b8', fontSize: 11 })}>{idx + 1}</td>
+                    <td style={td({ whiteSpace: 'nowrap', fontWeight: 500 })}>{dayjs(row.ngay).isValid() ? dayjs(row.ngay).format('DD/MM/YYYY') : row.ngay}</td>
+                    <td style={td({ fontWeight: 600 })}>{row.tenMay}</td>
+                    <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#0369a1', fontWeight: 600 })}>{row.maMay || '—'}</td>
+                    <td style={td({ textAlign: 'center' })}>{row.toNhom || '—'}</td>
+                    <td style={td({ textAlign: 'center', fontWeight: 600 })}>{row.gioKH}</td>
+                    <td style={td({ textAlign: 'center', color: '#16a34a', fontWeight: 700 })}>{row.gioChay}</td>
+                    <td style={td({ textAlign: 'center', color: row.gioDung > 0 ? '#dc2626' : '#6b7280', fontWeight: 700 })}>{row.gioDung}</td>
+                    <td style={td({ textAlign: 'center', fontWeight: 800, fontSize: 13, color: aColor(avail), background: aBg(avail) })}>
+                      {avail != null ? `${avail}%` : '—'}
+                    </td>
+                    <td style={td({ textAlign: 'center', color: row.soLanDung > 0 ? '#dc2626' : '#6b7280', fontWeight: row.soLanDung > 0 ? 700 : 400 })}>{row.soLanDung}</td>
+                    <td style={td({ fontSize: 11, color: '#4b5563' })}>{row.lyDoDung || '—'}</td>
+                    <td style={td({ fontSize: 11, color: '#9ca3af' })}>—</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )
 
         return (
           <div style={{ padding: 0 }}>
-            {machineALoading ? (
-              <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>Đang tải...</div>
-            ) : (
-              <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 210px)' }}>
-                {machineAData.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '32px 8px', color: '#9ca3af', fontSize: 13 }}>
-                    Không có dữ liệu thời gian chạy máy trong khoảng thời gian đã chọn.<br />
-                    <span style={{ fontSize: 12 }}>Hãy nhập dữ liệu vào mục "Thời gian chạy máy" trong chi tiết lịch sản xuất.</span>
-                  </div>
-                ) : machineOrder.map((tenMay, mi) => renderMachineTable(tenMay, machineMap[tenMay], mi === 0))}
+            {/* Inner tab bar */}
+            <div style={{ display: 'flex', alignItems: 'center', borderBottom: '2px solid #e2e8f0', background: '#f8fafc', padding: '0 12px', overflowX: 'auto' }}>
+              <button style={tabBtn(activeTab === 'summary')} onClick={() => setMachineAInnerTab('summary')}>📊 Tổng hợp</button>
+              {machineOrder.map(m => (
+                <button key={m} style={tabBtn(activeTab === m)} onClick={() => setMachineAInnerTab(m)}>{m}</button>
+              ))}
+              <div style={{ flex: 1 }} />
+              <button onClick={doRefresh} style={{ border: '1px solid #d97706', background: '#fffbeb', color: '#b45309', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12, flexShrink: 0, marginLeft: 8 }}>↺ Làm mới</button>
+            </div>
+
+            {/* ── Tab Tổng hợp ── */}
+            {activeTab === 'summary' && (
+              <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 230px)' }}>
+                {/* A% theo giai đoạn */}
+                {machineSummaryLoading ? (
+                  <div style={{ textAlign: 'center', padding: 30, color: '#9ca3af' }}>Đang tải dữ liệu tổng hợp...</div>
+                ) : (
+                  <table style={{ borderCollapse: 'collapse', fontSize: 12, width: '100%' }}>
+                    <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+                      <tr>
+                        <th colSpan={2 + periods.length} style={{ background: '#1e3a5f', color: '#fff', padding: '8px 12px', border: '1px solid #4a6fa5', fontWeight: 800, fontSize: 13, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                          TỔNG HỢP CHỈ SỐ A (AVAILABILITY) – {tenTo}
+                        </th>
+                      </tr>
+                      <tr>
+                        <th colSpan={2 + periods.length} style={{ background: '#2d4f7c', color: '#dbeafe', padding: '4px 12px', textAlign: 'center', border: '1px solid #4a6fa5', fontWeight: 400, fontSize: 11, fontStyle: 'italic' }}>
+                          Công thức: Tổng giờ chạy thực tế / Tổng giờ kế hoạch &nbsp;·&nbsp; Mục tiêu ≥ 90% &nbsp;·&nbsp; Dữ liệu 6 tháng gần nhất
+                        </th>
+                      </tr>
+                      <tr>
+                        <th style={{ background: '#1e3a5f', color: '#fff', padding: '7px 10px', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 12, textAlign: 'left' }}>Tên máy</th>
+                        <th style={{ background: '#1e3a5f', color: '#fff', padding: '7px 10px', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 12, textAlign: 'center', width: 90 }}>Mã máy</th>
+                        {periods.map(p => (
+                          <th key={p.key} style={{ background: '#b45309', color: '#fff', padding: '7px 10px', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 12, textAlign: 'center' }}>{p.label}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sumMachines.length === 0 ? (
+                        <tr><td colSpan={2 + periods.length} style={{ textAlign: 'center', padding: '32px 8px', color: '#9ca3af', fontSize: 13, border: '1px solid #e2e8f0' }}>
+                          Không có dữ liệu trong 6 tháng gần nhất. Hãy nhập dữ liệu thời gian chạy máy.
+                        </td></tr>
+                      ) : sumMachines.map((m, idx) => (
+                        <tr key={m.tenMay} style={{ background: idx % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                          <td style={{ padding: '8px 10px', border: '1px solid #e2e8f0', fontWeight: 600, fontSize: 13 }}>{m.tenMay}</td>
+                          <td style={{ padding: '8px 10px', border: '1px solid #e2e8f0', textAlign: 'center', fontFamily: 'monospace', color: '#0369a1', fontWeight: 600 }}>{m.maMay || '—'}</td>
+                          {periods.map(p => {
+                            const v = computeAPct(m.tenMay, p.from)
+                            return (
+                              <td key={p.key} style={{ padding: '8px 10px', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 800, fontSize: 14, color: aColor(v), background: aBg(v) }}>
+                                {v != null ? `${v}%` : '—'}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                <div style={{ height: 24 }} />
+
+                {/* Pareto analysis */}
+                {machineParetoLoading ? (
+                  <div style={{ textAlign: 'center', padding: 20, color: '#9ca3af' }}>Đang tải phân tích Pareto...</div>
+                ) : (
+                  <table style={{ borderCollapse: 'collapse', fontSize: 12, width: '100%' }}>
+                    <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+                      <tr>
+                        <th colSpan={9} style={{ background: '#7f1d1d', color: '#fff', padding: '8px 12px', border: '1px solid #991b1b', fontWeight: 800, fontSize: 13, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                          PHÂN TÍCH NGUYÊN NHÂN DỪNG MÁY – PARETO ANALYSIS
+                        </th>
+                      </tr>
+                      <tr>
+                        <th colSpan={9} style={{ background: '#991b1b', color: '#fecaca', padding: '4px 12px', textAlign: 'center', border: '1px solid #b91c1c', fontWeight: 400, fontSize: 11, fontStyle: 'italic' }}>
+                          Dữ liệu 6 tháng gần nhất &nbsp;·&nbsp; Phân tích 80/20 để tập trung Kaizen đúng điểm &nbsp;·&nbsp; Hàng cam = TOP nguyên nhân (cộng dồn ≤ 80%)
+                        </th>
+                      </tr>
+                      <tr>
+                        {['STT','Tên máy','Mã máy','Nguyên nhân dừng máy','Số lần dừng','Tổng giờ dừng (h)','% Tổng giờ dừng','Cộng dồn %','Tần suất (lần/tuần)'].map(h => (
+                          <th key={h} style={{ background: '#fef2f2', color: '#7f1d1d', padding: '6px 8px', border: '1px solid #fca5a5', fontWeight: 700, fontSize: 11, textAlign: 'center', whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paretoRows.length === 0 ? (
+                        <tr><td colSpan={9} style={{ textAlign: 'center', padding: '32px 8px', color: '#9ca3af', fontSize: 13, border: '1px solid #e2e8f0' }}>
+                          Không có dữ liệu dừng máy trong 6 tháng gần nhất.
+                        </td></tr>
+                      ) : paretoRows.map((row, idx) => {
+                        const isKey = row.cumul <= 80
+                        const bg = isKey ? (idx % 2 === 0 ? '#fff7ed' : '#ffedd5') : (idx % 2 === 0 ? '#fff' : '#f8fafc')
+                        const td = (extra = {}) => ({ padding: '6px 8px', border: '1px solid #e2e8f0', background: bg, ...extra })
+                        return (
+                          <tr key={idx}>
+                            <td style={td({ textAlign: 'center', color: '#94a3b8', fontSize: 11 })}>{row.stt}</td>
+                            <td style={td({ fontWeight: isKey ? 600 : 400 })}>{row.tenMay}</td>
+                            <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#0369a1', fontWeight: 600 })}>{row.maMay || '—'}</td>
+                            <td style={td({ fontWeight: isKey ? 700 : 400, color: isKey ? '#b45309' : '#374151' })}>{row.lyDo}</td>
+                            <td style={td({ textAlign: 'center', fontWeight: 700 })}>{row.soLanDung}</td>
+                            <td style={td({ textAlign: 'center', fontWeight: 700, color: '#dc2626' })}>{row.tongGioDung}</td>
+                            <td style={td({ textAlign: 'center', fontWeight: 700 })}>{row.phanTram}%</td>
+                            <td style={td({ textAlign: 'center', fontWeight: isKey ? 800 : 400, color: isKey ? '#dc2626' : '#6b7280' })}>{row.cumul}%</td>
+                            <td style={td({ textAlign: 'center' })}>{row.tanSuat}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                )}
+                <div style={{ height: 16 }} />
               </div>
+            )}
+
+            {/* ── Per-machine tabs ── */}
+            {activeTab !== 'summary' && (
+              machineALoading ? (
+                <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>Đang tải...</div>
+              ) : (
+                <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 230px)' }}>
+                  {(machineMap[activeTab] || []).length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '32px 8px', color: '#9ca3af', fontSize: 13 }}>
+                      Không có dữ liệu. Hãy thay đổi bộ lọc ngày hoặc nhấn ↺ Làm mới.
+                    </div>
+                  ) : renderMachineTable(activeTab, machineMap[activeTab] || [])}
+                </div>
+              )
             )}
 
             {/* Modal chi tiết / chỉnh sửa runtime logs */}
