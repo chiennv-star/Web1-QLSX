@@ -8,7 +8,7 @@ import {
   PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined,
   ReloadOutlined, UserOutlined, AppstoreOutlined, TeamOutlined, SafetyOutlined,
   FileExcelOutlined, UploadOutlined, CloseCircleOutlined, EyeOutlined, BarChartOutlined,
-  HistoryOutlined, HomeOutlined,
+  HistoryOutlined, HomeOutlined, InfoCircleOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import api from '../api/axios'
@@ -1704,7 +1704,29 @@ function ProductMasterTab() {
           {/* ── Năng suất PC theo số mẻ ── */}
           <div style={{ marginBottom: 12, border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
             <div style={{ background: '#e6f4ff', padding: '6px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #bae0ff' }}>
-              <span style={{ fontWeight: 700, fontSize: 12, color: '#1677ff' }}>⚡ Năng suất PC theo số mẻ (số giờ)</span>
+              <span style={{ fontWeight: 700, fontSize: 12, color: '#1677ff', display: 'flex', alignItems: 'center', gap: 5 }}>
+                ⚡ Năng suất PC theo số mẻ (số giờ)
+                <Tooltip
+                  title={
+                    <div style={{ fontSize: 12, lineHeight: '1.6' }}>
+                      <div style={{ fontWeight: 700, marginBottom: 4 }}>Tham khảo thời gian chuẩn:</div>
+                      <div style={{ marginBottom: 6 }}>
+                        <span style={{ fontWeight: 600, color: '#91caff' }}>PCPL2 – Nhũ Tương:</span><br />
+                        1 mẻ = 3h &nbsp;|&nbsp; 2 mẻ = 6h &nbsp;|&nbsp; 3 mẻ = 9h
+                      </div>
+                      <div>
+                        <span style={{ fontWeight: 600, color: '#91caff' }}>Gel (mọi tổ):</span><br />
+                        1 mẻ = 2,5h &nbsp;|&nbsp; 2 mẻ = 5h &nbsp;|&nbsp; 3 mẻ = 7,5h<br />
+                        4 mẻ = 10h &nbsp;|&nbsp; 5 mẻ = 12,5h
+                      </div>
+                    </div>
+                  }
+                  overlayStyle={{ maxWidth: 280 }}
+                  placement="right"
+                >
+                  <InfoCircleOutlined style={{ fontSize: 13, color: '#1677ff', cursor: 'help' }} />
+                </Tooltip>
+              </span>
               <Button size="small" icon={<PlusOutlined />} type="link"
                 onClick={() => setNangSuatPcMeRows(prev => [...prev, { soMe: (prev[prev.length - 1]?.soMe || 0) + 1, nangSuat: null }])}>
                 Thêm mẻ
