@@ -5554,7 +5554,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                       ))}
                     </tbody>
                     <tfoot>
-                      <tr style={{ borderTop: '2px solid #1e3a5f' }}>
+                      <tr>
                         <td colSpan={2} style={{ padding: '10px 12px', background: '#1e3a5f', border: '1px solid #1e3a5f', color: '#fff', fontWeight: 700, fontSize: 13, letterSpacing: 0.3 }}>
                           HIỆU SUẤT TỔNG THỂ – {tenTo}
                         </td>
