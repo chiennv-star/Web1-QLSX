@@ -6407,19 +6407,20 @@ function DashboardGDTab() {
       <Spin spinning={loading}>
 
         {/* ── KPI Cards ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 12 }}>
           {[
             { label: 'SL ĐÓNG GÓI', val: fmtSL(kpi.slDg), unit: 'sản phẩm (ĐG)', icon: '📦', grad: 'linear-gradient(135deg,#1e3a8a,#1d4ed8)', acc: '#93c5fd' },
             { label: 'TỔNG CÔNG',       val: fmtCong(kpi.tongCong, 2), unit: 'công', icon: '👷', grad: 'linear-gradient(135deg,#064e3b,#059669)', acc: '#6ee7b7' },
             { label: 'NĂNG SUẤT TB',    val: kpi.nsTb > 0 ? kpi.nsTb.toLocaleString('vi-VN',{maximumFractionDigits:1}) : '—', unit: 'SP / công', icon: '⚡', grad: 'linear-gradient(135deg,#78350f,#d97706)', acc: '#fde68a' },
             { label: 'SỐ NGÀY SX',      val: kpi.soNgay, unit: 'ngày', icon: '📅', grad: 'linear-gradient(135deg,#3b0764,#7c3aed)', acc: '#d8b4fe' },
-            { label: 'SỐ CA SX',        val: kpi.soCa,   unit: 'ca',   icon: '🔄', grad: 'linear-gradient(135deg,#7f1d1d,#dc2626)', acc: '#fca5a5' },
           ].map(c => (
-            <div key={c.label} style={{ background: c.grad, borderRadius: 12, padding: '16px 18px', boxShadow: '0 4px 16px rgba(0,0,0,0.18)', color: '#fff' }}>
-              <div style={{ fontSize: 24, marginBottom: 6 }}>{c.icon}</div>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: c.acc, textTransform: 'uppercase', marginBottom: 4 }}>{c.label}</div>
-              <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1 }}>{c.val}</div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 4 }}>{c.unit}</div>
+            <div key={c.label} style={{ background: c.grad, borderRadius: 8, padding: '8px 14px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', color: '#fff', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ fontSize: 20, lineHeight: 1 }}>{c.icon}</div>
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.2, color: c.acc, textTransform: 'uppercase', marginBottom: 1 }}>{c.label}</div>
+                <div style={{ fontSize: 20, fontWeight: 900, lineHeight: 1.1 }}>{c.val}</div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>{c.unit}</div>
+              </div>
             </div>
           ))}
         </div>
