@@ -1418,11 +1418,32 @@ function ProductMasterTab() {
       nangSuatPl:   r.nangSuatPl   != null ? Number(r.nangSuatPl)   : null,
       nangSuatBbc1: r.nangSuatBbc1 != null ? Number(r.nangSuatBbc1) : null,
     })
-    // Parse nangSuatPcMe JSON
+    // Parse nangSuatPcMe JSON; nếu chưa có dữ liệu → điền mặc định theo loại SP
+    const getDefaultNsRows = (loaiSp, toNhom) => {
+      const loai = (loaiSp || '').toLowerCase()
+      const nhom = (toNhom || '').toUpperCase()
+      if (loai.includes('gel')) {
+        return [
+          { soMe: 1, nangSuat: 2.5 },
+          { soMe: 2, nangSuat: 5 },
+          { soMe: 3, nangSuat: 7.5 },
+          { soMe: 4, nangSuat: 10 },
+          { soMe: 5, nangSuat: 12.5 },
+        ]
+      }
+      if (loai.includes('nhũ tương') && nhom === 'PCPL2') {
+        return [
+          { soMe: 1, nangSuat: 3 },
+          { soMe: 2, nangSuat: 6 },
+          { soMe: 3, nangSuat: 9 },
+        ]
+      }
+      return DEFAULT_NS_ROWS
+    }
     try {
       const rows = JSON.parse(r.nangSuatPcMe || '[]')
-      setNangSuatPcMeRows(rows.length > 0 ? rows.map(x => ({ soMe: x.soMe, nangSuat: x.nangSuat != null ? Number(x.nangSuat) : null })) : DEFAULT_NS_ROWS)
-    } catch { setNangSuatPcMeRows(DEFAULT_NS_ROWS) }
+      setNangSuatPcMeRows(rows.length > 0 ? rows.map(x => ({ soMe: x.soMe, nangSuat: x.nangSuat != null ? Number(x.nangSuat) : null })) : getDefaultNsRows(r.loaiSanPham, r.toNhomPcpl))
+    } catch { setNangSuatPcMeRows(getDefaultNsRows(r.loaiSanPham, r.toNhomPcpl)) }
     setHistory([])
     setModalOpen(true)
     // Load history async
