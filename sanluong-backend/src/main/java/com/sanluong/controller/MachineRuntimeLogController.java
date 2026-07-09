@@ -131,8 +131,8 @@ public class MachineRuntimeLogController {
 
             double gioChay = Math.round(runMin / 60.0 * 100.0) / 100.0;
             double gioDung = Math.round(downMin / 60.0 * 100.0) / 100.0;
-            long totalMin = runMin + downMin;
-            Double avail = totalMin > 0 ? Math.round(runMin * 1000.0 / totalMin) / 10.0 : null;
+            long plannedMin = 16 * 60; // 16h/ngày kế hoạch (2 ca × 8h)
+            Double avail = Math.round(runMin * 1000.0 / plannedMin) / 10.0;
             long soLanDung = dayLogs.stream().filter(l -> "Dừng máy".equals(l.getTrangThai())).count();
 
             Map<String, Object> row = new LinkedHashMap<>();
