@@ -151,6 +151,7 @@ public class MachineRuntimeLogController {
             row.put("availPct", avail);
             row.put("soLanDung", soLanDung);
             row.put("lyDoDung", String.join("; ", seenReasons));
+            row.put("workScheduleId", dayLogs.stream().map(MachineRuntimeLog::getWorkScheduleId).findFirst().orElse(null));
             result.add(row);
         }
 

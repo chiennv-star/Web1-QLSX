@@ -4024,6 +4024,39 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const [machineAData, setMachineAData] = useState([])
   const [machineALoading, setMachineALoading] = useState(false)
   const [machineAVersion, setMachineAVersion] = useState(0)
+  const [machineADetailRow, setMachineADetailRow] = useState(null)
+  const [machineADetailLogs, setMachineADetailLogs] = useState([])
+  const [machineADetailLoading, setMachineADetailLoading] = useState(false)
+  const [machineADetailSaving, setMachineADetailSaving] = useState(false)
+  const PREDEFINED_REASONS_A = ['Chờ nguyên liệu', 'Hỏng máy', 'Chuyển đổi mã', 'Vệ sinh / bảo trì']
+  const openMachineADetail = async (row) => {
+    setMachineADetailRow(row)
+    setMachineADetailLogs([])
+    if (!row.workScheduleId) return
+    setMachineADetailLoading(true)
+    try {
+      const { data } = await api.get('/machine-runtime', { params: { workScheduleId: row.workScheduleId, ngay: row.ngay } })
+      setMachineADetailLogs(data.map(r => ({ ...r, _id: r.id || Math.random() })))
+    } catch { message.error('Không tải được dữ liệu') }
+    finally { setMachineADetailLoading(false) }
+  }
+  const updateALog = (_id, patch) => setMachineADetailLogs(prev => prev.map(r => r._id === _id ? { ...r, ...patch } : r))
+  const removeALog = (_id) => setMachineADetailLogs(prev => prev.filter(r => r._id !== _id))
+  const addALog = () => setMachineADetailLogs(prev => [...prev, { _id: Date.now(), id: null, tuGio: '', denGio: '', trangThai: 'Chạy máy', lyDo: '', ghiChu: '' }])
+  const saveMachineADetail = async () => {
+    if (!machineADetailRow?.workScheduleId) return
+    setMachineADetailSaving(true)
+    try {
+      await api.post('/machine-runtime/bulk',
+        machineADetailLogs.map(({ tuGio, denGio, trangThai, lyDo, ghiChu }) => ({ tuGio, denGio, trangThai, lyDo: lyDo || null, ghiChu: ghiChu || null })),
+        { params: { workScheduleId: machineADetailRow.workScheduleId, ngay: machineADetailRow.ngay } }
+      )
+      setMachineADetailRow(null)
+      setMachineAVersion(v => v + 1)
+      message.success('Đã lưu thời gian chạy máy')
+    } catch { message.error('Lưu thất bại') }
+    finally { setMachineADetailSaving(false) }
+  }
   useEffect(() => {
     if (innerTab !== 'machine_a') return
     const tuNgay = filters.dateRange?.[0]?.format('YYYY-MM-DD') || dayjs().startOf('month').format('YYYY-MM-DD')
@@ -5284,31 +5317,27 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
               <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>Đang tải...</div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ borderCollapse: 'collapse', fontSize: 12, minWidth: 1100 }}>
+                <table style={{ borderCollapse: 'collapse', fontSize: 12, width: '100%', tableLayout: 'fixed' }}>
                   <thead>
-                    {/* Dòng 1: Tiêu đề biểu mẫu */}
                     <tr>
                       <th colSpan={NCOLS} style={{ background: '#1e3a5f', color: '#fff', padding: '10px 12px', textAlign: 'center', border: '1px solid #4a6fa5', fontWeight: 800, fontSize: 14, letterSpacing: 0.8, textTransform: 'uppercase' }}>
                         Biểu mẫu theo dõi chỉ số A (Availability) – {tenTo}
                       </th>
                     </tr>
-                    {/* Dòng 2: Subtitle */}
                     <tr>
                       <th colSpan={NCOLS} style={{ background: '#2d4f7c', color: '#dbeafe', padding: '5px 12px', textAlign: 'center', border: '1px solid #4a6fa5', fontWeight: 400, fontSize: 11, fontStyle: 'italic' }}>
                         Availability = Giờ chạy thực tế / Tổng giờ kế hoạch &nbsp;·&nbsp; Mục tiêu ≥ 90% &nbsp;·&nbsp; Đơn vị: 2 ca × 8h = 16h/ngày &nbsp;·&nbsp; {year}
                       </th>
                     </tr>
-                    {/* Dòng 3: Nhóm cột */}
                     <tr>
                       <th colSpan={5} style={{ ...thBase, background: '#1e3a5f' }}>THÔNG TIN MÁY</th>
                       <th colSpan={3} style={{ ...thBase, background: '#166534' }}>GIỜ VẬN HÀNH (h)</th>
                       <th colSpan={1} style={{ ...thBase, background: '#b45309' }}>AVAILABILITY</th>
                       <th colSpan={3} style={{ ...thBase, background: '#991b1b' }}>SỰ CỐ / DỪNG MÁY</th>
                     </tr>
-                    {/* Dòng 4: Tên cột */}
                     <tr>
                       {ths.map(h => (
-                        <th key={h.label} style={{ background: '#f1f5f9', color: '#1e293b', padding: '6px 8px', border: '1px solid #94a3b8', fontWeight: 700, fontSize: 11, textAlign: 'center', whiteSpace: 'nowrap', minWidth: h.w }}>
+                        <th key={h.label} style={{ background: '#f1f5f9', color: '#1e293b', padding: '6px 6px', border: '1px solid #94a3b8', fontWeight: 700, fontSize: 11, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {h.label}
                         </th>
                       ))}
@@ -5327,9 +5356,13 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                       const availColor = avail == null ? '#6b7280' : avail >= 90 ? '#16a34a' : '#dc2626'
                       const availBg = avail == null ? 'transparent' : avail >= 90 ? '#f0fdf4' : '#fef2f2'
                       const rowBg = idx % 2 === 0 ? '#fff' : '#f8fafc'
-                      const td = (extra = {}) => ({ padding: '6px 8px', border: '1px solid #e2e8f0', background: rowBg, ...extra })
+                      const td = (extra = {}) => ({ padding: '6px 6px', border: '1px solid #e2e8f0', background: rowBg, overflow: 'hidden', textOverflow: 'ellipsis', ...extra })
                       return (
-                        <tr key={idx}>
+                        <tr key={idx} onClick={() => openMachineADetail(row)}
+                          style={{ cursor: 'pointer' }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
+                          onMouseLeave={e => e.currentTarget.style.background = ''}
+                        >
                           <td style={td({ textAlign: 'center', color: '#94a3b8', fontSize: 11 })}>{row.stt}</td>
                           <td style={td({ whiteSpace: 'nowrap', fontWeight: 500 })}>
                             {dayjs(row.ngay).isValid() ? dayjs(row.ngay).format('DD/MM/YYYY') : row.ngay}
@@ -5353,6 +5386,168 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                 </table>
               </div>
             )}
+
+            {/* Modal chi tiết / chỉnh sửa runtime logs */}
+            <Modal
+              open={machineADetailRow != null}
+              onCancel={() => setMachineADetailRow(null)}
+              footer={null} width={780} destroyOnClose={false}
+              title={null} closable={false}
+              styles={{ body: { padding: 0 } }}
+            >
+              {machineADetailRow && (() => {
+                const dr = machineADetailRow
+                const avail = dr.availPct
+                const availColor = avail == null ? '#6b7280' : avail >= 90 ? '#16a34a' : '#dc2626'
+                const LC = ({ children }) => (
+                  <div style={{ padding: '7px 12px', background: '#f1f5f9', fontWeight: 600, fontSize: 12, color: '#64748b', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0', display: 'flex', alignItems: 'center' }}>{children}</div>
+                )
+                const VC = ({ children }) => (
+                  <div style={{ padding: '6px 12px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', fontSize: 13, minHeight: 36 }}>{children}</div>
+                )
+                return (
+                  <div style={{ borderRadius: 8, overflow: 'hidden' }}>
+                    {/* Header */}
+                    <div style={{ background: '#1e3a5f', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 20 }}>⚙️</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ color: '#fff', fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dr.tenMay}</div>
+                        <div style={{ color: '#93c5fd', fontSize: 11, marginTop: 2, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                          {dr.maMay && <span>Mã: <b>{dr.maMay}</b></span>}
+                          <span>Ngày: <b>{dayjs(dr.ngay).isValid() ? dayjs(dr.ngay).format('DD/MM/YYYY') : dr.ngay}</b></span>
+                          {dr.toNhom && <span>Tổ: <b>{dr.toNhom}</b></span>}
+                        </div>
+                      </div>
+                      <button onClick={() => setMachineADetailRow(null)}
+                        style={{ background: 'none', border: 'none', color: '#93c5fd', cursor: 'pointer', fontSize: 20, padding: 0, lineHeight: 1 }}>✕</button>
+                    </div>
+
+                    {/* Body: 2 cột */}
+                    <div style={{ padding: '16px 20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                      {/* Cột trái: tóm tắt */}
+                      <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden', alignSelf: 'start' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr' }}>
+                          <LC>Mã máy</LC><VC><span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0369a1' }}>{dr.maMay || '—'}</span></VC>
+                          <LC>Tổ / Nhóm</LC><VC>{dr.toNhom || '—'}</VC>
+                          <LC>Giờ KH (h)</LC><VC><strong>{dr.gioKH}</strong></VC>
+                          <LC>Giờ chạy TT (h)</LC><VC><span style={{ color: '#16a34a', fontWeight: 700 }}>{dr.gioChay}</span></VC>
+                          <LC>Giờ dừng (h)</LC><VC><span style={{ color: dr.gioDung > 0 ? '#dc2626' : '#6b7280', fontWeight: 700 }}>{dr.gioDung}</span></VC>
+                          <LC>A (%)</LC><VC><span style={{ fontWeight: 800, fontSize: 15, color: availColor }}>{avail != null ? `${avail}%` : '—'}</span></VC>
+                          <LC>Số lần dừng</LC><VC><span style={{ color: dr.soLanDung > 0 ? '#dc2626' : '#6b7280', fontWeight: 600 }}>{dr.soLanDung}</span></VC>
+                          <LC>Lý do dừng</LC><VC><span style={{ fontSize: 12, color: '#4b5563' }}>{dr.lyDoDung || '—'}</span></VC>
+                        </div>
+                      </div>
+
+                      {/* Cột phải: Ghi chú / CAPA */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, borderLeft: '1px solid #e2e8f0', paddingLeft: 20 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#1e3a5f', textTransform: 'uppercase', letterSpacing: 1, paddingBottom: 8, borderBottom: '2px solid #1e3a5f' }}>
+                          Ghi chú / CAPA
+                        </div>
+                        <textarea
+                          rows={5}
+                          placeholder="Nhập ghi chú hành động khắc phục (CAPA)..."
+                          style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 6, padding: '8px 10px', fontSize: 13, resize: 'vertical', outline: 'none', fontFamily: 'inherit', color: '#374151' }}
+                        />
+                        <div style={{ fontSize: 11, color: '#9ca3af', marginTop: -8 }}>
+                          * Ghi chú sẽ được cập nhật khi nhấn Lưu bên dưới.
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bảng chi tiết log */}
+                    <div style={{ padding: '0 20px 16px' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        Chi tiết thời gian chạy máy
+                        {machineADetailLogs.length > 0 && <span style={{ background: '#3b82f6', color: '#fff', borderRadius: 10, padding: '1px 8px', fontSize: 11 }}>{machineADetailLogs.length} dòng</span>}
+                      </div>
+                      {machineADetailLoading ? (
+                        <div style={{ textAlign: 'center', padding: 24, color: '#9ca3af' }}>Đang tải...</div>
+                      ) : (
+                        <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                            <thead>
+                              <tr>
+                                {['#', 'Từ giờ', 'Đến giờ', 'Trạng thái', 'Lý do dừng', 'Ghi chú', ''].map((h, i) => (
+                                  <th key={i} style={{ padding: '6px 8px', background: '#e0f2fe', color: '#0c4a6e', fontWeight: 600, fontSize: 11, textAlign: 'left', borderBottom: '1px solid #bae6fd' }}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {machineADetailLogs.length === 0 && (
+                                <tr><td colSpan={7} style={{ textAlign: 'center', color: '#aaa', padding: '16px 0', fontSize: 12 }}>Chưa có dữ liệu — nhấn "+ Thêm dòng"</td></tr>
+                              )}
+                              {machineADetailLogs.map((log, idx) => {
+                                const isChay = log.trangThai !== 'Dừng máy'
+                                return (
+                                  <tr key={log._id} style={{ background: idx % 2 === 0 ? '#fff' : '#f0f9ff' }}>
+                                    <td style={{ padding: '4px 8px', color: '#94a3b8', fontSize: 11, textAlign: 'center', width: 28 }}>{idx + 1}</td>
+                                    <td style={{ padding: '3px 6px', width: 90 }}>
+                                      <input type="time" value={log.tuGio || ''} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12 }}
+                                        onChange={e => updateALog(log._id, { tuGio: e.target.value })} />
+                                    </td>
+                                    <td style={{ padding: '3px 6px', width: 90 }}>
+                                      <input type="time" value={log.denGio || ''} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12 }}
+                                        onChange={e => updateALog(log._id, { denGio: e.target.value })} />
+                                    </td>
+                                    <td style={{ padding: '3px 6px', width: 110 }}>
+                                      <select value={log.trangThai || 'Chạy máy'} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12, color: isChay ? '#16a34a' : '#dc2626', fontWeight: 600 }}
+                                        onChange={e => updateALog(log._id, { trangThai: e.target.value, lyDo: '' })}>
+                                        <option value="Chạy máy">Chạy máy</option>
+                                        <option value="Dừng máy">Dừng máy</option>
+                                      </select>
+                                    </td>
+                                    <td style={{ padding: '3px 6px', width: 160 }}>
+                                      {(!isChay && !!log.lyDo && !PREDEFINED_REASONS_A.includes(log.lyDo)) ? (
+                                        <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                                          <input autoFocus value={log.lyDo} placeholder="Nhập lý do..."
+                                            style={{ flex: 1, border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 6px', fontSize: 12 }}
+                                            onChange={e => updateALog(log._id, { lyDo: e.target.value })} />
+                                          <button onClick={() => updateALog(log._id, { lyDo: '' })} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 15, padding: '0 2px' }}>↩</button>
+                                        </div>
+                                      ) : (
+                                        <select value={log.lyDo || ''} disabled={isChay} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12, background: isChay ? '#f3f4f6' : '#fff' }}
+                                          onChange={e => updateALog(log._id, { lyDo: e.target.value })}>
+                                          <option value="">—</option>
+                                          {PREDEFINED_REASONS_A.map(o => <option key={o} value={o}>{o}</option>)}
+                                          <option value="Khác">Khác...</option>
+                                        </select>
+                                      )}
+                                    </td>
+                                    <td style={{ padding: '3px 6px' }}>
+                                      <input value={log.ghiChu || ''} placeholder="Ghi chú..." style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 6px', fontSize: 12 }}
+                                        onChange={e => updateALog(log._id, { ghiChu: e.target.value })} />
+                                    </td>
+                                    <td style={{ padding: '3px 6px', width: 30, textAlign: 'center' }}>
+                                      <button onClick={() => removeALog(log._id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                      <button onClick={addALog}
+                        style={{ marginTop: 8, border: '1px dashed #3b82f6', background: '#eff6ff', color: '#1d4ed8', borderRadius: 5, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>
+                        + Thêm dòng
+                      </button>
+                    </div>
+
+                    {/* Footer */}
+                    <div style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: 10, background: '#f8fafc' }}>
+                      <button onClick={() => setMachineADetailRow(null)}
+                        style={{ border: '1px solid #e2e8f0', background: '#fff', borderRadius: 6, padding: '7px 18px', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#6b7280' }}>
+                        Đóng
+                      </button>
+                      <button onClick={saveMachineADetail} disabled={machineADetailSaving}
+                        style={{ border: 'none', background: machineADetailSaving ? '#93c5fd' : '#1e3a5f', color: '#fff', borderRadius: 6, padding: '7px 22px', cursor: machineADetailSaving ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700 }}>
+                        {machineADetailSaving ? 'Đang lưu...' : '✓ Lưu'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })()}
+            </Modal>
           </div>
         )
       })()}
