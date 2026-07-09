@@ -515,7 +515,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   }
   const addMachineRuntimeRow = (ngay) => {
     const _id = 'tmp_' + Date.now()
-    setMachineRuntimeMap(prev => ({ ...prev, [ngay]: [...(prev[ngay] || []), { _id, id: null, tuGio: '', denGio: '', trangThai: 'Chạy máy', lyDo: '', ghiChu: '' }] }))
+    setMachineRuntimeMap(prev => ({ ...prev, [ngay]: [...(prev[ngay] || []), { _id, id: null, tuGio: '', denGio: '', trangThai: 'Chạy máy', lyDo: '', ghiChu: '', sanPham: '' }] }))
     _rtMarkDirty(ngay)
   }
   const updateMachineRuntimeRow = (ngay, _id, patch) => {
@@ -531,7 +531,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     try {
       const entries = machineRuntimeMap[ngay] || []
       const { data } = await api.post('/machine-runtime/bulk',
-        entries.map(({ tuGio, denGio, trangThai, lyDo, ghiChu }) => ({ tuGio, denGio, trangThai, lyDo: lyDo || null, ghiChu: ghiChu || null })),
+        entries.map(({ tuGio, denGio, trangThai, lyDo, ghiChu, sanPham }) => ({ tuGio, denGio, trangThai, lyDo: lyDo || null, ghiChu: ghiChu || null, sanPham: sanPham || null })),
         { params: { workScheduleId: schedule.id, ngay } }
       )
       setMachineRuntimeMap(prev => ({ ...prev, [ngay]: data.map(r => ({ ...r, _id: r.id })) }))
@@ -1679,14 +1679,14 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                             <thead>
                               <tr>
-                                {['#', 'Từ giờ', 'Đến giờ', 'Trạng thái', 'Lý do dừng', 'Ghi chú', ''].map((h, i) => (
+                                {['#', 'Từ giờ', 'Đến giờ', 'Trạng thái', 'Sản phẩm', 'Lý do dừng', 'Ghi chú', ''].map((h, i) => (
                                   <th key={i} style={{ padding: '6px 8px', background: '#e0f2fe', color: '#0c4a6e', fontWeight: 600, fontSize: 11, textAlign: 'left', borderBottom: '1px solid #bae6fd', whiteSpace: 'nowrap' }}>{h}</th>
                                 ))}
                               </tr>
                             </thead>
                             <tbody>
                               {rtEntries.length === 0 && (
-                                <tr><td colSpan={7} style={{ textAlign: 'center', color: '#aaa', padding: '12px 0', fontSize: 12 }}>Chưa có dữ liệu — nhấn "+ Thêm dòng"</td></tr>
+                                <tr><td colSpan={8} style={{ textAlign: 'center', color: '#aaa', padding: '12px 0', fontSize: 12 }}>Chưa có dữ liệu — nhấn "+ Thêm dòng"</td></tr>
                               )}
                               {rtEntries.map((row, idx) => {
                                 const isChay = row.trangThai !== 'Dừng máy'
@@ -1707,6 +1707,10 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                         <option value="Chạy máy">Chạy máy</option>
                                         <option value="Dừng máy">Dừng máy</option>
                                       </select>
+                                    </td>
+                                    <td style={{ padding: '3px 6px', width: 130 }}>
+                                      <input value={row.sanPham || ''} placeholder="Mã / tên SP..." style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 6px', fontSize: 12 }}
+                                        onChange={e => updateMachineRuntimeRow(k, row._id, { sanPham: e.target.value })} />
                                     </td>
                                     <td style={{ padding: '3px 6px', width: 170 }}>
                                       {(!isChay && !!row.lyDo && !PREDEFINED_REASONS.includes(row.lyDo)) ? (
@@ -4032,25 +4036,44 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const openMachineADetail = async (row) => {
     setMachineADetailRow(row)
     setMachineADetailLogs([])
-    if (!row.workScheduleId) return
+    const wsIds = row.workScheduleIds?.length ? row.workScheduleIds : (row.workScheduleId ? [row.workScheduleId] : [])
+    if (wsIds.length === 0) return
     setMachineADetailLoading(true)
     try {
-      const { data } = await api.get('/machine-runtime', { params: { workScheduleId: row.workScheduleId, ngay: row.ngay } })
+      const params = new URLSearchParams({ ngay: row.ngay })
+      wsIds.forEach(id => params.append('wsIds', id))
+      const { data } = await api.get('/machine-runtime/by-wsids?' + params.toString())
       setMachineADetailLogs(data.map(r => ({ ...r, _id: r.id || Math.random() })))
     } catch { message.error('Không tải được dữ liệu') }
     finally { setMachineADetailLoading(false) }
   }
   const updateALog = (_id, patch) => setMachineADetailLogs(prev => prev.map(r => r._id === _id ? { ...r, ...patch } : r))
   const removeALog = (_id) => setMachineADetailLogs(prev => prev.filter(r => r._id !== _id))
-  const addALog = () => setMachineADetailLogs(prev => [...prev, { _id: Date.now(), id: null, tuGio: '', denGio: '', trangThai: 'Chạy máy', lyDo: '', ghiChu: '' }])
+  const addALog = () => setMachineADetailLogs(prev => [...prev, { _id: Date.now(), id: null, tuGio: '', denGio: '', trangThai: 'Chạy máy', lyDo: '', ghiChu: '', sanPham: '' }])
   const saveMachineADetail = async () => {
-    if (!machineADetailRow?.workScheduleId) return
+    if (!machineADetailRow) return
+    const wsIds = machineADetailRow.workScheduleIds?.length
+      ? machineADetailRow.workScheduleIds
+      : (machineADetailRow.workScheduleId ? [machineADetailRow.workScheduleId] : [])
+    if (wsIds.length === 0) { message.error('Không có WorkSchedule để lưu'); return }
+    const defaultWsId = wsIds[0]
     setMachineADetailSaving(true)
     try {
-      await api.post('/machine-runtime/bulk',
-        machineADetailLogs.map(({ tuGio, denGio, trangThai, lyDo, ghiChu }) => ({ tuGio, denGio, trangThai, lyDo: lyDo || null, ghiChu: ghiChu || null })),
-        { params: { workScheduleId: machineADetailRow.workScheduleId, ngay: machineADetailRow.ngay } }
-      )
+      // Group logs by workScheduleId (new rows → assign to first wsId)
+      const grouped = {}
+      for (const log of machineADetailLogs) {
+        const wid = log.workScheduleId || defaultWsId
+        if (!grouped[wid]) grouped[wid] = []
+        grouped[wid].push(log)
+      }
+      // Save each group; also clear wsIds that have no remaining logs
+      for (const wsId of wsIds) {
+        const logs = grouped[wsId] || []
+        await api.post('/machine-runtime/bulk',
+          logs.map(({ tuGio, denGio, trangThai, lyDo, ghiChu, sanPham }) => ({ tuGio, denGio, trangThai, lyDo: lyDo || null, ghiChu: ghiChu || null, sanPham: sanPham || null })),
+          { params: { workScheduleId: wsId, ngay: machineADetailRow.ngay } }
+        )
+      }
       setMachineADetailRow(null)
       setMachineAVersion(v => v + 1)
       message.success('Đã lưu thời gian chạy máy')
@@ -5467,14 +5490,14 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                             <thead>
                               <tr>
-                                {['#', 'Từ giờ', 'Đến giờ', 'Trạng thái', 'Lý do dừng', 'Ghi chú', ''].map((h, i) => (
+                                {['#', 'Từ giờ', 'Đến giờ', 'Trạng thái', 'Sản phẩm', 'Lý do dừng', 'Ghi chú', ''].map((h, i) => (
                                   <th key={i} style={{ padding: '6px 8px', background: '#e0f2fe', color: '#0c4a6e', fontWeight: 600, fontSize: 11, textAlign: 'left', borderBottom: '1px solid #bae6fd' }}>{h}</th>
                                 ))}
                               </tr>
                             </thead>
                             <tbody>
                               {machineADetailLogs.length === 0 && (
-                                <tr><td colSpan={7} style={{ textAlign: 'center', color: '#aaa', padding: '16px 0', fontSize: 12 }}>Chưa có dữ liệu — nhấn "+ Thêm dòng"</td></tr>
+                                <tr><td colSpan={8} style={{ textAlign: 'center', color: '#aaa', padding: '16px 0', fontSize: 12 }}>Chưa có dữ liệu — nhấn "+ Thêm dòng"</td></tr>
                               )}
                               {machineADetailLogs.map((log, idx) => {
                                 const isChay = log.trangThai !== 'Dừng máy'
@@ -5495,6 +5518,10 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                                         <option value="Chạy máy">Chạy máy</option>
                                         <option value="Dừng máy">Dừng máy</option>
                                       </select>
+                                    </td>
+                                    <td style={{ padding: '3px 6px', width: 130 }}>
+                                      <input value={log.sanPham || ''} placeholder="Mã / tên SP..." style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 6px', fontSize: 12 }}
+                                        onChange={e => updateALog(log._id, { sanPham: e.target.value })} />
                                     </td>
                                     <td style={{ padding: '3px 6px', width: 160 }}>
                                       {(!isChay && !!log.lyDo && !PREDEFINED_REASONS_A.includes(log.lyDo)) ? (

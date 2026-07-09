@@ -23,4 +23,6 @@ public interface MachineRuntimeLogRepository extends JpaRepository<MachineRuntim
     List<MachineRuntimeLog> findForSummary(@Param("wsIds") List<Long> wsIds,
                                             @Param("from") LocalDate from,
                                             @Param("to") LocalDate to);
+
+    List<MachineRuntimeLog> findByWorkScheduleIdInAndNgayOrderBySortOrderAscIdAsc(List<Long> wsIds, LocalDate ngay);
 }

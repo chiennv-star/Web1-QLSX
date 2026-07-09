@@ -54,10 +54,19 @@ public class MachineRuntimeLogController {
             log.setTrangThai(str(row, "trangThai"));
             log.setLyDo(str(row, "lyDo"));
             log.setGhiChu(str(row, "ghiChu"));
+            log.setSanPham(str(row, "sanPham"));
             log.setSortOrder(order++);
             repo.save(log);
         }
         return ResponseEntity.ok(repo.findByWorkScheduleIdAndNgayOrderBySortOrderAscIdAsc(workScheduleId, ngay));
+    }
+
+    /** Load tất cả logs cho nhiều workScheduleId trong cùng 1 ngày (dùng khi nhiều sản phẩm cùng máy) */
+    @GetMapping("/by-wsids")
+    public ResponseEntity<List<MachineRuntimeLog>> getByWsIds(
+            @RequestParam List<Long> wsIds,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ngay) {
+        return ResponseEntity.ok(repo.findByWorkScheduleIdInAndNgayOrderBySortOrderAscIdAsc(wsIds, ngay));
     }
 
     /** Tổng hợp OEE Availability theo ngày × máy cho một tổ trong khoảng thời gian */
@@ -93,6 +102,7 @@ public class MachineRuntimeLogController {
         // Group by ngay|phongThucHien (preserve insertion order = sorted by ngay, sortOrder)
         Map<String, List<MachineRuntimeLog>> grouped = new LinkedHashMap<>();
         Map<String, String> groupToNhom = new HashMap<>();
+        Map<String, java.util.LinkedHashSet<Long>> groupWsIds = new LinkedHashMap<>();
 
         for (MachineRuntimeLog log : logs) {
             WorkSchedule ws = wsMap.get(log.getWorkScheduleId());
@@ -102,6 +112,7 @@ public class MachineRuntimeLogController {
             String key = log.getNgay().toString() + "|" + phong;
             grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(log);
             groupToNhom.putIfAbsent(key, ws.getToNhom() != null ? ws.getToNhom() : congDoanKey);
+            groupWsIds.computeIfAbsent(key, k -> new java.util.LinkedHashSet<>()).add(log.getWorkScheduleId());
         }
 
         List<Map<String, Object>> result = new ArrayList<>();
@@ -147,7 +158,9 @@ public class MachineRuntimeLogController {
             row.put("availPct", avail);
             row.put("soLanDung", soLanDung);
             row.put("lyDoDung", String.join("; ", seenReasons));
-            row.put("workScheduleId", dayLogs.stream().map(MachineRuntimeLog::getWorkScheduleId).findFirst().orElse(null));
+            List<Long> wsIds = new ArrayList<>(groupWsIds.getOrDefault(entry.getKey(), new java.util.LinkedHashSet<>()));
+            row.put("workScheduleId", wsIds.isEmpty() ? null : wsIds.get(0));
+            row.put("workScheduleIds", wsIds);
             result.add(row);
         }
 
