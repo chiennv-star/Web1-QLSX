@@ -4033,6 +4033,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const [machineSummaryLoading, setMachineSummaryLoading] = useState(false)
   const [machineParetoData, setMachineParetoData] = useState([])
   const [machineParetoLoading, setMachineParetoLoading] = useState(false)
+  const [summaryCustomRange, setSummaryCustomRange] = useState([dayjs().subtract(29, 'day'), dayjs()])
   const PREDEFINED_REASONS_A = ['Chờ nguyên liệu', 'Hỏng máy', 'Chuyển đổi mã', 'Vệ sinh / bảo trì']
   const openMachineADetail = async (row) => {
     setMachineADetailRow(row)
@@ -5358,23 +5359,28 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         const aColor = v => v == null ? '#9ca3af' : v >= 90 ? '#16a34a' : v >= 70 ? '#d97706' : '#dc2626'
         const aBg   = v => v == null ? 'transparent' : v >= 90 ? '#f0fdf4' : v >= 70 ? '#fffbeb' : '#fef2f2'
 
-        // A% computation from 6-month summary data
-        const computeAPct = (tenMay, fromStr) => {
-          const rows = machineSummaryData.filter(r => r.tenMay === tenMay && r.ngay >= fromStr)
+        // A% computation from loaded summary data
+        const computeAPct = (tenMay, fromStr, toStr = null) => {
+          const rows = machineSummaryData.filter(r =>
+            r.tenMay === tenMay && r.ngay >= fromStr && (toStr == null || r.ngay <= toStr)
+          )
           const run = rows.reduce((s, r) => s + (r.gioChay || 0), 0)
           const kh  = rows.reduce((s, r) => s + (r.gioKH  || 0), 0)
           return kh > 0 ? Math.round(run * 1000 / kh) / 10 : null
         }
 
-        // Unique machines from 6-month summary data
+        // Unique machines from summary data
         const sumMachines = [...new Map(machineSummaryData.map(r => [r.tenMay, { tenMay: r.tenMay, maMay: r.maMay }])).values()]
 
         const today = dayjs()
+        const customFrom = summaryCustomRange?.[0]?.format('YYYY-MM-DD')
+        const customTo   = summaryCustomRange?.[1]?.format('YYYY-MM-DD')
         const periods = [
-          { key: 'week',  label: 'Tuần (7 ngày)',  from: today.subtract(6,   'day').format('YYYY-MM-DD') },
-          { key: 'month', label: 'Tháng (30 ngày)', from: today.subtract(29,  'day').format('YYYY-MM-DD') },
-          { key: 'q3',    label: '3 Tháng',          from: today.subtract(89,  'day').format('YYYY-MM-DD') },
-          { key: 'half',  label: '6 Tháng',          from: today.subtract(179, 'day').format('YYYY-MM-DD') },
+          { key: 'week',   label: 'Tuần (7 ngày)',   from: today.subtract(6,   'day').format('YYYY-MM-DD') },
+          { key: 'month',  label: 'Tháng (30 ngày)', from: today.subtract(29,  'day').format('YYYY-MM-DD') },
+          { key: 'q3',     label: '3 Tháng',          from: today.subtract(89,  'day').format('YYYY-MM-DD') },
+          { key: 'half',   label: '6 Tháng',          from: today.subtract(179, 'day').format('YYYY-MM-DD') },
+          { key: 'custom', label: 'Tùy chọn',         from: customFrom, to: customTo, isCustom: true },
         ]
 
         // Pareto with cumulative %
@@ -5472,6 +5478,21 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
             {activeTab === 'summary' && (
               <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 230px)' }}>
                 {/* A% theo giai đoạn */}
+                {/* Toolbar tùy chọn khoảng thời gian */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: 12, color: '#475569', fontWeight: 600, whiteSpace: 'nowrap' }}>Cột Tùy chọn:</span>
+                  <DatePicker.RangePicker
+                    value={summaryCustomRange}
+                    onChange={v => setSummaryCustomRange(v || [dayjs().subtract(29, 'day'), dayjs()])}
+                    format="DD/MM/YYYY"
+                    size="small"
+                    allowClear={false}
+                    disabledDate={d => d && d.isAfter(dayjs(), 'day')}
+                    style={{ fontSize: 12 }}
+                  />
+                  <span style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>Chọn khoảng để tính A% cột cuối</span>
+                </div>
+
                 {machineSummaryLoading ? (
                   <div style={{ textAlign: 'center', padding: 30, color: '#9ca3af' }}>Đang tải dữ liệu tổng hợp...</div>
                 ) : (
@@ -5491,7 +5512,14 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                         <th style={{ background: '#1e3a5f', color: '#fff', padding: '7px 10px', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 12, textAlign: 'left' }}>Tên máy</th>
                         <th style={{ background: '#1e3a5f', color: '#fff', padding: '7px 10px', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 12, textAlign: 'center', width: 90 }}>Mã máy</th>
                         {periods.map(p => (
-                          <th key={p.key} style={{ background: '#b45309', color: '#fff', padding: '7px 10px', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 12, textAlign: 'center' }}>{p.label}</th>
+                          <th key={p.key} style={{ background: p.isCustom ? '#065f46' : '#b45309', color: '#fff', padding: '7px 10px', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 12, textAlign: 'center', minWidth: p.isCustom ? 160 : undefined }}>
+                            {p.label}
+                            {p.isCustom && customFrom && customTo && (
+                              <div style={{ fontWeight: 400, fontSize: 10, opacity: 0.85, marginTop: 2 }}>
+                                {summaryCustomRange[0].format('DD/MM/YY')} → {summaryCustomRange[1].format('DD/MM/YY')}
+                              </div>
+                            )}
+                          </th>
                         ))}
                       </tr>
                     </thead>
@@ -5505,7 +5533,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                           <td style={{ padding: '8px 10px', border: '1px solid #e2e8f0', fontWeight: 600, fontSize: 13 }}>{m.tenMay}</td>
                           <td style={{ padding: '8px 10px', border: '1px solid #e2e8f0', textAlign: 'center', fontFamily: 'monospace', color: '#0369a1', fontWeight: 600 }}>{m.maMay || '—'}</td>
                           {periods.map(p => {
-                            const v = computeAPct(m.tenMay, p.from)
+                            const v = computeAPct(m.tenMay, p.from, p.to || null)
                             return (
                               <td key={p.key} style={{ padding: '8px 10px', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 800, fontSize: 14, color: aColor(v), background: aBg(v) }}>
                                 {v != null ? `${v}%` : '—'}
