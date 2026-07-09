@@ -5369,6 +5369,16 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
           return kh > 0 ? Math.round(run * 1000 / kh) / 10 : null
         }
 
+        // Hiệu suất tổng thể của toàn công đoạn (tổng tất cả máy)
+        const computeOverallAPct = (fromStr, toStr = null) => {
+          const rows = machineSummaryData.filter(r =>
+            r.ngay >= fromStr && (toStr == null || r.ngay <= toStr)
+          )
+          const run = rows.reduce((s, r) => s + (r.gioChay || 0), 0)
+          const kh  = rows.reduce((s, r) => s + (r.gioKH  || 0), 0)
+          return kh > 0 ? Math.round(run * 1000 / kh) / 10 : null
+        }
+
         // Unique machines from summary data
         const sumMachines = [...new Map(machineSummaryData.map(r => [r.tenMay, { tenMay: r.tenMay, maMay: r.maMay }])).values()]
 
@@ -5543,6 +5553,21 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                         </tr>
                       ))}
                     </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan={2} style={{ padding: '10px 12px', background: '#1e3a5f', border: '1px solid #4a6fa5', color: '#fff', fontWeight: 800, fontSize: 12, letterSpacing: 0.5 }}>
+                          HIỆU SUẤT TỔNG THỂ – {tenTo}
+                        </td>
+                        {periods.map(p => {
+                          const v = computeOverallAPct(p.from, p.to || null)
+                          return (
+                            <td key={p.key} style={{ padding: '10px 12px', background: v == null ? '#1e3a5f' : aBg(v), border: '1px solid #4a6fa5', textAlign: 'center', fontWeight: 900, fontSize: 16, color: v == null ? '#94a3b8' : aColor(v) }}>
+                              {v != null ? `${v}%` : '—'}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    </tfoot>
                   </table>
                 )}
 
