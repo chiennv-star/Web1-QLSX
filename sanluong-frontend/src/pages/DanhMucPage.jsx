@@ -1293,6 +1293,7 @@ function ProductMasterTab() {
       const filtered = nangSuatPcMeRows.filter(r => r.nangSuat != null && r.nangSuat !== '')
       values.nangSuatPcMe = filtered.length > 0 ? JSON.stringify(filtered) : null
       if (editItem) {
+        if (!values.maTp) values.maTp = editItem.maTp
         await api.put(`/product-master/${editItem.id}`, values)
         message.success('Đã cập nhật')
         // Reload history to show the new entry
@@ -1311,7 +1312,10 @@ function ProductMasterTab() {
         return
       }
       setModalOpen(false); fetchData(pagination.current - 1)
-    } catch { message.error('Lưu thất bại') }
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.response?.data || err?.message || 'Lưu thất bại'
+      message.error(typeof msg === 'string' ? msg : 'Lưu thất bại')
+    }
   }
 
   const onDelete = async (id) => {
