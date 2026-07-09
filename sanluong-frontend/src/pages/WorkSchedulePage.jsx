@@ -5326,83 +5326,98 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
             .catch(() => message.error('Không thể tải'))
             .finally(() => setMachineALoading(false))
         }
+
+        // Group rows by tenMay, preserving first-seen order
+        const machineOrder = []
+        const machineMap = {}
+        machineAData.forEach(row => {
+          if (!machineMap[row.tenMay]) { machineMap[row.tenMay] = []; machineOrder.push(row.tenMay) }
+          machineMap[row.tenMay].push(row)
+        })
+
+        const renderMachineTable = (tenMay, rows, isFirst) => {
+          // Re-number rows per machine table
+          return (
+            <table key={tenMay} style={{ borderCollapse: 'collapse', fontSize: 12, width: '100%', tableLayout: 'fixed', marginBottom: 20 }}>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+                <tr>
+                  <th colSpan={NCOLS} style={{ background: '#1e3a5f', color: '#fff', padding: '8px 12px', border: '1px solid #4a6fa5', fontWeight: 800, fontSize: 13, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span>Biểu mẫu theo dõi chỉ số A (Availability) – {tenTo} &nbsp;·&nbsp; {tenMay}</span>
+                      {isFirst && (
+                        <button onClick={doRefresh} style={{ border: '1px solid #93c5fd', background: 'rgba(255,255,255,0.12)', color: '#dbeafe', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 600, flexShrink: 0 }}>↺ Làm mới</button>
+                      )}
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th colSpan={NCOLS} style={{ background: '#2d4f7c', color: '#dbeafe', padding: '4px 12px', textAlign: 'center', border: '1px solid #4a6fa5', fontWeight: 400, fontSize: 11, fontStyle: 'italic' }}>
+                    Availability = Giờ chạy thực tế / Tổng giờ kế hoạch &nbsp;·&nbsp; Mục tiêu ≥ 90% &nbsp;·&nbsp; Đơn vị: 2 ca × 8h = 16h/ngày &nbsp;·&nbsp; {year}
+                  </th>
+                </tr>
+                <tr>
+                  <th colSpan={5} style={{ ...thBase, background: '#1e3a5f' }}>THÔNG TIN MÁY</th>
+                  <th colSpan={3} style={{ ...thBase, background: '#166534' }}>GIỜ VẬN HÀNH (h)</th>
+                  <th colSpan={1} style={{ ...thBase, background: '#b45309' }}>AVAILABILITY</th>
+                  <th colSpan={3} style={{ ...thBase, background: '#991b1b' }}>SỰ CỐ / DỪNG MÁY</th>
+                </tr>
+                <tr>
+                  {ths.map(h => (
+                    <th key={h.label} style={{ background: '#f1f5f9', color: '#1e293b', padding: '6px 6px', border: '1px solid #94a3b8', fontWeight: 700, fontSize: 11, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {h.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, idx) => {
+                  const avail = row.availPct
+                  const availColor = avail == null ? '#6b7280' : avail >= 90 ? '#16a34a' : '#dc2626'
+                  const availBg = avail == null ? 'transparent' : avail >= 90 ? '#f0fdf4' : '#fef2f2'
+                  const rowBg = idx % 2 === 0 ? '#fff' : '#f8fafc'
+                  const td = (extra = {}) => ({ padding: '6px 6px', border: '1px solid #e2e8f0', background: rowBg, overflow: 'hidden', textOverflow: 'ellipsis', ...extra })
+                  return (
+                    <tr key={idx} onClick={() => openMachineADetail(row)}
+                      style={{ cursor: 'pointer' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
+                      onMouseLeave={e => e.currentTarget.style.background = ''}
+                    >
+                      <td style={td({ textAlign: 'center', color: '#94a3b8', fontSize: 11 })}>{idx + 1}</td>
+                      <td style={td({ whiteSpace: 'nowrap', fontWeight: 500 })}>
+                        {dayjs(row.ngay).isValid() ? dayjs(row.ngay).format('DD/MM/YYYY') : row.ngay}
+                      </td>
+                      <td style={td({ fontWeight: 600 })}>{row.tenMay}</td>
+                      <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#0369a1', fontWeight: 600 })}>{row.maMay || '—'}</td>
+                      <td style={td({ textAlign: 'center' })}>{row.toNhom || '—'}</td>
+                      <td style={td({ textAlign: 'center', fontWeight: 600 })}>{row.gioKH}</td>
+                      <td style={td({ textAlign: 'center', color: '#16a34a', fontWeight: 700 })}>{row.gioChay}</td>
+                      <td style={td({ textAlign: 'center', color: row.gioDung > 0 ? '#dc2626' : '#6b7280', fontWeight: 700 })}>{row.gioDung}</td>
+                      <td style={td({ textAlign: 'center', fontWeight: 800, fontSize: 13, color: availColor, background: availBg })}>
+                        {avail != null ? `${avail}%` : '—'}
+                      </td>
+                      <td style={td({ textAlign: 'center', color: row.soLanDung > 0 ? '#dc2626' : '#6b7280', fontWeight: row.soLanDung > 0 ? 700 : 400 })}>{row.soLanDung}</td>
+                      <td style={td({ fontSize: 11, color: '#4b5563' })}>{row.lyDoDung || '—'}</td>
+                      <td style={td({ fontSize: 11, color: '#9ca3af' })}>—</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )
+        }
+
         return (
-          <div style={{ padding: '14px 16px' }}>
-            {/* Nút làm mới */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
-              <button onClick={doRefresh} style={{ border: '1px solid #d97706', background: '#fffbeb', color: '#b45309', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>↺ Làm mới</button>
-            </div>
+          <div style={{ padding: 0 }}>
             {machineALoading ? (
               <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>Đang tải...</div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ borderCollapse: 'collapse', fontSize: 12, width: '100%', tableLayout: 'fixed' }}>
-                  <thead>
-                    <tr>
-                      <th colSpan={NCOLS} style={{ background: '#1e3a5f', color: '#fff', padding: '10px 12px', textAlign: 'center', border: '1px solid #4a6fa5', fontWeight: 800, fontSize: 14, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-                        Biểu mẫu theo dõi chỉ số A (Availability) – {tenTo}
-                      </th>
-                    </tr>
-                    <tr>
-                      <th colSpan={NCOLS} style={{ background: '#2d4f7c', color: '#dbeafe', padding: '5px 12px', textAlign: 'center', border: '1px solid #4a6fa5', fontWeight: 400, fontSize: 11, fontStyle: 'italic' }}>
-                        Availability = Giờ chạy thực tế / Tổng giờ kế hoạch &nbsp;·&nbsp; Mục tiêu ≥ 90% &nbsp;·&nbsp; Đơn vị: 2 ca × 8h = 16h/ngày &nbsp;·&nbsp; {year}
-                      </th>
-                    </tr>
-                    <tr>
-                      <th colSpan={5} style={{ ...thBase, background: '#1e3a5f' }}>THÔNG TIN MÁY</th>
-                      <th colSpan={3} style={{ ...thBase, background: '#166534' }}>GIỜ VẬN HÀNH (h)</th>
-                      <th colSpan={1} style={{ ...thBase, background: '#b45309' }}>AVAILABILITY</th>
-                      <th colSpan={3} style={{ ...thBase, background: '#991b1b' }}>SỰ CỐ / DỪNG MÁY</th>
-                    </tr>
-                    <tr>
-                      {ths.map(h => (
-                        <th key={h.label} style={{ background: '#f1f5f9', color: '#1e293b', padding: '6px 6px', border: '1px solid #94a3b8', fontWeight: 700, fontSize: 11, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {h.label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {machineAData.length === 0 ? (
-                      <tr>
-                        <td colSpan={NCOLS} style={{ textAlign: 'center', padding: '32px 8px', color: '#9ca3af', fontSize: 13, border: '1px solid #e2e8f0' }}>
-                          Không có dữ liệu thời gian chạy máy trong khoảng thời gian đã chọn.<br />
-                          <span style={{ fontSize: 12 }}>Hãy nhập dữ liệu vào mục "Thời gian chạy máy" trong chi tiết lịch sản xuất.</span>
-                        </td>
-                      </tr>
-                    ) : machineAData.map((row, idx) => {
-                      const avail = row.availPct
-                      const availColor = avail == null ? '#6b7280' : avail >= 90 ? '#16a34a' : '#dc2626'
-                      const availBg = avail == null ? 'transparent' : avail >= 90 ? '#f0fdf4' : '#fef2f2'
-                      const rowBg = idx % 2 === 0 ? '#fff' : '#f8fafc'
-                      const td = (extra = {}) => ({ padding: '6px 6px', border: '1px solid #e2e8f0', background: rowBg, overflow: 'hidden', textOverflow: 'ellipsis', ...extra })
-                      return (
-                        <tr key={idx} onClick={() => openMachineADetail(row)}
-                          style={{ cursor: 'pointer' }}
-                          onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
-                          onMouseLeave={e => e.currentTarget.style.background = ''}
-                        >
-                          <td style={td({ textAlign: 'center', color: '#94a3b8', fontSize: 11 })}>{row.stt}</td>
-                          <td style={td({ whiteSpace: 'nowrap', fontWeight: 500 })}>
-                            {dayjs(row.ngay).isValid() ? dayjs(row.ngay).format('DD/MM/YYYY') : row.ngay}
-                          </td>
-                          <td style={td({ fontWeight: 600 })}>{row.tenMay}</td>
-                          <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#0369a1', fontWeight: 600 })}>{row.maMay || '—'}</td>
-                          <td style={td({ textAlign: 'center' })}>{row.toNhom || '—'}</td>
-                          <td style={td({ textAlign: 'center', fontWeight: 600 })}>{row.gioKH}</td>
-                          <td style={td({ textAlign: 'center', color: '#16a34a', fontWeight: 700 })}>{row.gioChay}</td>
-                          <td style={td({ textAlign: 'center', color: row.gioDung > 0 ? '#dc2626' : '#6b7280', fontWeight: 700 })}>{row.gioDung}</td>
-                          <td style={td({ textAlign: 'center', fontWeight: 800, fontSize: 13, color: availColor, background: availBg })}>
-                            {avail != null ? `${avail}%` : '—'}
-                          </td>
-                          <td style={td({ textAlign: 'center', color: row.soLanDung > 0 ? '#dc2626' : '#6b7280', fontWeight: row.soLanDung > 0 ? 700 : 400 })}>{row.soLanDung}</td>
-                          <td style={td({ fontSize: 11, color: '#4b5563' })}>{row.lyDoDung || '—'}</td>
-                          <td style={td({ fontSize: 11, color: '#9ca3af' })}>—</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+              <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 210px)' }}>
+                {machineAData.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '32px 8px', color: '#9ca3af', fontSize: 13 }}>
+                    Không có dữ liệu thời gian chạy máy trong khoảng thời gian đã chọn.<br />
+                    <span style={{ fontSize: 12 }}>Hãy nhập dữ liệu vào mục "Thời gian chạy máy" trong chi tiết lịch sản xuất.</span>
+                  </div>
+                ) : machineOrder.map((tenMay, mi) => renderMachineTable(tenMay, machineMap[tenMay], mi === 0))}
               </div>
             )}
 
