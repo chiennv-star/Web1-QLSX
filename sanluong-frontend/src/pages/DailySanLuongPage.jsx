@@ -4936,6 +4936,10 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
   const [entries, setEntries] = useState([])
   const [dgSl,   setDgSl]   = useState(null)   // null = loading/unknown, number = fetched
   const [deletingId, setDeletingId] = useState(null)
+  const [bravoEditing, setBravoEditing] = useState(false)
+  const [bravoVal, setBravoVal] = useState('')
+  const [bravoOpts, setBravoOpts] = useState([])
+  const [bravoSaving, setBravoSaving] = useState(false)
 
   const fetchEntries = async (id) => {
     try {
@@ -4961,6 +4965,44 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
       fetchDgSl(initialRecord.id)
     }
   }, [initialRecord])
+
+  const searchBravoOpts = async (kw) => {
+    if (!kw || kw.trim().length < 1) { setBravoOpts([]); return }
+    try {
+      const { data: res } = await api.get('/product-master', { params: { keyword: kw.trim(), size: 20 } })
+      setBravoOpts((res.content || []).map(p => ({
+        value: p.maBravo,
+        label: (
+          <div style={{ display: 'flex', gap: 8, fontSize: 12 }}>
+            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', minWidth: 80 }}>{p.maBravo}</span>
+            <span style={{ color: '#374151' }}>{p.tienTrinh}</span>
+            <span style={{ marginLeft: 'auto', color: '#888', fontSize: 11 }}>{p.maTp}</span>
+          </div>
+        ),
+        maTp: p.maTp,
+        tienTrinh: p.tienTrinh,
+      })))
+    } catch { setBravoOpts([]) }
+  }
+
+  const saveBravo = async (maBravo, maTp = '', tienTrinh = '') => {
+    setBravoSaving(true)
+    try {
+      if (maBravo && !maTp) {
+        try {
+          const { data: pm } = await api.get('/product-master/lookup-batch', { params: { codes: maBravo } })
+          const e = pm?.[maBravo] || pm?.[maBravo.toUpperCase()] || Object.values(pm || {})[0]
+          if (e) { maTp = e.maTp || ''; tienTrinh = e.tienTrinh || '' }
+        } catch { /* silent */ }
+      }
+      const { data: updated } = await api.patch(`/production/${localRecord.id}/nhap-kho`, { maBravo, maTp, tienTrinh })
+      setLocalRecord(prev => ({ ...prev, ...updated, maBravo, maTp, tienTrinh }))
+      setBravoEditing(false)
+      setBravoOpts([])
+      onSaved()
+    } catch { message.error('Cập nhật Mã Bravo thất bại') }
+    finally { setBravoSaving(false) }
+  }
 
   const handleDeleteEntry = async (entry) => {
     setDeletingId(entry.id)
@@ -5070,6 +5112,32 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
                 <VCell last><span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#6d28d9' }}>{r.lsx || '—'}</span></VCell>
                 <LCell>Mã đơn hàng</LCell>
                 <VCell last><span style={{ fontFamily: 'monospace', color: '#7c3aed' }}>{r.maDonHang || '—'}</span></VCell>
+                <LCell>Mã Bravo</LCell>
+                <VCell last>
+                  {bravoEditing ? (
+                    <div style={{ display: 'flex', gap: 4, width: '100%', alignItems: 'center' }}>
+                      <AutoComplete
+                        autoFocus
+                        options={bravoOpts}
+                        value={bravoVal}
+                        style={{ flex: 1 }}
+                        size="small"
+                        placeholder="Mã Bravo..."
+                        onChange={v => { setBravoVal(v); setBravoOpts([]); searchBravoOpts(v) }}
+                        onSelect={(val, opt) => { setBravoVal(val); saveBravo(val, opt.maTp || '', opt.tienTrinh || '') }}
+                      />
+                      <Button size="small" type="primary" loading={bravoSaving}
+                        onClick={() => saveBravo(bravoVal)}>Lưu</Button>
+                      <Button size="small" onClick={() => { setBravoEditing(false); setBravoOpts([]) }}>Hủy</Button>
+                    </div>
+                  ) : (
+                    <span
+                      onClick={() => { setBravoVal(r.maBravo || ''); setBravoEditing(true) }}
+                      style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1d4ed8', cursor: 'pointer', textDecoration: 'underline dotted' }}>
+                      {r.maBravo || <span style={{ color: '#bbb', fontFamily: 'inherit', fontWeight: 400 }}>Nhấn để sửa...</span>}
+                    </span>
+                  )}
+                </VCell>
                 <LCell>Tổng NK</LCell>
                 <VCell last>
                   <span style={{ fontWeight: 700, fontSize: 15, color: done ? '#15803d' : total > 0 ? '#1677ff' : '#d97706' }}>
