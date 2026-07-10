@@ -4299,6 +4299,8 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const [machinePSummaryData, setMachinePSummaryData] = useState([])
   const [machinePSummaryLoading, setMachinePSummaryLoading] = useState(false)
   const [machinePSpeedConfigs, setMachinePSpeedConfigs] = useState({}) // tenMay → { tocDoChuanLabel, slLyThuyet }
+  const [machinePShiftSummaryData, setMachinePShiftSummaryData] = useState([]) // aggregated from MachineShiftPerfLog
+  const [machinePSummaryCustomRange, setMachinePSummaryCustomRange] = useState([dayjs().subtract(29, 'day'), dayjs()])
   const [editingPCell, setEditingPCell] = useState(null) // { ngay, tenMay, field, value }
   const [addPerfOpen, setAddPerfOpen] = useState(false)
   const [addPerfForm, setAddPerfForm] = useState({ ngay: dayjs().format('YYYY-MM-DD'), tenMay: '', slThucTe: null, slLyThuyet: null, nguyenNhan: '', ghiChu: '' })
@@ -4454,24 +4456,26 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       .finally(() => setMachinePLoading(false))
   }, [innerTab, filters.dateRange, machinePVersion]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Load 6-month summary + speed configs cho Chi số P ──
+  // ── Load 6-month summary + speed configs + shift summary cho Chi số P ──
   useEffect(() => {
     if (innerTab !== 'machine_p') return
     const today = dayjs()
     const tuNgay = today.subtract(179, 'day').format('YYYY-MM-DD')
     const denNgay = today.format('YYYY-MM-DD')
     setMachinePSummaryLoading(true)
-    api.get('/machine-perf/daily-summary', { params: { congDoanKey: congDoan, tuNgay, denNgay } })
-      .then(r => setMachinePSummaryData(r.data))
-      .catch(() => {})
-      .finally(() => setMachinePSummaryLoading(false))
-    api.get('/machine-perf/speed-configs', { params: { congDoanKey: congDoan } })
-      .then(r => {
-        const map = {}
-        r.data.forEach(c => { map[c.tenMay] = { tocDoChuanLabel: c.tocDoChuanLabel, slLyThuyet: c.slLyThuyet } })
-        setMachinePSpeedConfigs(map)
-      })
-      .catch(() => {})
+    Promise.allSettled([
+      api.get('/machine-perf/daily-summary', { params: { congDoanKey: congDoan, tuNgay, denNgay } })
+        .then(r => setMachinePSummaryData(r.data)),
+      // Shift-level summary for correct P formula: Σ(SL_TT×T) / Σ(SL_LT×T)
+      api.get('/machine-shift-perf/daily-summary', { params: { congDoanKey: congDoan, tuNgay, denNgay } })
+        .then(r => setMachinePShiftSummaryData(r.data)),
+      api.get('/machine-perf/speed-configs', { params: { congDoanKey: congDoan } })
+        .then(r => {
+          const map = {}
+          r.data.forEach(c => { map[c.tenMay] = { tocDoChuanLabel: c.tocDoChuanLabel, slLyThuyet: c.slLyThuyet } })
+          setMachinePSpeedConfigs(map)
+        }),
+    ]).finally(() => setMachinePSummaryLoading(false))
   }, [innerTab, congDoan, machinePVersion]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch employees cho tab Không SX khi cần
@@ -6606,7 +6610,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
               </tr>
               <tr>
                 <th colSpan={NCOLS_P} style={{ background: '#3b0764', color: '#e9d5ff', padding: '4px 12px', textAlign: 'center', border: '1px solid #5b21b6', fontWeight: 400, fontSize: 11, fontStyle: 'italic' }}>
-                  Performance = Sản lượng thực tế / Sản lượng lý thuyết tối đa &nbsp;·&nbsp; Mục tiêu ≥ 95% &nbsp;·&nbsp; Đơn vị: 2 ca/ngày &nbsp;·&nbsp; {year}
+                  Performance = Σ(SL thực tế × T chuẩn SP) / Σ(Thời gian chạy) &nbsp;·&nbsp; Mục tiêu ≥ 95% &nbsp;·&nbsp; Tính từ chi tiết ca sản xuất &nbsp;·&nbsp; {year}
                 </th>
               </tr>
               <tr>
@@ -6696,22 +6700,39 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         )
 
         // ── Summary: P% by machine × period ──
+        // Source: machinePShiftSummaryData (from MachineShiftPerfLog per ca)
+        // Formula: P = Σ(SL_TT × T_chuẩn) / Σ(SL_LT × T_chuẩn) = Σ SL_TT / Σ SL_LT per ca
         const today2 = dayjs()
+        const customPFrom = machinePSummaryCustomRange?.[0]?.format('YYYY-MM-DD')
+        const customPTo   = machinePSummaryCustomRange?.[1]?.format('YYYY-MM-DD')
         const sumPeriods = [
-          { key: 'week',  label: 'Tuần (7 ngày)',   from: today2.subtract(6,   'day').format('YYYY-MM-DD') },
-          { key: 'month', label: 'Tháng (30 ngày)', from: today2.subtract(29,  'day').format('YYYY-MM-DD') },
-          { key: 'q3',    label: '3 Tháng',          from: today2.subtract(89,  'day').format('YYYY-MM-DD') },
-          { key: 'half',  label: '6 Tháng',          from: today2.subtract(179, 'day').format('YYYY-MM-DD') },
+          { key: 'week',   label: 'Tuần (7 ngày)',   from: today2.subtract(6,   'day').format('YYYY-MM-DD') },
+          { key: 'month',  label: 'Tháng (30 ngày)', from: today2.subtract(29,  'day').format('YYYY-MM-DD') },
+          { key: 'q3',     label: '3 Tháng',          from: today2.subtract(89,  'day').format('YYYY-MM-DD') },
+          { key: 'half',   label: '6 Tháng',          from: today2.subtract(179, 'day').format('YYYY-MM-DD') },
+          { key: 'custom', label: 'Tùy chọn',         from: customPFrom, to: customPTo, isCustom: true },
         ]
-        const sumMachinesP = [...new Map(machinePSummaryData.map(r => [r.tenMay, { tenMay: r.tenMay, maMay: r.maMay }])).values()]
-        const computePPct = (tenMay, fromStr) => {
-          const rows = machinePSummaryData.filter(r => r.tenMay === tenMay && r.ngay >= fromStr)
+        // Machines from shift data (primary source)
+        const sumMachinesP = [...new Map(machinePShiftSummaryData.map(r => [r.tenMay, { tenMay: r.tenMay, maMay: r.maMay }])).values()]
+        const computePPct = (tenMay, fromStr, toStr = null) => {
+          const rows = machinePShiftSummaryData.filter(r =>
+            r.tenMay === tenMay && r.ngay >= fromStr && (toStr == null || r.ngay <= toStr)
+          )
+          const sumLT = rows.reduce((s, r) => s + (r.slLyThuyet || 0), 0)
+          const sumTT = rows.reduce((s, r) => s + (r.slThucTe || 0), 0)
+          return sumLT > 0 ? Math.round(sumTT / sumLT * 1000) / 10 : null
+        }
+        // P tổng thể của toàn công đoạn (tất cả máy): Σ SL_TT_all / Σ SL_LT_all
+        const computeOverallPPct = (fromStr, toStr = null) => {
+          const rows = machinePShiftSummaryData.filter(r =>
+            r.ngay >= fromStr && (toStr == null || r.ngay <= toStr)
+          )
           const sumLT = rows.reduce((s, r) => s + (r.slLyThuyet || 0), 0)
           const sumTT = rows.reduce((s, r) => s + (r.slThucTe || 0), 0)
           return sumLT > 0 ? Math.round(sumTT / sumLT * 1000) / 10 : null
         }
 
-        // Top nguyên nhân tổn thất
+        // Top nguyên nhân tổn thất (from daily log for backward compat)
         const causeAgg = {}
         machinePSummaryData.forEach(r => {
           if (!r.nguyenNhanGiamToc || !r.tonThat) return
@@ -6741,34 +6762,66 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
             <Spin spinning={machinePLoading}>
               {/* ── Tab Tổng hợp ── */}
               {activePTab === 'summary' && (
-                <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 230px)', padding: 12 }}>
+                <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 230px)' }}>
+                  {/* Toolbar tùy chọn khoảng thời gian */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#fff', borderBottom: '1px solid #e2e8f0' }}>
+                    <span style={{ fontSize: 12, color: '#475569', fontWeight: 600, whiteSpace: 'nowrap' }}>Cột Tùy chọn:</span>
+                    <DatePicker.RangePicker
+                      value={machinePSummaryCustomRange}
+                      onChange={v => setMachinePSummaryCustomRange(v || [dayjs().subtract(29, 'day'), dayjs()])}
+                      format="DD/MM/YYYY"
+                      size="small"
+                      allowClear={false}
+                      disabledDate={d => d && d.isAfter(dayjs(), 'day')}
+                      style={{ fontSize: 12 }}
+                    />
+                    <span style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>Chọn khoảng để tính P% cột cuối</span>
+                  </div>
+
+                  <div style={{ padding: 12 }}>
                   <Spin spinning={machinePSummaryLoading}>
                     {/* P% by machine × period table */}
                     {sumMachinesP.length === 0 ? (
-                      <div style={{ textAlign: 'center', color: '#9ca3af', padding: 40 }}>Chưa có dữ liệu chỉ số P. Thêm dòng để bắt đầu.</div>
+                      <div style={{ textAlign: 'center', color: '#9ca3af', padding: 40 }}>Chưa có dữ liệu ca sản xuất. Nhập chi tiết ca trong modal Chỉ số P để xem tổng hợp.</div>
                     ) : (
                       <>
-                        <div style={{ fontWeight: 700, color: '#2e1065', marginBottom: 10, fontSize: 13 }}>⚡ P% Theo Giai Đoạn — Theo Máy</div>
                         <div style={{ overflowX: 'auto', marginBottom: 24 }}>
-                          <table style={{ borderCollapse: 'collapse', fontSize: 12, minWidth: 600 }}>
-                            <thead>
+                          <table style={{ borderCollapse: 'collapse', fontSize: 12, width: '100%' }}>
+                            <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
                               <tr>
-                                <th style={{ padding: '7px 10px', background: '#2e1065', color: '#fff', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11 }}>Máy</th>
-                                <th style={{ padding: '7px 10px', background: '#2e1065', color: '#fff', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11 }}>Mã máy</th>
+                                <th colSpan={2 + sumPeriods.length} style={{ background: '#2e1065', color: '#fff', padding: '8px 12px', border: '1px solid #5b21b6', fontWeight: 800, fontSize: 13, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                                  TỔNG HỢP CHỈ SỐ P (PERFORMANCE) – {tenTo}
+                                </th>
+                              </tr>
+                              <tr>
+                                <th colSpan={2 + sumPeriods.length} style={{ background: '#3b0764', color: '#e9d5ff', padding: '4px 12px', textAlign: 'center', border: '1px solid #5b21b6', fontWeight: 400, fontSize: 11, fontStyle: 'italic' }}>
+                                  Công thức: Σ(SL thực tế × T chuẩn) / Σ(SL lý thuyết × T chuẩn) · Mục tiêu ≥ 95% · Dữ liệu 6 tháng gần nhất
+                                </th>
+                              </tr>
+                              <tr>
+                                <th style={{ background: '#2e1065', color: '#fff', padding: '7px 10px', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 12, textAlign: 'left' }}>Tên máy</th>
+                                <th style={{ background: '#2e1065', color: '#fff', padding: '7px 10px', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 12, textAlign: 'center', width: 90 }}>Mã máy</th>
                                 {sumPeriods.map(p => (
-                                  <th key={p.key} style={{ padding: '7px 12px', background: '#3b0764', color: '#e9d5ff', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11, textAlign: 'center' }}>{p.label}</th>
+                                  <th key={p.key} style={{ background: p.isCustom ? '#065f46' : '#7c3aed', color: '#fff', padding: '7px 10px', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 12, textAlign: 'center', minWidth: p.isCustom ? 160 : undefined }}>
+                                    {p.label}
+                                    {p.isCustom && customPFrom && customPTo && (
+                                      <div style={{ fontWeight: 400, fontSize: 10, opacity: 0.85, marginTop: 2 }}>
+                                        {machinePSummaryCustomRange[0].format('DD/MM/YY')} → {machinePSummaryCustomRange[1].format('DD/MM/YY')}
+                                      </div>
+                                    )}
+                                  </th>
                                 ))}
                               </tr>
                             </thead>
                             <tbody>
                               {sumMachinesP.map((m, i) => (
                                 <tr key={m.tenMay} style={{ background: i % 2 === 0 ? '#faf5ff' : '#f5f3ff' }}>
-                                  <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 600, fontSize: 12 }}>{m.tenMay}</td>
-                                  <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontFamily: 'monospace', color: '#7c3aed', textAlign: 'center' }}>{m.maMay || '—'}</td>
+                                  <td style={{ padding: '8px 10px', border: '1px solid #e2e8f0', fontWeight: 600, fontSize: 13 }}>{m.tenMay}</td>
+                                  <td style={{ padding: '8px 10px', border: '1px solid #e2e8f0', fontFamily: 'monospace', color: '#7c3aed', textAlign: 'center', fontWeight: 600 }}>{m.maMay || '—'}</td>
                                   {sumPeriods.map(p => {
-                                    const v = computePPct(m.tenMay, p.from)
+                                    const v = computePPct(m.tenMay, p.from, p.to || null)
                                     return (
-                                      <td key={p.key} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 700, fontSize: 13, color: pColor(v), background: pBg(v) }}>
+                                      <td key={p.key} style={{ padding: '8px 10px', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 800, fontSize: 14, color: pColor(v), background: pBg(v) }}>
                                         {v != null ? `${v}%` : '—'}
                                       </td>
                                     )
@@ -6776,8 +6829,25 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                                 </tr>
                               ))}
                             </tbody>
+                            <tfoot>
+                              <tr>
+                                <td colSpan={2} style={{ padding: '10px 12px', background: '#2e1065', border: '1px solid #2e1065', color: '#fff', fontWeight: 700, fontSize: 13, letterSpacing: 0.3 }}>
+                                  HIỆU SUẤT TỔNG THỂ – {tenTo}
+                                </td>
+                                {sumPeriods.map(p => {
+                                  const v = computeOverallPPct(p.from, p.to || null)
+                                  return (
+                                    <td key={p.key} style={{ padding: '10px 12px', background: v == null ? '#f8fafc' : pBg(v), border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 800, fontSize: 15, color: v == null ? '#9ca3af' : pColor(v) }}>
+                                      {v != null ? `${v}%` : '—'}
+                                    </td>
+                                  )
+                                })}
+                              </tr>
+                            </tfoot>
                           </table>
                         </div>
+
+                        <div style={{ height: 16 }} />
 
                         {/* Top nguyên nhân tổn thất */}
                         {causeSorted.length > 0 && (
@@ -6815,6 +6885,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                       </>
                     )}
                   </Spin>
+                  </div>
                 </div>
               )}
 
