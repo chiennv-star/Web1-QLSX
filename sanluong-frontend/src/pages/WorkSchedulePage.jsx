@@ -6672,8 +6672,8 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                   <tr key={idx} style={{ opacity: isSaving ? 0.6 : 1, cursor: 'pointer' }} title="Click để xem chi tiết sản lượng theo ca" onClick={() => openMachinePDetail(row)}>
                     <td style={td({ textAlign: 'center', color: '#94a3b8', fontSize: 11 })}>{idx + 1}</td>
                     <td style={td({ whiteSpace: 'nowrap', fontWeight: 500 })}>{dayjs(row.ngay).isValid() ? dayjs(row.ngay).format('DD/MM/YYYY') : row.ngay}</td>
-                    <td style={td({ fontWeight: 600 })}>{row.workScheduleInfos?.map(w => w.tenTrinh).filter(Boolean).join(' / ') || row.tenMay}</td>
-                    <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#000099', fontWeight: 600 })}>{row.workScheduleInfos?.map(w => w.soLo).filter(Boolean).join(', ') || '—'}</td>
+                    <td style={td({ fontWeight: 600 })}>{(() => { const d = row.workScheduleInfos?.[0]?.ngayThucHien; const ws = d ? row.workScheduleInfos.filter(w => w.ngayThucHien === d) : row.workScheduleInfos; return ws?.map(w => w.tenTrinh).filter(Boolean).join(' / ') || row.tenMay })()}</td>
+                    <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#000099', fontWeight: 600 })}>{(() => { const d = row.workScheduleInfos?.[0]?.ngayThucHien; const ws = d ? row.workScheduleInfos.filter(w => w.ngayThucHien === d) : row.workScheduleInfos; return ws?.map(w => w.soLo).filter(Boolean).join(', ') || '—' })()}</td>
                     <td style={td({ textAlign: 'center' })}>{row.toNhom || '—'}</td>
                     {/* Tốc độ chuẩn — click để sửa speed config */}
                     <td style={td({ textAlign: 'center', fontSize: 11 })}
