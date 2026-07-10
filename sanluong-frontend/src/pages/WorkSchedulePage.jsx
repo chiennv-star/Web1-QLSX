@@ -6470,9 +6470,9 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         const doRefresh = () => setMachinePVersion(v => v + 1)
 
         const thsP = [
-          { label: 'STT', w: 40 },
+          { label: 'STT', w: 28 },
           { label: 'Ngày', w: 90 },
-          { label: 'Tên sản phẩm', w: 200 },
+          { label: 'Tên sản phẩm', w: 260 },
           { label: 'Số lô', w: 80 },
           { label: 'Tổ/Nhóm', w: 80 },
           { label: 'Tốc độ chuẩn (Lý thuyết)', w: 130 },
