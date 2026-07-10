@@ -6334,7 +6334,10 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                   const wsInfos = (dr.workScheduleInfos?.length
                     ? dr.workScheduleInfos
                     : (dr.workScheduleId ? [{ id: dr.workScheduleId, maSp: null, tenTrinh: null, soLo: null }] : [])
-                  ).filter(w => !w.ngayThucHien || w.ngayThucHien === dr.ngay)
+                  ).filter(w => !w.ngayThucHien || (
+                    w.ngayThucHien <= dr.ngay &&
+                    w.ngayThucHien >= dayjs(dr.ngay).subtract(7, 'day').format('YYYY-MM-DD')
+                  ))
                   const renderTable = (wsId, logs) => (
                     <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden', marginBottom: 12 }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -6669,8 +6672,8 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                   <tr key={idx} style={{ opacity: isSaving ? 0.6 : 1, cursor: 'pointer' }} title="Click để xem chi tiết sản lượng theo ca" onClick={() => openMachinePDetail(row)}>
                     <td style={td({ textAlign: 'center', color: '#94a3b8', fontSize: 11 })}>{idx + 1}</td>
                     <td style={td({ whiteSpace: 'nowrap', fontWeight: 500 })}>{dayjs(row.ngay).isValid() ? dayjs(row.ngay).format('DD/MM/YYYY') : row.ngay}</td>
-                    <td style={td({ fontWeight: 600 })}>{row.workScheduleInfos?.filter(w => !w.ngayThucHien || w.ngayThucHien === row.ngay).map(w => w.tenTrinh).filter(Boolean).join(' / ') || row.tenMay}</td>
-                    <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#000099', fontWeight: 600 })}>{row.workScheduleInfos?.filter(w => !w.ngayThucHien || w.ngayThucHien === row.ngay).map(w => w.soLo).filter(Boolean).join(', ') || '—'}</td>
+                    <td style={td({ fontWeight: 600 })}>{row.workScheduleInfos?.map(w => w.tenTrinh).filter(Boolean).join(' / ') || row.tenMay}</td>
+                    <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#000099', fontWeight: 600 })}>{row.workScheduleInfos?.map(w => w.soLo).filter(Boolean).join(', ') || '—'}</td>
                     <td style={td({ textAlign: 'center' })}>{row.toNhom || '—'}</td>
                     {/* Tốc độ chuẩn — click để sửa speed config */}
                     <td style={td({ textAlign: 'center', fontSize: 11 })}
