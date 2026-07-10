@@ -6388,9 +6388,18 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                       </table>
                     </div>
                   )
+                  const filledWsInfos = wsInfos.filter(wsInfo =>
+                    machinePDetailLogs.some(l => String(l.workScheduleId) === String(wsInfo.id))
+                  )
+                  const emptyWsInfos = wsInfos.filter(wsInfo =>
+                    !machinePDetailLogs.some(l => String(l.workScheduleId) === String(wsInfo.id))
+                  )
                   return (
                     <div>
-                      {wsInfos.map(wsInfo => {
+                      {filledWsInfos.length === 0 && emptyWsInfos.length === 0 && (
+                        <div style={{ textAlign: 'center', color: '#9ca3af', padding: '20px 0', fontSize: 12 }}>Chưa có dữ liệu — chọn lô bên dưới để ghi nhận ca.</div>
+                      )}
+                      {filledWsInfos.map(wsInfo => {
                         const wsLogs = machinePDetailLogs.filter(l => String(l.workScheduleId) === String(wsInfo.id))
                         return (
                           <div key={wsInfo.id} style={{ marginBottom: 16 }}>
@@ -6412,6 +6421,24 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                           </div>
                         )
                       })}
+                      {emptyWsInfos.length > 0 && (
+                        <div style={{ marginTop: filledWsInfos.length > 0 ? 8 : 0 }}>
+                          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            Ghi nhận ca cho lô:
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {emptyWsInfos.map(wsInfo => (
+                              <button key={wsInfo.id} onClick={() => addPDetailLog(wsInfo.id)}
+                                style={{ border: '1px dashed #7c3aed', background: '#f5f3ff', color: '#5b21b6', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', gap: 5 }}>
+                                <span style={{ fontSize: 13, lineHeight: 1 }}>+</span>
+                                <span style={{ fontWeight: 600 }}>{wsInfo.soLo || `WS#${wsInfo.id}`}</span>
+                                {wsInfo.tenTrinh && <span style={{ color: '#7c3aed', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{wsInfo.tenTrinh}</span>}
+                                {wsInfo.ngayThucHien && <span style={{ color: '#9ca3af' }}>{dayjs(wsInfo.ngayThucHien).format('DD/MM')}</span>}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
                 })()}
