@@ -5698,8 +5698,8 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         const ths = [
           { label: 'STT', w: 40 },
           { label: 'Ngày', w: 90 },
-          { label: 'Tên máy', w: 180 },
-          { label: 'Mã máy', w: 80 },
+          { label: 'Tên sản phẩm', w: 200 },
+          { label: 'Số lô', w: 80 },
           { label: 'Tổ/Nhóm', w: 80 },
           { label: 'Giờ KH (h)', w: 75 },
           { label: 'Giờ chạy thực tế (h)', w: 120 },
@@ -5795,7 +5795,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                 </th>
               </tr>
               <tr>
-                <th colSpan={5} style={{ ...thBase, background: '#1e3a5f' }}>THÔNG TIN MÁY</th>
+                <th colSpan={5} style={{ ...thBase, background: '#1e3a5f' }}>THÔNG TIN SẢN XUẤT</th>
                 <th colSpan={3} style={{ ...thBase, background: '#166534' }}>GIỜ VẬN HÀNH (h)</th>
                 <th colSpan={1} style={{ ...thBase, background: '#b45309' }}>AVAILABILITY</th>
                 <th colSpan={3} style={{ ...thBase, background: '#991b1b' }}>SỰ CỐ / DỪNG MÁY</th>
@@ -5825,8 +5825,8 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                   >
                     <td style={td({ textAlign: 'center', color: '#94a3b8', fontSize: 11 })}>{idx + 1}</td>
                     <td style={td({ whiteSpace: 'nowrap', fontWeight: 500 })}>{dayjs(row.ngay).isValid() ? dayjs(row.ngay).format('DD/MM/YYYY') : row.ngay}</td>
-                    <td style={td({ fontWeight: 600 })}>{row.tenMay}</td>
-                    <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#000099', fontWeight: 600 })}>{row.maMay || '—'}</td>
+                    <td style={td({ fontWeight: 600 })}>{row.workScheduleInfos?.map(w => w.tenTrinh).filter(Boolean).join(' / ') || row.tenMay}</td>
+                    <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#000099', fontWeight: 600 })}>{row.workScheduleInfos?.map(w => w.soLo).filter(Boolean).join(', ') || '—'}</td>
                     <td style={td({ textAlign: 'center' })}>{row.toNhom || '—'}</td>
                     <td
                       style={td({ textAlign: 'center', fontWeight: 600, cursor: 'pointer', position: 'relative' })}
