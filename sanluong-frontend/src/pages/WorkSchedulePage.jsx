@@ -5567,7 +5567,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                     <td style={td({ textAlign: 'center', color: '#94a3b8', fontSize: 11 })}>{idx + 1}</td>
                     <td style={td({ whiteSpace: 'nowrap', fontWeight: 500 })}>{dayjs(row.ngay).isValid() ? dayjs(row.ngay).format('DD/MM/YYYY') : row.ngay}</td>
                     <td style={td({ fontWeight: 600 })}>{row.tenMay}</td>
-                    <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#0369a1', fontWeight: 600 })}>{row.maMay || '—'}</td>
+                    <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#000099', fontWeight: 600 })}>{row.maMay || '—'}</td>
                     <td style={td({ textAlign: 'center' })}>{row.toNhom || '—'}</td>
                     <td
                       style={td({ textAlign: 'center', fontWeight: 600, cursor: 'pointer', position: 'relative' })}
@@ -5678,7 +5678,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                       ) : sumMachines.map((m, idx) => (
                         <tr key={m.tenMay} style={{ background: idx % 2 === 0 ? '#fff' : '#f8fafc' }}>
                           <td style={{ padding: '8px 10px', border: '1px solid #e2e8f0', fontWeight: 600, fontSize: 13 }}>{m.tenMay}</td>
-                          <td style={{ padding: '8px 10px', border: '1px solid #e2e8f0', textAlign: 'center', fontFamily: 'monospace', color: '#0369a1', fontWeight: 600 }}>{m.maMay || '—'}</td>
+                          <td style={{ padding: '8px 10px', border: '1px solid #e2e8f0', textAlign: 'center', fontFamily: 'monospace', color: '#000099', fontWeight: 600 }}>{m.maMay || '—'}</td>
                           {periods.map(p => {
                             const v = computeAPct(m.tenMay, p.from, p.to || null)
                             return (
@@ -5745,7 +5745,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                           <tr key={idx}>
                             <td style={td({ textAlign: 'center', color: '#94a3b8', fontSize: 11 })}>{row.stt}</td>
                             <td style={td({ fontWeight: isKey ? 600 : 400 })}>{row.tenMay}</td>
-                            <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#0369a1', fontWeight: 600 })}>{row.maMay || '—'}</td>
+                            <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#000099', fontWeight: 600 })}>{row.maMay || '—'}</td>
                             <td style={td({ fontWeight: isKey ? 700 : 400, color: isKey ? '#b45309' : '#374151' })}>{row.lyDo}</td>
                             <td style={td({ textAlign: 'center', fontWeight: 700 })}>{row.soLanDung}</td>
                             <td style={td({ textAlign: 'center', fontWeight: 700, color: '#dc2626' })}>{row.tongGioDung}</td>
