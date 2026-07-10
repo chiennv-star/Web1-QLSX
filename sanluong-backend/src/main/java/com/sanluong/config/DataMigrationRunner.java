@@ -25,5 +25,10 @@ public class DataMigrationRunner implements ApplicationRunner {
         if (count > 0) {
             System.out.println("✅ Migration: đã cập nhật " + count + " sản phẩm PCPL2 (Dầu gội/Sữa tắm) — mẻ 6 cấp + tốc độ PL=25");
         }
+
+        int count2 = repository.bulkUpdateTocDoMayPlByMachineIfNull("Hàn Nhiệt", 35);
+        if (count2 > 0) {
+            System.out.println("✅ Migration: đã cập nhật " + count2 + " sản phẩm Máy Chiết Tube Hàn Nhiệt — tốc độ PL=35");
+        }
     }
 }
