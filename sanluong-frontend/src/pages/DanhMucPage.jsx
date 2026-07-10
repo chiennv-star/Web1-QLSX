@@ -1455,6 +1455,16 @@ function ProductMasterTab() {
           { soMe: 6, nangSuat: 15 },
         ]
       }
+      if ((loai.includes('dầu gội') || loai.includes('sữa tắm')) && nhom === 'PCPL2') {
+        return [
+          { soMe: 1, nangSuat: 3 },
+          { soMe: 2, nangSuat: 5.5 },
+          { soMe: 3, nangSuat: 8 },
+          { soMe: 4, nangSuat: 10.5 },
+          { soMe: 5, nangSuat: 13 },
+          { soMe: 6, nangSuat: 15.5 },
+        ]
+      }
       return DEFAULT_NS_ROWS
     }
     try {

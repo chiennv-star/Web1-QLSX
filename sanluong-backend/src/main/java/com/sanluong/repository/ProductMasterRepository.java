@@ -53,4 +53,9 @@ public interface ProductMasterRepository extends JpaRepository<ProductMaster, Lo
     @Transactional
     @Query("UPDATE ProductMaster p SET p.nangSuatPcMe = :nangSuatPcMe, p.tocDoMayPl = :tocDoMayPl, p.updatedAt = CURRENT_TIMESTAMP WHERE p.toNhomPcpl = 'PCPL2' AND p.loaiSanPham IN ('Dầu gội', 'Sữa tắm')")
     int bulkUpdatePcpl2MeAndTocDoMayPl(@Param("nangSuatPcMe") String nangSuatPcMe, @Param("tocDoMayPl") Integer tocDoMayPl);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE ProductMaster p SET p.nangSuatPcMe = :nangSuatPcMe, p.tocDoMayPl = :tocDoMayPl, p.updatedAt = CURRENT_TIMESTAMP WHERE p.toNhomPcpl = 'PCPL2' AND p.loaiSanPham IN ('Dầu gội', 'Sữa tắm') AND (p.nangSuatPcMe IS NULL OR p.nangSuatPcMe = '' OR p.nangSuatPcMe = '[]')")
+    int bulkUpdatePcpl2MeAndTocDoMayPlIfNull(@Param("nangSuatPcMe") String nangSuatPcMe, @Param("tocDoMayPl") Integer tocDoMayPl);
 }
