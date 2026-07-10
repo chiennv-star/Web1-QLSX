@@ -1108,7 +1108,7 @@ function ProductMasterDrawer({ open, record, onClose, onEdit }) {
                   <div key={i}>
                     <span style={{ fontSize: 11, color: '#8c8c8c' }}>{r.soMe} mẻ</span>
                     <div style={{ fontSize: 12, marginTop: 1, fontWeight: 600, color: '#1D4ED8' }}>
-                      {r.nangSuat != null ? Math.round(Number(r.nangSuat)).toLocaleString('vi-VN') : '—'}
+                      {r.nangSuat != null ? Number(r.nangSuat).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) : '—'}
                       <span style={{ fontWeight: 400, color: '#64748b', fontSize: 11 }}> số giờ</span>
                     </div>
                   </div>
@@ -1761,9 +1761,10 @@ function ProductMasterTab() {
                 </span>
                 <InputNumber
                   size="small" style={{ flex: 1 }} value={row.nangSuat} min={0}
-                  placeholder="Nhập năng suất..."
-                  formatter={v => v ? Math.round(Number(v)).toLocaleString('vi-VN') : ''}
-                  parser={v => v ? v.replace(/[^\d]/g, '') : ''}
+                  step={0.5} precision={1}
+                  placeholder="VD: 2,5"
+                  formatter={v => v != null && v !== '' ? String(v).replace('.', ',') : ''}
+                  parser={v => v ? v.replace(',', '.').replace(/[^\d.]/g, '') : ''}
                   onChange={val => setNangSuatPcMeRows(prev => prev.map((r, i) => i === idx ? { ...r, nangSuat: val } : r))}
                 />
                 <span style={{ fontSize: 11, color: '#94a3b8', minWidth: 42 }}>số giờ</span>
