@@ -1264,7 +1264,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
               boxShadow: '0 1px 3px rgba(0,0,0,.05)',
             }}>
               {/* ── Day header — 1 dòng ── */}
-              <div style={{
+              <div className="ws-day-header" style={{
                 display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'nowrap',
                 background: '#f0fdf4', borderBottom: '1px solid #dcfce7', padding: '7px 12px',
                 minWidth: 0,
@@ -1428,8 +1428,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                 )}
 
                 {/* Person table — luôn ở chế độ edit */}
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                  <table className="ws-session-table" style={{ width: '100%', minWidth: 680, borderCollapse: 'collapse', fontSize: 12 }}>
                     <thead>
                       <tr>
                         {['Người thực hiện', 'Mã NV', 'Nhóm/tổ', 'Ca SX', 'Thời gian (giờ)', 'Công thực hiện',
@@ -2276,6 +2276,23 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
             .erp-form-scroll-cap { max-height: none !important; overflow-y: visible !important; }
           }
 
+          /* ── Mobile: info form grid collapse ── */
+          @media (max-width: 768px) {
+            .erp-info-grid { grid-template-columns: 80px 1fr !important; }
+            .erp-vc-span   { grid-column: 1 / -1 !important; }
+            /* Session table: force minWidth so overflowX:auto kicks in */
+            .ws-session-table { min-width: 680px !important; }
+            /* Day header: allow wrapping */
+            .ws-day-header { flex-wrap: wrap !important; gap: 6px !important; }
+            /* Drawer header compact on mobile */
+            .ws-drawer-header { padding: 6px 10px !important; gap: 8px !important; }
+            .ws-drawer-meta   { display: none !important; }
+            .ws-drawer-title  { font-size: 12px !important; }
+            /* Bigger tap targets inside session table */
+            .ws-session-table select, .ws-session-table input { min-height: 32px !important; font-size: 13px !important; }
+            .ws-session-table button { min-height: 32px !important; min-width: 32px !important; }
+          }
+
           /* ── Tabs Chi tiết / ngày ── */
           .ws-detail-tabs .ant-tabs-tab {
             background: #f1f5f9 !important;
@@ -2309,13 +2326,13 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
         `}</style>
 
       {/* ── [1] Gradient header — luôn cố định, không bao giờ cuộn ── */}
-      <div style={{ flexShrink: 0, background: '#006666', padding: '8px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="ws-drawer-header" style={{ flexShrink: 0, background: '#006666', padding: '8px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <span style={{ fontSize: 20, flexShrink: 0 }}>⚙️</span>
         <div style={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'nowrap', overflow: 'hidden' }}>
-          <span style={{ color: '#fff', fontWeight: 800, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1 }}>
+          <span className="ws-drawer-title" style={{ color: '#fff', fontWeight: 800, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1 }}>
             {schedule?.tenTrinh || schedule?.maSp || 'Chi tiết sản xuất'}
           </span>
-          <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, display: 'flex', gap: 14, flexShrink: 0, whiteSpace: 'nowrap' }}>
+          <div className="ws-drawer-meta" style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, display: 'flex', gap: 14, flexShrink: 0, whiteSpace: 'nowrap' }}>
             {schedule?.maSp      && <span>SP: <b style={{ color: '#fff' }}>{schedule.maSp}</b></span>}
             {schedule?.soLo      && <span>Lô: <b style={{ color: '#fff' }}>{schedule.soLo}</b></span>}
             {schedule?.congDoan  && <span>Công đoạn: <b style={{ color: '#fff' }}>{schedule.congDoan}</b></span>}
@@ -2381,7 +2398,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
               }}>{children}</div>
             )
             const VC = ({ children, style: s = {}, span }) => (
-              <div style={{
+              <div className={span ? 'erp-vc-span' : undefined} style={{
                 padding: '4px 8px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0',
                 display: 'flex', alignItems: 'center',
                 ...(span ? { gridColumn: `span ${span}` } : {}),
@@ -2390,7 +2407,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
             )
             return (
               <div style={{ padding: '10px 16px 10px', background: '#fff' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 110px 1fr 110px 1fr 110px 1fr', border: '1px solid #e2e8f0', borderRadius: 7, overflow: 'hidden' }}>
+                <div className="erp-info-grid" style={{ display: 'grid', gridTemplateColumns: '110px 1fr 110px 1fr 110px 1fr 110px 1fr', border: '1px solid #e2e8f0', borderRadius: 7, overflow: 'hidden' }}>
 
                   {/* Row 1 — Product IDs + Cỡ Lô */}
                   <LC accent="#1677ff">🔷 Mã Bravo{isInfoEditing && <span style={{ marginLeft: 2 }}>{infoLookupIcon()}</span>}</LC>
@@ -6655,22 +6672,70 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
           style={{ marginLeft: 'auto' }} />
       </div>
 
-      <SkeletonTable
-        className="ws-table"
-        columns={columns}
-        dataSource={[...data]}
-        rowKey="id"
-        loading={loading}
-        size="small"
-        scroll={{ x: 1950 }}
-        sticky={{ offsetHeader: headerOffset }}
-        rowHoverable={false}
-        onRow={r => ({
-          onClick: () => onRowClick?.(r),
-          style: { cursor: onRowClick ? 'pointer' : 'default' },
+      {/* Desktop */}
+      <div className="ws-desktop-view">
+        <SkeletonTable
+          className="ws-table"
+          columns={columns}
+          dataSource={[...data]}
+          rowKey="id"
+          loading={loading}
+          size="small"
+          scroll={{ x: 1950 }}
+          sticky={{ offsetHeader: headerOffset }}
+          rowHoverable={false}
+          onRow={r => ({
+            onClick: () => onRowClick?.(r),
+            style: { cursor: onRowClick ? 'pointer' : 'default' },
+          })}
+          pagination={false}
+        />
+      </div>
+
+      {/* Mobile cards */}
+      <div className="ws-mobile-view" style={{ padding: '8px 10px', flexDirection: 'column', gap: 8 }}>
+        {loading && <div style={{ textAlign: 'center', padding: 32 }}><Spin size="large" /></div>}
+        {!loading && data.length === 0 && (
+          <div style={{ textAlign: 'center', color: '#94a3b8', padding: 40, fontSize: 14 }}>Không có dữ liệu</div>
+        )}
+        {!loading && data.map(record => {
+          const { sl, cong } = getSlCong(record)
+          const slV = Number(sl) || 0
+          const congV = Number(cong) || 0
+          const ns = slV > 0 && congV > 0 ? Math.round(slV / congV) : null
+          const coLoV = Number(record.coLo) || 0
+          const ketQua = slV > 0 && coLoV > 0 ? (slV >= coLoV * 0.95 ? 'Đạt' : 'Không đạt') : null
+          return (
+            <div key={record.id} onClick={() => onRowClick?.(record)} style={{
+              background: '#f0fdf4', border: '1px solid #86efac', borderLeft: '4px solid #15803d',
+              borderRadius: 10, padding: '10px 12px', cursor: onRowClick ? 'pointer' : 'default',
+              boxShadow: '0 1px 3px rgba(0,0,0,.05)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5, flexWrap: 'wrap' }}>
+                {record.ngayThucHien && (
+                  <span style={{ fontWeight: 700, color: '#15803d', fontSize: 13 }}>
+                    {dayjs(record.ngayThucHien).format('DD/MM/YY')}
+                  </span>
+                )}
+                {record.maSp && <Tag color="blue" style={{ marginRight: 0, fontWeight: 700, fontSize: 11 }}>{record.maSp}</Tag>}
+                {record.maBravo && <Tag style={{ marginRight: 0, fontFamily: 'monospace', fontSize: 10 }}>{record.maBravo}</Tag>}
+                {ketQua && <Tag color={ketQua === 'Đạt' ? 'success' : 'error'} style={{ marginLeft: 'auto', marginRight: 0 }}>{ketQua}</Tag>}
+              </div>
+              {record.tenTrinh && (
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#1E293B', marginBottom: 5, lineHeight: 1.4 }}>{record.tenTrinh}</div>
+              )}
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 12, color: '#595959' }}>
+                {record.soLo && <span>Lô: <b style={{ fontFamily: 'monospace' }}>{record.soLo}</b></span>}
+                {coLoV > 0 && <span>Cỡ: <b>{coLoV.toLocaleString('vi-VN')}</b></span>}
+                {slV > 0 && <span style={{ color: '#389e0d', fontWeight: 700 }}>SL: {slV.toLocaleString('vi-VN')}</span>}
+                {congV > 0 && <span>Công: <b>{congV.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</b></span>}
+                {ns != null && <span style={{ color: '#d46b08', fontWeight: 700 }}>NS: {ns.toLocaleString('vi-VN')}</span>}
+                {record.toNhom && <Tag color="green" style={{ marginRight: 0, fontSize: 11 }}>{record.toNhom}</Tag>}
+              </div>
+            </div>
+          )
         })}
-        pagination={false}
-      />
+      </div>
     </div>
   )
 }
