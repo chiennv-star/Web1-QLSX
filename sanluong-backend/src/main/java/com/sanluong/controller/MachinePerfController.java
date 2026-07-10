@@ -82,6 +82,14 @@ public class MachinePerfController {
             if (p.getMaMay() != null) maMayMap.put(p.getTen(), p.getMaMay());
         });
 
+        // Build "ngay|tenMay" → List<WorkSchedule> for workScheduleIds linkage
+        Map<String, List<WorkSchedule>> ngayMayWsMap = new HashMap<>();
+        for (WorkSchedule ws : wsList) {
+            if (ws.getNgayThucHien() == null || ws.getPhongThucHien() == null || ws.getPhongThucHien().isBlank()) continue;
+            String key = ws.getNgayThucHien().toString() + "|" + ws.getPhongThucHien();
+            ngayMayWsMap.computeIfAbsent(key, k -> new ArrayList<>()).add(ws);
+        }
+
         // Sort logs: ngay desc, then tenMay asc
         logs.sort((a, b) -> {
             int c = b.getNgay().compareTo(a.getNgay());
@@ -107,6 +115,20 @@ public class MachinePerfController {
                 tonThat = Math.round((slLyThuyet - log.getSlThucTe()) * 10) / 10.0;
             }
 
+            // Resolve workScheduleIds/workScheduleInfos for this (ngay, tenMay)
+            String wsKey = log.getNgay().toString() + "|" + log.getTenMay();
+            List<WorkSchedule> relatedWs = ngayMayWsMap.getOrDefault(wsKey, Collections.emptyList());
+            List<Long> wsIds = relatedWs.stream().map(WorkSchedule::getId).collect(Collectors.toList());
+            List<Map<String, Object>> wsInfos = new ArrayList<>();
+            for (WorkSchedule ws : relatedWs) {
+                Map<String, Object> info = new LinkedHashMap<>();
+                info.put("id", ws.getId());
+                info.put("maSp", ws.getMaSp());
+                info.put("tenTrinh", ws.getTenTrinh());
+                info.put("soLo", ws.getSoLo());
+                wsInfos.add(info);
+            }
+
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("stt", stt++);
             row.put("ngay", log.getNgay().toString());
@@ -120,6 +142,9 @@ public class MachinePerfController {
             row.put("tonThat", tonThat);
             row.put("nguyenNhanGiamToc", log.getNguyenNhanGiamToc());
             row.put("ghiChu", log.getGhiChu());
+            row.put("workScheduleId", wsIds.isEmpty() ? null : wsIds.get(0));
+            row.put("workScheduleIds", wsIds);
+            row.put("workScheduleInfos", wsInfos);
             result.add(row);
         }
 

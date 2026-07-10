@@ -6263,9 +6263,59 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                     <LC>Tổn thất</LC><VC><span style={{ color: dr.tonThat > 0 ? '#dc2626' : '#6b7280', fontWeight: 600 }}>{dr.tonThat != null ? Number(dr.tonThat).toLocaleString('vi-VN') : '—'}</span></VC>
                   </div>
                 </div>
-                <div style={{ fontSize: 11, color: '#6b7280', padding: '8px 0' }}>
-                  <div style={{ fontWeight: 700, color: '#4c1d95', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, borderBottom: '2px solid #4c1d95', paddingBottom: 8 }}>Chi tiết sản lượng theo ca</div>
-                  <div style={{ color: '#9ca3af', fontSize: 11 }}>Chỉnh sửa ở bảng bên dưới rồi nhấn Lưu để cập nhật.</div>
+                {/* Cột phải: tóm tắt live từ machinePDetailLogs */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderLeft: '1px solid #ede9fe', paddingLeft: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#4c1d95', textTransform: 'uppercase', letterSpacing: 1, paddingBottom: 8, borderBottom: '2px solid #4c1d95' }}>
+                    Tóm tắt theo ca / lô
+                  </div>
+                  {machinePDetailLoading ? (
+                    <div style={{ color: '#9ca3af', fontSize: 11 }}>Đang tải...</div>
+                  ) : machinePDetailLogs.length === 0 ? (
+                    <div style={{ color: '#9ca3af', fontSize: 11 }}>Thêm dòng trong bảng bên dưới để xem tóm tắt.</div>
+                  ) : (() => {
+                    const totalLT = machinePDetailLogs.reduce((s, l) => s + (Number(l.slLyThuyet) || 0), 0)
+                    const totalTT = machinePDetailLogs.reduce((s, l) => s + (Number(l.slThucTe) || 0), 0)
+                    const pTong = totalLT > 0 ? Math.round(totalTT / totalLT * 1000) / 10 : null
+                    const tonThatTong = Math.round((totalLT - totalTT) * 10) / 10
+                    const pColor3 = pTong == null ? '#9ca3af' : pTong >= 95 ? '#16a34a' : pTong >= 80 ? '#d97706' : '#dc2626'
+                    // Tổn thất by nguyenNhan
+                    const byLoss = {}
+                    machinePDetailLogs.forEach(l => {
+                      const lost = (Number(l.slLyThuyet) || 0) - (Number(l.slThucTe) || 0)
+                      if (lost > 0) {
+                        const cat = l.nguyenNhan || '(Chưa phân loại)'
+                        byLoss[cat] = (byLoss[cat] || 0) + lost
+                      }
+                    })
+                    return (
+                      <div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+                          {[
+                            { label: 'SL lý thuyết', value: totalLT.toLocaleString('vi-VN'), color: '#374151' },
+                            { label: 'SL thực tế', value: totalTT.toLocaleString('vi-VN'), color: '#1d4ed8' },
+                            { label: 'P tổng', value: pTong != null ? `${pTong}%` : '—', color: pColor3 },
+                            { label: 'Tổn thất', value: tonThatTong > 0 ? tonThatTong.toLocaleString('vi-VN') : '0', color: tonThatTong > 0 ? '#dc2626' : '#6b7280' },
+                          ].map(s => (
+                            <div key={s.label} style={{ background: '#f5f3ff', borderRadius: 6, padding: '8px 10px' }}>
+                              <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 2 }}>{s.label}</div>
+                              <div style={{ fontSize: 15, fontWeight: 800, color: s.color }}>{s.value}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {Object.keys(byLoss).length > 0 && (
+                          <div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: '#4c1d95', textTransform: 'uppercase', marginBottom: 6 }}>Tổn thất theo loại</div>
+                            {Object.entries(byLoss).sort((a, b) => b[1] - a[1]).map(([cat, val]) => (
+                              <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #ede9fe', fontSize: 11 }}>
+                                <span style={{ color: '#374151' }}>{cat}</span>
+                                <span style={{ fontWeight: 700, color: '#dc2626' }}>{val.toLocaleString('vi-VN')}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
               {/* Bảng chi tiết ca */}
