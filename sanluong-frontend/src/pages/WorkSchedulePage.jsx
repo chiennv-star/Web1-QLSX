@@ -1493,7 +1493,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                               <select style={{ ...inputStyle, cursor: 'pointer' }} value={s.nhomThucHien}
                                 onChange={e => { clearMaNvError(rowKey); updateLocals(rowKey, { nhomThucHien: e.target.value, nguoiThucHien: '', maNhanVien: '' }) }}>
                                 <option value="">-- Chọn nhóm --</option>
-                                {['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG'].map(v => <option key={v} value={v}>{v}</option>)}
+                                {['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG', 'KT'].map(v => <option key={v} value={v}>{v}</option>)}
                               </select>
                             </td>
                             <td style={{ ...cellStyle, width: 100 }}>
@@ -2089,7 +2089,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                         onChange={e => { clearMaNvError(key); updateLocals(key, { nhomThucHien: e.target.value, nguoiThucHien: '', maNhanVien: '' }) }}
                       >
                         <option value="">-- Chọn nhóm --</option>
-                        {['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG'].map(v => (
+                        {['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG', 'KT'].map(v => (
                           <option key={v} value={v}>{v}</option>
                         ))}
                       </select>
@@ -4511,7 +4511,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
     },
     {
       title: 'Tổ/Nhóm TH', dataIndex: 'toNhom', key: 'toNhom', width: 120, align: 'center',
-      filters: ['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG'].map(v => ({ text: v, value: v })),
+      filters: ['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG', 'KT'].map(v => ({ text: v, value: v })),
       filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#fff' : 'rgba(255,255,255,0.7)' }} />,
       onFilter: (value, record) => record.toNhom === value,
       render: (v, record) => {
