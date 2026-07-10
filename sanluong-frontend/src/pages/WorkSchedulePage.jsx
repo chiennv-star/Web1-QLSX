@@ -6645,69 +6645,98 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                 <tr><td colSpan={NCOLS_P} style={{ textAlign: 'center', padding: '32px 8px', color: '#9ca3af', border: '1px solid #e2e8f0' }}>
                   Chưa có dữ liệu. Nhấn "Thêm dòng" để nhập chỉ số P.
                 </td></tr>
-              ) : rows.map((row, idx) => {
-                const pval = row.pPct
-                const rowBg = idx % 2 === 0 ? '#fff' : '#faf5ff'
-                const td = (extra = {}) => ({ padding: '6px 6px', border: '1px solid #e2e8f0', background: rowBg, overflow: 'hidden', textOverflow: 'ellipsis', ...extra })
-                const isSaving = savingPerfRow === `${row.ngay}|${row.tenMay}`
-                return (
-                  <tr key={idx} style={{ opacity: isSaving ? 0.6 : 1, cursor: 'pointer' }} title="Click để xem chi tiết sản lượng theo ca" onClick={() => openMachinePDetail(row)}>
-                    <td style={td({ textAlign: 'center', color: '#94a3b8', fontSize: 11 })}>{idx + 1}</td>
-                    <td style={td({ whiteSpace: 'nowrap', fontWeight: 500 })}>{dayjs(row.ngay).isValid() ? dayjs(row.ngay).format('DD/MM/YYYY') : row.ngay}</td>
-                    <td style={td({ fontWeight: 600 })}>{(() => { const d = row.workScheduleInfos?.[0]?.ngayThucHien; const ws = d ? row.workScheduleInfos.filter(w => w.ngayThucHien === d) : row.workScheduleInfos; return ws?.map(w => w.tenTrinh).filter(Boolean).join(' / ') || row.tenMay })()}</td>
-                    <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#000099', fontWeight: 600 })}>{(() => { const d = row.workScheduleInfos?.[0]?.ngayThucHien; const ws = d ? row.workScheduleInfos.filter(w => w.ngayThucHien === d) : row.workScheduleInfos; return ws?.map(w => w.soLo).filter(Boolean).join(', ') || '—' })()}</td>
-                    <td style={td({ textAlign: 'center' })}>{row.toNhom || '—'}</td>
-                    {/* Tốc độ chuẩn — click để sửa speed config */}
-                    <td style={td({ textAlign: 'center', fontSize: 11 })}
-                      onClick={e => { e.stopPropagation(); setEditingPCell({ key: `${row.ngay}|${row.tenMay}|tocDoChuanLabel`, value: machinePSpeedConfigs[row.tenMay]?.tocDoChuanLabel || '' }) }}
-                      title="Click để chỉnh sửa tốc độ chuẩn"
-                    >
-                      {editingPCell?.key === `${row.ngay}|${row.tenMay}|tocDoChuanLabel` ? (
-                        <input
-                          autoFocus defaultValue={machinePSpeedConfigs[row.tenMay]?.tocDoChuanLabel || ''}
-                          style={{ width: '100%', fontSize: 11, border: '1px solid #7c3aed', borderRadius: 4, padding: '2px 4px' }}
-                          onBlur={e => saveSpeedConfig(row.tenMay, { tocDoChuanLabel: e.target.value })}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') saveSpeedConfig(row.tenMay, { tocDoChuanLabel: e.target.value })
-                            if (e.key === 'Escape') { e.stopPropagation(); setEditingPCell(null) }
-                          }}
-                          onClick={e => e.stopPropagation()}
-                          placeholder="VD: 8.000 SP/h"
-                        />
-                      ) : (
-                        <span style={{ cursor: 'pointer' }}>
-                          {row.tocDoChuanLabel || <span style={{ color: '#d1d5db' }}>—</span>}
-                          <span style={{ fontSize: 9, color: '#c4b5fd', marginLeft: 3 }}>✎</span>
-                        </span>
+              ) : (() => {
+                // Expand each row into sub-rows, one per product (wsInfo)
+                const expandedRows = []
+                rows.forEach((row, parentIdx) => {
+                  const d = row.workScheduleInfos?.[0]?.ngayThucHien
+                  const wsGroup = (d ? row.workScheduleInfos.filter(w => w.ngayThucHien === d) : row.workScheduleInfos) || []
+                  if (wsGroup.length <= 1) {
+                    expandedRows.push({ row, wsInfo: wsGroup[0] || null, wsIdx: 0, wsCount: 1, parentIdx })
+                  } else {
+                    wsGroup.forEach((wsInfo, wsIdx) => {
+                      expandedRows.push({ row, wsInfo, wsIdx, wsCount: wsGroup.length, parentIdx })
+                    })
+                  }
+                })
+                return expandedRows.map(({ row, wsInfo, wsIdx, wsCount, parentIdx }) => {
+                  const pval = row.pPct
+                  const rowBg = parentIdx % 2 === 0 ? '#fff' : '#faf5ff'
+                  const td = (extra = {}) => ({ padding: '6px 6px', border: '1px solid #e2e8f0', background: rowBg, overflow: 'hidden', textOverflow: 'ellipsis', ...extra })
+                  const isSaving = savingPerfRow === `${row.ngay}|${row.tenMay}`
+                  return (
+                    <tr key={`${parentIdx}-${wsIdx}`} style={{ opacity: isSaving ? 0.6 : 1, cursor: 'pointer' }} title="Click để xem chi tiết sản lượng theo ca" onClick={() => openMachinePDetail(row)}>
+                      {wsIdx === 0 && <td rowSpan={wsCount} style={td({ textAlign: 'center', color: '#94a3b8', fontSize: 11 })}>{parentIdx + 1}</td>}
+                      {wsIdx === 0 && <td rowSpan={wsCount} style={td({ whiteSpace: 'nowrap', fontWeight: 500 })}>{dayjs(row.ngay).isValid() ? dayjs(row.ngay).format('DD/MM/YYYY') : row.ngay}</td>}
+                      <td style={td({ fontWeight: 600 })}>{wsInfo?.tenTrinh || row.tenMay}</td>
+                      <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#000099', fontWeight: 600 })}>{wsInfo?.soLo || '—'}</td>
+                      {wsIdx === 0 && <td rowSpan={wsCount} style={td({ textAlign: 'center' })}>{row.toNhom || '—'}</td>}
+                      {/* Tốc độ chuẩn — click để sửa speed config */}
+                      {wsIdx === 0 && (
+                        <td rowSpan={wsCount} style={td({ textAlign: 'center', fontSize: 11 })}
+                          onClick={e => { e.stopPropagation(); setEditingPCell({ key: `${row.ngay}|${row.tenMay}|tocDoChuanLabel`, value: machinePSpeedConfigs[row.tenMay]?.tocDoChuanLabel || '' }) }}
+                          title="Click để chỉnh sửa tốc độ chuẩn"
+                        >
+                          {editingPCell?.key === `${row.ngay}|${row.tenMay}|tocDoChuanLabel` ? (
+                            <input
+                              autoFocus defaultValue={machinePSpeedConfigs[row.tenMay]?.tocDoChuanLabel || ''}
+                              style={{ width: '100%', fontSize: 11, border: '1px solid #7c3aed', borderRadius: 4, padding: '2px 4px' }}
+                              onBlur={e => saveSpeedConfig(row.tenMay, { tocDoChuanLabel: e.target.value })}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') saveSpeedConfig(row.tenMay, { tocDoChuanLabel: e.target.value })
+                                if (e.key === 'Escape') { e.stopPropagation(); setEditingPCell(null) }
+                              }}
+                              onClick={e => e.stopPropagation()}
+                              placeholder="VD: 8.000 SP/h"
+                            />
+                          ) : (
+                            <span style={{ cursor: 'pointer' }}>
+                              {row.tocDoChuanLabel || <span style={{ color: '#d1d5db' }}>—</span>}
+                              <span style={{ fontSize: 9, color: '#c4b5fd', marginLeft: 3 }}>✎</span>
+                            </span>
+                          )}
+                        </td>
                       )}
-                    </td>
-                    {/* SL lý thuyết */}
-                    <td style={td({ textAlign: 'right' })} onClick={e => e.stopPropagation()}>
-                      {renderEditableCell(row, 'slLyThuyet', row.slLyThuyet != null ? Number(row.slLyThuyet).toLocaleString('vi-VN') : null, true)}
-                    </td>
-                    {/* SL thực tế */}
-                    <td style={td({ textAlign: 'right', color: '#1d4ed8', fontWeight: 700 })} onClick={e => e.stopPropagation()}>
-                      {renderEditableCell(row, 'slThucTe', row.slThucTe != null ? Number(row.slThucTe).toLocaleString('vi-VN') : null, true)}
-                    </td>
-                    {/* P% */}
-                    <td style={td({ textAlign: 'center', fontWeight: 800, fontSize: 13, color: pColor(pval), background: pBg(pval) })}>
-                      {pval != null ? `${pval}%` : '—'}
-                    </td>
-                    {/* Tồn thất */}
-                    <td style={td({ textAlign: 'right', color: row.tonThat > 0 ? '#dc2626' : '#6b7280', fontWeight: row.tonThat > 0 ? 700 : 400 })}>
-                      {row.tonThat != null ? Number(row.tonThat).toLocaleString('vi-VN') : '—'}
-                    </td>
-                    {/* Nguyên nhân */}
-                    <td style={td({ fontSize: 11 })} onClick={e => e.stopPropagation()}>
-                      {renderSelectCell(row, 'nguyenNhanGiamToc', PREDEFINED_REASONS_P, row.nguyenNhanGiamToc)}
-                    </td>
-                    {/* Ghi chú */}
-                    <td style={td({ fontSize: 11 })}>
-                      {renderEditableCell(row, 'ghiChu', row.ghiChu, false)}
-                    </td>
-                  </tr>
-                )
-              })}
+                      {/* SL lý thuyết */}
+                      {wsIdx === 0 && (
+                        <td rowSpan={wsCount} style={td({ textAlign: 'right' })} onClick={e => e.stopPropagation()}>
+                          {renderEditableCell(row, 'slLyThuyet', row.slLyThuyet != null ? Number(row.slLyThuyet).toLocaleString('vi-VN') : null, true)}
+                        </td>
+                      )}
+                      {/* SL thực tế */}
+                      {wsIdx === 0 && (
+                        <td rowSpan={wsCount} style={td({ textAlign: 'right', color: '#1d4ed8', fontWeight: 700 })} onClick={e => e.stopPropagation()}>
+                          {renderEditableCell(row, 'slThucTe', row.slThucTe != null ? Number(row.slThucTe).toLocaleString('vi-VN') : null, true)}
+                        </td>
+                      )}
+                      {/* P% */}
+                      {wsIdx === 0 && (
+                        <td rowSpan={wsCount} style={td({ textAlign: 'center', fontWeight: 800, fontSize: 13, color: pColor(pval), background: pBg(pval) })}>
+                          {pval != null ? `${pval}%` : '—'}
+                        </td>
+                      )}
+                      {/* Tồn thất */}
+                      {wsIdx === 0 && (
+                        <td rowSpan={wsCount} style={td({ textAlign: 'right', color: row.tonThat > 0 ? '#dc2626' : '#6b7280', fontWeight: row.tonThat > 0 ? 700 : 400 })}>
+                          {row.tonThat != null ? Number(row.tonThat).toLocaleString('vi-VN') : '—'}
+                        </td>
+                      )}
+                      {/* Nguyên nhân */}
+                      {wsIdx === 0 && (
+                        <td rowSpan={wsCount} style={td({ fontSize: 11 })} onClick={e => e.stopPropagation()}>
+                          {renderSelectCell(row, 'nguyenNhanGiamToc', PREDEFINED_REASONS_P, row.nguyenNhanGiamToc)}
+                        </td>
+                      )}
+                      {/* Ghi chú */}
+                      {wsIdx === 0 && (
+                        <td rowSpan={wsCount} style={td({ fontSize: 11 })}>
+                          {renderEditableCell(row, 'ghiChu', row.ghiChu, false)}
+                        </td>
+                      )}
+                    </tr>
+                  )
+                })
+              })()}
             </tbody>
           </table>
         )
