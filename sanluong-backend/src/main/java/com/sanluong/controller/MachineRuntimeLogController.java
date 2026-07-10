@@ -3,7 +3,7 @@ package com.sanluong.controller;
 import com.sanluong.entity.MachineRuntimeLog;
 import com.sanluong.entity.WorkSchedule;
 import com.sanluong.repository.MachineRuntimeLogRepository;
-import com.sanluong.repository.PhongSanXuatRepository;
+import com.sanluong.repository.PhongThucHienRepository;
 import com.sanluong.repository.WorkScheduleRepository;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -20,14 +20,14 @@ public class MachineRuntimeLogController {
 
     private final MachineRuntimeLogRepository repo;
     private final WorkScheduleRepository wsRepo;
-    private final PhongSanXuatRepository phongRepo;
+    private final PhongThucHienRepository phongThucHienRepo;
 
     public MachineRuntimeLogController(MachineRuntimeLogRepository repo,
                                        WorkScheduleRepository wsRepo,
-                                       PhongSanXuatRepository phongRepo) {
+                                       PhongThucHienRepository phongThucHienRepo) {
         this.repo = repo;
         this.wsRepo = wsRepo;
-        this.phongRepo = phongRepo;
+        this.phongThucHienRepo = phongThucHienRepo;
     }
 
     @GetMapping
@@ -95,7 +95,7 @@ public class MachineRuntimeLogController {
 
         // phongThucHien (ten) → maMay
         Map<String, String> maMayMap = new HashMap<>();
-        phongRepo.findAllSorted().forEach(p -> {
+        phongThucHienRepo.findAllSorted().forEach(p -> {
             if (p.getMaMay() != null) maMayMap.put(p.getTen(), p.getMaMay());
         });
 
@@ -199,7 +199,7 @@ public class MachineRuntimeLogController {
         if (wsMap.isEmpty()) return ResponseEntity.ok(List.of());
 
         Map<String, String> maMayMap = new HashMap<>();
-        phongRepo.findAllSorted().forEach(p -> {
+        phongThucHienRepo.findAllSorted().forEach(p -> {
             if (p.getMaMay() != null) maMayMap.put(p.getTen(), p.getMaMay());
         });
 
