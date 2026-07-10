@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
-  Table, Button, Space, Typography, Input, Select, DatePicker,
+  Table, Button, Space, Typography, Input, Select, DatePicker, TimePicker,
   Modal, Form, InputNumber, Tag, Popconfirm, message, notification,
   Row, Col, Card, Tabs, Badge, Tooltip, Divider, Drawer, Spin, Dropdown, AutoComplete
 } from 'antd'
@@ -1723,13 +1723,15 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                 return (
                                   <tr key={row._id} style={{ background: idx % 2 === 0 ? '#fff' : '#f0f9ff' }}>
                                     <td style={{ padding: '4px 8px', color: '#94a3b8', fontSize: 11, textAlign: 'center', width: 28 }}>{idx + 1}</td>
-                                    <td style={{ padding: '3px 6px', width: 90 }}>
-                                      <input type="time" value={row.tuGio || ''} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12 }}
-                                        onChange={e => updateMachineRuntimeRow(k, row._id, { tuGio: e.target.value })} />
+                                    <td style={{ padding: '3px 6px', width: 95 }}>
+                                      <TimePicker format="HH:mm" size="small" style={{ width: '100%' }}
+                                        value={row.tuGio ? dayjs(row.tuGio, 'HH:mm') : null}
+                                        onChange={(_, s) => updateMachineRuntimeRow(k, row._id, { tuGio: s })} />
                                     </td>
-                                    <td style={{ padding: '3px 6px', width: 90 }}>
-                                      <input type="time" value={row.denGio || ''} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12 }}
-                                        onChange={e => updateMachineRuntimeRow(k, row._id, { denGio: e.target.value })} />
+                                    <td style={{ padding: '3px 6px', width: 95 }}>
+                                      <TimePicker format="HH:mm" size="small" style={{ width: '100%' }}
+                                        value={row.denGio ? dayjs(row.denGio, 'HH:mm') : null}
+                                        onChange={(_, s) => updateMachineRuntimeRow(k, row._id, { denGio: s })} />
                                     </td>
                                     <td style={{ padding: '3px 6px', width: 110 }}>
                                       <select value={row.trangThai || 'Chạy máy'} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12, color: isChay ? '#16a34a' : '#dc2626', fontWeight: 600 }}
@@ -5873,13 +5875,15 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                                   return (
                                     <tr key={log._id} style={{ background: idx % 2 === 0 ? '#fff' : '#f0f9ff' }}>
                                       <td style={{ padding: '4px 8px', color: '#94a3b8', fontSize: 11, textAlign: 'center', width: 28 }}>{idx + 1}</td>
-                                      <td style={{ padding: '3px 6px', width: 90 }}>
-                                        <input type="time" value={log.tuGio || ''} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12 }}
-                                          onChange={e => updateALog(log._id, { tuGio: e.target.value })} />
+                                      <td style={{ padding: '3px 6px', width: 95 }}>
+                                        <TimePicker format="HH:mm" size="small" style={{ width: '100%' }}
+                                          value={log.tuGio ? dayjs(log.tuGio, 'HH:mm') : null}
+                                          onChange={(_, s) => updateALog(log._id, { tuGio: s })} />
                                       </td>
-                                      <td style={{ padding: '3px 6px', width: 90 }}>
-                                        <input type="time" value={log.denGio || ''} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12 }}
-                                          onChange={e => updateALog(log._id, { denGio: e.target.value })} />
+                                      <td style={{ padding: '3px 6px', width: 95 }}>
+                                        <TimePicker format="HH:mm" size="small" style={{ width: '100%' }}
+                                          value={log.denGio ? dayjs(log.denGio, 'HH:mm') : null}
+                                          onChange={(_, s) => updateALog(log._id, { denGio: s })} />
                                       </td>
                                       <td style={{ padding: '3px 6px', width: 110 }}>
                                         <select value={log.trangThai || 'Chạy máy'} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12, color: isChay ? '#16a34a' : '#dc2626', fontWeight: 600 }}
