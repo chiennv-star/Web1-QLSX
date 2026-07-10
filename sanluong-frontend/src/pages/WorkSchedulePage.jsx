@@ -6331,9 +6331,10 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                 {machinePDetailLoading ? (
                   <div style={{ textAlign: 'center', padding: 24, color: '#9ca3af' }}>Đang tải...</div>
                 ) : (() => {
-                  const wsInfos = dr.workScheduleInfos?.length
+                  const wsInfos = (dr.workScheduleInfos?.length
                     ? dr.workScheduleInfos
                     : (dr.workScheduleId ? [{ id: dr.workScheduleId, maSp: null, tenTrinh: null, soLo: null }] : [])
+                  ).filter(w => !w.ngayThucHien || w.ngayThucHien === dr.ngay)
                   const renderTable = (wsId, logs) => (
                     <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden', marginBottom: 12 }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
