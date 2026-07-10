@@ -3635,7 +3635,12 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
   const filteredData = React.useMemo(() => {
     if (filterMode === 'all') return allData
     let from, to = dayjs()
-    if (filterMode === '1m') from = dayjs().startOf('month')
+    if (filterMode === 'today') { from = dayjs().startOf('day'); to = dayjs().endOf('day') }
+    else if (filterMode === 'yesterday') { from = dayjs().subtract(1, 'day').startOf('day'); to = dayjs().subtract(1, 'day').endOf('day') }
+    else if (filterMode === 'this_week') from = dayjs().startOf('week')
+    else if (filterMode === 'last_week') { from = dayjs().subtract(1, 'week').startOf('week'); to = dayjs().subtract(1, 'week').endOf('week') }
+    else if (filterMode === '1m') from = dayjs().startOf('month')
+    else if (filterMode === 'last_month') { from = dayjs().subtract(1, 'month').startOf('month'); to = dayjs().subtract(1, 'month').endOf('month') }
     else if (filterMode === '3m') from = dayjs().subtract(3, 'month')
     else if (filterMode === '6m') from = dayjs().subtract(6, 'month')
     else if (filterMode === 'year') from = dayjs().startOf('year')
@@ -3942,11 +3947,16 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
   ]
 
   const PRESETS = [
-    { key: 'all', label: 'Tất cả' },
-    { key: 'year', label: 'Năm nay' },
-    { key: '6m', label: '6 tháng' },
-    { key: '3m', label: '3 tháng' },
+    { key: 'today', label: 'Hôm nay' },
+    { key: 'yesterday', label: 'Hôm qua' },
+    { key: 'this_week', label: 'Tuần này' },
+    { key: 'last_week', label: 'Tuần trước' },
     { key: '1m', label: 'Tháng này' },
+    { key: 'last_month', label: 'Tháng trước' },
+    { key: '3m', label: '3 Tháng' },
+    { key: '6m', label: '6 Tháng' },
+    { key: 'year', label: 'Năm nay' },
+    { key: 'all', label: 'Tất cả' },
   ]
 
   const subItems = [

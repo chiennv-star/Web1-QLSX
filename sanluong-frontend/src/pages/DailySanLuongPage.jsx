@@ -6224,12 +6224,15 @@ function NhapKhoTab() {
 // ─── Tab: Dashboard Giám Đốc Sản Xuất ────────────────────────────────────────
 
 const GD_PERIODS = [
-  { key: 'today', label: 'Hôm nay',   range: () => [dayjs(), dayjs()] },
-  { key: 'week',  label: 'Tuần này',  range: () => [dayjs().startOf('isoWeek'), dayjs()] },
-  { key: 'month', label: 'Tháng này', range: () => [dayjs().startOf('month'), dayjs()] },
-  { key: 'q3',    label: '3 Tháng',   range: () => [dayjs().subtract(3, 'month'), dayjs()] },
-  { key: 'h6',    label: '6 Tháng',   range: () => [dayjs().subtract(6, 'month'), dayjs()] },
-  { key: 'year',  label: 'Năm nay',   range: () => [dayjs().startOf('year'), dayjs()] },
+  { key: 'today',      label: 'Hôm nay',    range: () => [dayjs(), dayjs()] },
+  { key: 'yesterday',  label: 'Hôm qua',    range: () => [dayjs().subtract(1,'day'), dayjs().subtract(1,'day')] },
+  { key: 'week',       label: 'Tuần này',   range: () => [dayjs().startOf('isoWeek'), dayjs()] },
+  { key: 'last_week',  label: 'Tuần trước', range: () => [dayjs().subtract(1,'week').startOf('isoWeek'), dayjs().subtract(1,'week').endOf('isoWeek')] },
+  { key: 'month',      label: 'Tháng này',  range: () => [dayjs().startOf('month'), dayjs()] },
+  { key: 'last_month', label: 'Tháng trước',range: () => [dayjs().subtract(1,'month').startOf('month'), dayjs().subtract(1,'month').endOf('month')] },
+  { key: 'q3',         label: '3 Tháng',    range: () => [dayjs().subtract(3, 'month'), dayjs()] },
+  { key: 'h6',         label: '6 Tháng',    range: () => [dayjs().subtract(6, 'month'), dayjs()] },
+  { key: 'year',       label: 'Năm nay',    range: () => [dayjs().startOf('year'), dayjs()] },
 ]
 
 const GD_TO = [
