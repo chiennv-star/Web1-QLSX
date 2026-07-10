@@ -30,5 +30,10 @@ public class DataMigrationRunner implements ApplicationRunner {
         if (count2 > 0) {
             System.out.println("✅ Migration: đã cập nhật " + count2 + " sản phẩm Máy Chiết Tube Hàn Nhiệt — tốc độ PL=35");
         }
+
+        int count3 = repository.bulkUpdatePcpl2DungDichMayPlIfNull("Máy Chiết 4 vòi bơm từ", 35);
+        if (count3 > 0) {
+            System.out.println("✅ Migration: đã cập nhật " + count3 + " sản phẩm PCPL2 Dung dịch — máy PL=Máy Chiết 4 vòi bơm từ, tốc độ=35");
+        }
     }
 }
