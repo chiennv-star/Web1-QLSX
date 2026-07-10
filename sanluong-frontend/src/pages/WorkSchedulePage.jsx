@@ -5626,7 +5626,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
               <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 230px)' }}>
                 {/* A% theo giai đoạn */}
                 {/* Toolbar tùy chọn khoảng thời gian */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#fff', borderBottom: '1px solid #e2e8f0' }}>
                   <span style={{ fontSize: 12, color: '#475569', fontWeight: 600, whiteSpace: 'nowrap' }}>Cột Tùy chọn:</span>
                   <DatePicker.RangePicker
                     value={summaryCustomRange}
@@ -5676,7 +5676,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                           Không có dữ liệu trong 6 tháng gần nhất. Hãy nhập dữ liệu thời gian chạy máy.
                         </td></tr>
                       ) : sumMachines.map((m, idx) => (
-                        <tr key={m.tenMay} style={{ background: idx % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                        <tr key={m.tenMay} style={{ background: '#fff' }}>
                           <td style={{ padding: '8px 10px', border: '1px solid #e2e8f0', fontWeight: 600, fontSize: 13 }}>{m.tenMay}</td>
                           <td style={{ padding: '8px 10px', border: '1px solid #e2e8f0', textAlign: 'center', fontFamily: 'monospace', color: '#000099', fontWeight: 600 }}>{m.maMay || '—'}</td>
                           {periods.map(p => {
