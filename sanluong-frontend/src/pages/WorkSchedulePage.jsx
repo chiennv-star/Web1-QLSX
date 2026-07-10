@@ -4066,6 +4066,20 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const [summaryCustomRange, setSummaryCustomRange] = useState([dayjs().subtract(29, 'day'), dayjs()])
   const [editingGioKh, setEditingGioKh] = useState(null) // { ngay, tenMay, value }
   const PREDEFINED_REASONS_A = ['Chờ nguyên liệu', 'Hỏng máy', 'Chuyển đổi mã', 'Vệ sinh / bảo trì']
+
+  // ── Chi số P (Performance) ──
+  const [machinePData, setMachinePData] = useState([])
+  const [machinePLoading, setMachinePLoading] = useState(false)
+  const [machinePVersion, setMachinePVersion] = useState(0)
+  const [machinePInnerTab, setMachinePInnerTab] = useState('summary')
+  const [machinePSummaryData, setMachinePSummaryData] = useState([])
+  const [machinePSummaryLoading, setMachinePSummaryLoading] = useState(false)
+  const [machinePSpeedConfigs, setMachinePSpeedConfigs] = useState({}) // tenMay → { tocDoChuanLabel, slLyThuyet }
+  const [editingPCell, setEditingPCell] = useState(null) // { ngay, tenMay, field, value }
+  const [addPerfOpen, setAddPerfOpen] = useState(false)
+  const [addPerfForm, setAddPerfForm] = useState({ ngay: dayjs().format('YYYY-MM-DD'), tenMay: '', slThucTe: null, slLyThuyet: null, nguyenNhan: '', ghiChu: '' })
+  const [savingPerfRow, setSavingPerfRow] = useState(null) // key "ngay|tenMay"
+  const PREDEFINED_REASONS_P = ['Điều chỉnh thông số giữa ca', 'Công nhân chưa quen thao tác', 'Chờ nguyên liệu / vật tư', 'Máy chạy dưới tốc độ chuẩn', 'Thay khuôn / dụng cụ', 'Lỗi chất lượng phải làm lại', 'Khác']
   const openMachineADetail = async (row) => {
     setMachineADetailRow(row)
     setMachineADetailLogs([])
@@ -4153,6 +4167,38 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       .catch(() => {})
       .finally(() => setMachineParetoLoading(false))
   }, [innerTab, congDoan, machineAVersion]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Load Chi số P theo date range ──
+  useEffect(() => {
+    if (innerTab !== 'machine_p') return
+    const tuNgay = filters.dateRange?.[0]?.format('YYYY-MM-DD') || dayjs().startOf('month').format('YYYY-MM-DD')
+    const denNgay = filters.dateRange?.[1]?.format('YYYY-MM-DD') || dayjs().endOf('month').format('YYYY-MM-DD')
+    setMachinePLoading(true)
+    api.get('/machine-perf/daily-summary', { params: { congDoanKey: congDoan, tuNgay, denNgay } })
+      .then(r => setMachinePData(r.data))
+      .catch(() => message.error('Không thể tải dữ liệu chỉ số P'))
+      .finally(() => setMachinePLoading(false))
+  }, [innerTab, filters.dateRange, machinePVersion]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Load 6-month summary + speed configs cho Chi số P ──
+  useEffect(() => {
+    if (innerTab !== 'machine_p') return
+    const today = dayjs()
+    const tuNgay = today.subtract(179, 'day').format('YYYY-MM-DD')
+    const denNgay = today.format('YYYY-MM-DD')
+    setMachinePSummaryLoading(true)
+    api.get('/machine-perf/daily-summary', { params: { congDoanKey: congDoan, tuNgay, denNgay } })
+      .then(r => setMachinePSummaryData(r.data))
+      .catch(() => {})
+      .finally(() => setMachinePSummaryLoading(false))
+    api.get('/machine-perf/speed-configs', { params: { congDoanKey: congDoan } })
+      .then(r => {
+        const map = {}
+        r.data.forEach(c => { map[c.tenMay] = { tocDoChuanLabel: c.tocDoChuanLabel, slLyThuyet: c.slLyThuyet } })
+        setMachinePSpeedConfigs(map)
+      })
+      .catch(() => {})
+  }, [innerTab, congDoan, machinePVersion]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch employees cho tab Không SX khi cần
   useEffect(() => {
@@ -4914,6 +4960,11 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
               key: 'machine_a',
               color: '#b45309',
               label: <span>⚙ Chỉ số A</span>,
+            },
+            {
+              key: 'machine_p',
+              color: '#7c3aed',
+              label: <span>⚡ Chỉ số P</span>,
             },
           ].map(tab => (
             <div
@@ -5894,6 +5945,472 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                   </div>
                 )
               })()}
+            </Modal>
+          </div>
+        )
+      })()}
+
+      {/* ── Tab: Chỉ số P (Performance) ── */}
+      {innerTab === 'machine_p' && (() => {
+        const year = (filters.dateRange?.[0] || dayjs()).year()
+        const tenTo = congDoan === 'BBC1' ? 'BBC1' : congDoan === 'DG' ? 'ĐG' : congDoan === 'CC' ? 'CC' : `Tổ ${congDoan}`
+        const doRefresh = () => setMachinePVersion(v => v + 1)
+
+        const thsP = [
+          { label: 'STT', w: 40 },
+          { label: 'Ngày', w: 90 },
+          { label: 'Tên máy', w: 180 },
+          { label: 'Mã máy', w: 80 },
+          { label: 'Tổ/Nhóm', w: 80 },
+          { label: 'Tốc độ chuẩn (Lý thuyết)', w: 130 },
+          { label: 'SL lý thuyết tối đa', w: 110 },
+          { label: 'SL thực tế sản xuất', w: 110 },
+          { label: 'P (%)', w: 70 },
+          { label: 'Tồn thất tốc độ (SP/ca)', w: 110 },
+          { label: 'Nguyên nhân giảm tốc', w: 200 },
+          { label: 'Ghi chú / Hành động', w: 180 },
+        ]
+        const NCOLS_P = thsP.length
+        const thBase = { padding: '6px 8px', textAlign: 'center', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11, letterSpacing: 0.5, color: '#fff' }
+
+        // Group by machine for per-machine tabs
+        const machineOrder = []
+        const machineMap = {}
+        machinePData.forEach(row => {
+          if (!machineMap[row.tenMay]) { machineMap[row.tenMay] = []; machineOrder.push(row.tenMay) }
+          machineMap[row.tenMay].push(row)
+        })
+
+        const activePTab = machinePInnerTab === 'summary' || machineOrder.includes(machinePInnerTab)
+          ? machinePInnerTab : 'summary'
+
+        const pColor = v => v == null ? '#9ca3af' : v >= 95 ? '#16a34a' : v >= 80 ? '#d97706' : '#dc2626'
+        const pBg   = v => v == null ? 'transparent' : v >= 95 ? '#f0fdf4' : v >= 80 ? '#fffbeb' : '#fef2f2'
+
+        const tabBtn = (active) => ({
+          background: active ? '#4c1d95' : 'transparent',
+          color: active ? '#fff' : '#475569',
+          border: 'none', borderBottom: active ? '2px solid #4c1d95' : '2px solid transparent',
+          padding: '8px 14px', cursor: 'pointer', fontSize: 12,
+          fontWeight: active ? 700 : 400, whiteSpace: 'nowrap', marginBottom: -2,
+        })
+
+        const savePerfField = async (ngay, tenMay, patch) => {
+          const key = `${ngay}|${tenMay}`
+          setSavingPerfRow(key)
+          try {
+            const { data: saved } = await api.put('/machine-perf/log', null, {
+              params: { ngay, tenMay, ...patch }
+            })
+            setMachinePData(prev => prev.map(r =>
+              r.ngay === ngay && r.tenMay === tenMay ? { ...r, ...saved } : r
+            ))
+            setMachinePSummaryData(prev => prev.map(r =>
+              r.ngay === ngay && r.tenMay === tenMay ? { ...r, ...saved } : r
+            ))
+          } catch { message.error('Không thể lưu') }
+          finally { setSavingPerfRow(null); setEditingPCell(null) }
+        }
+
+        const saveSpeedConfig = async (tenMay, patch) => {
+          try {
+            await api.put('/machine-perf/speed-config', null, { params: { tenMay, ...patch } })
+            setMachinePSpeedConfigs(prev => ({ ...prev, [tenMay]: { ...(prev[tenMay] || {}), ...patch } }))
+            setMachinePData(prev => prev.map(r => {
+              if (r.tenMay !== tenMay) return r
+              const slLT = patch.slLyThuyet ?? r.slLyThuyet
+              const slTT = r.slThucTe
+              const pPct = slLT > 0 && slTT != null ? Math.round(slTT / slLT * 1000) / 10 : r.pPct
+              const tonThat = slLT != null && slTT != null ? Math.round((slLT - slTT) * 10) / 10 : r.tonThat
+              return { ...r, ...patch, slLyThuyet: slLT, pPct, tonThat }
+            }))
+          } catch { message.error('Không thể lưu cấu hình tốc độ') }
+          finally { setEditingPCell(null) }
+        }
+
+        const addPerfRow = async () => {
+          const { ngay, tenMay, slThucTe, slLyThuyet, nguyenNhan, ghiChu } = addPerfForm
+          if (!ngay || !tenMay) { message.warning('Vui lòng chọn ngày và máy'); return }
+          try {
+            const { data: saved } = await api.put('/machine-perf/log', null, {
+              params: { ngay, tenMay, slThucTe: slThucTe || undefined, slLyThuyet: slLyThuyet || undefined, nguyenNhanGiamToc: nguyenNhan || undefined, ghiChu: ghiChu || undefined }
+            })
+            message.success('Đã thêm dòng')
+            setAddPerfOpen(false)
+            setAddPerfForm({ ngay: dayjs().format('YYYY-MM-DD'), tenMay: '', slThucTe: null, slLyThuyet: null, nguyenNhan: '', ghiChu: '' })
+            setMachinePData(prev => {
+              const exists = prev.find(r => r.ngay === saved.ngay && r.tenMay === saved.tenMay)
+              if (exists) return prev.map(r => r.ngay === saved.ngay && r.tenMay === saved.tenMay ? { ...r, ...saved } : r)
+              return [...prev, saved].sort((a, b) => b.ngay.localeCompare(a.ngay) || a.tenMay.localeCompare(b.tenMay))
+            })
+          } catch { message.error('Không thể thêm dòng') }
+        }
+
+        const deletePerfRow = async (ngay, tenMay) => {
+          try {
+            await api.delete('/machine-perf/log', { params: { ngay, tenMay } })
+            setMachinePData(prev => prev.filter(r => !(r.ngay === ngay && r.tenMay === tenMay)))
+            message.success('Đã xóa')
+          } catch { message.error('Không thể xóa') }
+        }
+
+        const renderEditableCell = (row, field, displayVal, isNumeric = false) => {
+          const key = `${row.ngay}|${row.tenMay}|${field}`
+          const isEditing = editingPCell?.key === key
+          if (isEditing) {
+            return (
+              <InputNumber
+                size="small" autoFocus style={{ width: '100%' }} min={0}
+                value={editingPCell.value}
+                formatter={v => v != null ? String(v).replace('.', ',') : ''}
+                parser={v => v ? v.replace(',', '.').replace(/[^\d.]/g, '') : ''}
+                onChange={v => setEditingPCell(prev => ({ ...prev, value: v }))}
+                onPressEnter={() => savePerfField(row.ngay, row.tenMay, { [field]: editingPCell.value })}
+                onBlur={() => savePerfField(row.ngay, row.tenMay, { [field]: editingPCell.value })}
+                onClick={e => e.stopPropagation()}
+                onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setEditingPCell(null) } }}
+              />
+            )
+          }
+          return (
+            <span
+              onClick={e => { e.stopPropagation(); setEditingPCell({ key, value: isNumeric ? (row[field] ?? null) : row[field] }) }}
+              style={{ cursor: 'pointer', display: 'block', width: '100%', minHeight: 20 }}
+              title="Click để chỉnh sửa"
+            >
+              {displayVal ?? <span style={{ color: '#d1d5db' }}>—</span>}
+              <span style={{ fontSize: 9, color: '#c4b5fd', marginLeft: 3 }}>✎</span>
+            </span>
+          )
+        }
+
+        const renderSelectCell = (row, field, options, displayVal) => {
+          const key = `${row.ngay}|${row.tenMay}|${field}`
+          const isEditing = editingPCell?.key === key
+          if (isEditing) {
+            return (
+              <select
+                autoFocus
+                value={editingPCell.value || ''}
+                onChange={e => setEditingPCell(prev => ({ ...prev, value: e.target.value }))}
+                onBlur={() => savePerfField(row.ngay, row.tenMay, { [field]: editingPCell.value })}
+                onClick={e => e.stopPropagation()}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') savePerfField(row.ngay, row.tenMay, { [field]: editingPCell.value })
+                  if (e.key === 'Escape') { e.stopPropagation(); setEditingPCell(null) }
+                }}
+                style={{ fontSize: 11, width: '100%', border: '1px solid #7c3aed', borderRadius: 4, padding: '2px 4px' }}
+              >
+                <option value="">-- Chọn nguyên nhân --</option>
+                {options.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            )
+          }
+          return (
+            <span
+              onClick={e => { e.stopPropagation(); setEditingPCell({ key, value: row[field] || '' }) }}
+              style={{ cursor: 'pointer', display: 'block', width: '100%', minHeight: 20, fontSize: 11, color: row[field] ? '#374151' : '#d1d5db' }}
+              title="Click để chỉnh sửa"
+            >
+              {displayVal || <span style={{ color: '#d1d5db' }}>—</span>}
+              <span style={{ fontSize: 9, color: '#c4b5fd', marginLeft: 3 }}>✎</span>
+            </span>
+          )
+        }
+
+        const renderMachinePTable = (tenMay, rows) => (
+          <table style={{ borderCollapse: 'collapse', fontSize: 12, width: '100%', tableLayout: 'fixed' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+              <tr>
+                <th colSpan={NCOLS_P} style={{ background: '#2e1065', color: '#fff', padding: '8px 12px', border: '1px solid #5b21b6', fontWeight: 800, fontSize: 13, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                  BIỂU MÁY THEO DÕI CHỈ SỐ P (PERFORMANCE) – {tenTo}{tenMay !== '__all' ? ` · ${tenMay}` : ''}
+                </th>
+              </tr>
+              <tr>
+                <th colSpan={NCOLS_P} style={{ background: '#3b0764', color: '#e9d5ff', padding: '4px 12px', textAlign: 'center', border: '1px solid #5b21b6', fontWeight: 400, fontSize: 11, fontStyle: 'italic' }}>
+                  Performance = Sản lượng thực tế / Sản lượng lý thuyết tối đa &nbsp;·&nbsp; Mục tiêu ≥ 95% &nbsp;·&nbsp; Đơn vị: 2 ca/ngày &nbsp;·&nbsp; {year}
+                </th>
+              </tr>
+              <tr>
+                <th colSpan={5} style={{ ...thBase, background: '#2e1065' }}>THÔNG TIN MÁY</th>
+                <th colSpan={3} style={{ ...thBase, background: '#1e3a5f' }}>THÔNG SỐ TỐC ĐỘ</th>
+                <th colSpan={2} style={{ ...thBase, background: '#7c3aed' }}>P (%)</th>
+                <th colSpan={2} style={{ ...thBase, background: '#5b21b6' }}>PHÂN TÍCH TỔN THẤT</th>
+              </tr>
+              <tr>
+                {thsP.map(h => (
+                  <th key={h.label} style={{ background: '#f5f3ff', color: '#1e293b', padding: '6px 6px', border: '1px solid #a78bfa', fontWeight: 700, fontSize: 11, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {h.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr><td colSpan={NCOLS_P} style={{ textAlign: 'center', padding: '32px 8px', color: '#9ca3af', border: '1px solid #e2e8f0' }}>
+                  Chưa có dữ liệu. Nhấn "Thêm dòng" để nhập chỉ số P.
+                </td></tr>
+              ) : rows.map((row, idx) => {
+                const pval = row.pPct
+                const rowBg = idx % 2 === 0 ? '#fff' : '#faf5ff'
+                const td = (extra = {}) => ({ padding: '6px 6px', border: '1px solid #e2e8f0', background: rowBg, overflow: 'hidden', textOverflow: 'ellipsis', ...extra })
+                const isSaving = savingPerfRow === `${row.ngay}|${row.tenMay}`
+                return (
+                  <tr key={idx} style={{ opacity: isSaving ? 0.6 : 1 }}>
+                    <td style={td({ textAlign: 'center', color: '#94a3b8', fontSize: 11 })}>{idx + 1}</td>
+                    <td style={td({ whiteSpace: 'nowrap', fontWeight: 500 })}>{dayjs(row.ngay).isValid() ? dayjs(row.ngay).format('DD/MM/YYYY') : row.ngay}</td>
+                    <td style={td({ fontWeight: 600 })}>{row.tenMay}</td>
+                    <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#7c3aed', fontWeight: 600 })}>{row.maMay || '—'}</td>
+                    <td style={td({ textAlign: 'center' })}>{row.toNhom || '—'}</td>
+                    {/* Tốc độ chuẩn — click để sửa speed config */}
+                    <td style={td({ textAlign: 'center', fontSize: 11 })}
+                      onClick={e => { e.stopPropagation(); setEditingPCell({ key: `${row.ngay}|${row.tenMay}|tocDoChuanLabel`, value: machinePSpeedConfigs[row.tenMay]?.tocDoChuanLabel || '' }) }}
+                      title="Click để chỉnh sửa tốc độ chuẩn"
+                    >
+                      {editingPCell?.key === `${row.ngay}|${row.tenMay}|tocDoChuanLabel` ? (
+                        <input
+                          autoFocus defaultValue={machinePSpeedConfigs[row.tenMay]?.tocDoChuanLabel || ''}
+                          style={{ width: '100%', fontSize: 11, border: '1px solid #7c3aed', borderRadius: 4, padding: '2px 4px' }}
+                          onBlur={e => saveSpeedConfig(row.tenMay, { tocDoChuanLabel: e.target.value })}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') saveSpeedConfig(row.tenMay, { tocDoChuanLabel: e.target.value })
+                            if (e.key === 'Escape') { e.stopPropagation(); setEditingPCell(null) }
+                          }}
+                          onClick={e => e.stopPropagation()}
+                          placeholder="VD: 8.000 SP/h"
+                        />
+                      ) : (
+                        <span style={{ cursor: 'pointer' }}>
+                          {row.tocDoChuanLabel || <span style={{ color: '#d1d5db' }}>—</span>}
+                          <span style={{ fontSize: 9, color: '#c4b5fd', marginLeft: 3 }}>✎</span>
+                        </span>
+                      )}
+                    </td>
+                    {/* SL lý thuyết */}
+                    <td style={td({ textAlign: 'right' })}>
+                      {renderEditableCell(row, 'slLyThuyet', row.slLyThuyet != null ? Number(row.slLyThuyet).toLocaleString('vi-VN') : null, true)}
+                    </td>
+                    {/* SL thực tế */}
+                    <td style={td({ textAlign: 'right', color: '#1d4ed8', fontWeight: 700 })}>
+                      {renderEditableCell(row, 'slThucTe', row.slThucTe != null ? Number(row.slThucTe).toLocaleString('vi-VN') : null, true)}
+                    </td>
+                    {/* P% */}
+                    <td style={td({ textAlign: 'center', fontWeight: 800, fontSize: 13, color: pColor(pval), background: pBg(pval) })}>
+                      {pval != null ? `${pval}%` : '—'}
+                    </td>
+                    {/* Tồn thất */}
+                    <td style={td({ textAlign: 'right', color: row.tonThat > 0 ? '#dc2626' : '#6b7280', fontWeight: row.tonThat > 0 ? 700 : 400 })}>
+                      {row.tonThat != null ? Number(row.tonThat).toLocaleString('vi-VN') : '—'}
+                    </td>
+                    {/* Nguyên nhân */}
+                    <td style={td({ fontSize: 11 })}>
+                      {renderSelectCell(row, 'nguyenNhanGiamToc', PREDEFINED_REASONS_P, row.nguyenNhanGiamToc)}
+                    </td>
+                    {/* Ghi chú */}
+                    <td style={td({ fontSize: 11 })}>
+                      {renderEditableCell(row, 'ghiChu', row.ghiChu, false)}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )
+
+        // ── Summary: P% by machine × period ──
+        const today2 = dayjs()
+        const sumPeriods = [
+          { key: 'week',  label: 'Tuần (7 ngày)',   from: today2.subtract(6,   'day').format('YYYY-MM-DD') },
+          { key: 'month', label: 'Tháng (30 ngày)', from: today2.subtract(29,  'day').format('YYYY-MM-DD') },
+          { key: 'q3',    label: '3 Tháng',          from: today2.subtract(89,  'day').format('YYYY-MM-DD') },
+          { key: 'half',  label: '6 Tháng',          from: today2.subtract(179, 'day').format('YYYY-MM-DD') },
+        ]
+        const sumMachinesP = [...new Map(machinePSummaryData.map(r => [r.tenMay, { tenMay: r.tenMay, maMay: r.maMay }])).values()]
+        const computePPct = (tenMay, fromStr) => {
+          const rows = machinePSummaryData.filter(r => r.tenMay === tenMay && r.ngay >= fromStr)
+          const sumLT = rows.reduce((s, r) => s + (r.slLyThuyet || 0), 0)
+          const sumTT = rows.reduce((s, r) => s + (r.slThucTe || 0), 0)
+          return sumLT > 0 ? Math.round(sumTT / sumLT * 1000) / 10 : null
+        }
+
+        // Top nguyên nhân tổn thất
+        const causeAgg = {}
+        machinePSummaryData.forEach(r => {
+          if (!r.nguyenNhanGiamToc || !r.tonThat) return
+          causeAgg[r.nguyenNhanGiamToc] = (causeAgg[r.nguyenNhanGiamToc] || 0) + r.tonThat
+        })
+        const causeSorted = Object.entries(causeAgg).sort((a, b) => b[1] - a[1])
+
+        const machines = Object.keys(machineMap)
+
+        return (
+          <div style={{ padding: 0 }}>
+            {/* Inner tab bar */}
+            <div style={{ display: 'flex', alignItems: 'center', borderBottom: '2px solid #e2e8f0', background: '#faf5ff', padding: '0 12px', overflowX: 'auto' }}>
+              <button style={tabBtn(activePTab === 'summary')} onClick={() => setMachinePInnerTab('summary')}>📊 Tổng hợp</button>
+              {machineOrder.map(m => (
+                <button key={m} style={tabBtn(activePTab === m)} onClick={() => setMachinePInnerTab(m)}>{m}</button>
+              ))}
+              <div style={{ flex: 1 }} />
+              <button
+                onClick={() => setAddPerfOpen(true)}
+                style={{ border: '1px solid #7c3aed', background: '#ede9fe', color: '#5b21b6', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, flexShrink: 0, marginLeft: 8 }}>
+                + Thêm dòng
+              </button>
+              <button onClick={doRefresh} style={{ border: '1px solid #a78bfa', background: '#f5f3ff', color: '#5b21b6', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12, flexShrink: 0, marginLeft: 6 }}>↺ Làm mới</button>
+            </div>
+
+            <Spin spinning={machinePLoading}>
+              {/* ── Tab Tổng hợp ── */}
+              {activePTab === 'summary' && (
+                <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 230px)', padding: 12 }}>
+                  <Spin spinning={machinePSummaryLoading}>
+                    {/* P% by machine × period table */}
+                    {sumMachinesP.length === 0 ? (
+                      <div style={{ textAlign: 'center', color: '#9ca3af', padding: 40 }}>Chưa có dữ liệu chỉ số P. Thêm dòng để bắt đầu.</div>
+                    ) : (
+                      <>
+                        <div style={{ fontWeight: 700, color: '#2e1065', marginBottom: 10, fontSize: 13 }}>⚡ P% Theo Giai Đoạn — Theo Máy</div>
+                        <div style={{ overflowX: 'auto', marginBottom: 24 }}>
+                          <table style={{ borderCollapse: 'collapse', fontSize: 12, minWidth: 600 }}>
+                            <thead>
+                              <tr>
+                                <th style={{ padding: '7px 10px', background: '#2e1065', color: '#fff', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11 }}>Máy</th>
+                                <th style={{ padding: '7px 10px', background: '#2e1065', color: '#fff', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11 }}>Mã máy</th>
+                                {sumPeriods.map(p => (
+                                  <th key={p.key} style={{ padding: '7px 12px', background: '#3b0764', color: '#e9d5ff', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11, textAlign: 'center' }}>{p.label}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sumMachinesP.map((m, i) => (
+                                <tr key={m.tenMay} style={{ background: i % 2 === 0 ? '#faf5ff' : '#f5f3ff' }}>
+                                  <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 600, fontSize: 12 }}>{m.tenMay}</td>
+                                  <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontFamily: 'monospace', color: '#7c3aed', textAlign: 'center' }}>{m.maMay || '—'}</td>
+                                  {sumPeriods.map(p => {
+                                    const v = computePPct(m.tenMay, p.from)
+                                    return (
+                                      <td key={p.key} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 700, fontSize: 13, color: pColor(v), background: pBg(v) }}>
+                                        {v != null ? `${v}%` : '—'}
+                                      </td>
+                                    )
+                                  })}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Top nguyên nhân tổn thất */}
+                        {causeSorted.length > 0 && (
+                          <>
+                            <div style={{ fontWeight: 700, color: '#2e1065', marginBottom: 10, fontSize: 13 }}>📉 Nguyên Nhân Tổn Thất Tốc Độ (6 tháng gần nhất)</div>
+                            <div style={{ overflowX: 'auto', marginBottom: 16 }}>
+                              <table style={{ borderCollapse: 'collapse', fontSize: 12, minWidth: 500 }}>
+                                <thead>
+                                  <tr>
+                                    <th style={{ padding: '7px 10px', background: '#2e1065', color: '#fff', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11 }}>STT</th>
+                                    <th style={{ padding: '7px 10px', background: '#2e1065', color: '#fff', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11, textAlign: 'left' }}>Nguyên nhân</th>
+                                    <th style={{ padding: '7px 10px', background: '#2e1065', color: '#fff', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11 }}>Tổng tổn thất (SP)</th>
+                                    <th style={{ padding: '7px 10px', background: '#2e1065', color: '#fff', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11 }}>%</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {causeSorted.map(([cause, val], idx) => {
+                                    const total = causeSorted.reduce((s, [, v]) => s + v, 0)
+                                    return (
+                                      <tr key={cause} style={{ background: idx % 2 === 0 ? '#faf5ff' : '#f5f3ff' }}>
+                                        <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', textAlign: 'center', color: '#94a3b8', fontSize: 11 }}>{idx + 1}</td>
+                                        <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 500 }}>{cause}</td>
+                                        <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 700, color: '#dc2626' }}>{Number(val).toLocaleString('vi-VN')}</td>
+                                        <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 600, color: '#7c3aed' }}>
+                                          {total > 0 ? `${Math.round(val / total * 1000) / 10}%` : '—'}
+                                        </td>
+                                      </tr>
+                                    )
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </Spin>
+                </div>
+              )}
+
+              {/* ── Tabs theo máy ── */}
+              {activePTab !== 'summary' && (
+                <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 230px)' }}>
+                  {renderMachinePTable(activePTab, machineMap[activePTab] || [])}
+                </div>
+              )}
+            </Spin>
+
+            {/* Modal thêm dòng mới */}
+            <Modal
+              open={addPerfOpen}
+              onCancel={() => setAddPerfOpen(false)}
+              onOk={addPerfRow}
+              okText="Thêm" cancelText="Hủy"
+              title="Thêm dòng Chỉ số P"
+              width={480}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 8 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <label style={{ width: 130, fontWeight: 600, fontSize: 13 }}>Ngày *</label>
+                  <DatePicker style={{ flex: 1 }} format="DD/MM/YYYY"
+                    value={addPerfForm.ngay ? dayjs(addPerfForm.ngay) : null}
+                    onChange={d => setAddPerfForm(p => ({ ...p, ngay: d?.format('YYYY-MM-DD') || '' }))}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <label style={{ width: 130, fontWeight: 600, fontSize: 13 }}>Máy *</label>
+                  <select value={addPerfForm.tenMay} onChange={e => setAddPerfForm(p => ({ ...p, tenMay: e.target.value }))}
+                    style={{ flex: 1, fontSize: 13, border: '1px solid #d9d9d9', borderRadius: 6, padding: '4px 8px', height: 32 }}>
+                    <option value="">-- Chọn máy --</option>
+                    {machines.length > 0
+                      ? machines.map(m => <option key={m} value={m}>{m}</option>)
+                      : Object.keys(machinePSpeedConfigs).map(m => <option key={m} value={m}>{m}</option>)
+                    }
+                  </select>
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <label style={{ width: 130, fontWeight: 600, fontSize: 13 }}>SL lý thuyết</label>
+                  <InputNumber style={{ flex: 1 }} min={0}
+                    value={addPerfForm.slLyThuyet}
+                    placeholder={addPerfForm.tenMay && machinePSpeedConfigs[addPerfForm.tenMay]?.slLyThuyet ? `Mặc định: ${machinePSpeedConfigs[addPerfForm.tenMay].slLyThuyet}` : 'Số SP tối đa/ngày'}
+                    formatter={v => v != null ? String(v).replace('.', ',') : ''}
+                    parser={v => v ? v.replace(',', '.').replace(/[^\d.]/g, '') : ''}
+                    onChange={v => setAddPerfForm(p => ({ ...p, slLyThuyet: v }))}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <label style={{ width: 130, fontWeight: 600, fontSize: 13 }}>SL thực tế</label>
+                  <InputNumber style={{ flex: 1 }} min={0}
+                    value={addPerfForm.slThucTe}
+                    placeholder="Số SP đã sản xuất"
+                    formatter={v => v != null ? String(v).replace('.', ',') : ''}
+                    parser={v => v ? v.replace(',', '.').replace(/[^\d.]/g, '') : ''}
+                    onChange={v => setAddPerfForm(p => ({ ...p, slThucTe: v }))}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <label style={{ width: 130, fontWeight: 600, fontSize: 13 }}>Nguyên nhân</label>
+                  <select value={addPerfForm.nguyenNhan} onChange={e => setAddPerfForm(p => ({ ...p, nguyenNhan: e.target.value }))}
+                    style={{ flex: 1, fontSize: 13, border: '1px solid #d9d9d9', borderRadius: 6, padding: '4px 8px', height: 32 }}>
+                    <option value="">-- Không có / Chưa xác định --</option>
+                    {PREDEFINED_REASONS_P.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <label style={{ width: 130, fontWeight: 600, fontSize: 13 }}>Ghi chú</label>
+                  <input value={addPerfForm.ghiChu} onChange={e => setAddPerfForm(p => ({ ...p, ghiChu: e.target.value }))}
+                    placeholder="Ghi chú / hành động xử lý"
+                    style={{ flex: 1, fontSize: 13, border: '1px solid #d9d9d9', borderRadius: 6, padding: '4px 8px', height: 32 }} />
+                </div>
+              </div>
             </Modal>
           </div>
         )
