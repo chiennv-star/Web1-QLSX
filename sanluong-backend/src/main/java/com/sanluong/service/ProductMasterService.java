@@ -760,4 +760,11 @@ public class ProductMasterService {
     }
 
     private boolean notBlank(String s) { return s != null && !s.isBlank(); }
+
+    @Transactional
+    public Map<String, Object> bulkUpdatePcpl2Me() {
+        String newMe = "[{\"soMe\":1,\"nangSuat\":3},{\"soMe\":2,\"nangSuat\":5.5},{\"soMe\":3,\"nangSuat\":8},{\"soMe\":4,\"nangSuat\":10.5},{\"soMe\":5,\"nangSuat\":13},{\"soMe\":6,\"nangSuat\":15.5}]";
+        int count = repository.bulkUpdatePcpl2MeAndTocDoMayPl(newMe, 25);
+        return Map.of("updated", count, "message", "Đã cập nhật " + count + " sản phẩm PCPL2 (Dầu gội/Sữa tắm)");
+    }
 }

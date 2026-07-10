@@ -48,4 +48,9 @@ public interface ProductMasterRepository extends JpaRepository<ProductMaster, Lo
     @Transactional
     @Query("DELETE FROM ProductMaster p WHERE p.maBravo IS NULL OR p.maBravo = ''")
     int deleteByMaBravoNullOrEmpty();
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE ProductMaster p SET p.nangSuatPcMe = :nangSuatPcMe, p.tocDoMayPl = :tocDoMayPl, p.updatedAt = CURRENT_TIMESTAMP WHERE p.toNhomPcpl = 'PCPL2' AND p.loaiSanPham IN ('Dầu gội', 'Sữa tắm')")
+    int bulkUpdatePcpl2MeAndTocDoMayPl(@Param("nangSuatPcMe") String nangSuatPcMe, @Param("tocDoMayPl") Integer tocDoMayPl);
 }

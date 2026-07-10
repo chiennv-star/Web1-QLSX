@@ -159,6 +159,13 @@ public class ProductMasterController {
         }
     }
 
+    // ── Bulk admin operations ─────────────────────────────────────────────
+
+    @PostMapping("/admin/bulk-update-pcpl2-me")
+    public ResponseEntity<Map<String, Object>> bulkUpdatePcpl2Me() {
+        return ResponseEntity.ok(service.bulkUpdatePcpl2Me());
+    }
+
     // ── Đồng bộ / Khôi phục ───────────────────────────────────────────────
 
     @PostMapping("/sync-from-song-an")
