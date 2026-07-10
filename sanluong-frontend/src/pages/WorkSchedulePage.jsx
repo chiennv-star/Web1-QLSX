@@ -6388,14 +6388,19 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <label style={{ width: 130, fontWeight: 600, fontSize: 13 }}>Máy *</label>
-                  <select value={addPerfForm.tenMay} onChange={e => setAddPerfForm(p => ({ ...p, tenMay: e.target.value }))}
-                    style={{ flex: 1, fontSize: 13, border: '1px solid #d9d9d9', borderRadius: 6, padding: '4px 8px', height: 32 }}>
-                    <option value="">-- Chọn máy --</option>
-                    {machines.length > 0
-                      ? machines.map(m => <option key={m} value={m}>{m}</option>)
-                      : Object.keys(machinePSpeedConfigs).map(m => <option key={m} value={m}>{m}</option>)
-                    }
-                  </select>
+                  <AutoComplete
+                    style={{ flex: 1 }}
+                    value={addPerfForm.tenMay}
+                    onChange={v => setAddPerfForm(p => ({ ...p, tenMay: v }))}
+                    options={[...new Set([
+                      ...machines,
+                      ...Object.keys(machinePSpeedConfigs),
+                      ...machineSummaryData.map(r => r.tenMay),
+                    ])].filter(Boolean).map(m => ({ value: m }))}
+                    filterOption={(input, opt) => opt.value.toLowerCase().includes(input.toLowerCase())}
+                    placeholder="Chọn hoặc nhập tên máy"
+                    allowClear
+                  />
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <label style={{ width: 130, fontWeight: 600, fontSize: 13 }}>SL lý thuyết</label>
