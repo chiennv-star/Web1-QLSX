@@ -82,12 +82,11 @@ public class MachinePerfController {
             if (p.getMaMay() != null) maMayMap.put(p.getTen(), p.getMaMay());
         });
 
-        // Build "ngay|tenMay" → List<WorkSchedule> for workScheduleIds linkage
-        Map<String, List<WorkSchedule>> ngayMayWsMap = new HashMap<>();
+        // Build tenMay → List<WorkSchedule> (no date restriction — filter per-row below)
+        Map<String, List<WorkSchedule>> tenMayWsMap = new HashMap<>();
         for (WorkSchedule ws : wsList) {
-            if (ws.getNgayThucHien() == null || ws.getPhongThucHien() == null || ws.getPhongThucHien().isBlank()) continue;
-            String key = ws.getNgayThucHien().toString() + "|" + ws.getPhongThucHien();
-            ngayMayWsMap.computeIfAbsent(key, k -> new ArrayList<>()).add(ws);
+            if (ws.getPhongThucHien() == null || ws.getPhongThucHien().isBlank()) continue;
+            tenMayWsMap.computeIfAbsent(ws.getPhongThucHien(), k -> new ArrayList<>()).add(ws);
         }
 
         // Sort logs: ngay desc, then tenMay asc
@@ -115,9 +114,15 @@ public class MachinePerfController {
                 tonThat = Math.round((slLyThuyet - log.getSlThucTe()) * 10) / 10.0;
             }
 
-            // Resolve workScheduleIds/workScheduleInfos for this (ngay, tenMay)
-            String wsKey = log.getNgay().toString() + "|" + log.getTenMay();
-            List<WorkSchedule> relatedWs = ngayMayWsMap.getOrDefault(wsKey, Collections.emptyList());
+            // Find WorkSchedules for this machine active within 30 days before the log date
+            LocalDate logDate = log.getNgay();
+            List<WorkSchedule> relatedWs = tenMayWsMap
+                    .getOrDefault(log.getTenMay(), Collections.emptyList()).stream()
+                    .filter(ws -> ws.getNgayThucHien() != null
+                            && !ws.getNgayThucHien().isAfter(logDate)
+                            && !ws.getNgayThucHien().isBefore(logDate.minusDays(30)))
+                    .sorted(Comparator.comparing(WorkSchedule::getNgayThucHien).reversed())
+                    .collect(Collectors.toList());
             List<Long> wsIds = relatedWs.stream().map(WorkSchedule::getId).collect(Collectors.toList());
             List<Map<String, Object>> wsInfos = new ArrayList<>();
             for (WorkSchedule ws : relatedWs) {
@@ -126,6 +131,8 @@ public class MachinePerfController {
                 info.put("maSp", ws.getMaSp());
                 info.put("tenTrinh", ws.getTenTrinh());
                 info.put("soLo", ws.getSoLo());
+                info.put("ngayThucHien", ws.getNgayThucHien() != null ? ws.getNgayThucHien().toString() : null);
+                info.put("coLo", ws.getCoLo());
                 wsInfos.add(info);
             }
 

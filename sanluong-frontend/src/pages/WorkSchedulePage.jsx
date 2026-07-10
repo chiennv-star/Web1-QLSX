@@ -6390,12 +6390,14 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                         const wsLogs = machinePDetailLogs.filter(l => String(l.workScheduleId) === String(wsInfo.id))
                         return (
                           <div key={wsInfo.id} style={{ marginBottom: 16 }}>
-                            <div style={{ background: '#4c1d95', color: '#fff', padding: '6px 12px', borderRadius: '6px 6px 0 0', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 0 }}>
+                            <div style={{ background: '#4c1d95', color: '#fff', padding: '6px 12px', borderRadius: '6px 6px 0 0', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 0 }}>
                               {wsInfo.tenTrinh
                                 ? <span style={{ fontWeight: 700, fontSize: 13 }}>{wsInfo.tenTrinh}</span>
-                                : <span style={{ color: '#c4b5fd', fontSize: 12 }}>WorkSchedule #{wsInfo.id}</span>}
+                                : <span style={{ color: '#c4b5fd', fontSize: 12 }}>Lô #{wsInfo.id}</span>}
                               {wsInfo.maSp && <span style={{ background: '#5b21b6', borderRadius: 4, padding: '1px 7px', fontSize: 11, color: '#e9d5ff' }}>SP: {wsInfo.maSp}</span>}
                               {wsInfo.soLo && <span style={{ background: '#5b21b6', borderRadius: 4, padding: '1px 7px', fontSize: 11, color: '#e9d5ff' }}>Lô: {wsInfo.soLo}</span>}
+                              {wsInfo.ngayThucHien && <span style={{ background: '#3b0764', borderRadius: 4, padding: '1px 7px', fontSize: 11, color: '#ddd6fe' }}>{dayjs(wsInfo.ngayThucHien).format('DD/MM')}</span>}
+                              {wsInfo.coLo != null && <span style={{ background: '#3b0764', borderRadius: 4, padding: '1px 7px', fontSize: 11, color: '#ddd6fe' }}>Cỡ lô: {Number(wsInfo.coLo).toLocaleString('vi-VN')}</span>}
                               <span style={{ marginLeft: 'auto', fontSize: 11, color: '#c4b5fd' }}>{wsLogs.length} dòng</span>
                             </div>
                             {renderTable(wsInfo.id, wsLogs)}
