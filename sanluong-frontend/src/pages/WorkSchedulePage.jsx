@@ -6469,8 +6469,8 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         const thsP = [
           { label: 'STT', w: 40 },
           { label: 'Ngày', w: 90 },
-          { label: 'Tên máy', w: 180 },
-          { label: 'Mã máy', w: 80 },
+          { label: 'Tên sản phẩm', w: 200 },
+          { label: 'Số lô', w: 80 },
           { label: 'Tổ/Nhóm', w: 80 },
           { label: 'Tốc độ chuẩn (Lý thuyết)', w: 130 },
           { label: 'SL lý thuyết tối đa', w: 110 },
@@ -6642,7 +6642,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                 </th>
               </tr>
               <tr>
-                <th colSpan={5} style={{ ...thBase, background: '#2e1065' }}>THÔNG TIN MÁY</th>
+                <th colSpan={5} style={{ ...thBase, background: '#2e1065' }}>THÔNG TIN SẢN XUẤT</th>
                 <th colSpan={3} style={{ ...thBase, background: '#1e3a5f' }}>THÔNG SỐ TỐC ĐỘ</th>
                 <th colSpan={2} style={{ ...thBase, background: '#7c3aed' }}>P (%)</th>
                 <th colSpan={2} style={{ ...thBase, background: '#5b21b6' }}>PHÂN TÍCH TỔN THẤT</th>
@@ -6669,8 +6669,8 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                   <tr key={idx} style={{ opacity: isSaving ? 0.6 : 1, cursor: 'pointer' }} title="Click để xem chi tiết sản lượng theo ca" onClick={() => openMachinePDetail(row)}>
                     <td style={td({ textAlign: 'center', color: '#94a3b8', fontSize: 11 })}>{idx + 1}</td>
                     <td style={td({ whiteSpace: 'nowrap', fontWeight: 500 })}>{dayjs(row.ngay).isValid() ? dayjs(row.ngay).format('DD/MM/YYYY') : row.ngay}</td>
-                    <td style={td({ fontWeight: 600 })}>{row.tenMay}</td>
-                    <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#7c3aed', fontWeight: 600 })}>{row.maMay || '—'}</td>
+                    <td style={td({ fontWeight: 600 })}>{row.workScheduleInfos?.filter(w => !w.ngayThucHien || w.ngayThucHien === row.ngay).map(w => w.tenTrinh).filter(Boolean).join(' / ') || row.tenMay}</td>
+                    <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#000099', fontWeight: 600 })}>{row.workScheduleInfos?.filter(w => !w.ngayThucHien || w.ngayThucHien === row.ngay).map(w => w.soLo).filter(Boolean).join(', ') || '—'}</td>
                     <td style={td({ textAlign: 'center' })}>{row.toNhom || '—'}</td>
                     {/* Tốc độ chuẩn — click để sửa speed config */}
                     <td style={td({ textAlign: 'center', fontSize: 11 })}
