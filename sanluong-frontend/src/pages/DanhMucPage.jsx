@@ -1298,8 +1298,11 @@ function ProductMasterTab() {
       values.nangSuatPcMe = filtered.length > 0 ? JSON.stringify(filtered) : null
       if (editItem) {
         if (!values.maTp) values.maTp = editItem.maTp
-        await api.put(`/product-master/${editItem.id}`, values)
+        const { data: updatedItem } = await api.put(`/product-master/${editItem.id}`, values)
         message.success('Đã cập nhật')
+        // Cập nhật cả data lẫn allData từ response để tránh stale state khi filter local đang bật
+        setData(prev => prev.map(r => r.id === updatedItem.id ? updatedItem : r))
+        if (allData) setAllData(prev => prev.map(r => r.id === updatedItem.id ? updatedItem : r))
         // Reload history to show the new entry
         api.get(`/product-master/${editItem.id}/history`)
           .then(res => setHistory(res.data || []))
