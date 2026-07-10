@@ -35,7 +35,7 @@ const TO_GROUPS = [
   { key: 'PCPL3', label: 'PCPL3', headerBg: '#607d8b', headerText: '#fff', bodyBg: '#f5f7f8' },
 ]
 
-const GROUP_DEFAULT_CD = { PCPL1: 'PC', PCPL2: 'PC', PCPL3: 'PL' }
+const GROUP_DEFAULT_CD = { PCPL1: 'PC', PCPL2: 'PC', PCPL3: 'PL', BBC1: 'BBC1', ĐG: 'DG', DG: 'DG' }
 const CONG_DOAN_LABEL  = { PC: 'PC – Pha chế', BBC1: 'BBC1 – Chiết', PL: 'PL', DG: 'ĐG – Đóng gói', CC: 'CC – Cân chia' }
 const CONG_DOAN_PREFIX = { PC: 'Pha chế', BBC1: 'Chiết', PL: 'PL', DG: 'ĐG', CC: 'CC' }
 const CONG_FIELD_MAP   = { PC: 'congPc', BBC1: 'congBbc1', PL: 'congPl', DG: 'congDg', CC: 'congCc' }
@@ -1882,11 +1882,15 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
     dragRef.current = null
     if (!rec) return
     if (rec.ngayThucHien === toDate && rec.toNhom === toNhom) return
+    const newCongDoan = toNhom !== rec.toNhom
+      ? (GROUP_DEFAULT_CD[toNhom] || rec.congDoan)
+      : rec.congDoan
     try {
       await api.put(`/work-schedule/${rec.id}`, {
         ...rec,
         ngayThucHien: toDate,
         toNhom,
+        congDoan: newCongDoan,
       })
       message.success(`Đã chuyển sang ${dayjs(toDate).format('DD/MM/YYYY')}${toNhom !== rec.toNhom ? ` · ${toNhom}` : ''}`)
       { const sy = window.scrollY; await fetchData(undefined, { silent: true }); requestAnimationFrame(() => window.scrollTo({ top: sy, behavior: 'instant' })) }
