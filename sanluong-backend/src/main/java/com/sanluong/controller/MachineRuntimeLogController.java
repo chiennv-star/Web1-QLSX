@@ -1,7 +1,9 @@
 package com.sanluong.controller;
 
+import com.sanluong.entity.MachineGioKhOverride;
 import com.sanluong.entity.MachineRuntimeLog;
 import com.sanluong.entity.WorkSchedule;
+import com.sanluong.repository.MachineGioKhOverrideRepository;
 import com.sanluong.repository.MachineRuntimeLogRepository;
 import com.sanluong.repository.PhongThucHienRepository;
 import com.sanluong.repository.WorkScheduleRepository;
@@ -21,13 +23,16 @@ public class MachineRuntimeLogController {
     private final MachineRuntimeLogRepository repo;
     private final WorkScheduleRepository wsRepo;
     private final PhongThucHienRepository phongThucHienRepo;
+    private final MachineGioKhOverrideRepository gioKhRepo;
 
     public MachineRuntimeLogController(MachineRuntimeLogRepository repo,
                                        WorkScheduleRepository wsRepo,
-                                       PhongThucHienRepository phongThucHienRepo) {
+                                       PhongThucHienRepository phongThucHienRepo,
+                                       MachineGioKhOverrideRepository gioKhRepo) {
         this.repo = repo;
         this.wsRepo = wsRepo;
         this.phongThucHienRepo = phongThucHienRepo;
+        this.gioKhRepo = gioKhRepo;
     }
 
     @GetMapping
@@ -69,6 +74,23 @@ public class MachineRuntimeLogController {
         return ResponseEntity.ok(repo.findByWorkScheduleIdInAndNgayOrderBySortOrderAscIdAsc(wsIds, ngay));
     }
 
+    /** Lưu/cập nhật giờ kế hoạch cho ngày × máy cụ thể */
+    @PutMapping("/gio-kh")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> setGioKh(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ngay,
+            @RequestParam String tenMay,
+            @RequestParam Double gioKh) {
+        if (gioKh == null || gioKh <= 0) gioKh = 16.0;
+        MachineGioKhOverride o = gioKhRepo.findByNgayAndTenMay(ngay, tenMay)
+                .orElse(new MachineGioKhOverride());
+        o.setNgay(ngay);
+        o.setTenMay(tenMay);
+        o.setGioKh(gioKh);
+        gioKhRepo.save(o);
+        return ResponseEntity.ok(Map.of("ngay", ngay.toString(), "tenMay", tenMay, "gioKh", gioKh));
+    }
+
     /** Tổng hợp OEE Availability theo ngày × máy cho một tổ trong khoảng thời gian */
     @GetMapping("/daily-summary")
     public ResponseEntity<List<Map<String, Object>>> dailySummary(
@@ -98,6 +120,11 @@ public class MachineRuntimeLogController {
         phongThucHienRepo.findAllSorted().forEach(p -> {
             if (p.getMaMay() != null) maMayMap.put(p.getTen(), p.getMaMay());
         });
+
+        // Giờ KH override: "ngay|tenMay" → gioKh
+        Map<String, Double> gioKhMap = new HashMap<>();
+        gioKhRepo.findByNgayBetween(tuNgay, denNgay).forEach(o ->
+                gioKhMap.put(o.getNgay().toString() + "|" + o.getTenMay(), o.getGioKh()));
 
         // Group by ngay|phongThucHien (preserve insertion order = sorted by ngay, sortOrder)
         Map<String, List<MachineRuntimeLog>> grouped = new LinkedHashMap<>();
@@ -142,8 +169,9 @@ public class MachineRuntimeLogController {
 
             double gioChay = Math.round(runMin / 60.0 * 100.0) / 100.0;
             double gioDung = Math.round(downMin / 60.0 * 100.0) / 100.0;
-            long plannedMin = 16 * 60; // 16h/ngày kế hoạch (2 ca × 8h)
-            Double avail = Math.round(runMin * 1000.0 / plannedMin) / 10.0;
+            double gioKH = gioKhMap.getOrDefault(ngayStr + "|" + tenMay, 16.0);
+            long plannedMin = Math.round(gioKH * 60);
+            Double avail = plannedMin > 0 ? Math.round(runMin * 1000.0 / plannedMin) / 10.0 : 0.0;
             long soLanDung = dayLogs.stream().filter(l -> "Dừng máy".equals(l.getTrangThai())).count();
 
             Map<String, Object> row = new LinkedHashMap<>();
@@ -152,7 +180,7 @@ public class MachineRuntimeLogController {
             row.put("tenMay", tenMay);
             row.put("maMay", maMayMap.getOrDefault(tenMay, ""));
             row.put("toNhom", groupToNhom.get(entry.getKey()));
-            row.put("gioKH", 16.0);
+            row.put("gioKH", gioKH);
             row.put("gioChay", gioChay);
             row.put("gioDung", gioDung);
             row.put("availPct", avail);

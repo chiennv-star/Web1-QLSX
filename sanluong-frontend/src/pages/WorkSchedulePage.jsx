@@ -4064,6 +4064,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const [machineParetoData, setMachineParetoData] = useState([])
   const [machineParetoLoading, setMachineParetoLoading] = useState(false)
   const [summaryCustomRange, setSummaryCustomRange] = useState([dayjs().subtract(29, 'day'), dayjs()])
+  const [editingGioKh, setEditingGioKh] = useState(null) // { ngay, tenMay, value }
   const PREDEFINED_REASONS_A = ['Chờ nguyên liệu', 'Hỏng máy', 'Chuyển đổi mã', 'Vệ sinh / bảo trì']
   const openMachineADetail = async (row) => {
     setMachineADetailRow(row)
@@ -4078,6 +4079,18 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       setMachineADetailLogs(data.map(r => ({ ...r, _id: r.id || Math.random() })))
     } catch { message.error('Không tải được dữ liệu') }
     finally { setMachineADetailLoading(false) }
+  }
+  const saveGioKh = async (ngay, tenMay, gioKh) => {
+    if (!gioKh || gioKh <= 0) return
+    try {
+      await api.put('/machine-runtime/gio-kh', null, { params: { ngay, tenMay, gioKh } })
+      setMachineAData(prev => prev.map(r =>
+        r.ngay === ngay && r.tenMay === tenMay
+          ? { ...r, gioKH: gioKh, availPct: r.gioChay != null ? Math.round(r.gioChay / gioKh * 1000) / 10 : r.availPct }
+          : r
+      ))
+      setEditingGioKh(null)
+    } catch { message.error('Không thể lưu giờ KH') }
   }
   const updateALog = (_id, patch) => setMachineADetailLogs(prev => prev.map(r => r._id === _id ? { ...r, ...patch } : r))
   const removeALog = (_id) => setMachineADetailLogs(prev => prev.filter(r => r._id !== _id))
@@ -5486,7 +5499,31 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                     <td style={td({ fontWeight: 600 })}>{row.tenMay}</td>
                     <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#0369a1', fontWeight: 600 })}>{row.maMay || '—'}</td>
                     <td style={td({ textAlign: 'center' })}>{row.toNhom || '—'}</td>
-                    <td style={td({ textAlign: 'center', fontWeight: 600 })}>{row.gioKH}</td>
+                    <td
+                      style={td({ textAlign: 'center', fontWeight: 600, cursor: 'pointer', position: 'relative' })}
+                      onClick={e => { e.stopPropagation(); setEditingGioKh({ ngay: row.ngay, tenMay: row.tenMay, value: row.gioKH }) }}
+                      title="Click để chỉnh sửa giờ KH"
+                    >
+                      {editingGioKh?.ngay === row.ngay && editingGioKh?.tenMay === row.tenMay ? (
+                        <InputNumber
+                          size="small" autoFocus min={1} max={24} step={0.5} precision={1}
+                          value={editingGioKh.value}
+                          style={{ width: 62 }}
+                          formatter={v => v != null ? String(v).replace('.', ',') : ''}
+                          parser={v => v ? v.replace(',', '.').replace(/[^\d.]/g, '') : ''}
+                          onChange={v => setEditingGioKh(prev => ({ ...prev, value: v }))}
+                          onPressEnter={() => saveGioKh(editingGioKh.ngay, editingGioKh.tenMay, editingGioKh.value)}
+                          onBlur={() => saveGioKh(editingGioKh.ngay, editingGioKh.tenMay, editingGioKh.value)}
+                          onClick={e => e.stopPropagation()}
+                          onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setEditingGioKh(null) } }}
+                        />
+                      ) : (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          {row.gioKH}
+                          <span style={{ fontSize: 10, color: '#94a3b8' }}>✎</span>
+                        </span>
+                      )}
+                    </td>
                     <td style={td({ textAlign: 'center', color: '#16a34a', fontWeight: 700 })}>{row.gioChay}</td>
                     <td style={td({ textAlign: 'center', color: row.gioDung > 0 ? '#dc2626' : '#6b7280', fontWeight: 700 })}>{row.gioDung}</td>
                     <td style={td({ textAlign: 'center', fontWeight: 800, fontSize: 13, color: aColor(avail), background: aBg(avail) })}>
