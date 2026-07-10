@@ -210,7 +210,7 @@ const NONPROD_CAT_COLOR = {
   'Sự cố': '#dc2626', 'Hành chính': '#059669', 'Khác': '#6b7280',
 }
 
-function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachineRuntimeSaved }) {
+function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachineRuntimeSaved, onShiftPerfSaved }) {
   const { isAdmin, isAdminKH, isStageAdmin, canEditStage, canDeleteSchedule } = useAuth()
   const canEditDetail = canEditStage(schedule?.congDoan)
   const [sessions, setSessions] = useState([])
@@ -235,6 +235,10 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   const [machineRuntimeOpenDays, setMachineRuntimeOpenDays] = useState(new Set())
   const [machineRuntimeSaving, setMachineRuntimeSaving] = useState(new Set())
   const [machineRuntimeDirtyDays, setMachineRuntimeDirtyDays] = useState(new Set())
+  const [shiftPerfMap, setShiftPerfMap] = useState({})           // ngayKey → [{_id, id, caLo, slLyThuyet, slThucTe, nguyenNhan, ghiChu}]
+  const [shiftPerfOpenDays, setShiftPerfOpenDays] = useState(new Set())
+  const [shiftPerfSaving, setShiftPerfSaving] = useState(new Set())
+  const [shiftPerfDirtyDays, setShiftPerfDirtyDays] = useState(new Set())
 
   const [renamingDay, setRenamingDay] = useState(null)   // ngayKey đang đổi ngày
   const [renameDayVal, setRenameDayVal] = useState('')   // giá trị ngày mới
@@ -476,6 +480,14 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
             })
             setMachineRuntimeMap(rtMap)
           })
+        Promise.allSettled(days.map(ngay => api.get('/machine-shift-perf', { params: { workScheduleId: schedule.id, ngay } })))
+          .then(results => {
+            const spMap = {}
+            results.forEach((res, i) => {
+              if (res.status === 'fulfilled') spMap[days[i]] = res.value.data.map(r => ({ ...r, _id: r.id }))
+            })
+            setShiftPerfMap(spMap)
+          })
       }
     } catch { message.error('Không thể tải dữ liệu chi tiết') }
     finally { setLoading(false) }
@@ -546,6 +558,56 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
       message.success('Đã lưu thời gian chạy máy')
     } catch { message.error('Lưu thời gian chạy máy thất bại') }
     finally { setMachineRuntimeSaving(prev => { const n = new Set(prev); n.delete(ngay); return n }) }
+  }
+
+  // ── Shift perf (Sản lượng theo ca) helpers ─────────────────────────────────
+  const _spMarkClean = (ngay) => setShiftPerfDirtyDays(prev => { const n = new Set(prev); n.delete(ngay); return n })
+  const _spMarkDirty = (ngay) => setShiftPerfDirtyDays(prev => new Set(prev).add(ngay))
+  const loadShiftPerf = async (ngay) => {
+    try {
+      const { data } = await api.get('/machine-shift-perf', { params: { workScheduleId: schedule.id, ngay } })
+      setShiftPerfMap(prev => ({ ...prev, [ngay]: data.map(r => ({ ...r, _id: r.id })) }))
+      _spMarkClean(ngay)
+    } catch {}
+  }
+  const addShiftPerfRow = (ngay) => {
+    const _id = 'tmp_' + Date.now()
+    const rows = shiftPerfMap[ngay] || []
+    const nextCa = rows.length === 0 ? 'Ca 1' : rows.length === 1 ? 'Ca 2' : ''
+    setShiftPerfMap(prev => ({ ...prev, [ngay]: [...rows, { _id, id: null, caLo: nextCa, slLyThuyet: null, slThucTe: null, nguyenNhan: '', ghiChu: '' }] }))
+    _spMarkDirty(ngay)
+  }
+  const updateShiftPerfRow = (ngay, _id, patch) => {
+    setShiftPerfMap(prev => ({ ...prev, [ngay]: (prev[ngay] || []).map(r => r._id === _id ? { ...r, ...patch } : r) }))
+    _spMarkDirty(ngay)
+  }
+  const removeShiftPerfRow = (ngay, _id) => {
+    setShiftPerfMap(prev => ({ ...prev, [ngay]: (prev[ngay] || []).filter(r => r._id !== _id) }))
+    _spMarkDirty(ngay)
+  }
+  const saveShiftPerf = async (ngay) => {
+    setShiftPerfSaving(prev => new Set(prev).add(ngay))
+    try {
+      const entries = shiftPerfMap[ngay] || []
+      const { data } = await api.post('/machine-shift-perf/bulk',
+        entries.map(({ caLo, slLyThuyet, slThucTe, nguyenNhan, ghiChu }) => ({ caLo: caLo || null, slLyThuyet: slLyThuyet ?? null, slThucTe: slThucTe ?? null, nguyenNhan: nguyenNhan || null, ghiChu: ghiChu || null })),
+        { params: { workScheduleId: schedule.id, ngay } }
+      )
+      setShiftPerfMap(prev => ({ ...prev, [ngay]: data.map(r => ({ ...r, _id: r.id })) }))
+      _spMarkClean(ngay)
+      onShiftPerfSaved?.()
+      message.success('Đã lưu sản lượng theo ca')
+    } catch { message.error('Lưu sản lượng theo ca thất bại') }
+    finally { setShiftPerfSaving(prev => { const n = new Set(prev); n.delete(ngay); return n }) }
+  }
+  const computeShiftPerfStats = (entries) => {
+    let sumLT = 0, sumTT = 0
+    ;(entries || []).forEach(e => {
+      sumLT += e.slLyThuyet || 0
+      sumTT += e.slThucTe || 0
+    })
+    const pPct = sumLT > 0 && sumTT > 0 ? Math.round(sumTT / sumLT * 1000) / 10 : null
+    return { sumLT, sumTT, pPct, tonThat: sumLT > 0 ? sumLT - sumTT : 0 }
   }
 
   // ── Non-productive time helpers ─────────────────────────────────────────────
@@ -1804,6 +1866,149 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                             style={{ background: isDirty ? '#0369a1' : '#16a34a', borderColor: isDirty ? '#0369a1' : '#16a34a', fontSize: 12 }}>
                             {isDirty ? 'Lưu' : '✓ Đã lưu'}
                           </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+
+              {/* ── Sản lượng theo ca / lô sản xuất (P indicator) ── */}
+              {(() => {
+                const spEntries = shiftPerfMap[k] || []
+                const { sumLT, sumTT, pPct, tonThat } = computeShiftPerfStats(spEntries)
+                const isOpen = shiftPerfOpenDays.has(k)
+                const isSaving = shiftPerfSaving.has(k)
+                const isDirtyP = shiftPerfDirtyDays.has(k)
+                const LOSS_TYPES = ['— Chọn loại tổn thất —', 'Giảm tốc độ', 'Dừng nhỏ / Ngắt quãng', 'Nhân công / Điều chỉnh', 'Chất lượng / Làm lại', 'Khác']
+                const lossColors = { 'Giảm tốc độ': '#dc2626', 'Dừng nhỏ / Ngắt quãng': '#d97706', 'Nhân công / Điều chỉnh': '#7c3aed', 'Chất lượng / Làm lại': '#0369a1', 'Khác': '#6b7280' }
+                const pColor = pPct == null ? '#9ca3af' : pPct >= 95 ? '#16a34a' : pPct >= 80 ? '#d97706' : '#dc2626'
+                return (
+                  <div style={{ borderTop: '1px solid #fde68a' }}>
+                    {/* Toggle header */}
+                    <div
+                      onClick={() => {
+                        setShiftPerfOpenDays(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n })
+                        if (!shiftPerfOpenDays.has(k) && !shiftPerfMap[k]) loadShiftPerf(k)
+                      }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, userSelect: 'none', background: spEntries.length > 0 ? '#fffbeb' : '#f8fafc', color: '#92400e' }}
+                    >
+                      <span>⚡</span>
+                      <span style={{ fontWeight: 600 }}>Sản lượng theo ca / lô sản xuất</span>
+                      {pPct != null && <Tag color={pPct >= 95 ? 'success' : pPct >= 80 ? 'warning' : 'error'} style={{ margin: 0, fontSize: 11 }}>P = {pPct}%</Tag>}
+                      {pPct == null && spEntries.length > 0 && <Tag color="default" style={{ margin: 0, fontSize: 11 }}>P = —</Tag>}
+                      {isDirtyP && <Tag color="warning" style={{ margin: 0, fontSize: 11 }}>Chưa lưu</Tag>}
+                      <span style={{ marginLeft: 'auto', fontSize: 11, color: '#9ca3af' }}>{isOpen ? '▲ Thu gọn' : '▼ Xem / Nhập'}</span>
+                    </div>
+                    {isOpen && (
+                      <div style={{ padding: '10px 14px 14px', background: '#fffdf0' }}>
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                            <thead>
+                              <tr>
+                                {['#', 'Ca / Lô', 'SL lý thuyết', 'SL thực tế sản xuất', 'P ca (%)', 'Tổn thất tốc độ', 'Nguyên nhân giảm tốc', ''].map((h, i) => (
+                                  <th key={i} style={{ padding: '5px 7px', background: '#fef3c7', color: '#92400e', fontWeight: 600, fontSize: 11, textAlign: 'left', borderBottom: '1px solid #fde68a', whiteSpace: 'nowrap' }}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {spEntries.length === 0 && (
+                                <tr><td colSpan={8} style={{ textAlign: 'center', color: '#aaa', padding: '12px 0', fontSize: 12 }}>Chưa có dữ liệu — nhấn "+ Thêm dòng"</td></tr>
+                              )}
+                              {spEntries.map((row, idx) => {
+                                const pCa = row.slLyThuyet > 0 && row.slThucTe != null ? Math.round(row.slThucTe / row.slLyThuyet * 1000) / 10 : null
+                                const tt = row.slLyThuyet != null && row.slThucTe != null ? row.slLyThuyet - row.slThucTe : null
+                                return (
+                                  <tr key={row._id} style={{ background: idx % 2 === 0 ? '#fff' : '#fffbeb' }}>
+                                    <td style={{ padding: '4px 7px', color: '#94a3b8', fontSize: 11, textAlign: 'center', width: 24 }}>{idx + 1}</td>
+                                    <td style={{ padding: '3px 5px', width: 90 }}>
+                                      <select value={row.caLo || ''} style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 5px', fontSize: 12, fontWeight: 600 }}
+                                        onChange={e => updateShiftPerfRow(k, row._id, { caLo: e.target.value })}>
+                                        <option value="">—</option>
+                                        {['Ca 1', 'Ca 2', 'Ca 3', 'Lô 1', 'Lô 2'].map(o => <option key={o} value={o}>{o}</option>)}
+                                      </select>
+                                    </td>
+                                    <td style={{ padding: '3px 5px', width: 110 }}>
+                                      <input type="number" value={row.slLyThuyet ?? ''} placeholder="SP tối đa" style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 6px', fontSize: 12, textAlign: 'right' }}
+                                        onChange={e => updateShiftPerfRow(k, row._id, { slLyThuyet: e.target.value === '' ? null : Number(e.target.value) })} />
+                                    </td>
+                                    <td style={{ padding: '3px 5px', width: 130 }}>
+                                      <input type="number" value={row.slThucTe ?? ''} placeholder="SP thực tế" style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 6px', fontSize: 12, textAlign: 'right', color: '#1d4ed8', fontWeight: 700 }}
+                                        onChange={e => updateShiftPerfRow(k, row._id, { slThucTe: e.target.value === '' ? null : Number(e.target.value) })} />
+                                    </td>
+                                    <td style={{ padding: '3px 5px', width: 70, textAlign: 'center', fontWeight: 700, color: pCa == null ? '#9ca3af' : pCa >= 95 ? '#16a34a' : pCa >= 80 ? '#d97706' : '#dc2626' }}>
+                                      {pCa != null ? `${pCa}%` : '—'}
+                                    </td>
+                                    <td style={{ padding: '3px 5px', width: 90, textAlign: 'right', color: tt > 0 ? '#dc2626' : '#6b7280', fontWeight: tt > 0 ? 600 : 400 }}>
+                                      {tt != null ? Number(tt).toLocaleString('vi-VN') : '—'}
+                                    </td>
+                                    <td style={{ padding: '3px 5px' }}>
+                                      <select value={row.nguyenNhan || ''} style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 5px', fontSize: 11, color: lossColors[row.nguyenNhan] || '#6b7280' }}
+                                        onChange={e => updateShiftPerfRow(k, row._id, { nguyenNhan: e.target.value || null })}>
+                                        {LOSS_TYPES.map(o => <option key={o} value={o === '— Chọn loại tổn thất —' ? '' : o}>{o}</option>)}
+                                      </select>
+                                    </td>
+                                    <td style={{ padding: '3px 5px', width: 28, textAlign: 'center' }}>
+                                      <button onClick={() => removeShiftPerfRow(k, row._id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                        <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={() => addShiftPerfRow(k)} style={{ marginTop: 8, fontSize: 11, color: '#92400e', borderColor: '#fde68a' }}>
+                          + Thêm dòng
+                        </Button>
+                        {/* Summary */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8, marginTop: 12 }}>
+                          {[
+                            { label: 'SL lý thuyết tổng', val: sumLT > 0 ? Number(sumLT).toLocaleString('vi-VN') + ' SP' : '— SP', color: '#1e3a5f' },
+                            { label: 'SL thực tế tổng', val: sumTT > 0 ? Number(sumTT).toLocaleString('vi-VN') + ' SP' : '— SP', color: '#16a34a' },
+                            { label: 'Tổng tổn thất (SP)', val: sumLT > 0 ? Number(tonThat).toLocaleString('vi-VN') + ' SP' : '— SP', color: '#dc2626' },
+                            { label: 'P ngày (%)', val: pPct != null ? `${pPct}%` : '—', color: pColor },
+                            { label: 'Đánh giá', val: pPct == null ? '—' : pPct >= 95 ? '✓ Đạt' : pPct >= 80 ? '△ Cần cải thiện' : '✗ Chưa đạt', color: pColor },
+                          ].map(({ label, val, color }) => (
+                            <div key={label} style={{ background: '#fff', border: '1px solid #fde68a', borderRadius: 8, padding: '7px 10px' }}>
+                              <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, marginBottom: 2 }}>{label}</div>
+                              <div style={{ fontSize: 14, fontWeight: 700, color, fontFamily: 'monospace' }}>{val}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {/* 3 loss boxes */}
+                        {spEntries.length > 0 && (() => {
+                          const byType = { 'Giảm tốc độ': 0, 'Dừng nhỏ / Ngắt quãng': 0, 'Nhân công / Điều chỉnh': 0 }
+                          spEntries.forEach(e => {
+                            const tt = (e.slLyThuyet || 0) - (e.slThucTe || 0)
+                            if (tt > 0 && byType[e.nguyenNhan] !== undefined) byType[e.nguyenNhan] += tt
+                          })
+                          return (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginTop: 8 }}>
+                              {[
+                                { label: 'SP mất do giảm tốc độ', key: 'Giảm tốc độ', icon: '📉', color: '#dc2626' },
+                                { label: 'SP mất do dừng nhỏ / ngắt quãng', key: 'Dừng nhỏ / Ngắt quãng', icon: '⏸', color: '#d97706' },
+                                { label: 'SP mất do nhân công / điều chỉnh', key: 'Nhân công / Điều chỉnh', icon: '⚡', color: '#7c3aed' },
+                              ].map(({ label, key, icon, color }) => (
+                                <div key={key} style={{ background: '#fff', border: `1px solid ${color}22`, borderRadius: 8, padding: '8px 12px' }}>
+                                  <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, marginBottom: 3 }}>{icon} {label}</div>
+                                  <div style={{ fontSize: 15, fontWeight: 700, color: byType[key] > 0 ? color : '#9ca3af', fontFamily: 'monospace' }}>
+                                    {byType[key] > 0 ? Number(byType[key]).toLocaleString('vi-VN') + ' SP' : '— SP'}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        })()}
+                        {/* Save */}
+                        <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <Button type="primary" size="small" loading={isSaving} onClick={() => saveShiftPerf(k)}
+                            style={{ background: isDirtyP ? '#d97706' : '#16a34a', borderColor: isDirtyP ? '#d97706' : '#16a34a', fontSize: 12 }}>
+                            {isDirtyP ? 'Lưu' : '✓ Đã lưu'}
+                          </Button>
+                          <Button size="small" danger onClick={() => { setShiftPerfMap(prev => ({ ...prev, [k]: [] })); _spMarkDirty(k) }} style={{ fontSize: 12 }}>
+                            Xóa trắng
+                          </Button>
+                          {!isDirtyP && spEntries.length > 0 && <span style={{ fontSize: 11, color: '#9ca3af' }}>Cập nhật: {spEntries[0]?.updatedAt ? new Date(spEntries[0].updatedAt).toLocaleString('vi-VN') : '—'}</span>}
                         </div>
                       </div>
                     )}
@@ -4098,7 +4303,12 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const [addPerfOpen, setAddPerfOpen] = useState(false)
   const [addPerfForm, setAddPerfForm] = useState({ ngay: dayjs().format('YYYY-MM-DD'), tenMay: '', slThucTe: null, slLyThuyet: null, nguyenNhan: '', ghiChu: '' })
   const [savingPerfRow, setSavingPerfRow] = useState(null) // key "ngay|tenMay"
+  const [machinePDetailRow, setMachinePDetailRow] = useState(null)
+  const [machinePDetailLogs, setMachinePDetailLogs] = useState([])
+  const [machinePDetailLoading, setMachinePDetailLoading] = useState(false)
+  const [machinePDetailSaving, setMachinePDetailSaving] = useState(false)
   const PREDEFINED_REASONS_P = ['Điều chỉnh thông số giữa ca', 'Công nhân chưa quen thao tác', 'Chờ nguyên liệu / vật tư', 'Máy chạy dưới tốc độ chuẩn', 'Thay khuôn / dụng cụ', 'Lỗi chất lượng phải làm lại', 'Khác']
+  const SHIFT_LOSS_TYPES = ['Giảm tốc độ', 'Dừng nhỏ / Ngắt quãng', 'Nhân công / Điều chỉnh', 'Chất lượng / Làm lại', 'Khác']
   const openMachineADetail = async (row) => {
     setMachineADetailRow(row)
     setMachineADetailLogs([])
@@ -4157,6 +4367,51 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       message.success('Đã lưu thời gian chạy máy')
     } catch { message.error('Lưu thất bại') }
     finally { setMachineADetailSaving(false) }
+  }
+  const openMachinePDetail = async (row) => {
+    setMachinePDetailRow(row)
+    setMachinePDetailLogs([])
+    const wsIds = row.workScheduleIds?.length ? row.workScheduleIds : (row.workScheduleId ? [row.workScheduleId] : [])
+    if (wsIds.length === 0) return
+    setMachinePDetailLoading(true)
+    try {
+      const params = new URLSearchParams({ ngay: row.ngay })
+      wsIds.forEach(id => params.append('wsIds', id))
+      const { data } = await api.get('/machine-shift-perf/by-wsids?' + params.toString())
+      setMachinePDetailLogs(data.map(r => ({ ...r, _id: r.id || Math.random() })))
+    } catch { message.error('Không tải được dữ liệu ca') }
+    finally { setMachinePDetailLoading(false) }
+  }
+  const updatePDetailLog = (_id, patch) => setMachinePDetailLogs(prev => prev.map(r => r._id === _id ? { ...r, ...patch } : r))
+  const removePDetailLog = (_id) => setMachinePDetailLogs(prev => prev.filter(r => r._id !== _id))
+  const addPDetailLog = (wsId) => setMachinePDetailLogs(prev => [...prev, { _id: Date.now(), id: null, workScheduleId: wsId, caLo: '', slLyThuyet: null, slThucTe: null, nguyenNhan: '', ghiChu: '' }])
+  const saveMachinePDetail = async () => {
+    if (!machinePDetailRow) return
+    const wsIds = machinePDetailRow.workScheduleIds?.length
+      ? machinePDetailRow.workScheduleIds
+      : (machinePDetailRow.workScheduleId ? [machinePDetailRow.workScheduleId] : [])
+    if (wsIds.length === 0) { message.error('Không có WorkSchedule để lưu'); return }
+    const defaultWsId = wsIds[0]
+    setMachinePDetailSaving(true)
+    try {
+      const grouped = {}
+      for (const log of machinePDetailLogs) {
+        const wid = log.workScheduleId || defaultWsId
+        if (!grouped[wid]) grouped[wid] = []
+        grouped[wid].push(log)
+      }
+      for (const wsId of wsIds) {
+        const logs = grouped[wsId] || []
+        await api.post('/machine-shift-perf/bulk',
+          logs.map(({ caLo, slLyThuyet, slThucTe, nguyenNhan, ghiChu }) => ({ caLo: caLo || null, slLyThuyet: slLyThuyet ?? null, slThucTe: slThucTe ?? null, nguyenNhan: nguyenNhan || null, ghiChu: ghiChu || null })),
+          { params: { workScheduleId: wsId, ngay: machinePDetailRow.ngay } }
+        )
+      }
+      setMachinePDetailRow(null)
+      setMachinePVersion(v => v + 1)
+      message.success('Đã lưu sản lượng theo ca')
+    } catch { message.error('Lưu thất bại') }
+    finally { setMachinePDetailSaving(false) }
   }
   useEffect(() => {
     if (innerTab !== 'machine_a') return
@@ -5971,6 +6226,156 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         )
       })()}
 
+      {/* ── Chỉ số P: Detail modal (chi tiết ca từ work schedule) ── */}
+      <Modal open={!!machinePDetailRow} onCancel={() => setMachinePDetailRow(null)} footer={null} width={720} destroyOnClose styles={{ body: { padding: 0 } }}>
+        {machinePDetailRow && (() => {
+          const dr = machinePDetailRow
+          const pval = dr.pPct
+          const pColor2 = pval == null ? '#9ca3af' : pval >= 95 ? '#16a34a' : pval >= 80 ? '#d97706' : '#dc2626'
+          const LC = ({ children }) => <div style={{ padding: '7px 12px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: 12, color: '#6b7280', fontWeight: 600 }}>{children}</div>
+          const VC = ({ children }) => <div style={{ padding: '7px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 13 }}>{children}</div>
+          return (
+            <div>
+              {/* Header */}
+              <div style={{ background: '#4c1d95', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 20 }}>⚡</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ color: '#fff', fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dr.tenMay}</div>
+                  <div style={{ color: '#c4b5fd', fontSize: 11, marginTop: 2, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    {dr.maMay && <span>Mã: <b>{dr.maMay}</b></span>}
+                    <span>Ngày: <b>{dayjs(dr.ngay).isValid() ? dayjs(dr.ngay).format('DD/MM/YYYY') : dr.ngay}</b></span>
+                    {dr.toNhom && <span>Tổ: <b>{dr.toNhom}</b></span>}
+                  </div>
+                </div>
+                <button onClick={() => setMachinePDetailRow(null)}
+                  style={{ background: 'none', border: 'none', color: '#c4b5fd', cursor: 'pointer', fontSize: 20, padding: 0, lineHeight: 1 }}>✕</button>
+              </div>
+              {/* Body */}
+              <div style={{ padding: '16px 20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden', alignSelf: 'start' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr' }}>
+                    <LC>Mã máy</LC><VC><span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#7c3aed' }}>{dr.maMay || '—'}</span></VC>
+                    <LC>Tổ / Nhóm</LC><VC>{dr.toNhom || '—'}</VC>
+                    <LC>Tốc độ chuẩn</LC><VC><span style={{ fontWeight: 600 }}>{dr.tocDoChuanLabel || '—'}</span></VC>
+                    <LC>SL lý thuyết</LC><VC><span style={{ fontWeight: 600 }}>{dr.slLyThuyet != null ? Number(dr.slLyThuyet).toLocaleString('vi-VN') : '—'}</span></VC>
+                    <LC>SL thực tế</LC><VC><span style={{ color: '#1d4ed8', fontWeight: 700 }}>{dr.slThucTe != null ? Number(dr.slThucTe).toLocaleString('vi-VN') : '—'}</span></VC>
+                    <LC>P (%)</LC><VC><span style={{ fontWeight: 800, fontSize: 15, color: pColor2 }}>{pval != null ? `${pval}%` : '—'}</span></VC>
+                    <LC>Tổn thất</LC><VC><span style={{ color: dr.tonThat > 0 ? '#dc2626' : '#6b7280', fontWeight: 600 }}>{dr.tonThat != null ? Number(dr.tonThat).toLocaleString('vi-VN') : '—'}</span></VC>
+                  </div>
+                </div>
+                <div style={{ fontSize: 11, color: '#6b7280', padding: '8px 0' }}>
+                  <div style={{ fontWeight: 700, color: '#4c1d95', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, borderBottom: '2px solid #4c1d95', paddingBottom: 8 }}>Chi tiết sản lượng theo ca</div>
+                  <div style={{ color: '#9ca3af', fontSize: 11 }}>Chỉnh sửa ở bảng bên dưới rồi nhấn Lưu để cập nhật.</div>
+                </div>
+              </div>
+              {/* Bảng chi tiết ca */}
+              <div style={{ padding: '0 20px 16px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  Chi tiết sản lượng theo ca
+                  {machinePDetailLogs.length > 0 && <span style={{ background: '#7c3aed', color: '#fff', borderRadius: 10, padding: '1px 8px', fontSize: 11 }}>{machinePDetailLogs.length} dòng</span>}
+                </div>
+                {machinePDetailLoading ? (
+                  <div style={{ textAlign: 'center', padding: 24, color: '#9ca3af' }}>Đang tải...</div>
+                ) : (() => {
+                  const wsInfos = dr.workScheduleInfos?.length
+                    ? dr.workScheduleInfos
+                    : (dr.workScheduleId ? [{ id: dr.workScheduleId, maSp: null, tenTrinh: null, soLo: null }] : [])
+                  const renderTable = (wsId, logs) => (
+                    <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden', marginBottom: 12 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                        <thead>
+                          <tr>
+                            {['#', 'Ca / Lô', 'SL lý thuyết', 'SL thực tế', 'P ca (%)', 'Nguyên nhân', ''].map((h, i) => (
+                              <th key={i} style={{ padding: '6px 8px', background: '#f5f3ff', color: '#4c1d95', fontWeight: 600, fontSize: 11, textAlign: 'left', borderBottom: '1px solid #a78bfa' }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {logs.length === 0 && (
+                            <tr><td colSpan={7} style={{ textAlign: 'center', color: '#aaa', padding: '12px 0', fontSize: 12 }}>Chưa có dữ liệu — nhấn "+ Thêm dòng"</td></tr>
+                          )}
+                          {logs.map((log, idx) => {
+                            const pCa = log.slLyThuyet > 0 && log.slThucTe != null ? Math.round(log.slThucTe / log.slLyThuyet * 1000) / 10 : null
+                            return (
+                              <tr key={log._id} style={{ background: idx % 2 === 0 ? '#fff' : '#faf5ff' }}>
+                                <td style={{ padding: '4px 8px', color: '#94a3b8', fontSize: 11, textAlign: 'center', width: 28 }}>{idx + 1}</td>
+                                <td style={{ padding: '3px 6px', width: 90 }}>
+                                  <select value={log.caLo || ''} style={{ width: '100%', border: '1px solid #a78bfa', borderRadius: 5, padding: '3px 5px', fontSize: 12, fontWeight: 600 }}
+                                    onChange={e => updatePDetailLog(log._id, { caLo: e.target.value })}>
+                                    <option value="">—</option>
+                                    {['Ca 1', 'Ca 2', 'Ca 3', 'Lô 1', 'Lô 2'].map(o => <option key={o} value={o}>{o}</option>)}
+                                  </select>
+                                </td>
+                                <td style={{ padding: '3px 6px', width: 110 }}>
+                                  <input type="number" value={log.slLyThuyet ?? ''} placeholder="SP tối đa" style={{ width: '100%', border: '1px solid #a78bfa', borderRadius: 5, padding: '3px 6px', fontSize: 12, textAlign: 'right' }}
+                                    onChange={e => updatePDetailLog(log._id, { slLyThuyet: e.target.value === '' ? null : Number(e.target.value) })} />
+                                </td>
+                                <td style={{ padding: '3px 6px', width: 110 }}>
+                                  <input type="number" value={log.slThucTe ?? ''} placeholder="SP thực tế" style={{ width: '100%', border: '1px solid #a78bfa', borderRadius: 5, padding: '3px 6px', fontSize: 12, textAlign: 'right', color: '#1d4ed8', fontWeight: 700 }}
+                                    onChange={e => updatePDetailLog(log._id, { slThucTe: e.target.value === '' ? null : Number(e.target.value) })} />
+                                </td>
+                                <td style={{ padding: '3px 6px', width: 70, textAlign: 'center', fontWeight: 700, color: pCa == null ? '#9ca3af' : pCa >= 95 ? '#16a34a' : pCa >= 80 ? '#d97706' : '#dc2626' }}>
+                                  {pCa != null ? `${pCa}%` : '—'}
+                                </td>
+                                <td style={{ padding: '3px 6px' }}>
+                                  <select value={log.nguyenNhan || ''} style={{ width: '100%', border: '1px solid #a78bfa', borderRadius: 5, padding: '3px 5px', fontSize: 11 }}
+                                    onChange={e => updatePDetailLog(log._id, { nguyenNhan: e.target.value || null })}>
+                                    <option value="">— Chọn loại —</option>
+                                    {SHIFT_LOSS_TYPES.map(o => <option key={o} value={o}>{o}</option>)}
+                                  </select>
+                                </td>
+                                <td style={{ padding: '3px 6px', width: 30, textAlign: 'center' }}>
+                                  <button onClick={() => removePDetailLog(log._id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                  return (
+                    <div>
+                      {wsInfos.map(wsInfo => {
+                        const wsLogs = machinePDetailLogs.filter(l => String(l.workScheduleId) === String(wsInfo.id))
+                        return (
+                          <div key={wsInfo.id} style={{ marginBottom: 16 }}>
+                            <div style={{ background: '#4c1d95', color: '#fff', padding: '6px 12px', borderRadius: '6px 6px 0 0', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 0 }}>
+                              {wsInfo.tenTrinh
+                                ? <span style={{ fontWeight: 700, fontSize: 13 }}>{wsInfo.tenTrinh}</span>
+                                : <span style={{ color: '#c4b5fd', fontSize: 12 }}>WorkSchedule #{wsInfo.id}</span>}
+                              {wsInfo.maSp && <span style={{ background: '#5b21b6', borderRadius: 4, padding: '1px 7px', fontSize: 11, color: '#e9d5ff' }}>SP: {wsInfo.maSp}</span>}
+                              {wsInfo.soLo && <span style={{ background: '#5b21b6', borderRadius: 4, padding: '1px 7px', fontSize: 11, color: '#e9d5ff' }}>Lô: {wsInfo.soLo}</span>}
+                              <span style={{ marginLeft: 'auto', fontSize: 11, color: '#c4b5fd' }}>{wsLogs.length} dòng</span>
+                            </div>
+                            {renderTable(wsInfo.id, wsLogs)}
+                            <button onClick={() => addPDetailLog(wsInfo.id)}
+                              style={{ border: '1px dashed #7c3aed', background: '#f5f3ff', color: '#5b21b6', borderRadius: 5, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>
+                              + Thêm dòng
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
+              </div>
+              {/* Footer */}
+              <div style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: 10, background: '#f8fafc' }}>
+                <button onClick={() => setMachinePDetailRow(null)}
+                  style={{ border: '1px solid #e2e8f0', background: '#fff', borderRadius: 6, padding: '7px 18px', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#6b7280' }}>
+                  Đóng
+                </button>
+                <button onClick={saveMachinePDetail} disabled={machinePDetailSaving}
+                  style={{ border: 'none', background: machinePDetailSaving ? '#a78bfa' : '#4c1d95', color: '#fff', borderRadius: 6, padding: '7px 22px', cursor: machinePDetailSaving ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700 }}>
+                  {machinePDetailSaving ? 'Đang lưu...' : '✓ Lưu'}
+                </button>
+              </div>
+            </div>
+          )
+        })()}
+      </Modal>
+
       {/* ── Tab: Chỉ số P (Performance) ── */}
       {innerTab === 'machine_p' && (() => {
         const year = (filters.dateRange?.[0] || dayjs()).year()
@@ -6177,7 +6582,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                 const td = (extra = {}) => ({ padding: '6px 6px', border: '1px solid #e2e8f0', background: rowBg, overflow: 'hidden', textOverflow: 'ellipsis', ...extra })
                 const isSaving = savingPerfRow === `${row.ngay}|${row.tenMay}`
                 return (
-                  <tr key={idx} style={{ opacity: isSaving ? 0.6 : 1 }}>
+                  <tr key={idx} style={{ opacity: isSaving ? 0.6 : 1, cursor: 'pointer' }} title="Click để xem chi tiết sản lượng theo ca" onClick={() => openMachinePDetail(row)}>
                     <td style={td({ textAlign: 'center', color: '#94a3b8', fontSize: 11 })}>{idx + 1}</td>
                     <td style={td({ whiteSpace: 'nowrap', fontWeight: 500 })}>{dayjs(row.ngay).isValid() ? dayjs(row.ngay).format('DD/MM/YYYY') : row.ngay}</td>
                     <td style={td({ fontWeight: 600 })}>{row.tenMay}</td>
@@ -6208,11 +6613,11 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                       )}
                     </td>
                     {/* SL lý thuyết */}
-                    <td style={td({ textAlign: 'right' })}>
+                    <td style={td({ textAlign: 'right' })} onClick={e => e.stopPropagation()}>
                       {renderEditableCell(row, 'slLyThuyet', row.slLyThuyet != null ? Number(row.slLyThuyet).toLocaleString('vi-VN') : null, true)}
                     </td>
                     {/* SL thực tế */}
-                    <td style={td({ textAlign: 'right', color: '#1d4ed8', fontWeight: 700 })}>
+                    <td style={td({ textAlign: 'right', color: '#1d4ed8', fontWeight: 700 })} onClick={e => e.stopPropagation()}>
                       {renderEditableCell(row, 'slThucTe', row.slThucTe != null ? Number(row.slThucTe).toLocaleString('vi-VN') : null, true)}
                     </td>
                     {/* P% */}
@@ -6224,7 +6629,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                       {row.tonThat != null ? Number(row.tonThat).toLocaleString('vi-VN') : '—'}
                     </td>
                     {/* Nguyên nhân */}
-                    <td style={td({ fontSize: 11 })}>
+                    <td style={td({ fontSize: 11 })} onClick={e => e.stopPropagation()}>
                       {renderSelectCell(row, 'nguyenNhanGiamToc', PREDEFINED_REASONS_P, row.nguyenNhanGiamToc)}
                     </td>
                     {/* Ghi chú */}
@@ -6449,6 +6854,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         onSaved={() => { closeDetailDrawer(); onSaved() }}
         onRefresh={onSaved}
         onMachineRuntimeSaved={() => setMachineAVersion(v => v + 1)}
+        onShiftPerfSaved={() => setMachinePVersion(v => v + 1)}
       />
 
       <WorkScheduleModal
