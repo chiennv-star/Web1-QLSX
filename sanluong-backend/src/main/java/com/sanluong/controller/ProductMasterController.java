@@ -44,9 +44,13 @@ public class ProductMasterController {
         body.put("nangSuatDg",   p.getNangSuatDg()   != null ? p.getNangSuatDg()   : null);
         body.put("khoiLuong",    p.getKhoiLuong()    != null ? p.getKhoiLuong()    : null);
         body.put("mayMocPc",     p.getMayMocPc()     != null ? p.getMayMocPc()     : "");
+        body.put("tocDoMayPc",   p.getTocDoMayPc());
         body.put("mayMocPl",     p.getMayMocPl()     != null ? p.getMayMocPl()     : "");
+        body.put("tocDoMayPl",   p.getTocDoMayPl());
         body.put("mayMocBbc1",   p.getMayMocBbc1()   != null ? p.getMayMocBbc1()   : "");
+        body.put("tocDoMayBbc1", p.getTocDoMayBbc1());
         body.put("mayMocDg",     p.getMayMocDg()     != null ? p.getMayMocDg()     : "");
+        body.put("tocDoMayDg",   p.getTocDoMayDg());
         body.put("toNhomPcpl",     p.getToNhomPcpl()     != null ? p.getToNhomPcpl()     : null);
         body.put("loaiSanPham",    p.getLoaiSanPham()    != null ? p.getLoaiSanPham()    : null);
         body.put("nangSuatPcMe",   p.getNangSuatPcMe()   != null ? p.getNangSuatPcMe()   : null);

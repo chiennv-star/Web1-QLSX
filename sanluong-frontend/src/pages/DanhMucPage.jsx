@@ -1087,9 +1087,13 @@ function ProductMasterDrawer({ open, record, onClose, onEdit }) {
 
       <Section title="Máy móc" color="#6d28d9">
         <Row2 label="Máy Móc PC"   value={fmtT(record.mayMocPc)} />
+        <Row2 label="Tốc độ PC"    value={record.tocDoMayPc != null ? `${record.tocDoMayPc} sp/phút` : '—'} />
         <Row2 label="Máy Móc PL"   value={fmtT(record.mayMocPl)} />
+        <Row2 label="Tốc độ PL"    value={record.tocDoMayPl != null ? `${record.tocDoMayPl} sp/phút` : '—'} />
         <Row2 label="Máy Móc BBC1" value={fmtT(record.mayMocBbc1)} />
+        <Row2 label="Tốc độ BBC1"  value={record.tocDoMayBbc1 != null ? `${record.tocDoMayBbc1} sp/phút` : '—'} />
         <Row2 label="Máy Móc ĐG"   value={fmtT(record.mayMocDg)} />
+        <Row2 label="Tốc độ ĐG"    value={record.tocDoMayDg != null ? `${record.tocDoMayDg} sp/phút` : '—'} />
         <Row2 label="NS PC (sp/công)"   value={fmtN(record.nangSuatPc)} />
         <Row2 label="NS PL (sp/công)"   value={fmtN(record.nangSuatPl)} />
         <Row2 label="NS BBC1 (sp/công)" value={fmtN(record.nangSuatBbc1)} />
@@ -1438,6 +1442,16 @@ function ProductMasterTab() {
           { soMe: 3, nangSuat: 9 },
         ]
       }
+      if (loai.includes('dung dịch') && nhom === 'PCPL2') {
+        return [
+          { soMe: 1, nangSuat: 2.5 },
+          { soMe: 2, nangSuat: 5 },
+          { soMe: 3, nangSuat: 7.5 },
+          { soMe: 4, nangSuat: 10 },
+          { soMe: 5, nangSuat: 12.5 },
+          { soMe: 6, nangSuat: 15 },
+        ]
+      }
       return DEFAULT_NS_ROWS
     }
     try {
@@ -1779,40 +1793,68 @@ function ProductMasterTab() {
             )}
           </div>
 
-          <Form.Item label="Máy Móc PC" name="mayMocPc">
-            <Select placeholder="Chọn máy móc PC" allowClear showSearch options={[
-              { value: 'Máy nhũ hóa 500L',  label: 'Máy nhũ hóa 500L' },
-              { value: 'Máy Khuấy 1500L',   label: 'Máy Khuấy 1500L' },
-              { value: 'Máy Khuấy 700L',    label: 'Máy Khuấy 700L' },
-              { value: 'Máy nhũ hóa 100L',  label: 'Máy nhũ hóa 100L' },
-              { value: 'Thủ Công',          label: 'Thủ Công' },
-            ]} />
-          </Form.Item>
-
-          <Form.Item label="Máy Móc PL" name="mayMocPl">
-            <Select placeholder="Chọn máy móc PL" allowClear showSearch options={[
-              { value: 'Máy Chiết Tube Hàn Nhiệt', label: 'Máy Chiết Tube Hàn Nhiệt' },
-              { value: 'Máy Chiết Tube Hàn Seal',  label: 'Máy Chiết Tube Hàn Seal' },
-              { value: 'Máy Chiết Bánh Răng',      label: 'Máy Chiết Bánh Răng' },
-              { value: 'Máy Chiết 4 vòi bơm khí',  label: 'Máy Chiết 4 vòi bơm khí' },
-              { value: 'Máy Chiết 4 vòi bơm từ',   label: 'Máy Chiết 4 vòi bơm từ' },
-              { value: 'Máy Chiết 2 vòi',           label: 'Máy Chiết 2 vòi' },
-              { value: 'Máy Chiết mặt nạ',          label: 'Máy Chiết mặt nạ' },
-              { value: 'Máy Chiết Nhu Động',        label: 'Máy Chiết Nhu Động' },
-              { value: 'Máy Chiết Bột',             label: 'Máy Chiết Bột' },
-              { value: 'Thủ Công/ Sục ozon',        label: 'Thủ Công/ Sục ozon' },
-            ]} />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col span={16}>
+              <Form.Item label="Máy Móc PC" name="mayMocPc">
+                <Select placeholder="Chọn máy móc PC" allowClear showSearch options={[
+                  { value: 'Máy nhũ hóa 500L',  label: 'Máy nhũ hóa 500L' },
+                  { value: 'Máy Khuấy 1500L',   label: 'Máy Khuấy 1500L' },
+                  { value: 'Máy Khuấy 700L',    label: 'Máy Khuấy 700L' },
+                  { value: 'Máy nhũ hóa 100L',  label: 'Máy nhũ hóa 100L' },
+                  { value: 'Thủ Công',          label: 'Thủ Công' },
+                ]} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="Tốc độ PC (sp/phút)" name="tocDoMayPc">
+                <InputNumber style={{ width: '100%' }} min={0} placeholder="VD: 120" />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Row gutter={12}>
-            <Col span={12}>
+            <Col span={16}>
+              <Form.Item label="Máy Móc PL" name="mayMocPl">
+                <Select placeholder="Chọn máy móc PL" allowClear showSearch options={[
+                  { value: 'Máy Chiết Tube Hàn Nhiệt', label: 'Máy Chiết Tube Hàn Nhiệt' },
+                  { value: 'Máy Chiết Tube Hàn Seal',  label: 'Máy Chiết Tube Hàn Seal' },
+                  { value: 'Máy Chiết Bánh Răng',      label: 'Máy Chiết Bánh Răng' },
+                  { value: 'Máy Chiết 4 vòi bơm khí',  label: 'Máy Chiết 4 vòi bơm khí' },
+                  { value: 'Máy Chiết 4 vòi bơm từ',   label: 'Máy Chiết 4 vòi bơm từ' },
+                  { value: 'Máy Chiết 2 vòi',           label: 'Máy Chiết 2 vòi' },
+                  { value: 'Máy Chiết mặt nạ',          label: 'Máy Chiết mặt nạ' },
+                  { value: 'Máy Chiết Nhu Động',        label: 'Máy Chiết Nhu Động' },
+                  { value: 'Máy Chiết Bột',             label: 'Máy Chiết Bột' },
+                  { value: 'Thủ Công/ Sục ozon',        label: 'Thủ Công/ Sục ozon' },
+                ]} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="Tốc độ PL (sp/phút)" name="tocDoMayPl">
+                <InputNumber style={{ width: '100%' }} min={0} placeholder="VD: 80" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={12}>
+            <Col span={8}>
               <Form.Item label="Máy Móc BBC1" name="mayMocBbc1">
                 <Input placeholder="Tên máy móc BBC1" />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col span={4}>
+              <Form.Item label="Tốc độ BBC1" name="tocDoMayBbc1">
+                <InputNumber style={{ width: '100%' }} min={0} placeholder="sp/phút" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
               <Form.Item label="Máy Móc ĐG" name="mayMocDg">
                 <Input placeholder="Tên máy móc ĐG" />
+              </Form.Item>
+            </Col>
+            <Col span={4}>
+              <Form.Item label="Tốc độ ĐG" name="tocDoMayDg">
+                <InputNumber style={{ width: '100%' }} min={0} placeholder="sp/phút" />
               </Form.Item>
             </Col>
             <Col span={24}>
@@ -1929,9 +1971,13 @@ function SongAnDrawer({ open, record, onClose }) {
       </Section>
       <Section title="Máy móc" color="#6d28d9">
         <Row2 label="Máy Móc PC"   value={fmtT(record.mayMocPc)} />
+        <Row2 label="Tốc độ PC"    value={record.tocDoMayPc != null ? `${record.tocDoMayPc} sp/phút` : '—'} />
         <Row2 label="Máy Móc PL"   value={fmtT(record.mayMocPl)} />
+        <Row2 label="Tốc độ PL"    value={record.tocDoMayPl != null ? `${record.tocDoMayPl} sp/phút` : '—'} />
         <Row2 label="Máy Móc BBC1" value={fmtT(record.mayMocBbc1)} />
+        <Row2 label="Tốc độ BBC1"  value={record.tocDoMayBbc1 != null ? `${record.tocDoMayBbc1} sp/phút` : '—'} />
         <Row2 label="Máy Móc ĐG"   value={fmtT(record.mayMocDg)} />
+        <Row2 label="Tốc độ ĐG"    value={record.tocDoMayDg != null ? `${record.tocDoMayDg} sp/phút` : '—'} />
         <Row2 label="NS PC (sp/công)"   value={fmtN(record.nangSuatPc)} />
         <Row2 label="NS PL (sp/công)"   value={fmtN(record.nangSuatPl)} />
         <Row2 label="NS BBC1 (sp/công)" value={fmtN(record.nangSuatBbc1)} />

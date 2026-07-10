@@ -41,14 +41,26 @@ public class ProductMaster {
     @Column(name = "may_moc_pc", length = 255)
     private String mayMocPc;
 
+    @Column(name = "toc_do_may_pc")
+    private Integer tocDoMayPc;
+
     @Column(name = "may_moc_pl", length = 255)
     private String mayMocPl;
+
+    @Column(name = "toc_do_may_pl")
+    private Integer tocDoMayPl;
 
     @Column(name = "may_moc_bbc1", length = 255)
     private String mayMocBbc1;
 
+    @Column(name = "toc_do_may_bbc1")
+    private Integer tocDoMayBbc1;
+
     @Column(name = "may_moc_dg", length = 255)
     private String mayMocDg;
+
+    @Column(name = "toc_do_may_dg")
+    private Integer tocDoMayDg;
 
     @Column(name = "loai_san_pham", length = 100)
     private String loaiSanPham;
@@ -108,12 +120,20 @@ public class ProductMaster {
     public void setNangSuatDg(java.math.BigDecimal nangSuatDg) { this.nangSuatDg = nangSuatDg; }
     public String getMayMocPc() { return mayMocPc; }
     public void setMayMocPc(String mayMocPc) { this.mayMocPc = mayMocPc; }
+    public Integer getTocDoMayPc() { return tocDoMayPc; }
+    public void setTocDoMayPc(Integer tocDoMayPc) { this.tocDoMayPc = tocDoMayPc; }
     public String getMayMocPl() { return mayMocPl; }
     public void setMayMocPl(String mayMocPl) { this.mayMocPl = mayMocPl; }
+    public Integer getTocDoMayPl() { return tocDoMayPl; }
+    public void setTocDoMayPl(Integer tocDoMayPl) { this.tocDoMayPl = tocDoMayPl; }
     public String getMayMocBbc1() { return mayMocBbc1; }
     public void setMayMocBbc1(String mayMocBbc1) { this.mayMocBbc1 = mayMocBbc1; }
+    public Integer getTocDoMayBbc1() { return tocDoMayBbc1; }
+    public void setTocDoMayBbc1(Integer tocDoMayBbc1) { this.tocDoMayBbc1 = tocDoMayBbc1; }
     public String getMayMocDg() { return mayMocDg; }
     public void setMayMocDg(String mayMocDg) { this.mayMocDg = mayMocDg; }
+    public Integer getTocDoMayDg() { return tocDoMayDg; }
+    public void setTocDoMayDg(Integer tocDoMayDg) { this.tocDoMayDg = tocDoMayDg; }
     public String getLoaiSanPham() { return loaiSanPham; }
     public void setLoaiSanPham(String loaiSanPham) { this.loaiSanPham = loaiSanPham; }
     public java.math.BigDecimal getKhoiLuong() { return khoiLuong; }

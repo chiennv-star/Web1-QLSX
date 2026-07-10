@@ -14,9 +14,13 @@ public class ProductMasterDto {
     private BigDecimal nangSuatPl;
     private BigDecimal nangSuatBbc1;
     private String mayMocPc;
+    private Integer tocDoMayPc;
     private String mayMocPl;
+    private Integer tocDoMayPl;
     private String mayMocBbc1;
+    private Integer tocDoMayBbc1;
     private String mayMocDg;
+    private Integer tocDoMayDg;
     private String loaiSanPham;
     private BigDecimal khoiLuong;
     private String toNhomPcpl;
@@ -43,12 +47,20 @@ public class ProductMasterDto {
     public void setNangSuatBbc1(BigDecimal nangSuatBbc1) { this.nangSuatBbc1 = nangSuatBbc1; }
     public String getMayMocPc() { return mayMocPc; }
     public void setMayMocPc(String mayMocPc) { this.mayMocPc = mayMocPc; }
+    public Integer getTocDoMayPc() { return tocDoMayPc; }
+    public void setTocDoMayPc(Integer tocDoMayPc) { this.tocDoMayPc = tocDoMayPc; }
     public String getMayMocPl() { return mayMocPl; }
     public void setMayMocPl(String mayMocPl) { this.mayMocPl = mayMocPl; }
+    public Integer getTocDoMayPl() { return tocDoMayPl; }
+    public void setTocDoMayPl(Integer tocDoMayPl) { this.tocDoMayPl = tocDoMayPl; }
     public String getMayMocBbc1() { return mayMocBbc1; }
     public void setMayMocBbc1(String mayMocBbc1) { this.mayMocBbc1 = mayMocBbc1; }
+    public Integer getTocDoMayBbc1() { return tocDoMayBbc1; }
+    public void setTocDoMayBbc1(Integer tocDoMayBbc1) { this.tocDoMayBbc1 = tocDoMayBbc1; }
     public String getMayMocDg() { return mayMocDg; }
     public void setMayMocDg(String mayMocDg) { this.mayMocDg = mayMocDg; }
+    public Integer getTocDoMayDg() { return tocDoMayDg; }
+    public void setTocDoMayDg(Integer tocDoMayDg) { this.tocDoMayDg = tocDoMayDg; }
     public String getLoaiSanPham() { return loaiSanPham; }
     public void setLoaiSanPham(String loaiSanPham) { this.loaiSanPham = loaiSanPham; }
     public BigDecimal getKhoiLuong() { return khoiLuong; }

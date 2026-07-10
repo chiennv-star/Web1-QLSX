@@ -161,9 +161,13 @@ public class ProductMasterService {
         p.setNangSuatPl(dto.getNangSuatPl());
         p.setNangSuatBbc1(dto.getNangSuatBbc1());
         p.setMayMocPc(dto.getMayMocPc());
+        p.setTocDoMayPc(dto.getTocDoMayPc());
         p.setMayMocPl(dto.getMayMocPl());
+        p.setTocDoMayPl(dto.getTocDoMayPl());
         p.setMayMocBbc1(dto.getMayMocBbc1());
+        p.setTocDoMayBbc1(dto.getTocDoMayBbc1());
         p.setMayMocDg(dto.getMayMocDg());
+        p.setTocDoMayDg(dto.getTocDoMayDg());
         p.setLoaiSanPham(dto.getLoaiSanPham());
         p.setKhoiLuong(dto.getKhoiLuong());
         p.setToNhomPcpl(dto.getToNhomPcpl());
