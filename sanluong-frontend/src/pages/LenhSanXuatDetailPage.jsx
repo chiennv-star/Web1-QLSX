@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Input, Tag, Tooltip, message,
-  Form, InputNumber, Badge, Button, Spin, Tabs,
+  Form, InputNumber, Badge, Button, Spin,
 } from 'antd'
 import SkeletonTable from '../components/SkeletonTable'
 import {
@@ -440,52 +440,73 @@ export default function LenhSanXuatDetailPage() {
         </Form>
       </div>
 
-      {/* ── Tabs ── */}
-      <Tabs
-        activeKey={activeTab}
-        onChange={setActiveTab}
-        size="small"
-        style={{ marginTop: 4 }}
-        items={[
-          {
-            key: 'lenh',
-            label: <span><UnorderedListOutlined style={{ marginRight: 6 }} />Danh mục lệnh <span style={{ color: '#94a3b8', fontWeight: 400, fontSize: 11 }}>({lenhCount} lệnh — {orderCount} ĐH)</span></span>,
-            children: (
-              <SkeletonTable
-                className="lenh-detail-table"
-                rowKey="_rowKey"
-                dataSource={tableRows}
-                columns={cols}
-                loading={ordersLoad}
-                size="small"
-                scroll={{ x: 1700 }}
-                rowClassName={(r) => r.soLo == null ? 'row-no-lenh' : ''}
-                pagination={tableRows.length > 30
-                  ? { pageSize: 30, showSizeChanger: true, showTotal: (t) => `${t} dòng` }
-                  : false
-                }
-                onRow={(record) => ({
-                  onClick: () => {
-                    if (!record._donHangId) return
-                    navigate(
-                      `/lenh-san-xuat/${encodeURIComponent(maBravo)}/don-hang/${record._donHangId}`,
-                      { state: { order: record._orderRecord, product } }
-                    )
-                  },
-                  style: { cursor: record._donHangId ? 'pointer' : 'default' },
-                })}
-              />
-            ),
-          },
-          {
-            key: 'dinhmuc',
-            label: <span><TableOutlined style={{ marginRight: 6 }} />Định mức vật tư</span>,
-            children: bomLoad
-              ? <div style={{ textAlign: 'center', padding: 48 }}><Spin /></div>
-              : <BomView bom={bom} onReload={fetchBom} />,
-          },
-        ]}
-      />
+      {/* ── Tab switcher ── */}
+      <div style={{
+        display: 'flex', border: '1px solid #dde1e8', borderRadius: 8, overflow: 'hidden',
+        marginBottom: 16, width: 'fit-content',
+      }}>
+        {[
+          { key: 'lenh',    label: 'Danh mục lệnh',  icon: <UnorderedListOutlined />, color: '#1e4570' },
+          { key: 'dinhmuc', label: 'Định mức vật tư', icon: <TableOutlined />,         color: '#0369a1' },
+        ].map(({ key, label, icon, color }, idx) => (
+          <button
+            key={key}
+            onClick={() => setActiveTab(key)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '6px 14px', border: 'none', cursor: 'pointer',
+              fontFamily: 'inherit', fontSize: 13, fontWeight: activeTab === key ? 700 : 500,
+              background: activeTab === key ? color : '#fff',
+              color: activeTab === key ? '#fff' : '#3a3f47',
+              borderRight: idx === 0 ? '1px solid #dde1e8' : 'none',
+              transition: '.12s background',
+            }}
+          >
+            {icon} {label}
+            {key === 'lenh' && (
+              <span style={{
+                fontSize: 11, fontWeight: 400, marginLeft: 4,
+                color: activeTab === key ? 'rgba(255,255,255,0.75)' : '#94a3b8',
+              }}>
+                ({lenhCount} lệnh — {orderCount} ĐH)
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Tab content ── */}
+      {activeTab === 'lenh' && (
+        <SkeletonTable
+          className="lenh-detail-table"
+          rowKey="_rowKey"
+          dataSource={tableRows}
+          columns={cols}
+          loading={ordersLoad}
+          size="small"
+          scroll={{ x: 1700 }}
+          rowClassName={(r) => r.soLo == null ? 'row-no-lenh' : ''}
+          pagination={tableRows.length > 30
+            ? { pageSize: 30, showSizeChanger: true, showTotal: (t) => `${t} dòng` }
+            : false
+          }
+          onRow={(record) => ({
+            onClick: () => {
+              if (!record._donHangId) return
+              navigate(
+                `/lenh-san-xuat/${encodeURIComponent(maBravo)}/don-hang/${record._donHangId}`,
+                { state: { order: record._orderRecord, product } }
+              )
+            },
+            style: { cursor: record._donHangId ? 'pointer' : 'default' },
+          })}
+        />
+      )}
+      {activeTab === 'dinhmuc' && (
+        bomLoad
+          ? <div style={{ textAlign: 'center', padding: 48 }}><Spin /></div>
+          : <BomView bom={bom} onReload={fetchBom} />
+      )}
     </div>
   )
 }
