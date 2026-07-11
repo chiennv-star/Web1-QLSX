@@ -6316,7 +6316,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                     <LC>Tổ / Nhóm</LC><VC>{dr.toNhom || '—'}</VC>
                     <LC>Tốc độ chuẩn</LC><VC><span style={{ fontWeight: 600 }}>{dr.tocDoChuanLabel || '—'}</span></VC>
                     <LC>SL lý thuyết</LC><VC><span style={{ fontWeight: 600 }}>{dr.slLyThuyet != null ? Number(dr.slLyThuyet).toLocaleString('vi-VN') : '—'}</span></VC>
-                    <LC>SL thực tế</LC><VC><span style={{ color: '#1d4ed8', fontWeight: 700 }}>{dr.slThucTe != null ? Number(dr.slThucTe).toLocaleString('vi-VN') : '—'}</span></VC>
+                    <LC>Tốc độ thực tế</LC><VC><span style={{ color: '#1d4ed8', fontWeight: 700 }}>{dr.slThucTe != null ? Number(dr.slThucTe).toLocaleString('vi-VN') : '—'}</span></VC>
                     <LC>P (%)</LC><VC><span style={{ fontWeight: 800, fontSize: 15, color: pColor2 }}>{pval != null ? `${pval}%` : '—'}</span></VC>
                     <LC>Tổn thất</LC><VC><span style={{ color: dr.tonThat > 0 ? '#dc2626' : '#6b7280', fontWeight: 600 }}>{dr.tonThat != null ? Number(dr.tonThat).toLocaleString('vi-VN') : '—'}</span></VC>
                   </div>
@@ -6350,7 +6350,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
                           {[
                             { label: 'SL lý thuyết', value: totalLT.toLocaleString('vi-VN'), color: '#374151' },
-                            { label: 'SL thực tế', value: totalTT.toLocaleString('vi-VN'), color: '#1d4ed8' },
+                            { label: 'Tốc độ thực tế', value: totalTT.toLocaleString('vi-VN'), color: '#1d4ed8' },
                             { label: 'P tổng', value: pTong != null ? `${pTong}%` : '—', color: pColor3 },
                             { label: 'Tổn thất', value: tonThatTong > 0 ? tonThatTong.toLocaleString('vi-VN') : '0', color: tonThatTong > 0 ? '#dc2626' : '#6b7280' },
                           ].map(s => (
@@ -6397,7 +6397,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                         <thead>
                           <tr>
-                            {['#', 'Ca / Lô', 'SL lý thuyết', 'SL thực tế', 'P ca (%)', 'Nguyên nhân', ''].map((h, i) => (
+                            {['#', 'Ca / Lô', 'SL lý thuyết', 'Tốc độ thực tế', 'P ca (%)', 'Nguyên nhân', ''].map((h, i) => (
                               <th key={i} style={{ padding: '6px 8px', background: '#f5f3ff', color: '#4c1d95', fontWeight: 600, fontSize: 11, textAlign: 'left', borderBottom: '1px solid #a78bfa' }}>{h}</th>
                             ))}
                           </tr>
@@ -6827,6 +6827,15 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
           const sumTT = rows.reduce((s, r) => s + (r.slThucTe || 0), 0)
           return sumLT > 0 ? Math.round(sumTT / sumLT * 1000) / 10 : null
         }
+        const from6m = today2.subtract(179, 'day').format('YYYY-MM-DD')
+        const computeTTMachine = (tenMay) => {
+          const total = machinePShiftSummaryData.filter(r => r.tenMay === tenMay && r.ngay >= from6m).reduce((s, r) => s + (r.slThucTe || 0), 0)
+          return total || null
+        }
+        const computeTTOverall = () => {
+          const total = machinePShiftSummaryData.filter(r => r.ngay >= from6m).reduce((s, r) => s + (r.slThucTe || 0), 0)
+          return total || null
+        }
 
         // Top nguyên nhân tổn thất (from daily log for backward compat)
         const causeAgg = {}
@@ -6885,18 +6894,20 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                           <table style={{ borderCollapse: 'collapse', fontSize: 12, width: '100%' }}>
                             <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
                               <tr>
-                                <th colSpan={2 + sumPeriods.length} style={{ background: '#2e1065', color: '#fff', padding: '8px 12px', border: '1px solid #5b21b6', fontWeight: 800, fontSize: 13, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                                <th colSpan={4 + sumPeriods.length} style={{ background: '#2e1065', color: '#fff', padding: '8px 12px', border: '1px solid #5b21b6', fontWeight: 800, fontSize: 13, letterSpacing: 0.8, textTransform: 'uppercase' }}>
                                   TỔNG HỢP CHỈ SỐ P (PERFORMANCE) – {tenTo}
                                 </th>
                               </tr>
                               <tr>
-                                <th colSpan={2 + sumPeriods.length} style={{ background: '#3b0764', color: '#e9d5ff', padding: '4px 12px', textAlign: 'center', border: '1px solid #5b21b6', fontWeight: 400, fontSize: 11, fontStyle: 'italic' }}>
+                                <th colSpan={4 + sumPeriods.length} style={{ background: '#3b0764', color: '#e9d5ff', padding: '4px 12px', textAlign: 'center', border: '1px solid #5b21b6', fontWeight: 400, fontSize: 11, fontStyle: 'italic' }}>
                                   Công thức: Σ(SL thực tế × T chuẩn) / Σ(SL lý thuyết × T chuẩn) · Mục tiêu ≥ 95% · Dữ liệu 6 tháng gần nhất
                                 </th>
                               </tr>
                               <tr>
                                 <th style={{ background: '#2e1065', color: '#fff', padding: '7px 10px', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 12, textAlign: 'left' }}>Tên máy</th>
                                 <th style={{ background: '#2e1065', color: '#fff', padding: '7px 10px', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 12, textAlign: 'center', width: 90 }}>Mã máy</th>
+                                <th style={{ background: '#2e1065', color: '#fff', padding: '7px 10px', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 12, textAlign: 'center', width: 110 }}>Tốc độ chuẩn</th>
+                                <th style={{ background: '#1e3a5f', color: '#bfdbfe', padding: '7px 10px', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 12, textAlign: 'center', width: 120 }}>Tốc độ thực tế<div style={{ fontWeight: 400, fontSize: 10, opacity: 0.8, marginTop: 2 }}>6 tháng (SP)</div></th>
                                 {sumPeriods.map(p => (
                                   <th key={p.key} style={{ background: p.isCustom ? '#065f46' : '#7c3aed', color: '#fff', padding: '7px 10px', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 12, textAlign: 'center', minWidth: p.isCustom ? 160 : undefined }}>
                                     {p.label}
@@ -6914,6 +6925,8 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                                 <tr key={m.tenMay} style={{ background: i % 2 === 0 ? '#faf5ff' : '#f5f3ff' }}>
                                   <td style={{ padding: '8px 10px', border: '1px solid #e2e8f0', fontWeight: 600, fontSize: 13 }}>{m.tenMay}</td>
                                   <td style={{ padding: '8px 10px', border: '1px solid #e2e8f0', fontFamily: 'monospace', color: '#7c3aed', textAlign: 'center', fontWeight: 600 }}>{m.maMay || '—'}</td>
+                                  <td style={{ padding: '8px 10px', border: '1px solid #e2e8f0', textAlign: 'center', fontSize: 12, color: '#374151', fontWeight: 600 }}>{machinePSpeedConfigs[m.tenMay]?.tocDoChuanLabel || '—'}</td>
+                                  {(() => { const tt = computeTTMachine(m.tenMay); return <td style={{ padding: '8px 10px', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 700, fontSize: 13, color: tt != null ? '#1d4ed8' : '#9ca3af' }}>{tt != null ? Number(tt).toLocaleString('vi-VN') : '—'}</td> })()}
                                   {sumPeriods.map(p => {
                                     const v = computePPct(m.tenMay, p.from, p.to || null)
                                     return (
@@ -6930,6 +6943,8 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                                 <td colSpan={2} style={{ padding: '10px 12px', background: '#2e1065', border: '1px solid #2e1065', color: '#fff', fontWeight: 700, fontSize: 13, letterSpacing: 0.3 }}>
                                   HIỆU SUẤT TỔNG THỂ – {tenTo}
                                 </td>
+                                <td style={{ padding: '10px 12px', background: '#2e1065', border: '1px solid #2e1065' }} />
+                                {(() => { const tt = computeTTOverall(); return <td style={{ padding: '10px 12px', background: '#1e3a5f', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 800, fontSize: 14, color: tt != null ? '#93c5fd' : '#9ca3af' }}>{tt != null ? Number(tt).toLocaleString('vi-VN') : '—'}</td> })()}
                                 {sumPeriods.map(p => {
                                   const v = computeOverallPPct(p.from, p.to || null)
                                   return (
