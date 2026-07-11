@@ -5751,6 +5751,28 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
           return kh > 0 ? Math.round(run * 1000 / kh) / 10 : null
         }
 
+        const computeAStats = (tenMay, fromStr, toStr = null) => {
+          const rs = machineSummaryData.filter(r =>
+            r.tenMay === tenMay && r.ngay >= fromStr && (toStr == null || r.ngay <= toStr)
+          )
+          const gioKH   = Math.round(rs.reduce((s, r) => s + (r.gioKH  || 0), 0) * 10) / 10
+          const gioChay = Math.round(rs.reduce((s, r) => s + (r.gioChay || 0), 0) * 10) / 10
+          const gioDung = Math.round((gioKH - gioChay) * 10) / 10
+          const aPct    = gioKH > 0 ? Math.round(gioChay * 1000 / gioKH) / 10 : null
+          return { gioKH: gioKH || null, gioChay: gioChay || null, gioDung: gioDung > 0 ? gioDung : null, aPct }
+        }
+
+        const computeOverallAStats = (fromStr, toStr = null) => {
+          const rs = machineSummaryData.filter(r =>
+            r.ngay >= fromStr && (toStr == null || r.ngay <= toStr)
+          )
+          const gioKH   = Math.round(rs.reduce((s, r) => s + (r.gioKH  || 0), 0) * 10) / 10
+          const gioChay = Math.round(rs.reduce((s, r) => s + (r.gioChay || 0), 0) * 10) / 10
+          const gioDung = Math.round((gioKH - gioChay) * 10) / 10
+          const aPct    = gioKH > 0 ? Math.round(gioChay * 1000 / gioKH) / 10 : null
+          return { gioKH: gioKH || null, gioChay: gioChay || null, gioDung: gioDung > 0 ? gioDung : null, aPct }
+        }
+
         // Unique machines from summary data
         const sumMachines = [...new Map(machineSummaryData.map(r => [r.tenMay, { tenMay: r.tenMay, maMay: r.maMay }])).values()]
 
@@ -5905,20 +5927,20 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                   <table style={{ borderCollapse: 'collapse', fontSize: 12, width: '100%' }}>
                     <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
                       <tr>
-                        <th colSpan={2 + periods.length} style={{ background: '#1e3a5f', color: '#fff', padding: '8px 12px', border: '1px solid #4a6fa5', fontWeight: 800, fontSize: 13, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                        <th colSpan={2 + periods.length * 4} style={{ background: '#1e3a5f', color: '#fff', padding: '8px 12px', border: '1px solid #4a6fa5', fontWeight: 800, fontSize: 13, letterSpacing: 0.8, textTransform: 'uppercase' }}>
                           TỔNG HỢP CHỈ SỐ A (AVAILABILITY) – {tenTo}
                         </th>
                       </tr>
                       <tr>
-                        <th colSpan={2 + periods.length} style={{ background: '#2d4f7c', color: '#dbeafe', padding: '4px 12px', textAlign: 'center', border: '1px solid #4a6fa5', fontWeight: 400, fontSize: 11, fontStyle: 'italic' }}>
+                        <th colSpan={2 + periods.length * 4} style={{ background: '#2d4f7c', color: '#dbeafe', padding: '4px 12px', textAlign: 'center', border: '1px solid #4a6fa5', fontWeight: 400, fontSize: 11, fontStyle: 'italic' }}>
                           Công thức: Tổng giờ chạy thực tế / Tổng giờ kế hoạch &nbsp;·&nbsp; Mục tiêu ≥ 90% &nbsp;·&nbsp; Dữ liệu 6 tháng gần nhất
                         </th>
                       </tr>
                       <tr>
-                        <th style={{ background: '#1e3a5f', color: '#fff', padding: '7px 10px', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 12, textAlign: 'left' }}>Tên máy</th>
-                        <th style={{ background: '#1e3a5f', color: '#fff', padding: '7px 10px', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 12, textAlign: 'center', width: 90 }}>Mã máy</th>
+                        <th rowSpan={2} style={{ background: '#1e3a5f', color: '#fff', padding: '7px 10px', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 12, textAlign: 'left', verticalAlign: 'middle' }}>Tên máy</th>
+                        <th rowSpan={2} style={{ background: '#1e3a5f', color: '#fff', padding: '7px 10px', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 12, textAlign: 'center', width: 80, verticalAlign: 'middle' }}>Mã máy</th>
                         {periods.map(p => (
-                          <th key={p.key} style={{ background: p.isCustom ? '#065f46' : '#b45309', color: '#fff', padding: '7px 10px', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 12, textAlign: 'center', minWidth: p.isCustom ? 160 : undefined }}>
+                          <th key={p.key} colSpan={4} style={{ background: p.isCustom ? '#065f46' : '#b45309', color: '#fff', padding: '6px 8px', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 11, textAlign: 'center' }}>
                             {p.label}
                             {p.isCustom && customFrom && customTo && (
                               <div style={{ fontWeight: 400, fontSize: 10, opacity: 0.85, marginTop: 2 }}>
@@ -5928,22 +5950,43 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                           </th>
                         ))}
                       </tr>
+                      <tr>
+                        {periods.map(p => (
+                          <React.Fragment key={p.key}>
+                            <th style={{ background: '#dbeafe', color: '#1e40af', padding: '5px 6px', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 10, textAlign: 'center', whiteSpace: 'nowrap' }}>KH (h)</th>
+                            <th style={{ background: '#dcfce7', color: '#15803d', padding: '5px 6px', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 10, textAlign: 'center', whiteSpace: 'nowrap' }}>Chạy (h)</th>
+                            <th style={{ background: '#fee2e2', color: '#b91c1c', padding: '5px 6px', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 10, textAlign: 'center', whiteSpace: 'nowrap' }}>Dừng (h)</th>
+                            <th style={{ background: p.isCustom ? '#d1fae5' : '#fef3c7', color: p.isCustom ? '#065f46' : '#92400e', padding: '5px 6px', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 10, textAlign: 'center', whiteSpace: 'nowrap' }}>A (%)</th>
+                          </React.Fragment>
+                        ))}
+                      </tr>
                     </thead>
                     <tbody>
                       {sumMachines.length === 0 ? (
-                        <tr><td colSpan={2 + periods.length} style={{ textAlign: 'center', padding: '32px 8px', color: '#9ca3af', fontSize: 13, border: '1px solid #e2e8f0' }}>
+                        <tr><td colSpan={2 + periods.length * 4} style={{ textAlign: 'center', padding: '32px 8px', color: '#9ca3af', fontSize: 13, border: '1px solid #e2e8f0' }}>
                           Không có dữ liệu trong 6 tháng gần nhất. Hãy nhập dữ liệu thời gian chạy máy.
                         </td></tr>
-                      ) : sumMachines.map((m, idx) => (
+                      ) : sumMachines.map((m) => (
                         <tr key={m.tenMay} style={{ background: '#fff' }}>
                           <td style={{ padding: '8px 10px', border: '1px solid #e2e8f0', fontWeight: 600, fontSize: 13 }}>{m.tenMay}</td>
                           <td style={{ padding: '8px 10px', border: '1px solid #e2e8f0', textAlign: 'center', fontFamily: 'monospace', color: '#000099', fontWeight: 600 }}>{m.maMay || '—'}</td>
                           {periods.map(p => {
-                            const v = computeAPct(m.tenMay, p.from, p.to || null)
+                            const s = computeAStats(m.tenMay, p.from, p.to || null)
                             return (
-                              <td key={p.key} style={{ padding: '8px 10px', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 800, fontSize: 14, color: aColor(v), background: aBg(v) }}>
-                                {v != null ? `${v}%` : '—'}
-                              </td>
+                              <React.Fragment key={p.key}>
+                                <td style={{ padding: '6px 8px', border: '1px solid #e2e8f0', textAlign: 'center', color: '#1e40af', fontWeight: 600 }}>
+                                  {s.gioKH != null ? s.gioKH : '—'}
+                                </td>
+                                <td style={{ padding: '6px 8px', border: '1px solid #e2e8f0', textAlign: 'center', color: '#15803d', fontWeight: 600 }}>
+                                  {s.gioChay != null ? s.gioChay : '—'}
+                                </td>
+                                <td style={{ padding: '6px 8px', border: '1px solid #e2e8f0', textAlign: 'center', color: (s.gioDung || 0) > 0 ? '#dc2626' : '#6b7280', fontWeight: (s.gioDung || 0) > 0 ? 700 : 400 }}>
+                                  {s.gioDung != null ? s.gioDung : '—'}
+                                </td>
+                                <td style={{ padding: '6px 8px', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 800, fontSize: 13, color: aColor(s.aPct), background: aBg(s.aPct) }}>
+                                  {s.aPct != null ? `${s.aPct}%` : '—'}
+                                </td>
+                              </React.Fragment>
                             )
                           })}
                         </tr>
@@ -5955,11 +5998,22 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                           HIỆU SUẤT TỔNG THỂ – {tenTo}
                         </td>
                         {periods.map(p => {
-                          const v = computeOverallAPct(p.from, p.to || null)
+                          const s = computeOverallAStats(p.from, p.to || null)
                           return (
-                            <td key={p.key} style={{ padding: '10px 12px', background: v == null ? '#f8fafc' : aBg(v), border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 800, fontSize: 15, color: v == null ? '#9ca3af' : aColor(v) }}>
-                              {v != null ? `${v}%` : '—'}
-                            </td>
+                            <React.Fragment key={p.key}>
+                              <td style={{ padding: '8px 8px', background: '#f1f5f9', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 700, color: '#1e40af' }}>
+                                {s.gioKH != null ? s.gioKH : '—'}
+                              </td>
+                              <td style={{ padding: '8px 8px', background: '#f0fdf4', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 700, color: '#15803d' }}>
+                                {s.gioChay != null ? s.gioChay : '—'}
+                              </td>
+                              <td style={{ padding: '8px 8px', background: '#fef2f2', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 700, color: (s.gioDung || 0) > 0 ? '#dc2626' : '#6b7280' }}>
+                                {s.gioDung != null ? s.gioDung : '—'}
+                              </td>
+                              <td style={{ padding: '8px 8px', background: s.aPct == null ? '#f8fafc' : aBg(s.aPct), border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 800, fontSize: 14, color: s.aPct == null ? '#9ca3af' : aColor(s.aPct) }}>
+                                {s.aPct != null ? `${s.aPct}%` : '—'}
+                              </td>
+                            </React.Fragment>
                           )
                         })}
                       </tr>
