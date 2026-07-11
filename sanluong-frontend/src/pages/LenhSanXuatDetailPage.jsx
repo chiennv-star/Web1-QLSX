@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Input, Tag, Tooltip, message,
-  Form, InputNumber, Badge, Button, Spin,
+  Form, InputNumber, Badge, Button, Spin, Tabs,
 } from 'antd'
 import SkeletonTable from '../components/SkeletonTable'
 import {
   ArrowLeftOutlined, EditOutlined,
   CheckCircleFilled, CloseCircleFilled,
+  UnorderedListOutlined, TableOutlined,
 } from '@ant-design/icons'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import dayjs from 'dayjs'
@@ -28,6 +29,9 @@ export default function LenhSanXuatDetailPage() {
   const [editingInfo, setEditingInfo] = useState(false)
   const [saving,      setSaving]      = useState(false)
   const [infoForm]                    = Form.useForm()
+  const [activeTab,   setActiveTab]   = useState('lenh')
+  const [bom,         setBom]         = useState(null)   // { header, nvl, baoBi, updatedAt }
+  const [bomLoad,     setBomLoad]     = useState(false)
 
   // ── Fetch product ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -79,6 +83,31 @@ export default function LenhSanXuatDetailPage() {
   }, [maBravo])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  // ── Fetch BOM (định mức vật tư) ──────────────────────────────────────────
+  const fetchBom = useCallback(async () => {
+    if (!maBravo) return
+    setBomLoad(true)
+    try {
+      const { data } = await api.get('/lsx/to-lenh/by-bravo', { params: { maBravo } })
+      setBom({
+        header:  data.header  || {},
+        nvl:     Array.isArray(data.nguyenVatLieu) ? data.nguyenVatLieu : [],
+        baoBi:   Array.isArray(data.baoBi)         ? data.baoBi         : [],
+        updatedAt: data.updatedAt,
+        updatedBy: data.updatedBy,
+      })
+    } catch (err) {
+      if (err?.response?.status !== 204) message.error('Không thể tải định mức vật tư')
+      setBom({ header: {}, nvl: [], baoBi: [], updatedAt: null, updatedBy: null })
+    } finally {
+      setBomLoad(false)
+    }
+  }, [maBravo])
+
+  useEffect(() => {
+    if (activeTab === 'dinhmuc' && bom === null) fetchBom()
+  }, [activeTab, bom, fetchBom])
 
   // ── Merge: 1 dòng / lệnh sản xuất ────────────────────────────────────────
   const tableRows = useMemo(() => {
@@ -411,37 +440,175 @@ export default function LenhSanXuatDetailPage() {
         </Form>
       </div>
 
-      {/* ── Danh mục ── */}
-      <div style={{ fontWeight: 700, color: '#1e4570', fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 10 }}>
-        Danh Mục Các Lệnh
-        <span style={{ fontWeight: 400, color: '#94a3b8', fontSize: 12, marginLeft: 8 }}>
-          ({lenhCount} lệnh sản xuất — {orderCount} đơn hàng)
-        </span>
-      </div>
-      <SkeletonTable
-        className="lenh-detail-table"
-        rowKey="_rowKey"
-        dataSource={tableRows}
-        columns={cols}
-        loading={ordersLoad}
+      {/* ── Tabs ── */}
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
         size="small"
-        scroll={{ x: 1700 }}
-        rowClassName={(r) => r.soLo == null ? 'row-no-lenh' : ''}
-        pagination={tableRows.length > 30
-          ? { pageSize: 30, showSizeChanger: true, showTotal: (t) => `${t} dòng` }
-          : false
-        }
-        onRow={(record) => ({
-          onClick: () => {
-            if (!record._donHangId) return
-            navigate(
-              `/lenh-san-xuat/${encodeURIComponent(maBravo)}/don-hang/${record._donHangId}`,
-              { state: { order: record._orderRecord, product } }
-            )
+        style={{ marginTop: 4 }}
+        items={[
+          {
+            key: 'lenh',
+            label: <span><UnorderedListOutlined style={{ marginRight: 6 }} />Danh mục lệnh <span style={{ color: '#94a3b8', fontWeight: 400, fontSize: 11 }}>({lenhCount} lệnh — {orderCount} ĐH)</span></span>,
+            children: (
+              <SkeletonTable
+                className="lenh-detail-table"
+                rowKey="_rowKey"
+                dataSource={tableRows}
+                columns={cols}
+                loading={ordersLoad}
+                size="small"
+                scroll={{ x: 1700 }}
+                rowClassName={(r) => r.soLo == null ? 'row-no-lenh' : ''}
+                pagination={tableRows.length > 30
+                  ? { pageSize: 30, showSizeChanger: true, showTotal: (t) => `${t} dòng` }
+                  : false
+                }
+                onRow={(record) => ({
+                  onClick: () => {
+                    if (!record._donHangId) return
+                    navigate(
+                      `/lenh-san-xuat/${encodeURIComponent(maBravo)}/don-hang/${record._donHangId}`,
+                      { state: { order: record._orderRecord, product } }
+                    )
+                  },
+                  style: { cursor: record._donHangId ? 'pointer' : 'default' },
+                })}
+              />
+            ),
           },
-          style: { cursor: record._donHangId ? 'pointer' : 'default' },
-        })}
+          {
+            key: 'dinhmuc',
+            label: <span><TableOutlined style={{ marginRight: 6 }} />Định mức vật tư</span>,
+            children: bomLoad
+              ? <div style={{ textAlign: 'center', padding: 48 }}><Spin /></div>
+              : <BomView bom={bom} onReload={fetchBom} />,
+          },
+        ]}
       />
+    </div>
+  )
+}
+
+const BOM_COLS = [
+  { key: 'maVatTu', label: 'Mã vật tư',              w: 100 },
+  { key: 'ten',     label: 'Nguyên liệu / Phụ liệu', w: undefined },
+  { key: 'dvt',     label: 'ĐVT',                    w: 56  },
+  { key: 'tyLe',    label: 'Tỷ lệ (%)',              w: 70  },
+  { key: 'dm1',     label: 'ĐM 1 ĐVSP',              w: 120 },
+  { key: 'dmLo',    label: 'ĐM theo lô',             w: 120 },
+  { key: 'ghiChu',  label: 'Ghi chú',                w: 90  },
+]
+
+function BomSection({ rows, label }) {
+  return (
+    <>
+      <tr style={{ background: '#f0f4ff' }}>
+        <td colSpan={BOM_COLS.length + 1}
+          style={{ padding: '5px 10px', fontWeight: 700, fontSize: 12.5, color: '#1e4570' }}>
+          {label}
+        </td>
+      </tr>
+      {rows.length === 0
+        ? <tr><td colSpan={BOM_COLS.length + 1}
+            style={{ padding: '8px 10px', color: '#9aa0a8', fontSize: 12, fontStyle: 'italic' }}>
+            Chưa có dữ liệu
+          </td></tr>
+        : rows.map((row, i) => (
+          <tr key={i} style={{ background: i % 2 === 1 ? '#fafbfc' : '#fff' }}>
+            <td style={{ textAlign: 'center', color: '#6b7178', fontSize: 12, width: 34, padding: '5px 4px' }}>
+              {i + 1}
+            </td>
+            {BOM_COLS.map(col => (
+              <td key={col.key} style={{
+                padding: '5px 8px', fontSize: 13, color: '#1b1d21',
+                borderBottom: '1px solid #edf0f4',
+                maxWidth: col.w, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {row[col.key] || ''}
+              </td>
+            ))}
+          </tr>
+        ))
+      }
+    </>
+  )
+}
+
+function BomView({ bom, onReload }) {
+  if (!bom) {
+    return (
+      <div style={{ textAlign: 'center', padding: 48, color: '#94a3b8', fontSize: 14 }}>
+        Chưa có định mức vật tư. Hãy nhập từ tờ lệnh sản xuất của một đơn hàng.
+      </div>
+    )
+  }
+
+  const { header, nvl, baoBi, updatedAt, updatedBy } = bom
+  const totalRows = nvl.length + baoBi.length
+
+  return (
+    <div>
+      {/* Info bar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12,
+        background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8,
+        padding: '10px 14px', marginBottom: 14,
+      }}>
+        {header?.maDonHang && (
+          <span style={{ fontSize: 12.5, color: '#6b7178' }}>
+            Từ đơn hàng: <strong style={{ color: '#7c3aed' }}>{header.maDonHang}</strong>
+          </span>
+        )}
+        {header?.soLoSanXuat && (
+          <span style={{ fontSize: 12.5, color: '#6b7178' }}>
+            Lô: <strong style={{ color: '#0f766e' }}>{header.soLoSanXuat}</strong>
+          </span>
+        )}
+        <span style={{
+          background: '#e0f2fe', color: '#0369a1',
+          borderRadius: 20, padding: '2px 10px', fontSize: 12, fontWeight: 600,
+        }}>
+          {totalRows} vật tư
+        </span>
+        {updatedAt && (
+          <span style={{ fontSize: 11.5, color: '#94a3b8', marginLeft: 'auto' }}>
+            Cập nhật: {dayjs(updatedAt).format('DD/MM/YYYY HH:mm')}
+            {updatedBy && <> bởi <strong>{updatedBy}</strong></>}
+          </span>
+        )}
+        <Button size="small" onClick={onReload} style={{ marginLeft: updatedAt ? 0 : 'auto' }}>
+          Tải lại
+        </Button>
+      </div>
+
+      {/* Table */}
+      {totalRows === 0 ? (
+        <div style={{ textAlign: 'center', padding: 48, color: '#94a3b8', fontSize: 14 }}>
+          Chưa có vật tư nào được nhập.
+        </div>
+      ) : (
+        <div style={{ background: '#fff', border: '1px solid #dde1e8', borderRadius: 8, overflow: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: '#f5f7fa', borderBottom: '2px solid #dde1e8' }}>
+                <th style={{ width: 34, padding: '8px 4px', textAlign: 'center', color: '#6b7178', fontSize: 12 }}>Stt</th>
+                {BOM_COLS.map(col => (
+                  <th key={col.key} style={{
+                    padding: '8px 8px', textAlign: 'left',
+                    color: '#3a3f47', fontSize: 12.5, fontWeight: 700,
+                    width: col.w,
+                  }}>
+                    {col.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <BomSection rows={nvl}   label="Nguyên vật liệu" />
+            <BomSection rows={baoBi} label="Bao bì" />
+          </table>
+        </div>
+      )}
     </div>
   )
 }
