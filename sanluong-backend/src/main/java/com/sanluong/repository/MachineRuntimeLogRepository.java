@@ -19,6 +19,11 @@ public interface MachineRuntimeLogRepository extends JpaRepository<MachineRuntim
     @Query("DELETE FROM MachineRuntimeLog r WHERE r.workScheduleId = :wsId AND r.ngay = :ngay")
     void deleteByWorkScheduleIdAndNgay(Long wsId, LocalDate ngay);
 
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM MachineRuntimeLog r WHERE r.workScheduleId = :wsId AND r.ngay = :ngay AND r.tenMay = :tenMay")
+    void deleteByWorkScheduleIdAndNgayAndTenMay(Long wsId, LocalDate ngay, String tenMay);
+
     @Query("SELECT r FROM MachineRuntimeLog r WHERE r.workScheduleId IN :wsIds AND r.ngay BETWEEN :from AND :to ORDER BY r.ngay, r.sortOrder, r.id")
     List<MachineRuntimeLog> findForSummary(@Param("wsIds") List<Long> wsIds,
                                             @Param("from") LocalDate from,

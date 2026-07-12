@@ -261,7 +261,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   const [openTabs, setOpenTabs] = useState(['list'])
   const [activeTabKey, setActiveTabKey] = useState('list')
   const [daySlMap, setDaySlMap] = useState({})
-  const [dayMachineMap, setDayMachineMap] = useState({})
+  const [dayMachinesMap, setDayMachinesMap] = useState({}) // ngayKey → string[]
   const [savingDay, setSavingDay] = useState(null)
   const [pendingDays, setPendingDays] = useState([])
   const [employees, setEmployees] = useState([])
@@ -463,12 +463,18 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
           slMap[key] = String(Math.round(parseFloat(s.sanLuong)))
         }
         if (machineMap[key] === undefined && s.khac) {
-          machineMap[key] = s.khac
+          // Parse khac: JSON array ["Máy A","Máy B"] hoặc plain string (legacy)
+          try {
+            const parsed = JSON.parse(s.khac)
+            machineMap[key] = Array.isArray(parsed) ? parsed : [s.khac]
+          } catch {
+            machineMap[key] = [s.khac]
+          }
         }
       })
       setDaySlMap(slMap)
       setSavedSlKeys(new Set(Object.keys(slMap)))
-      setDayMachineMap(machineMap)
+      setDayMachinesMap(machineMap)
       // Load machine runtime for all days (non-blocking)
       const days = [...new Set(normalized.map(s => s.ngay).filter(Boolean))]
       if (days.length > 0) {
@@ -522,42 +528,83 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     })
     return { runMin, downMin }
   }
-  const _rtMarkClean = (ngay) => setMachineRuntimeDirtyDays(prev => { const n = new Set(prev); n.delete(ngay); return n })
-  const _rtMarkDirty = (ngay) => setMachineRuntimeDirtyDays(prev => new Set(prev).add(ngay))
+  // rtKey = "${ngay}|${machineName}"
+  const _rtMarkClean = (rtKey) => setMachineRuntimeDirtyDays(prev => { const n = new Set(prev); n.delete(rtKey); return n })
+  const _rtMarkDirty = (rtKey) => setMachineRuntimeDirtyDays(prev => new Set(prev).add(rtKey))
   const loadMachineRuntime = async (ngay) => {
     try {
       const { data } = await api.get('/machine-runtime', { params: { workScheduleId: schedule.id, ngay } })
       setMachineRuntimeMap(prev => ({ ...prev, [ngay]: data.map(r => ({ ...r, _id: r.id })) }))
-      _rtMarkClean(ngay)
     } catch {}
   }
-  const addMachineRuntimeRow = (ngay) => {
+  const addMachineRuntimeRow = (ngay, machineName) => {
     const _id = 'tmp_' + Date.now()
-    setMachineRuntimeMap(prev => ({ ...prev, [ngay]: [...(prev[ngay] || []), { _id, id: null, tuGio: '', denGio: '', trangThai: 'Chạy máy', lyDo: '', ghiChu: '', sanPham: '' }] }))
-    _rtMarkDirty(ngay)
+    setMachineRuntimeMap(prev => ({ ...prev, [ngay]: [...(prev[ngay] || []), { _id, id: null, tuGio: '', denGio: '', trangThai: 'Chạy máy', lyDo: '', ghiChu: '', sanPham: '', tenMay: machineName }] }))
+    _rtMarkDirty(`${ngay}|${machineName}`)
   }
-  const updateMachineRuntimeRow = (ngay, _id, patch) => {
+  const updateMachineRuntimeRow = (ngay, machineName, _id, patch) => {
     setMachineRuntimeMap(prev => ({ ...prev, [ngay]: (prev[ngay] || []).map(r => r._id === _id ? { ...r, ...patch } : r) }))
-    _rtMarkDirty(ngay)
+    _rtMarkDirty(`${ngay}|${machineName}`)
   }
-  const removeMachineRuntimeRow = (ngay, _id) => {
+  const removeMachineRuntimeRow = (ngay, machineName, _id) => {
     setMachineRuntimeMap(prev => ({ ...prev, [ngay]: (prev[ngay] || []).filter(r => r._id !== _id) }))
-    _rtMarkDirty(ngay)
+    _rtMarkDirty(`${ngay}|${machineName}`)
   }
-  const saveMachineRuntime = async (ngay) => {
-    setMachineRuntimeSaving(prev => new Set(prev).add(ngay))
+  const saveMachineRuntime = async (ngay, machineName) => {
+    const rtKey = `${ngay}|${machineName}`
+    setMachineRuntimeSaving(prev => new Set(prev).add(rtKey))
     try {
-      const entries = machineRuntimeMap[ngay] || []
+      const allEntries = machineRuntimeMap[ngay] || []
+      // Entries for this machine: tenMay match or null (legacy, assign to first machine)
+      const machineEntries = allEntries.filter(e => e.tenMay === machineName || (!e.tenMay))
       const { data } = await api.post('/machine-runtime/bulk',
-        entries.map(({ tuGio, denGio, trangThai, lyDo, ghiChu, sanPham }) => ({ tuGio, denGio, trangThai, lyDo: lyDo || null, ghiChu: ghiChu || null, sanPham: sanPham || null })),
-        { params: { workScheduleId: schedule.id, ngay } }
+        machineEntries.map(({ tuGio, denGio, trangThai, lyDo, ghiChu, sanPham }) => ({
+          tuGio, denGio, trangThai, lyDo: lyDo || null, ghiChu: ghiChu || null, sanPham: sanPham || null
+        })),
+        { params: { workScheduleId: schedule.id, ngay, tenMay: machineName } }
       )
-      setMachineRuntimeMap(prev => ({ ...prev, [ngay]: data.map(r => ({ ...r, _id: r.id })) }))
-      _rtMarkClean(ngay)
+      // Merge: keep other machines' entries, replace this machine's entries
+      setMachineRuntimeMap(prev => {
+        const others = (prev[ngay] || []).filter(e => e.tenMay && e.tenMay !== machineName)
+        return { ...prev, [ngay]: [...others, ...data.map(r => ({ ...r, _id: r.id }))] }
+      })
+      _rtMarkClean(rtKey)
       onMachineRuntimeSaved?.()
       message.success('Đã lưu thời gian chạy máy')
     } catch { message.error('Lưu thời gian chạy máy thất bại') }
-    finally { setMachineRuntimeSaving(prev => { const n = new Set(prev); n.delete(ngay); return n }) }
+    finally { setMachineRuntimeSaving(prev => { const n = new Set(prev); n.delete(rtKey); return n }) }
+  }
+  const saveDayMachines = async (ngay, machines) => {
+    const rows = sessionsRef.current.filter(s => (s.ngay || 'unknown') === ngay)
+    const first = rows.find(r => r.id)
+    if (!first?.id) return
+    const khacVal = machines.length === 0 ? null : JSON.stringify(machines)
+    try {
+      await api.patch(`/work-schedule-session/${first.id}/khac`, { khac: khacVal })
+      setDayMachinesMap(prev => ({ ...prev, [ngay]: machines }))
+    } catch { message.error('Lưu máy thực hiện thất bại') }
+  }
+  const addMachineToDay = (ngay) => {
+    const current = dayMachinesMap[ngay] || []
+    const newList = [...current, '']
+    setDayMachinesMap(prev => ({ ...prev, [ngay]: newList }))
+  }
+  const removeMachineFromDay = async (ngay, idx) => {
+    const current = dayMachinesMap[ngay] || []
+    const newList = current.filter((_, i) => i !== idx)
+    await saveDayMachines(ngay, newList)
+  }
+  const updateMachineInDay = async (ngay, idx, newName) => {
+    const current = dayMachinesMap[ngay] || []
+    const newList = current.map((m, i) => i === idx ? (newName || '') : m)
+    setDayMachinesMap(prev => ({ ...prev, [ngay]: newList }))
+    // Save after brief debounce is handled via blur — save immediately
+    const rows = sessionsRef.current.filter(s => (s.ngay || 'unknown') === ngay)
+    const first = rows.find(r => r.id)
+    if (!first?.id) return
+    const khacVal = newList.length === 0 ? null : JSON.stringify(newList)
+    try { await api.patch(`/work-schedule-session/${first.id}/khac`, { khac: khacVal }) }
+    catch { message.error('Lưu máy thực hiện thất bại') }
   }
 
   // ── Shift perf (Sản lượng theo ca) helpers ─────────────────────────────────
@@ -1216,16 +1263,6 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     finally { setSavingDay(null) }
   }
 
-  const saveDayMachine = async (ngayKey, machineVal) => {
-    const rows = sessionsRef.current.filter(s => (s.ngay || 'unknown') === ngayKey)
-    const first = rows.find(r => r.id)
-    if (!first?.id) return
-    try {
-      await api.patch(`/work-schedule-session/${first.id}/khac`, { khac: machineVal || null })
-      setDayMachineMap(prev => ({ ...prev, [ngayKey]: machineVal || '' }))
-    } catch { message.error('Lưu máy thực hiện thất bại') }
-  }
-
   const cellStyle = { padding: '5px 8px', border: '1px solid #d9d9d9', verticalAlign: 'middle' }
   const headStyle = { ...cellStyle, background: '#e6f4ff', fontWeight: 600, color: '#1677ff', whiteSpace: 'nowrap' }
   const subHeadStyle = { ...cellStyle, background: '#fff7e6', fontWeight: 600, color: '#1890ff', whiteSpace: 'nowrap' }
@@ -1387,34 +1424,6 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                     return <b style={{ color }}>{nsNgay.toLocaleString('vi-VN')}{arrow}</b>
                   })() : <b style={{ color: '#aaa' }}>—</b>}
                 </span>
-                {/* Máy thực hiện — chỉ ĐG */}
-                {schedule?.congDoan === 'DG' && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#64748b', flexShrink: 0 }}>
-                    Máy:&nbsp;
-                    <PhongSanXuatSelect
-                      size="small"
-                      value={dayMachineMap[k] || null}
-                      onChange={v => saveDayMachine(k, v || null)}
-                      disabled={!canEditDetail}
-                      style={{ width: 170, fontSize: 11 }}
-                      placeholder="Chọn máy..."
-                    />
-                  </span>
-                )}
-                {/* Machine runtime stats */}
-                {(() => {
-                  const { runMin, downMin } = computeRtStats(machineRuntimeMap[k])
-                  if (runMin === 0 && downMin === 0) return null
-                  return <>
-                    <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                      TG Chạy: <b style={{ color: '#16a34a', fontFamily: 'monospace' }}>{runMin}p</b>
-                    </span>
-                    <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                      TG Nghỉ: <b style={{ color: '#dc2626', fontFamily: 'monospace' }}>{downMin}p</b>
-                    </span>
-                  </>
-                })()}
-
                 {/* Actions */}
                 {canEditDetail && (
                   <div style={{ marginLeft: 'auto', display: 'flex', gap: 5, alignItems: 'center', flexShrink: 0 }}>
@@ -1716,157 +1725,185 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                 )
               })()}
 
-              {/* ── Thời gian chạy máy ── */}
+              {/* ── Máy thực hiện ── */}
               {(() => {
-                const rtEntries = machineRuntimeMap[k] || []
-                const { runMin, downMin } = computeRtStats(rtEntries)
-                const total = runMin + downMin
-                const avail = total > 0 ? (runMin / total * 100).toFixed(1) : null
-                const isOpen = machineRuntimeOpenDays.has(k)
-                const isSaving = machineRuntimeSaving.has(k)
-                const isDirty = machineRuntimeDirtyDays.has(k)
-                const PREDEFINED_REASONS = ['Chờ nguyên liệu', 'Hỏng máy', 'Chuyển đổi mã', 'Vệ sinh / bảo trì']
+                const PREDEFINED_REASONS_RT = ['Chờ nguyên liệu', 'Hỏng máy', 'Chuyển đổi mã', 'Vệ sinh / bảo trì']
+                const machines = dayMachinesMap[k] || []
+                const allRtEntries = machineRuntimeMap[k] || []
+                const { runMin: totalRun, downMin: totalDown } = computeRtStats(allRtEntries)
                 return (
                   <div style={{ borderTop: '1px solid #e0f2fe' }}>
-                    {/* Toggle header */}
-                    <div
-                      onClick={() => {
-                        if (isOpen && isDirty) {
-                          Modal.confirm({
-                            title: 'Chưa lưu thay đổi',
-                            content: 'Bảng thời gian chạy máy có thay đổi chưa được lưu. Thoát mà không lưu?',
-                            okText: 'Thoát không lưu',
-                            cancelText: 'Ở lại',
-                            okType: 'danger',
-                            onOk: () => {
-                              loadMachineRuntime(k)
-                              setMachineRuntimeOpenDays(prev => { const n = new Set(prev); n.delete(k); return n })
-                            },
-                          })
-                          return
-                        }
-                        setMachineRuntimeOpenDays(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n })
-                        if (!machineRuntimeOpenDays.has(k) && !machineRuntimeMap[k]) loadMachineRuntime(k)
-                      }}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px',
-                        cursor: 'pointer', fontSize: 12, userSelect: 'none',
-                        background: runMin > 0 || downMin > 0 ? '#f0f9ff' : '#f8fafc',
-                        color: '#0369a1',
-                      }}
-                    >
-                      <span>⚙️</span>
-                      <span style={{ fontWeight: 600 }}>Thời gian chạy máy</span>
-                      {runMin > 0 && <Tag color="success" style={{ margin: 0, fontSize: 11 }}>Chạy {runMin}p</Tag>}
-                      {downMin > 0 && <Tag color="error" style={{ margin: 0, fontSize: 11 }}>Nghỉ {downMin}p</Tag>}
-                      {avail && <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>A={avail}%</Tag>}
-                      {isDirty && <Tag color="warning" style={{ margin: 0, fontSize: 11 }}>Chưa lưu</Tag>}
-                      <span style={{ marginLeft: 'auto', fontSize: 11, color: '#9ca3af' }}>{isOpen ? '▲ Thu gọn' : '▼ Xem / Nhập'}</span>
-                    </div>
-                    {/* Panel content */}
-                    {isOpen && (
-                      <div style={{ padding: '10px 14px 14px', background: '#f8fbff' }}>
-                        {/* Table */}
-                        <div style={{ overflowX: 'auto' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                            <thead>
-                              <tr>
-                                {['#', 'Từ giờ', 'Đến giờ', 'Trạng thái', 'Lý do dừng', 'Ghi chú', ''].map((h, i) => (
-                                  <th key={i} style={{ padding: '6px 8px', background: '#e0f2fe', color: '#0c4a6e', fontWeight: 600, fontSize: 11, textAlign: 'left', borderBottom: '1px solid #bae6fd', whiteSpace: 'nowrap' }}>{h}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {rtEntries.length === 0 && (
-                                <tr><td colSpan={7} style={{ textAlign: 'center', color: '#aaa', padding: '12px 0', fontSize: 12 }}>Chưa có dữ liệu — nhấn "+ Thêm dòng"</td></tr>
-                              )}
-                              {rtEntries.map((row, idx) => {
-                                const isChay = row.trangThai !== 'Dừng máy'
-                                return (
-                                  <tr key={row._id} style={{ background: idx % 2 === 0 ? '#fff' : '#f0f9ff' }}>
-                                    <td style={{ padding: '4px 8px', color: '#94a3b8', fontSize: 11, textAlign: 'center', width: 28 }}>{idx + 1}</td>
-                                    <td style={{ padding: '3px 6px', width: 95 }}>
-                                      <TimePicker format="HH:mm" size="small" style={{ width: '100%' }}
-                                        value={row.tuGio ? dayjs(row.tuGio, 'HH:mm') : null}
-                                        onChange={(_, s) => updateMachineRuntimeRow(k, row._id, { tuGio: s })} />
-                                    </td>
-                                    <td style={{ padding: '3px 6px', width: 95 }}>
-                                      <TimePicker format="HH:mm" size="small" style={{ width: '100%' }}
-                                        value={row.denGio ? dayjs(row.denGio, 'HH:mm') : null}
-                                        onChange={(_, s) => updateMachineRuntimeRow(k, row._id, { denGio: s })} />
-                                    </td>
-                                    <td style={{ padding: '3px 6px', width: 110 }}>
-                                      <select value={row.trangThai || 'Chạy máy'} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12, color: isChay ? '#16a34a' : '#dc2626', fontWeight: 600 }}
-                                        onChange={e => updateMachineRuntimeRow(k, row._id, { trangThai: e.target.value, lyDo: '' })}>
-                                        <option value="Chạy máy">Chạy máy</option>
-                                        <option value="Dừng máy">Dừng máy</option>
-                                      </select>
-                                    </td>
-                                    <td style={{ padding: '3px 6px', width: 170 }}>
-                                      {(!isChay && !!row.lyDo && !PREDEFINED_REASONS.includes(row.lyDo)) ? (
-                                        <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                                          <input
-                                            autoFocus
-                                            value={row.lyDo}
-                                            placeholder="Nhập lý do..."
-                                            style={{ flex: 1, border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 6px', fontSize: 12, minWidth: 0 }}
-                                            onChange={e => updateMachineRuntimeRow(k, row._id, { lyDo: e.target.value })}
-                                          />
-                                          <button
-                                            onClick={() => updateMachineRuntimeRow(k, row._id, { lyDo: '' })}
-                                            title="Quay lại danh sách"
-                                            style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 15, padding: '0 2px', lineHeight: 1, flexShrink: 0 }}
-                                          >↩</button>
-                                        </div>
-                                      ) : (
-                                        <select value={row.lyDo || ''} disabled={isChay} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12, background: isChay ? '#f3f4f6' : '#fff' }}
-                                          onChange={e => updateMachineRuntimeRow(k, row._id, { lyDo: e.target.value })}>
-                                          <option value="">—</option>
-                                          {PREDEFINED_REASONS.map(o => <option key={o} value={o}>{o}</option>)}
-                                          <option value="Khác">Khác...</option>
-                                        </select>
-                                      )}
-                                    </td>
-                                    <td style={{ padding: '3px 6px' }}>
-                                      <input value={row.ghiChu || ''} placeholder="Ghi chú..." style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 6px', fontSize: 12 }}
-                                        onChange={e => updateMachineRuntimeRow(k, row._id, { ghiChu: e.target.value })} />
-                                    </td>
-                                    <td style={{ padding: '3px 6px', width: 30, textAlign: 'center' }}>
-                                      <button onClick={() => removeMachineRuntimeRow(k, row._id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
-                                    </td>
-                                  </tr>
-                                )
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                        {/* Add row */}
-                        <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={() => addMachineRuntimeRow(k)} style={{ marginTop: 8, fontSize: 11, color: '#0369a1', borderColor: '#bae6fd' }}>
-                          + Thêm dòng
+                    {/* Section header */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: '#f0f9ff', borderBottom: machines.length > 0 ? '1px solid #e0f2fe' : 'none' }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#0369a1' }}>⚙️ Máy thực hiện</span>
+                      {totalRun > 0 && <Tag color="success" style={{ margin: 0, fontSize: 11 }}>Chạy {totalRun}p</Tag>}
+                      {totalDown > 0 && <Tag color="error" style={{ margin: 0, fontSize: 11 }}>Nghỉ {totalDown}p</Tag>}
+                      {canEditDetail && (
+                        <Button size="small" type="dashed" icon={<PlusOutlined />}
+                          style={{ marginLeft: 'auto', fontSize: 11, color: '#0369a1', borderColor: '#7dd3fc', height: 24, lineHeight: '22px' }}
+                          onClick={() => {
+                            addMachineToDay(k)
+                            if (!machineRuntimeMap[k]) loadMachineRuntime(k)
+                          }}>
+                          + Thêm máy
                         </Button>
-                        {/* Summary */}
-                        {(runMin > 0 || downMin > 0) && (
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginTop: 12 }}>
-                            {[
-                              { label: 'Tổng TG kế hoạch', val: `${total} phút`, color: '#0f4c4c' },
-                              { label: 'Tổng TG chạy máy', val: `${runMin} phút`, color: '#16a34a' },
-                              { label: 'Tổng TG nghỉ', val: `${downMin} phút`, color: '#dc2626' },
-                              { label: 'Availability (A)', val: avail ? `${avail}%` : '—', color: '#4f46e5' },
-                            ].map(({ label, val, color }) => (
-                              <div key={label} style={{ background: '#fff', border: '1px solid #e0f2fe', borderRadius: 8, padding: '8px 12px' }}>
-                                <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, marginBottom: 2 }}>{label}</div>
-                                <div style={{ fontSize: 16, fontWeight: 700, color, fontFamily: 'monospace' }}>{val}</div>
-                              </div>
-                            ))}
+                      )}
+                    </div>
+
+                    {machines.map((machineName, mIdx) => {
+                      const rtKey = `${k}|${machineName}`
+                      const rtEntries = allRtEntries.filter(e => e.tenMay === machineName || (!e.tenMay && mIdx === 0))
+                      const { runMin, downMin } = computeRtStats(rtEntries)
+                      const total = runMin + downMin
+                      const avail = total > 0 ? (runMin / total * 100).toFixed(1) : null
+                      const isOpen = machineRuntimeOpenDays.has(rtKey)
+                      const isSaving = machineRuntimeSaving.has(rtKey)
+                      const isDirty = machineRuntimeDirtyDays.has(rtKey)
+                      return (
+                        <div key={`${k}-m-${mIdx}`} style={{ borderBottom: '1px solid #e0f2fe' }}>
+                          {/* Machine row */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', background: '#fff', flexWrap: 'wrap' }}>
+                            <PhongThucHienSelect
+                              size="small"
+                              value={machineName || undefined}
+                              onChange={v => updateMachineInDay(k, mIdx, v || '')}
+                              disabled={!canEditDetail}
+                              style={{ width: 195, fontSize: 11 }}
+                              placeholder="Chọn máy thực hiện..."
+                            />
+                            {runMin > 0 && <Tag color="success" style={{ margin: 0, fontSize: 11 }}>Chạy {runMin}p</Tag>}
+                            {downMin > 0 && <Tag color="error" style={{ margin: 0, fontSize: 11 }}>Nghỉ {downMin}p</Tag>}
+                            {avail && <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>A={avail}%</Tag>}
+                            {isDirty && <Tag color="warning" style={{ margin: 0, fontSize: 11 }}>Chưa lưu</Tag>}
+                            <button
+                              onClick={() => {
+                                if (isOpen && isDirty) {
+                                  Modal.confirm({
+                                    title: 'Chưa lưu thay đổi',
+                                    content: 'Bảng thời gian chạy máy có thay đổi chưa được lưu. Thoát mà không lưu?',
+                                    okText: 'Thoát không lưu', cancelText: 'Ở lại', okType: 'danger',
+                                    onOk: () => {
+                                      loadMachineRuntime(k)
+                                      setMachineRuntimeOpenDays(prev => { const n = new Set(prev); n.delete(rtKey); return n })
+                                    },
+                                  })
+                                  return
+                                }
+                                setMachineRuntimeOpenDays(prev => { const n = new Set(prev); n.has(rtKey) ? n.delete(rtKey) : n.add(rtKey); return n })
+                                if (!machineRuntimeOpenDays.has(rtKey) && !machineRuntimeMap[k]) loadMachineRuntime(k)
+                              }}
+                              style={{ border: '1px solid #bae6fd', borderRadius: 5, background: isOpen ? '#e0f2fe' : '#f8fafc', color: '#0369a1', fontSize: 11, padding: '2px 10px', cursor: 'pointer', fontWeight: 600 }}>
+                              {isOpen ? '▲ Thu gọn' : '▼ Nhập TG'}
+                            </button>
+                            {canEditDetail && machines.length > 1 && (
+                              <button onClick={() => removeMachineFromDay(k, mIdx)}
+                                style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 16, lineHeight: 1, padding: '0 4px', marginLeft: 'auto' }}
+                                title="Xóa máy này">×</button>
+                            )}
                           </div>
-                        )}
-                        {/* Save */}
-                        <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
-                          <Button type="primary" size="small" loading={isSaving} onClick={() => saveMachineRuntime(k)}
-                            style={{ background: isDirty ? '#0369a1' : '#16a34a', borderColor: isDirty ? '#0369a1' : '#16a34a', fontSize: 12 }}>
-                            {isDirty ? 'Lưu' : '✓ Đã lưu'}
-                          </Button>
+                          {/* Runtime log panel */}
+                          {isOpen && (
+                            <div style={{ padding: '10px 14px 14px', background: '#f8fbff' }}>
+                              <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                  <thead>
+                                    <tr>
+                                      {['#', 'Từ giờ', 'Đến giờ', 'Trạng thái', 'Lý do dừng', 'Ghi chú', ''].map((h, i) => (
+                                        <th key={i} style={{ padding: '6px 8px', background: '#e0f2fe', color: '#0c4a6e', fontWeight: 600, fontSize: 11, textAlign: 'left', borderBottom: '1px solid #bae6fd', whiteSpace: 'nowrap' }}>{h}</th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {rtEntries.length === 0 && (
+                                      <tr><td colSpan={7} style={{ textAlign: 'center', color: '#aaa', padding: '12px 0', fontSize: 12 }}>Chưa có dữ liệu — nhấn "+ Thêm dòng"</td></tr>
+                                    )}
+                                    {rtEntries.map((row, idx) => {
+                                      const isChay = row.trangThai !== 'Dừng máy'
+                                      return (
+                                        <tr key={row._id} style={{ background: idx % 2 === 0 ? '#fff' : '#f0f9ff' }}>
+                                          <td style={{ padding: '4px 8px', color: '#94a3b8', fontSize: 11, textAlign: 'center', width: 28 }}>{idx + 1}</td>
+                                          <td style={{ padding: '3px 6px', width: 95 }}>
+                                            <TimePicker format="HH:mm" size="small" style={{ width: '100%' }}
+                                              value={row.tuGio ? dayjs(row.tuGio, 'HH:mm') : null}
+                                              onChange={(_, s) => updateMachineRuntimeRow(k, machineName, row._id, { tuGio: s })} />
+                                          </td>
+                                          <td style={{ padding: '3px 6px', width: 95 }}>
+                                            <TimePicker format="HH:mm" size="small" style={{ width: '100%' }}
+                                              value={row.denGio ? dayjs(row.denGio, 'HH:mm') : null}
+                                              onChange={(_, s) => updateMachineRuntimeRow(k, machineName, row._id, { denGio: s })} />
+                                          </td>
+                                          <td style={{ padding: '3px 6px', width: 110 }}>
+                                            <select value={row.trangThai || 'Chạy máy'} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12, color: isChay ? '#16a34a' : '#dc2626', fontWeight: 600 }}
+                                              onChange={e => updateMachineRuntimeRow(k, machineName, row._id, { trangThai: e.target.value, lyDo: '' })}>
+                                              <option value="Chạy máy">Chạy máy</option>
+                                              <option value="Dừng máy">Dừng máy</option>
+                                            </select>
+                                          </td>
+                                          <td style={{ padding: '3px 6px', width: 170 }}>
+                                            {(!isChay && !!row.lyDo && !PREDEFINED_REASONS_RT.includes(row.lyDo)) ? (
+                                              <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                                                <input autoFocus value={row.lyDo} placeholder="Nhập lý do..."
+                                                  style={{ flex: 1, border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 6px', fontSize: 12, minWidth: 0 }}
+                                                  onChange={e => updateMachineRuntimeRow(k, machineName, row._id, { lyDo: e.target.value })} />
+                                                <button onClick={() => updateMachineRuntimeRow(k, machineName, row._id, { lyDo: '' })}
+                                                  title="Quay lại danh sách"
+                                                  style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 15, padding: '0 2px', lineHeight: 1, flexShrink: 0 }}>↩</button>
+                                              </div>
+                                            ) : (
+                                              <select value={row.lyDo || ''} disabled={isChay} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12, background: isChay ? '#f3f4f6' : '#fff' }}
+                                                onChange={e => updateMachineRuntimeRow(k, machineName, row._id, { lyDo: e.target.value })}>
+                                                <option value="">—</option>
+                                                {PREDEFINED_REASONS_RT.map(o => <option key={o} value={o}>{o}</option>)}
+                                                <option value="Khác">Khác...</option>
+                                              </select>
+                                            )}
+                                          </td>
+                                          <td style={{ padding: '3px 6px' }}>
+                                            <input value={row.ghiChu || ''} placeholder="Ghi chú..." style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 6px', fontSize: 12 }}
+                                              onChange={e => updateMachineRuntimeRow(k, machineName, row._id, { ghiChu: e.target.value })} />
+                                          </td>
+                                          <td style={{ padding: '3px 6px', width: 30, textAlign: 'center' }}>
+                                            <button onClick={() => removeMachineRuntimeRow(k, machineName, row._id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
+                                          </td>
+                                        </tr>
+                                      )
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={() => addMachineRuntimeRow(k, machineName)}
+                                style={{ marginTop: 8, fontSize: 11, color: '#0369a1', borderColor: '#bae6fd' }}>
+                                + Thêm dòng
+                              </Button>
+                              {(runMin > 0 || downMin > 0) && (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginTop: 12 }}>
+                                  {[
+                                    { label: 'Tổng TG kế hoạch', val: `${total} phút`, color: '#0f4c4c' },
+                                    { label: 'Tổng TG chạy máy', val: `${runMin} phút`, color: '#16a34a' },
+                                    { label: 'Tổng TG nghỉ', val: `${downMin} phút`, color: '#dc2626' },
+                                    { label: 'Availability (A)', val: avail ? `${avail}%` : '—', color: '#4f46e5' },
+                                  ].map(({ label, val, color }) => (
+                                    <div key={label} style={{ background: '#fff', border: '1px solid #e0f2fe', borderRadius: 8, padding: '8px 12px' }}>
+                                      <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, marginBottom: 2 }}>{label}</div>
+                                      <div style={{ fontSize: 16, fontWeight: 700, color, fontFamily: 'monospace' }}>{val}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <Button type="primary" size="small" loading={isSaving} onClick={() => saveMachineRuntime(k, machineName)}
+                                  style={{ background: isDirty ? '#0369a1' : '#16a34a', borderColor: isDirty ? '#0369a1' : '#16a34a', fontSize: 12 }}>
+                                  {isDirty ? 'Lưu' : '✓ Đã lưu'}
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </div>
+                      )
+                    })}
+                    {machines.length === 0 && (
+                      <div style={{ padding: '8px 14px', fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>
+                        Chưa có máy thực hiện — nhấn "+ Thêm máy" để thêm
                       </div>
                     )}
                   </div>

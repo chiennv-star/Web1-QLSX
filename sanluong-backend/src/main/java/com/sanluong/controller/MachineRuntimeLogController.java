@@ -47,8 +47,14 @@ public class MachineRuntimeLogController {
     public ResponseEntity<List<MachineRuntimeLog>> bulk(
             @RequestParam Long workScheduleId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ngay,
+            @RequestParam(required = false) String tenMay,
             @RequestBody List<Map<String, Object>> rows) {
-        repo.deleteByWorkScheduleIdAndNgay(workScheduleId, ngay);
+        // If tenMay provided, only replace entries for that machine; else replace all for the day
+        if (tenMay != null && !tenMay.isBlank()) {
+            repo.deleteByWorkScheduleIdAndNgayAndTenMay(workScheduleId, ngay, tenMay);
+        } else {
+            repo.deleteByWorkScheduleIdAndNgay(workScheduleId, ngay);
+        }
         int order = 0;
         for (Map<String, Object> row : rows) {
             MachineRuntimeLog log = new MachineRuntimeLog();
@@ -60,6 +66,9 @@ public class MachineRuntimeLogController {
             log.setLyDo(str(row, "lyDo"));
             log.setGhiChu(str(row, "ghiChu"));
             log.setSanPham(str(row, "sanPham"));
+            // Use tenMay from query param (preferred) or from row body
+            String rowTenMay = tenMay != null && !tenMay.isBlank() ? tenMay : str(row, "tenMay");
+            log.setTenMay(rowTenMay);
             log.setSortOrder(order++);
             repo.save(log);
         }
@@ -134,8 +143,14 @@ public class MachineRuntimeLogController {
         for (MachineRuntimeLog log : logs) {
             WorkSchedule ws = wsMap.get(log.getWorkScheduleId());
             if (ws == null) continue;
-            String phong = (ws.getPhongThucHien() != null && !ws.getPhongThucHien().isBlank())
-                    ? ws.getPhongThucHien() : "(Chưa chọn phòng SX)";
+            // Ưu tiên tenMay trên log (multi-machine), fallback về phongThucHien của WorkSchedule
+            String phong;
+            if (log.getTenMay() != null && !log.getTenMay().isBlank()) {
+                phong = log.getTenMay();
+            } else {
+                phong = (ws.getPhongThucHien() != null && !ws.getPhongThucHien().isBlank())
+                        ? ws.getPhongThucHien() : "(Chưa chọn phòng SX)";
+            }
             String key = log.getNgay().toString() + "|" + phong;
             grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(log);
             groupToNhom.putIfAbsent(key, ws.getToNhom() != null ? ws.getToNhom() : congDoanKey);
@@ -246,8 +261,10 @@ public class MachineRuntimeLogController {
             totalDownMin += dur;
             WorkSchedule ws = wsMap.get(log.getWorkScheduleId());
             if (ws == null) continue;
-            String tenMay = ws.getPhongThucHien() != null && !ws.getPhongThucHien().isBlank()
-                    ? ws.getPhongThucHien() : "(Chưa chọn)";
+            String tenMay = (log.getTenMay() != null && !log.getTenMay().isBlank())
+                    ? log.getTenMay()
+                    : (ws.getPhongThucHien() != null && !ws.getPhongThucHien().isBlank()
+                        ? ws.getPhongThucHien() : "(Chưa chọn)");
             String lyDo = log.getLyDo() != null && !log.getLyDo().isBlank() ? log.getLyDo() : "Không rõ";
             long[] g = groups.computeIfAbsent(tenMay + "§" + lyDo, k -> new long[]{0, 0});
             g[0]++;

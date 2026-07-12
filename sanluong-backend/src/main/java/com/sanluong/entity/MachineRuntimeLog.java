@@ -37,6 +37,9 @@ public class MachineRuntimeLog {
     @Column(name = "san_pham", length = 100)
     private String sanPham;
 
+    @Column(name = "ten_may", length = 200)
+    private String tenMay;
+
     @Column(name = "sort_order")
     private Integer sortOrder;
 
@@ -72,6 +75,8 @@ public class MachineRuntimeLog {
     public void setGhiChu(String ghiChu) { this.ghiChu = ghiChu; }
     public String getSanPham() { return sanPham; }
     public void setSanPham(String sanPham) { this.sanPham = sanPham; }
+    public String getTenMay() { return tenMay; }
+    public void setTenMay(String tenMay) { this.tenMay = tenMay; }
     public Integer getSortOrder() { return sortOrder; }
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
     public LocalDateTime getCreatedAt() { return createdAt; }
