@@ -6412,18 +6412,18 @@ function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false
       </div>
 
       {/* Date nav */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        <button onClick={() => shiftDate(-1)} style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
-        <div style={{ fontWeight: 700, fontSize: 14, minWidth: 130, textAlign: 'center' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap', background: '#99FFFF', border: '1px solid #00bcd4', borderRadius: 14, padding: '10px 16px' }}>
+        <button onClick={() => shiftDate(-1)} style={{ width: 38, height: 38, borderRadius: '50%', border: '1px solid #00bcd4', background: '#fff', cursor: 'pointer', fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>‹</button>
+        <div style={{ fontWeight: 800, fontSize: 18, minWidth: 200, textAlign: 'center', color: '#1c2430', letterSpacing: 0.3 }}>
           {fmtD(currentDate)} · {WEEKDAYS_VI[dayjs(currentDate).day()]}{isToday ? ' · Hôm nay' : ''}
         </div>
-        <button onClick={() => shiftDate(1)} style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+        <button onClick={() => shiftDate(1)} style={{ width: 38, height: 38, borderRadius: '50%', border: '1px solid #00bcd4', background: '#fff', cursor: 'pointer', fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>›</button>
         <input type="date" value={currentDate} onChange={e => e.target.value && setCurrentDate(e.target.value)}
-          style={{ border: '1px solid #d1d5db', borderRadius: 8, padding: '4px 8px', fontSize: 12 }} />
+          style={{ border: '1px solid #00bcd4', borderRadius: 8, padding: '6px 10px', fontSize: 14, background: '#fff' }} />
         <button onClick={() => setCurrentDate(todayStr)}
-          style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Hôm nay</button>
+          style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 20, padding: '8px 18px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Hôm nay</button>
         <button onClick={openHistory}
-          style={{ background: 'transparent', color: '#374151', border: '1px solid #d1d5db', borderRadius: 20, padding: '5px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>🕘 Lịch sử</button>
+          style={{ background: '#fff', color: '#374151', border: '1px solid #00bcd4', borderRadius: 20, padding: '7px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>🕘 Lịch sử</button>
       </div>
 
       {/* Zone grids */}
