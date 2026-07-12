@@ -6308,6 +6308,10 @@ const PHONG_TH_TO_ROOM = {
   'máy nhũ hóa 500l': 'pc06', 'máy nhũ hoá 500l': 'pc06',
   'máy khuấy 700l':  'pc01',
   'máy khuấy 1500l': 'pc02',
+  'máy chiết báng răng': 'btbtp', 'máy chiết bang rang': 'btbtp',
+  'máy chiết tube hàn nhiệt': 'pl02', 'máy chiết tube han nhiet': 'pl02',
+  'máy chiết 4 vòi bơm khí': 'pl01', 'máy chiết 4 voi bom khi': 'pl01',
+  'máy chiết 4 vòi bơm từ':  'pl05', 'máy chiết 4 voi bom tu':  'pl05',
 }
 
 function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false }) {
