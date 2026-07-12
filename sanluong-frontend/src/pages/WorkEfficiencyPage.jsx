@@ -2037,7 +2037,12 @@ export default function WorkEfficiencyPage() {
       r.maNhanVien?.toLowerCase().includes(search.toLowerCase())
     )
     if (isNhanVien()) rows = selfMaNv ? rows.filter(r => r.maNhanVien === selfMaNv) : []
-    return rows
+    const isBottom = ma => /^(TT|HD)/i.test(ma || '')
+    return [...rows].sort((a, b) => {
+      const ab = isBottom(a.maNhanVien), bb = isBottom(b.maNhanVien)
+      if (ab !== bb) return ab ? 1 : -1
+      return 0
+    })
   }, [mergedData, activeGroup, search, selfMaNv, isNhanVien])
 
   const GROUPS = allowedKeys
