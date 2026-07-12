@@ -252,6 +252,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   const computedQaTotal     = (Number(watchedQaKn) || 0) + (Number(watchedQaLm) || 0) + (Number(watchedQaKh) || 0)
   const [infoSaving, setInfoSaving] = useState(false)
   const [isInfoEditing, setIsInfoEditing] = useState(false)
+  const [headerCollapsed, setHeaderCollapsed] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const [lookupStatus, setLookupStatus] = useState(null)
   const lookupTimer = useRef(null)
@@ -2626,10 +2627,18 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
             )}
           </div>
         )}
+        <Tooltip title={headerCollapsed ? 'Mở rộng thông tin' : 'Thu gọn thông tin'}>
+          <button
+            onClick={() => setHeaderCollapsed(c => !c)}
+            style={{ flexShrink: 0, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 6, color: '#fff', cursor: 'pointer', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, lineHeight: 1 }}
+          >
+            {headerCollapsed ? '▼' : '▲'}
+          </button>
+        </Tooltip>
       </div>
 
       {/* ── [2] ERP Info form — giới hạn chiều cao, cuộn nội bộ nếu quá dài ── */}
-      <div className="erp-form-scroll-cap" style={{ flexShrink: 0, maxHeight: 230, overflowY: 'auto', borderBottom: '2px solid #e2e8f0', background: '#fff' }}>
+      <div className="erp-form-scroll-cap" style={{ flexShrink: 0, maxHeight: headerCollapsed ? 0 : 230, overflowY: headerCollapsed ? 'hidden' : 'auto', borderBottom: headerCollapsed ? 'none' : '2px solid #e2e8f0', background: '#fff', transition: 'max-height 0.2s ease, border 0.2s ease' }}>
         <Form form={infoForm} layout="vertical" className="erp-info-form" onValuesChange={() => { if (isInfoEditing) setIsDirty(true) }}>
           {(() => {
             const LC = ({ children, accent }) => (
