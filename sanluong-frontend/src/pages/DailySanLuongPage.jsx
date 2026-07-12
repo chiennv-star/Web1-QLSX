@@ -6267,6 +6267,7 @@ const PHONG_ROOMS = [
   {id:'pc03', name:'Phòng Pha Chế 03', area:26.0, zone:'Pha chế'},
   {id:'pc04', name:'Pha Chế 04',       area:19.1, zone:'Pha chế'},
   {id:'pc05', name:'Phòng Pha Chế 05', area:40.5, zone:'Pha chế'},
+  {id:'pc06', name:'Phòng Pha Chế 06', area:30.0, zone:'Pha chế'},
   {id:'pcan', name:'Phòng Cân',        area:16.2, zone:'Pha chế'},
   {id:'pl01', name:'Phân Liều 01',              area:24.2, zone:'Phân liều'},
   {id:'pl02', name:'Phân Liều 02',              area:12.9, zone:'Phân liều'},
@@ -6296,13 +6297,27 @@ const PHONG_ROOMS = [
 const PHONG_ZONES = ['Pha chế','Phân liều','Biệt trữ','Airlock','Vệ sinh & thay đồ','Khu vực khác']
 const WEEKDAYS_VI = ['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7']
 
-function PhongSuDungPanel({ storageKey = 'phong_usage' }) {
+// Mapping: phongThucHien name (lowercase) → PHONG_ROOMS id
+const PHONG_TH_TO_ROOM = {
+  'pha chế 01': 'pc01', 'pha chế 1': 'pc01', 'phòng pha chế 01': 'pc01',
+  'pha chế 02': 'pc02', 'pha chế 2': 'pc02', 'phòng pha chế 02': 'pc02',
+  'pha chế 03': 'pc03', 'pha chế 3': 'pc03', 'phòng pha chế 03': 'pc03',
+  'pha chế 04': 'pc04', 'pha chế 4': 'pc04', 'phòng pha chế 04': 'pc04',
+  'pha chế 05': 'pc05', 'pha chế 5': 'pc05', 'phòng pha chế 05': 'pc05',
+  'pha chế 06': 'pc06', 'pha chế 6': 'pc06', 'phòng pha chế 06': 'pc06',
+  'máy nhũ hóa 500l': 'pc06', 'máy nhũ hoá 500l': 'pc06',
+  'máy khuấy 700l':  'pc01',
+  'máy khuấy 1500l': 'pc02',
+}
+
+function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false }) {
   const todayStr = dayjs().format('YYYY-MM-DD')
   const [currentDate, setCurrentDate] = useState(todayStr)
   const [currentData, setCurrentData] = useState({})
   const [showHistory, setShowHistory] = useState(false)
   const [historyDates, setHistoryDates] = useState([])
   const [machineOptions, setMachineOptions] = useState([])
+  const [scheduleRoomIds, setScheduleRoomIds] = useState(new Set())
 
   const loadDate = (dateStr) => {
     try {
@@ -6318,6 +6333,21 @@ function PhongSuDungPanel({ storageKey = 'phong_usage' }) {
   useEffect(() => {
     api.get('/phong-thuc-hien').then(r => setMachineOptions((r.data || []).map(m => ({ value: m.id, label: m.ten })))).catch(() => {})
   }, [])
+  useEffect(() => {
+    if (!autoFromSchedule) return
+    setScheduleRoomIds(new Set())
+    api.get('/work-schedule', { params: { page: 0, size: 500, source: 'PLAN', fromDate: currentDate, toDate: currentDate } })
+      .then(({ data }) => {
+        const ids = new Set()
+        ;(data.content || []).forEach(r => {
+          if (r.phongThucHien) {
+            const rid = PHONG_TH_TO_ROOM[r.phongThucHien.trim().toLowerCase()]
+            if (rid) ids.add(rid)
+          }
+        })
+        setScheduleRoomIds(ids)
+      }).catch(() => {})
+  }, [currentDate, autoFromSchedule])
 
   const shiftDate = (delta) => setCurrentDate(dayjs(currentDate).add(delta, 'day').format('YYYY-MM-DD'))
 
@@ -6357,9 +6387,10 @@ function PhongSuDungPanel({ storageKey = 'phong_usage' }) {
     setShowHistory(true)
   }
 
+  const isRoomActive = (id) => !!(currentData[id]?.inUse || scheduleRoomIds.has(id))
   const totalRooms = PHONG_ROOMS.length
-  const activeRooms = PHONG_ROOMS.filter(r => currentData[r.id]?.inUse).length
-  const activeArea  = PHONG_ROOMS.filter(r => currentData[r.id]?.inUse).reduce((s, r) => s + r.area, 0)
+  const activeRooms = PHONG_ROOMS.filter(r => isRoomActive(r.id)).length
+  const activeArea  = PHONG_ROOMS.filter(r => isRoomActive(r.id)).reduce((s, r) => s + r.area, 0)
   const fillPct = Math.round(activeRooms / totalRooms * 100)
   const isToday = currentDate === todayStr
   const fmtD = (ds) => { const [y,m,d] = ds.split('-'); return `${d}/${m}/${y}` }
@@ -6399,7 +6430,7 @@ function PhongSuDungPanel({ storageKey = 'phong_usage' }) {
       {PHONG_ZONES.map(zone => {
         const rooms = PHONG_ROOMS.filter(r => r.zone === zone)
         if (!rooms.length) return null
-        const zoneActive = rooms.filter(r => currentData[r.id]?.inUse).length
+        const zoneActive = rooms.filter(r => isRoomActive(r.id)).length
         return (
           <div key={zone} style={{ marginBottom: 22 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0 10px' }}>
@@ -6411,10 +6442,12 @@ function PhongSuDungPanel({ storageKey = 'phong_usage' }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 10 }}>
               {rooms.map(r => {
                 const st = currentData[r.id] || {inUse: false, note: ''}
+                const isActive = isRoomActive(r.id)
+                const fromSchedule = scheduleRoomIds.has(r.id) && !st.inUse
                 return (
                   <div key={r.id} style={{
-                    background: st.inUse ? 'linear-gradient(180deg,#fbfffc,#fff)' : '#fff',
-                    border: `1px solid ${st.inUse ? '#bfe6c8' : '#e2e5ea'}`,
+                    background: isActive ? '#99FFFF' : '#fff',
+                    border: `1px solid ${isActive ? '#00bcd4' : '#e2e5ea'}`,
                     borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 10,
                     boxShadow: '0 1px 3px rgba(16,24,40,.06)',
                   }}>
@@ -6431,8 +6464,8 @@ function PhongSuDungPanel({ storageKey = 'phong_usage' }) {
                         </span>
                       </label>
                     </div>
-                    <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: 10.5, fontWeight: 700, alignSelf: 'flex-start', background: st.inUse ? '#eafaf0' : '#f1f2f4', color: st.inUse ? '#16a34a' : '#9aa2b1' }}>
-                      {st.inUse ? 'ĐANG SỬ DỤNG' : 'TRỐNG'}
+                    <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: 10.5, fontWeight: 700, alignSelf: 'flex-start', background: fromSchedule ? '#e0f7ff' : isActive ? '#eafaf0' : '#f1f2f4', color: fromSchedule ? '#0284c7' : isActive ? '#16a34a' : '#9aa2b1' }}>
+                      {fromSchedule ? 'THEO KẾ HOẠCH' : isActive ? 'ĐANG SỬ DỤNG' : 'TRỐNG'}
                     </span>
                     {machineOptions.length > 0 && (
                       <Select
@@ -6666,7 +6699,7 @@ function DashboardGDTab() {
       </div>
 
       {gdSubTab === 'phong'    && <PhongSuDungPanel storageKey="phong_usage" />}
-      {gdSubTab === 'kehoach'  && <PhongSuDungPanel storageKey="phong_kehoach" />}
+      {gdSubTab === 'kehoach'  && <PhongSuDungPanel storageKey="phong_kehoach" autoFromSchedule />}
       {gdSubTab === 'tongquan' && <>
 
       {/* ── Period selector ── */}
