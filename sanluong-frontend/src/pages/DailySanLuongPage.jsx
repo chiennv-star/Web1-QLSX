@@ -1189,7 +1189,15 @@ function DailyDetailTab() {
         padding: '7px 12px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
       }}>
         <RangePicker size="small" value={dateRange} onChange={setDateRange}
-          format="DD/MM/YYYY" allowClear placeholder={['Từ ngày', 'Đến ngày']} />
+          format="DD/MM/YYYY" allowClear placeholder={['Từ ngày', 'Đến ngày']}
+          presets={[
+            { label: 'Hôm nay',    value: [dayjs(), dayjs()] },
+            { label: 'Hôm qua',    value: [dayjs().subtract(1,'day'), dayjs().subtract(1,'day')] },
+            { label: 'Tuần này',   value: [dayjs().startOf('isoWeek'), dayjs().endOf('isoWeek')] },
+            { label: 'Tuần trước', value: [dayjs().subtract(1,'week').startOf('isoWeek'), dayjs().subtract(1,'week').endOf('isoWeek')] },
+            { label: 'Tháng này',  value: [dayjs().startOf('month'), dayjs()] },
+          ]}
+        />
         <Select size="small" value={congDoan} onChange={lockedCongDoan ? undefined : setCongDoan}
           disabled={!!lockedCongDoan}
           options={CONG_DOAN_OPTIONS} style={{ width: 160 }} />
@@ -1848,7 +1856,15 @@ function TongHopTab() {
         </span>
         <div style={{ width: 1, height: 20, background: 'rgba(0,0,0,0.15)' }} />
         <RangePicker size="small" value={dateRange} onChange={setDateRange}
-          format="DD/MM/YYYY" allowClear placeholder={['Từ ngày', 'Đến ngày']} />
+          format="DD/MM/YYYY" allowClear placeholder={['Từ ngày', 'Đến ngày']}
+          presets={[
+            { label: 'Hôm nay',    value: [dayjs(), dayjs()] },
+            { label: 'Hôm qua',    value: [dayjs().subtract(1,'day'), dayjs().subtract(1,'day')] },
+            { label: 'Tuần này',   value: [dayjs().startOf('isoWeek'), dayjs().endOf('isoWeek')] },
+            { label: 'Tuần trước', value: [dayjs().subtract(1,'week').startOf('isoWeek'), dayjs().subtract(1,'week').endOf('isoWeek')] },
+            { label: 'Tháng này',  value: [dayjs().startOf('month'), dayjs()] },
+          ]}
+        />
         <Button size="small" type="primary" icon={<SearchOutlined />}
           style={{ background: '#555555', borderColor: '#444444', fontWeight: 600 }}
           onClick={() => fetchData()}>Truy xuất</Button>
