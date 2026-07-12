@@ -6898,94 +6898,125 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                     ) : (
                       <>
                         <div style={{ overflowX: 'auto', marginBottom: 24 }}>
-                          <table style={{ borderCollapse: 'collapse', fontSize: 12 }}>
-                            <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
-                              <tr>
-                                <th colSpan={2 + sumPeriods.length * 3} style={{ background: '#2e1065', color: '#fff', padding: '8px 12px', border: '1px solid #5b21b6', fontWeight: 800, fontSize: 13, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-                                  TỔNG HỢP CHỈ SỐ P (PERFORMANCE) – {tenTo}
-                                </th>
-                              </tr>
-                              <tr>
-                                <th colSpan={2 + sumPeriods.length * 3} style={{ background: '#3b0764', color: '#e9d5ff', padding: '4px 12px', textAlign: 'center', border: '1px solid #5b21b6', fontWeight: 400, fontSize: 11, fontStyle: 'italic' }}>
-                                  Công thức: Σ(SL thực tế × T chuẩn) / Σ(SL lý thuyết × T chuẩn) · Mục tiêu ≥ 95% · Dữ liệu 6 tháng gần nhất
-                                </th>
-                              </tr>
-                              <tr>
-                                <th rowSpan={2} style={{ background: '#2e1065', color: '#fff', padding: '7px 10px', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 12, textAlign: 'left', verticalAlign: 'middle' }}>Tên máy</th>
-                                <th rowSpan={2} style={{ background: '#2e1065', color: '#fff', padding: '7px 10px', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 12, textAlign: 'center', width: 90, verticalAlign: 'middle' }}>Mã máy</th>
-                                {sumPeriods.map(p => (
-                                  <th key={p.key} colSpan={3} style={{ background: p.isCustom ? '#065f46' : '#7c3aed', color: '#fff', padding: '7px 10px', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 12, textAlign: 'center', minWidth: p.isCustom ? 270 : 240 }}>
-                                    {p.label}
-                                    {p.isCustom && customPFrom && customPTo && (
-                                      <span style={{ fontWeight: 400, fontSize: 10, opacity: 0.85, marginLeft: 6 }}>
-                                        {machinePSummaryCustomRange[0].format('DD/MM/YY')} → {machinePSummaryCustomRange[1].format('DD/MM/YY')}
-                                      </span>
-                                    )}
-                                  </th>
-                                ))}
-                              </tr>
-                              <tr>
-                                {sumPeriods.map(p => (
-                                  <React.Fragment key={p.key}>
-                                    <th style={{ background: p.isCustom ? '#047857' : '#6d28d9', color: '#fff', padding: '5px 8px', border: '1px solid #5b21b6', fontWeight: 600, fontSize: 11, textAlign: 'center', width: 70 }}>P (%)</th>
-                                    <th style={{ background: p.isCustom ? '#065f46' : '#5b21b6', color: '#c4b5fd', padding: '5px 8px', border: '1px solid #5b21b6', fontWeight: 600, fontSize: 11, textAlign: 'center', width: 85 }}>Tốc độ chuẩn</th>
-                                    <th style={{ background: p.isCustom ? '#065f46' : '#4c1d95', color: '#a5f3fc', padding: '5px 8px', border: '1px solid #5b21b6', fontWeight: 600, fontSize: 11, textAlign: 'center', width: 85 }}>Tốc độ thực tế</th>
-                                  </React.Fragment>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {sumMachinesP.map((m, i) => (
-                                <tr key={m.tenMay} style={{ background: i % 2 === 0 ? '#faf5ff' : '#f5f3ff' }}>
-                                  <td style={{ padding: '8px 10px', border: '1px solid #e2e8f0', fontWeight: 600, fontSize: 13 }}>{m.tenMay}</td>
-                                  <td style={{ padding: '8px 10px', border: '1px solid #e2e8f0', fontFamily: 'monospace', color: '#7c3aed', textAlign: 'center', fontWeight: 600 }}>{m.maMay || '—'}</td>
+                          {/* Card wrapper */}
+                          <div style={{ border: '1px solid #e3e8e8', borderRadius: 12, overflow: 'hidden', background: '#fff', minWidth: 900 }}>
+                            {/* Title block */}
+                            <div style={{ padding: '16px 20px 14px', borderBottom: '1px solid #e3e8e8', background: '#f5f6fe' }}>
+                              <div style={{ fontSize: 15, fontWeight: 700, color: '#0f4c4c', letterSpacing: '.02em', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                📊 Tổng hợp chỉ số P (Performance) – {tenTo}
+                              </div>
+                              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                                <span>Công thức: <b style={{ color: '#4f46e5', fontWeight: 600 }}>Σ(SL thực tế × T chuẩn) / Σ(SL lý thuyết × T chuẩn)</b></span>
+                                <span>Mục tiêu: <b style={{ color: '#4f46e5', fontWeight: 600 }}>≥ 95%</b></span>
+                                <span>Dữ liệu: <b style={{ color: '#4f46e5', fontWeight: 600 }}>6 tháng gần nhất</b></span>
+                              </div>
+                            </div>
+
+                            <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%' }}>
+                              <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+                                {/* Group header row */}
+                                <tr>
+                                  <th rowSpan={2} style={{ textAlign: 'left', background: '#f9fafb', color: '#374151', padding: '10px 12px', borderBottom: '2px solid #e3e8e8', borderRight: '1px solid #e3e8e8', fontWeight: 700, fontSize: 12.5, verticalAlign: 'middle', minWidth: 180 }}>Tên máy</th>
+                                  <th rowSpan={2} style={{ textAlign: 'center', background: '#f9fafb', color: '#374151', padding: '10px 10px', borderBottom: '2px solid #e3e8e8', borderRight: '1px solid #e3e8e8', fontWeight: 700, fontSize: 12.5, verticalAlign: 'middle', width: 110 }}>Mã máy</th>
                                   {sumPeriods.map(p => {
-                                    const v  = computePPct(m.tenMay, p.from, p.to || null)
-                                    const lt = computeLT(m.tenMay, p.from, p.to || null)
-                                    const tt = computeTT(m.tenMay, p.from, p.to || null)
+                                    const grp = p.isCustom
+                                      ? { borderColor: '#4f46e5', color: '#4f46e5', bg: '#f5f6fe' }
+                                      : p.key === 'week'  ? { borderColor: '#93c5fd', color: '#1d4ed8', bg: '#fff' }
+                                      : p.key === 'month' ? { borderColor: '#a7f3d0', color: '#047857', bg: '#fff' }
+                                      : p.key === 'q3'    ? { borderColor: '#fde68a', color: '#b45309', bg: '#fff' }
+                                      :                     { borderColor: '#fbcfe8', color: '#be185d', bg: '#fff' }
+                                    return (
+                                      <th key={p.key} colSpan={3} style={{ textAlign: 'center', fontWeight: 700, fontSize: 12.5, padding: '10px 8px', background: grp.bg, borderBottom: `2px solid ${grp.borderColor}`, borderRight: '1px solid #e3e8e8', color: grp.color, minWidth: 240 }}>
+                                        {p.label}
+                                        {p.isCustom && customPFrom && customPTo && (
+                                          <span style={{ fontWeight: 400, fontSize: 10, opacity: 0.85, marginLeft: 6 }}>
+                                            {machinePSummaryCustomRange[0].format('DD/MM/YY')} → {machinePSummaryCustomRange[1].format('DD/MM/YY')}
+                                          </span>
+                                        )}
+                                      </th>
+                                    )
+                                  })}
+                                </tr>
+                                {/* Sub-header row */}
+                                <tr>
+                                  {sumPeriods.map(p => (
+                                    <React.Fragment key={p.key}>
+                                      <th style={{ textAlign: 'center', fontWeight: 600, fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.02em', padding: '8px 8px', background: p.isCustom ? '#f5f6fe' : '#f9fafb', borderBottom: '1px solid #e3e8e8', borderRight: '1px solid #e3e8e8', width: 72 }}>P (%)</th>
+                                      <th style={{ textAlign: 'center', fontWeight: 600, fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.02em', padding: '8px 8px', background: p.isCustom ? '#f5f6fe' : '#f9fafb', borderBottom: '1px solid #e3e8e8', borderRight: '1px solid #e3e8e8', width: 84 }}>Tốc độ chuẩn</th>
+                                      <th style={{ textAlign: 'center', fontWeight: 600, fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.02em', padding: '8px 8px', background: p.isCustom ? '#f5f6fe' : '#f9fafb', borderBottom: '1px solid #e3e8e8', borderRight: '1px solid #e3e8e8', width: 84 }}>Tốc độ thực tế</th>
+                                    </React.Fragment>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {sumMachinesP.map((m, i) => (
+                                  <tr key={m.tenMay} style={{ background: i % 2 === 0 ? '#fff' : '#fcfdfd' }}>
+                                    <td style={{ padding: '11px 12px', borderBottom: '1px solid #e3e8e8', borderRight: '1px solid #eef0f0', fontWeight: 600, color: '#1f2937' }}>{m.tenMay}</td>
+                                    <td style={{ padding: '11px 10px', borderBottom: '1px solid #e3e8e8', borderRight: '1px solid #eef0f0', textAlign: 'center', color: '#4f46e5', fontWeight: 600, fontSize: 12.5 }}>{m.maMay || '—'}</td>
+                                    {sumPeriods.map(p => {
+                                      const v  = computePPct(m.tenMay, p.from, p.to || null)
+                                      const lt = computeLT(m.tenMay, p.from, p.to || null)
+                                      const tt = computeTT(m.tenMay, p.from, p.to || null)
+                                      const badgeBg = v == null ? '#f3f4f6' : pBg(v)
+                                      const cellBg = p.isCustom ? '#fbfbff' : undefined
+                                      return (
+                                        <React.Fragment key={p.key}>
+                                          <td style={{ padding: '11px 8px', borderBottom: '1px solid #e3e8e8', borderRight: '1px solid #eef0f0', textAlign: 'center', background: cellBg }}>
+                                            <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 20, fontWeight: 700, fontSize: 12.5, background: badgeBg, color: pColor(v) }}>
+                                              {v != null ? `${v}%` : '—'}
+                                            </span>
+                                          </td>
+                                          <td style={{ padding: '11px 8px', borderBottom: '1px solid #e3e8e8', borderRight: '1px solid #eef0f0', textAlign: 'right', fontWeight: 600, fontSize: 12, color: '#374151', background: cellBg }}>
+                                            {lt != null ? Number(lt).toLocaleString('vi-VN') : '—'}
+                                          </td>
+                                          <td style={{ padding: '11px 8px', borderBottom: '1px solid #e3e8e8', borderRight: '1px solid #eef0f0', textAlign: 'right', fontWeight: 700, fontSize: 12, color: tt != null ? '#1d4ed8' : '#9ca3af', background: cellBg }}>
+                                            {tt != null ? Number(tt).toLocaleString('vi-VN') : '—'}
+                                          </td>
+                                        </React.Fragment>
+                                      )
+                                    })}
+                                  </tr>
+                                ))}
+                              </tbody>
+                              <tfoot>
+                                <tr style={{ borderTop: '2px solid #4f46e5' }}>
+                                  <td colSpan={2} style={{ padding: '11px 12px', background: '#eef2ff', borderBottom: 'none', borderRight: '1px solid #e3e8e8', color: '#0f4c4c', fontWeight: 700, fontSize: 13, letterSpacing: 0.3 }}>
+                                    HIỆU SUẤT TỔNG THỂ – {tenTo}
+                                  </td>
+                                  {sumPeriods.map(p => {
+                                    const v  = computeOverallPPct(p.from, p.to || null)
+                                    const lt = computeOverallLT(p.from, p.to || null)
+                                    const tt = computeOverallTT(p.from, p.to || null)
+                                    const badgeBg = v == null ? '#f3f4f6' : pBg(v)
+                                    const cellBg = p.isCustom ? '#f0f0ff' : '#eef2ff'
                                     return (
                                       <React.Fragment key={p.key}>
-                                        <td style={{ padding: '8px 8px', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 800, fontSize: 14, color: pColor(v), background: pBg(v) }}>
-                                          {v != null ? `${v}%` : '—'}
+                                        <td style={{ padding: '11px 8px', background: cellBg, borderBottom: 'none', borderRight: '1px solid #e3e8e8', textAlign: 'center' }}>
+                                          <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 20, fontWeight: 700, fontSize: 13, background: badgeBg, color: pColor(v) }}>
+                                            {v != null ? `${v}%` : '—'}
+                                          </span>
                                         </td>
-                                        <td style={{ padding: '8px 8px', border: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600, fontSize: 12, color: '#374151' }}>
+                                        <td style={{ padding: '11px 8px', background: cellBg, borderBottom: 'none', borderRight: '1px solid #eef0f0', textAlign: 'right', fontWeight: 700, fontSize: 13, color: lt != null ? '#374151' : '#6b7280' }}>
                                           {lt != null ? Number(lt).toLocaleString('vi-VN') : '—'}
                                         </td>
-                                        <td style={{ padding: '8px 8px', border: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 700, fontSize: 12, color: tt != null ? '#1d4ed8' : '#9ca3af' }}>
+                                        <td style={{ padding: '11px 8px', background: cellBg, borderBottom: 'none', borderRight: '1px solid #eef0f0', textAlign: 'right', fontWeight: 700, fontSize: 13, color: tt != null ? '#1d4ed8' : '#6b7280' }}>
                                           {tt != null ? Number(tt).toLocaleString('vi-VN') : '—'}
                                         </td>
                                       </React.Fragment>
                                     )
                                   })}
                                 </tr>
-                              ))}
-                            </tbody>
-                            <tfoot>
-                              <tr>
-                                <td colSpan={2} style={{ padding: '10px 12px', background: '#2e1065', border: '1px solid #2e1065', color: '#fff', fontWeight: 700, fontSize: 13, letterSpacing: 0.3 }}>
-                                  HIỆU SUẤT TỔNG THỂ – {tenTo}
-                                </td>
-                                {sumPeriods.map(p => {
-                                  const v  = computeOverallPPct(p.from, p.to || null)
-                                  const lt = computeOverallLT(p.from, p.to || null)
-                                  const tt = computeOverallTT(p.from, p.to || null)
-                                  return (
-                                    <React.Fragment key={p.key}>
-                                      <td style={{ padding: '10px 8px', background: v == null ? '#1e1b4b' : pBg(v), border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 800, fontSize: 15, color: v == null ? '#9ca3af' : pColor(v) }}>
-                                        {v != null ? `${v}%` : '—'}
-                                      </td>
-                                      <td style={{ padding: '10px 8px', background: '#1e1b4b', border: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 700, fontSize: 13, color: lt != null ? '#c4b5fd' : '#6b7280' }}>
-                                        {lt != null ? Number(lt).toLocaleString('vi-VN') : '—'}
-                                      </td>
-                                      <td style={{ padding: '10px 8px', background: '#1e1b4b', border: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 700, fontSize: 13, color: tt != null ? '#93c5fd' : '#6b7280' }}>
-                                        {tt != null ? Number(tt).toLocaleString('vi-VN') : '—'}
-                                      </td>
-                                    </React.Fragment>
-                                  )
-                                })}
-                              </tr>
-                            </tfoot>
-                          </table>
+                              </tfoot>
+                            </table>
+
+                            {/* Legend bar */}
+                            <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap', padding: '12px 20px', borderTop: '1px solid #e3e8e8', background: '#f9fafb', fontSize: 12, color: '#6b7280' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 9, height: 9, borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} /> P ≥ 95% (Tốt)</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 9, height: 9, borderRadius: '50%', background: '#d97706', display: 'inline-block' }} /> P 80–95% (Trung bình)</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 9, height: 9, borderRadius: '50%', background: '#dc2626', display: 'inline-block' }} /> P &lt; 80% (Cần cải thiện)</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}><span style={{ width: 9, height: 9, borderRadius: '50%', background: '#4f46e5', display: 'inline-block' }} /> Cột "Tùy chọn" = khoảng thời gian đang chọn</div>
+                            </div>
+                          </div>
                         </div>
 
                         <div style={{ height: 16 }} />
@@ -6993,26 +7024,27 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                         {/* Top nguyên nhân tổn thất */}
                         {causeSorted.length > 0 && (
                           <>
-                            <div style={{ fontWeight: 700, color: '#2e1065', marginBottom: 10, fontSize: 13 }}>📉 Nguyên Nhân Tổn Thất Tốc Độ (6 tháng gần nhất)</div>
+                            <div style={{ fontWeight: 700, color: '#0f4c4c', marginBottom: 10, fontSize: 13 }}>📉 Nguyên Nhân Tổn Thất Tốc Độ (6 tháng gần nhất)</div>
                             <div style={{ overflowX: 'auto', marginBottom: 16 }}>
-                              <table style={{ borderCollapse: 'collapse', fontSize: 12, minWidth: 500 }}>
+                              <div style={{ border: '1px solid #e3e8e8', borderRadius: 8, overflow: 'hidden' }}>
+                              <table style={{ borderCollapse: 'collapse', fontSize: 12, minWidth: 500, width: '100%' }}>
                                 <thead>
                                   <tr>
-                                    <th style={{ padding: '7px 10px', background: '#2e1065', color: '#fff', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11 }}>STT</th>
-                                    <th style={{ padding: '7px 10px', background: '#2e1065', color: '#fff', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11, textAlign: 'left' }}>Nguyên nhân</th>
-                                    <th style={{ padding: '7px 10px', background: '#2e1065', color: '#fff', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11 }}>Tổng tổn thất (SP)</th>
-                                    <th style={{ padding: '7px 10px', background: '#2e1065', color: '#fff', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11 }}>%</th>
+                                    <th style={{ padding: '8px 10px', background: '#f5f6fe', color: '#374151', borderBottom: '1px solid #e3e8e8', borderRight: '1px solid #e3e8e8', fontWeight: 700, fontSize: 11 }}>STT</th>
+                                    <th style={{ padding: '8px 10px', background: '#f5f6fe', color: '#374151', borderBottom: '1px solid #e3e8e8', borderRight: '1px solid #e3e8e8', fontWeight: 700, fontSize: 11, textAlign: 'left' }}>Nguyên nhân</th>
+                                    <th style={{ padding: '8px 10px', background: '#f5f6fe', color: '#374151', borderBottom: '1px solid #e3e8e8', borderRight: '1px solid #e3e8e8', fontWeight: 700, fontSize: 11 }}>Tổng tổn thất (SP)</th>
+                                    <th style={{ padding: '8px 10px', background: '#f5f6fe', color: '#374151', borderBottom: '1px solid #e3e8e8', fontWeight: 700, fontSize: 11 }}>%</th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {causeSorted.map(([cause, val], idx) => {
                                     const total = causeSorted.reduce((s, [, v]) => s + v, 0)
                                     return (
-                                      <tr key={cause} style={{ background: idx % 2 === 0 ? '#faf5ff' : '#f5f3ff' }}>
-                                        <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', textAlign: 'center', color: '#94a3b8', fontSize: 11 }}>{idx + 1}</td>
-                                        <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', fontWeight: 500 }}>{cause}</td>
-                                        <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 700, color: '#dc2626' }}>{Number(val).toLocaleString('vi-VN')}</td>
-                                        <td style={{ padding: '6px 10px', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 600, color: '#7c3aed' }}>
+                                      <tr key={cause} style={{ background: idx % 2 === 0 ? '#fff' : '#fcfdfd' }}>
+                                        <td style={{ padding: '7px 10px', borderBottom: '1px solid #e3e8e8', borderRight: '1px solid #eef0f0', textAlign: 'center', color: '#9ca3af', fontSize: 11 }}>{idx + 1}</td>
+                                        <td style={{ padding: '7px 10px', borderBottom: '1px solid #e3e8e8', borderRight: '1px solid #eef0f0', fontWeight: 500, color: '#1f2937' }}>{cause}</td>
+                                        <td style={{ padding: '7px 10px', borderBottom: '1px solid #e3e8e8', borderRight: '1px solid #eef0f0', textAlign: 'right', fontWeight: 700, color: '#dc2626' }}>{Number(val).toLocaleString('vi-VN')}</td>
+                                        <td style={{ padding: '7px 10px', borderBottom: '1px solid #e3e8e8', textAlign: 'center', fontWeight: 600, color: '#4f46e5' }}>
                                           {total > 0 ? `${Math.round(val / total * 1000) / 10}%` : '—'}
                                         </td>
                                       </tr>
@@ -7020,6 +7052,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                                   })}
                                 </tbody>
                               </table>
+                              </div>
                             </div>
                           </>
                         )}
