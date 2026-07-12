@@ -6259,6 +6259,225 @@ const GD_TO = [
   { key: 'BBC1',  label: 'BBC1',  slColor: '#6d28d9', bg: '#f5f3ff' },
 ]
 
+// ─── Phòng sử dụng ────────────────────────────────────────────────────────────
+
+const PHONG_ROOMS = [
+  {id:'pc01', name:'Phòng Pha Chế 01', area:31.5, zone:'Pha chế'},
+  {id:'pc02', name:'Phòng Pha Chế 02', area:19.5, zone:'Pha chế'},
+  {id:'pc03', name:'Phòng Pha Chế 03', area:26.0, zone:'Pha chế'},
+  {id:'pc04', name:'Pha Chế 04',       area:19.1, zone:'Pha chế'},
+  {id:'pc05', name:'Phòng Pha Chế 05', area:40.5, zone:'Pha chế'},
+  {id:'pcan', name:'Phòng Cân',        area:16.2, zone:'Pha chế'},
+  {id:'pl01', name:'Phân Liệu 01',              area:24.2, zone:'Phân liệu'},
+  {id:'pl02', name:'Phân Liệu 02',              area:12.9, zone:'Phân liệu'},
+  {id:'pl03', name:'Phòng Phân Liệu 03',        area:17.5, zone:'Phân liệu'},
+  {id:'pl04', name:'Phòng Phân Liệu 04',        area:8.6,  zone:'Phân liệu'},
+  {id:'pl05', name:'Phân Liệu 05',              area:31.1, zone:'Phân liệu'},
+  {id:'bt',   name:'Phòng Biệt Trữ',            area:60.0, zone:'Biệt trữ'},
+  {id:'btbtp',name:'Biệt Trữ Bán Thành Phẩm',  area:12.5, zone:'Biệt trữ'},
+  {id:'btnl', name:'Biệt Trữ NL',               area:8.3,  zone:'Biệt trữ'},
+  {id:'al1',  name:'Airlock 1', area:4.0,  zone:'Airlock'},
+  {id:'al2',  name:'Airlock 2', area:12.9, zone:'Airlock'},
+  {id:'al3',  name:'Airlock 3', area:2.7,  zone:'Airlock'},
+  {id:'al4',  name:'Airlock 4', area:12.5, zone:'Airlock'},
+  {id:'vsbc1', name:'Vệ Sinh Bao Bì Cấp 1', area:22.0, zone:'Vệ sinh & thay đồ'},
+  {id:'vsbbnl',name:'VSBB Nguyên Liệu',     area:8.9,  zone:'Vệ sinh & thay đồ'},
+  {id:'giatqa',name:'Giặt QA',              area:9.5,  zone:'Vệ sinh & thay đồ'},
+  {id:'ruadc', name:'Rửa DC',               area:19.9, zone:'Vệ sinh & thay đồ'},
+  {id:'dcsach',name:'ĐC Sạch',              area:11.6, zone:'Vệ sinh & thay đồ'},
+  {id:'tdnu2', name:'Thay Đồ Nữ 2',         area:4.0,  zone:'Vệ sinh & thay đồ'},
+  {id:'tdnam2',name:'Thay Đồ Nam 2',         area:7.5,  zone:'Vệ sinh & thay đồ'},
+  {id:'rac',   name:'Rác',                   area:3.0,  zone:'Vệ sinh & thay đồ'},
+  {id:'hoanthien', name:'Phòng Hoàn Thiện Sản Phẩm', area:145.4, zone:'Khu vực khác'},
+  {id:'hanhlang',  name:'Hành Lang',                  area:42.2,  zone:'Khu vực khác'},
+  {id:'quandoc',   name:'Quản Đốc',                   area:12.8,  zone:'Khu vực khác'},
+  {id:'ipc',       name:'IPC',                         area:11.6,  zone:'Khu vực khác'},
+]
+const PHONG_ZONES = ['Pha chế','Phân liệu','Biệt trữ','Airlock','Vệ sinh & thay đồ','Khu vực khác']
+const WEEKDAYS_VI = ['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7']
+
+function PhongSuDungPanel() {
+  const todayStr = dayjs().format('YYYY-MM-DD')
+  const [currentDate, setCurrentDate] = useState(todayStr)
+  const [currentData, setCurrentData] = useState({})
+  const [showHistory, setShowHistory] = useState(false)
+  const [historyDates, setHistoryDates] = useState([])
+
+  const loadDate = (dateStr) => {
+    try {
+      const raw = localStorage.getItem('phong_usage:' + dateStr)
+      setCurrentData(raw ? JSON.parse(raw) : {})
+    } catch { setCurrentData({}) }
+  }
+  const saveData = (dateStr, data) => {
+    try { localStorage.setItem('phong_usage:' + dateStr, JSON.stringify(data)) } catch {}
+  }
+
+  useEffect(() => { loadDate(currentDate) }, [currentDate])
+
+  const shiftDate = (delta) => setCurrentDate(dayjs(currentDate).add(delta, 'day').format('YYYY-MM-DD'))
+
+  const toggleRoom = (roomId) => {
+    const now = new Date().toISOString()
+    const prev = currentData[roomId] || {inUse: false, note: ''}
+    const next = { ...currentData, [roomId]: { ...prev, inUse: !prev.inUse, updatedAt: now } }
+    setCurrentData(next)
+    saveData(currentDate, next)
+  }
+  const updateNote = (roomId, note) => {
+    const now = new Date().toISOString()
+    const prev = currentData[roomId] || {inUse: false, note: ''}
+    const next = { ...currentData, [roomId]: { ...prev, note, updatedAt: now } }
+    setCurrentData(next)
+    saveData(currentDate, next)
+  }
+
+  const openHistory = () => {
+    const keys = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k?.startsWith('phong_usage:')) {
+        const d = k.replace('phong_usage:', '')
+        if (/^\d{4}-\d{2}-\d{2}$/.test(d)) keys.push(d)
+      }
+    }
+    keys.sort((a, b) => b.localeCompare(a))
+    setHistoryDates(keys.slice(0, 30))
+    setShowHistory(true)
+  }
+
+  const totalRooms = PHONG_ROOMS.length
+  const activeRooms = PHONG_ROOMS.filter(r => currentData[r.id]?.inUse).length
+  const activeArea  = PHONG_ROOMS.filter(r => currentData[r.id]?.inUse).reduce((s, r) => s + r.area, 0)
+  const fillPct = Math.round(activeRooms / totalRooms * 100)
+  const isToday = currentDate === todayStr
+  const fmtD = (ds) => { const [y,m,d] = ds.split('-'); return `${d}/${m}/${y}` }
+
+  return (
+    <div style={{ background: '#f4f5f7', paddingTop: 4, paddingBottom: 32 }}>
+      {/* Stats strip */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+        {[
+          { val: `${activeRooms} / ${totalRooms}`, lbl: 'Phòng đang sử dụng', color: '#4f46e5' },
+          { val: `${activeArea.toFixed(1)}`, lbl: 'm² đang vận hành', color: '#16a34a' },
+          { val: `${fillPct}%`, lbl: 'Tỷ lệ lấp đầy phòng', color: '#1c2430' },
+        ].map(c => (
+          <div key={c.lbl} style={{ background: '#fff', border: '1px solid #e2e5ea', borderRadius: 12, padding: '12px 18px', flex: 1, minWidth: 140 }}>
+            <div style={{ fontFamily: 'monospace', fontSize: 22, fontWeight: 700, color: c.color }}>{c.val}</div>
+            <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 500, marginTop: 2 }}>{c.lbl}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Date nav */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        <button onClick={() => shiftDate(-1)} style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+        <div style={{ fontWeight: 700, fontSize: 14, minWidth: 130, textAlign: 'center' }}>
+          {fmtD(currentDate)} · {WEEKDAYS_VI[dayjs(currentDate).day()]}{isToday ? ' · Hôm nay' : ''}
+        </div>
+        <button onClick={() => shiftDate(1)} style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+        <input type="date" value={currentDate} onChange={e => e.target.value && setCurrentDate(e.target.value)}
+          style={{ border: '1px solid #d1d5db', borderRadius: 8, padding: '4px 8px', fontSize: 12 }} />
+        <button onClick={() => setCurrentDate(todayStr)}
+          style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Hôm nay</button>
+        <button onClick={openHistory}
+          style={{ background: 'transparent', color: '#374151', border: '1px solid #d1d5db', borderRadius: 20, padding: '5px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>🕘 Lịch sử</button>
+      </div>
+
+      {/* Zone grids */}
+      {PHONG_ZONES.map(zone => {
+        const rooms = PHONG_ROOMS.filter(r => r.zone === zone)
+        if (!rooms.length) return null
+        const zoneActive = rooms.filter(r => currentData[r.id]?.inUse).length
+        return (
+          <div key={zone} style={{ marginBottom: 22 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0 10px' }}>
+              <div style={{ width: 9, height: 9, borderRadius: '50%', background: '#4f46e5', flexShrink: 0 }} />
+              <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>{zone}</span>
+              <span style={{ fontSize: 12, color: '#9aa2b1', fontWeight: 500 }}>{zoneActive}/{rooms.length} đang hoạt động</span>
+              <div style={{ flex: 1, borderTop: '1px solid #e2e5ea' }} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 10 }}>
+              {rooms.map(r => {
+                const st = currentData[r.id] || {inUse: false, note: ''}
+                return (
+                  <div key={r.id} style={{
+                    background: st.inUse ? 'linear-gradient(180deg,#fbfffc,#fff)' : '#fff',
+                    border: `1px solid ${st.inUse ? '#bfe6c8' : '#e2e5ea'}`,
+                    borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 10,
+                    boxShadow: '0 1px 3px rgba(16,24,40,.06)',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>{r.name}</div>
+                        <div style={{ fontSize: 11, color: '#9aa2b1', fontFamily: 'monospace', marginTop: 2 }}>{r.area.toFixed(1)} m²</div>
+                      </div>
+                      <label style={{ position: 'relative', width: 40, height: 22, flexShrink: 0, cursor: 'pointer' }}>
+                        <input type="checkbox" checked={!!st.inUse} onChange={() => toggleRoom(r.id)}
+                          style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }} />
+                        <span style={{ position: 'absolute', inset: 0, background: st.inUse ? '#16a34a' : '#f1f2f4', border: `1px solid ${st.inUse ? '#16a34a' : '#e2e5ea'}`, borderRadius: 999, display: 'block' }}>
+                          <span style={{ position: 'absolute', width: 16, height: 16, top: 2, left: st.inUse ? 20 : 2, background: '#fff', borderRadius: '50%', transition: 'left .15s', boxShadow: '0 1px 2px rgba(0,0,0,.25)', display: 'block' }} />
+                        </span>
+                      </label>
+                    </div>
+                    <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: 10.5, fontWeight: 700, alignSelf: 'flex-start', background: st.inUse ? '#eafaf0' : '#f1f2f4', color: st.inUse ? '#16a34a' : '#9aa2b1' }}>
+                      {st.inUse ? 'ĐANG SỬ DỤNG' : 'TRỐNG'}
+                    </span>
+                    <input
+                      key={r.id + '|' + currentDate}
+                      defaultValue={st.note || ''}
+                      placeholder="Ghi chú: LSX / tổ / ca..."
+                      onBlur={e => updateNote(r.id, e.target.value)}
+                      style={{ width: '100%', border: '1px solid #e2e5ea', borderRadius: 8, padding: '5px 8px', fontSize: 12, color: '#1c2430', background: '#fafbfc', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    />
+                    {currentData[r.id]?.updatedAt && (
+                      <div style={{ fontSize: 10.5, color: '#9aa2b1', fontFamily: 'monospace' }}>
+                        Cập nhật: {new Date(currentData[r.id].updatedAt).toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'})}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+
+      {/* History modal */}
+      {showHistory && (
+        <div onClick={e => { if (e.target === e.currentTarget) setShowHistory(false) }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,32,.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '60px 20px', zIndex: 1000 }}>
+          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 460, maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,.25)', overflow: 'hidden' }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid #e2e5ea', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 700, fontSize: 15 }}>Lịch sử theo ngày</span>
+              <button onClick={() => setShowHistory(false)} style={{ border: 'none', background: '#f1f2f4', width: 26, height: 26, borderRadius: '50%', cursor: 'pointer', fontSize: 14 }}>✕</button>
+            </div>
+            <div style={{ overflowY: 'auto', padding: '8px 10px' }}>
+              {historyDates.length === 0
+                ? <div style={{ padding: 24, textAlign: 'center', color: '#9aa2b1', fontSize: 12.5 }}>Chưa có dữ liệu nào được ghi nhận.</div>
+                : historyDates.map(ds => {
+                  let count = 0
+                  try { const raw = localStorage.getItem('phong_usage:' + ds); if (raw) count = Object.values(JSON.parse(raw)).filter(v => v.inUse).length } catch {}
+                  return (
+                    <div key={ds} onClick={() => { setShowHistory(false); setCurrentDate(ds) }}
+                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 10, cursor: 'pointer', gap: 10, background: ds === currentDate ? '#eef0fe' : undefined, border: ds === currentDate ? '1px solid #c7c9fb' : '1px solid transparent' }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>{fmtD(ds)}</div>
+                        <div style={{ fontSize: 11, color: '#6b7280' }}>{WEEKDAYS_VI[dayjs(ds).day()]}</div>
+                      </div>
+                      <div style={{ fontFamily: 'monospace', fontSize: 12.5, fontWeight: 700, color: '#4f46e5' }}>{count}/{totalRooms}</div>
+                    </div>
+                  )
+                })
+              }
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function resolveGdCd(r) {
   let cd = r.congDoan?.toUpperCase()
   if (cd === 'PC') {
@@ -6281,6 +6500,7 @@ function DashboardGDTab() {
   const [machineMap, setMachineMap] = useState({}) // maSp → {pc, pl, bbc1, dg}
   const [analysisTab, setAnalysisTab] = useState('chung')
   const [trendTab, setTrendTab] = useState('chung')
+  const [gdSubTab, setGdSubTab] = useState('tongquan')
 
   const fetchGD = useCallback(async (range = dateRange) => {
     setLoading(true)
@@ -6403,6 +6623,25 @@ function DashboardGDTab() {
         <Button icon={<ReloadOutlined />} loading={loading} onClick={() => fetchGD()}
           style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', borderRadius: 8 }} />
       </div>
+
+      {/* ── Sub-tab selector ── */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+        {[
+          { key: 'tongquan', label: '📊 Tổng quan sản xuất' },
+          { key: 'phong',    label: '🏠 Phòng đang sử dụng' },
+        ].map(t => (
+          <button key={t.key} onClick={() => setGdSubTab(t.key)} style={{
+            padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 700,
+            border: 'none', cursor: 'pointer', transition: 'all .15s',
+            background: gdSubTab === t.key ? '#0e7490' : '#fff',
+            color: gdSubTab === t.key ? '#fff' : '#374151',
+            boxShadow: gdSubTab === t.key ? '0 2px 8px rgba(14,116,144,.3)' : '0 1px 3px rgba(0,0,0,.08)',
+          }}>{t.label}</button>
+        ))}
+      </div>
+
+      {gdSubTab === 'phong' && <PhongSuDungPanel />}
+      {gdSubTab === 'tongquan' && <>
 
       {/* ── Period selector ── */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -6754,6 +6993,7 @@ function DashboardGDTab() {
         })()}
 
       </Spin>
+      </>}
     </div>
   )
 }
