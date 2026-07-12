@@ -6268,11 +6268,11 @@ const PHONG_ROOMS = [
   {id:'pc04', name:'Pha Chế 04',       area:19.1, zone:'Pha chế'},
   {id:'pc05', name:'Phòng Pha Chế 05', area:40.5, zone:'Pha chế'},
   {id:'pcan', name:'Phòng Cân',        area:16.2, zone:'Pha chế'},
-  {id:'pl01', name:'Phân Liệu 01',              area:24.2, zone:'Phân liệu'},
-  {id:'pl02', name:'Phân Liệu 02',              area:12.9, zone:'Phân liệu'},
-  {id:'pl03', name:'Phòng Phân Liệu 03',        area:17.5, zone:'Phân liệu'},
-  {id:'pl04', name:'Phòng Phân Liệu 04',        area:8.6,  zone:'Phân liệu'},
-  {id:'pl05', name:'Phân Liệu 05',              area:31.1, zone:'Phân liệu'},
+  {id:'pl01', name:'Phân Liều 01',              area:24.2, zone:'Phân liều'},
+  {id:'pl02', name:'Phân Liều 02',              area:12.9, zone:'Phân liều'},
+  {id:'pl03', name:'Phòng Phân Liều 03',        area:17.5, zone:'Phân liều'},
+  {id:'pl04', name:'Phòng Phân Liều 04',        area:8.6,  zone:'Phân liều'},
+  {id:'pl05', name:'Phân Liều 05',              area:31.1, zone:'Phân liều'},
   {id:'bt',   name:'Phòng Biệt Trữ',            area:60.0, zone:'Biệt trữ'},
   {id:'btbtp',name:'Biệt Trữ Bán Thành Phẩm',  area:12.5, zone:'Biệt trữ'},
   {id:'btnl', name:'Biệt Trữ NL',               area:8.3,  zone:'Biệt trữ'},
@@ -6293,7 +6293,7 @@ const PHONG_ROOMS = [
   {id:'quandoc',   name:'Quản Đốc',                   area:12.8,  zone:'Khu vực khác'},
   {id:'ipc',       name:'IPC',                         area:11.6,  zone:'Khu vực khác'},
 ]
-const PHONG_ZONES = ['Pha chế','Phân liệu','Biệt trữ','Airlock','Vệ sinh & thay đồ','Khu vực khác']
+const PHONG_ZONES = ['Pha chế','Phân liều','Biệt trữ','Airlock','Vệ sinh & thay đồ','Khu vực khác']
 const WEEKDAYS_VI = ['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7']
 
 function PhongSuDungPanel({ storageKey = 'phong_usage' }) {
