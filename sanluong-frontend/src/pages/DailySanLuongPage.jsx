@@ -6343,9 +6343,14 @@ function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false
     api.get('/work-schedule', { params: { page: 0, size: 500, source: 'PLAN', fromDate: currentDate, toDate: currentDate } })
       .then(({ data }) => {
         const ids = new Set()
+        const roomNameMap = Object.fromEntries(PHONG_ROOMS.map(r => [r.name.toLowerCase(), r.id]))
         ;(data.content || []).forEach(r => {
           if (r.phongThucHien) {
             const rid = PHONG_TH_TO_ROOM[r.phongThucHien.trim().toLowerCase()]
+            if (rid) ids.add(rid)
+          }
+          if (r.phongSanXuat) {
+            const rid = roomNameMap[r.phongSanXuat.trim().toLowerCase()]
             if (rid) ids.add(rid)
           }
         })
