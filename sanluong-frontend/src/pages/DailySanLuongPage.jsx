@@ -6296,7 +6296,7 @@ const PHONG_ROOMS = [
 const PHONG_ZONES = ['Pha chế','Phân liệu','Biệt trữ','Airlock','Vệ sinh & thay đồ','Khu vực khác']
 const WEEKDAYS_VI = ['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7']
 
-function PhongSuDungPanel() {
+function PhongSuDungPanel({ storageKey = 'phong_usage' }) {
   const todayStr = dayjs().format('YYYY-MM-DD')
   const [currentDate, setCurrentDate] = useState(todayStr)
   const [currentData, setCurrentData] = useState({})
@@ -6306,12 +6306,12 @@ function PhongSuDungPanel() {
 
   const loadDate = (dateStr) => {
     try {
-      const raw = localStorage.getItem('phong_usage:' + dateStr)
+      const raw = localStorage.getItem(storageKey + ':' + dateStr)
       setCurrentData(raw ? JSON.parse(raw) : {})
     } catch { setCurrentData({}) }
   }
   const saveData = (dateStr, data) => {
-    try { localStorage.setItem('phong_usage:' + dateStr, JSON.stringify(data)) } catch {}
+    try { localStorage.setItem(storageKey + ':' + dateStr, JSON.stringify(data)) } catch {}
   }
 
   useEffect(() => { loadDate(currentDate) }, [currentDate])
@@ -6347,8 +6347,8 @@ function PhongSuDungPanel() {
     const keys = []
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i)
-      if (k?.startsWith('phong_usage:')) {
-        const d = k.replace('phong_usage:', '')
+      if (k?.startsWith(storageKey + ':')) {
+        const d = k.replace(storageKey + ':', '')
         if (/^\d{4}-\d{2}-\d{2}$/.test(d)) keys.push(d)
       }
     }
@@ -6481,7 +6481,7 @@ function PhongSuDungPanel() {
                 ? <div style={{ padding: 24, textAlign: 'center', color: '#9aa2b1', fontSize: 12.5 }}>Chưa có dữ liệu nào được ghi nhận.</div>
                 : historyDates.map(ds => {
                   let count = 0
-                  try { const raw = localStorage.getItem('phong_usage:' + ds); if (raw) count = Object.values(JSON.parse(raw)).filter(v => v.inUse).length } catch {}
+                  try { const raw = localStorage.getItem(storageKey + ':' + ds); if (raw) count = Object.values(JSON.parse(raw)).filter(v => v.inUse).length } catch {}
                   return (
                     <div key={ds} onClick={() => { setShowHistory(false); setCurrentDate(ds) }}
                       style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 10, cursor: 'pointer', gap: 10, background: ds === currentDate ? '#eef0fe' : undefined, border: ds === currentDate ? '1px solid #c7c9fb' : '1px solid transparent' }}>
@@ -6653,6 +6653,7 @@ function DashboardGDTab() {
         {[
           { key: 'tongquan', label: '📊 Tổng quan sản xuất' },
           { key: 'phong',    label: '🏠 Phòng đang sử dụng' },
+          { key: 'kehoach',  label: '📋 Phòng KẾ Hoạch' },
         ].map(t => (
           <button key={t.key} onClick={() => setGdSubTab(t.key)} style={{
             padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 700,
@@ -6664,7 +6665,8 @@ function DashboardGDTab() {
         ))}
       </div>
 
-      {gdSubTab === 'phong' && <PhongSuDungPanel />}
+      {gdSubTab === 'phong'    && <PhongSuDungPanel storageKey="phong_usage" />}
+      {gdSubTab === 'kehoach'  && <PhongSuDungPanel storageKey="phong_kehoach" />}
       {gdSubTab === 'tongquan' && <>
 
       {/* ── Period selector ── */}
