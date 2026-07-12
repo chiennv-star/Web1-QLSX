@@ -1763,7 +1763,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                         <div key={`${k}-m-${mIdx}`} style={{ borderBottom: '1px solid #e0f2fe' }}>
                           {/* Machine row */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', background: '#fff', flexWrap: 'wrap' }}>
-                            <PhongSanXuatSelect
+                            <PhongThucHienSelect
                               size="small"
                               value={machineName || undefined}
                               onChange={v => updateMachineInDay(k, mIdx, v || '')}
