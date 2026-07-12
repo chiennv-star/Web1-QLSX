@@ -3012,7 +3012,7 @@ function PhongSanXuatTab() {
     <div style={{ padding: '16px 20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <span style={{ fontWeight: 700, fontSize: 15, color: '#1e4570' }}>
-          Danh sách Máy sản xuất
+          Danh sách Phòng Thực Hiện
         </span>
         <Space>
           <Button icon={<ReloadOutlined />} onClick={fetch} />
@@ -3036,7 +3036,7 @@ function PhongSanXuatTab() {
       />
 
       <Modal
-        title={editing ? 'Sửa máy sản xuất' : 'Thêm máy sản xuất'}
+        title={editing ? 'Sửa phòng thực hiện' : 'Thêm phòng thực hiện'}
         open={modalOpen}
         onOk={onSave}
         onCancel={() => setModalOpen(false)}
@@ -3222,7 +3222,7 @@ export default function DanhMucPage() {
     },
     {
       key: 'phong-san-xuat',
-      label: <span><HomeOutlined style={{ marginRight: 5 }} />Máy Sản Xuất</span>,
+      label: <span><HomeOutlined style={{ marginRight: 5 }} />Phòng Thực Hiện</span>,
       children: <PhongSanXuatTab />,
     },
   ]
