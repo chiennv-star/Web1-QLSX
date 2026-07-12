@@ -6302,6 +6302,7 @@ function PhongSuDungPanel() {
   const [currentData, setCurrentData] = useState({})
   const [showHistory, setShowHistory] = useState(false)
   const [historyDates, setHistoryDates] = useState([])
+  const [machineOptions, setMachineOptions] = useState([])
 
   const loadDate = (dateStr) => {
     try {
@@ -6314,6 +6315,9 @@ function PhongSuDungPanel() {
   }
 
   useEffect(() => { loadDate(currentDate) }, [currentDate])
+  useEffect(() => {
+    api.get('/phong-thuc-hien').then(r => setMachineOptions((r.data || []).map(m => ({ value: m.id, label: m.ten })))).catch(() => {})
+  }, [])
 
   const shiftDate = (delta) => setCurrentDate(dayjs(currentDate).add(delta, 'day').format('YYYY-MM-DD'))
 
@@ -6326,8 +6330,15 @@ function PhongSuDungPanel() {
   }
   const updateNote = (roomId, note) => {
     const now = new Date().toISOString()
-    const prev = currentData[roomId] || {inUse: false, note: ''}
+    const prev = currentData[roomId] || {inUse: false, note: '', machines: []}
     const next = { ...currentData, [roomId]: { ...prev, note, updatedAt: now } }
+    setCurrentData(next)
+    saveData(currentDate, next)
+  }
+  const updateMachines = (roomId, mIds) => {
+    const now = new Date().toISOString()
+    const prev = currentData[roomId] || {inUse: false, note: '', machines: []}
+    const next = { ...currentData, [roomId]: { ...prev, machines: mIds, updatedAt: now } }
     setCurrentData(next)
     saveData(currentDate, next)
   }
@@ -6423,6 +6434,19 @@ function PhongSuDungPanel() {
                     <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: 10.5, fontWeight: 700, alignSelf: 'flex-start', background: st.inUse ? '#eafaf0' : '#f1f2f4', color: st.inUse ? '#16a34a' : '#9aa2b1' }}>
                       {st.inUse ? 'ĐANG SỬ DỤNG' : 'TRỐNG'}
                     </span>
+                    {machineOptions.length > 0 && (
+                      <Select
+                        mode="multiple"
+                        size="small"
+                        placeholder="Máy thực hiện..."
+                        style={{ width: '100%' }}
+                        value={st.machines || []}
+                        onChange={ids => updateMachines(r.id, ids)}
+                        options={machineOptions}
+                        optionFilterProp="label"
+                        maxTagCount="responsive"
+                      />
+                    )}
                     <input
                       key={r.id + '|' + currentDate}
                       defaultValue={st.note || ''}
