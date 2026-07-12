@@ -6310,8 +6310,22 @@ const PHONG_TH_TO_ROOM = {
   'máy khuấy 1500l': 'pc02',
   'máy chiết báng răng': 'btbtp', 'máy chiết bang rang': 'btbtp',
   'máy chiết tube hàn nhiệt': 'pl02', 'máy chiết tube han nhiet': 'pl02',
+  'máy chiết đóng tube hàn nhiệt': 'pl02', 'máy chiết dong tube han nhiet': 'pl02',
   'máy chiết 4 vòi bơm khí': 'pl01', 'máy chiết 4 voi bom khi': 'pl01',
   'máy chiết 4 vòi bơm từ':  'pl05', 'máy chiết 4 voi bom tu':  'pl05',
+  // alias tên phòng cũ (phân liệu → phân liều) để khớp bản ghi DB cũ
+  'phân liệu 01': 'pl01', 'phòng phân liệu 01': 'pl01',
+  'phân liệu 02': 'pl02', 'phòng phân liệu 02': 'pl02',
+  'phân liệu 03': 'pl03', 'phòng phân liệu 03': 'pl03',
+  'phân liệu 04': 'pl04', 'phòng phân liệu 04': 'pl04',
+  'phân liệu 05': 'pl05', 'phòng phân liệu 05': 'pl05',
+  // alias tên mới
+  'phân liều 01': 'pl01', 'phòng phân liều 01': 'pl01',
+  'phân liều 02': 'pl02', 'phòng phân liều 02': 'pl02',
+  'phân liều 03': 'pl03', 'phòng phân liều 03': 'pl03',
+  'phân liều 04': 'pl04', 'phòng phân liều 04': 'pl04',
+  'phân liều 05': 'pl05', 'phòng phân liều 05': 'pl05',
+  'biệt trữ bán thành phẩm': 'btbtp',
 }
 
 function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false }) {
@@ -6350,7 +6364,8 @@ function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false
             if (rid) ids.add(rid)
           }
           if (r.phongSanXuat) {
-            const rid = roomNameMap[r.phongSanXuat.trim().toLowerCase()]
+            const key = r.phongSanXuat.trim().toLowerCase()
+            const rid = roomNameMap[key] || PHONG_TH_TO_ROOM[key]
             if (rid) ids.add(rid)
           }
         })
