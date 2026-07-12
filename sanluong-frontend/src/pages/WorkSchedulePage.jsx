@@ -2638,7 +2638,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
       </div>
 
       {/* ── [2] ERP Info form — giới hạn chiều cao, cuộn nội bộ nếu quá dài ── */}
-      <div className="erp-form-scroll-cap" style={{ flexShrink: 0, maxHeight: headerCollapsed ? 0 : 230, overflowY: headerCollapsed ? 'hidden' : 'auto', borderBottom: headerCollapsed ? 'none' : '2px solid #e2e8f0', background: '#fff', transition: 'max-height 0.2s ease, border 0.2s ease' }}>
+      <div className="erp-form-scroll-cap" style={{ flexShrink: 0, maxHeight: 230, overflowY: 'auto', borderBottom: '2px solid #e2e8f0', background: '#fff', display: headerCollapsed ? 'none' : undefined }}>
         <Form form={infoForm} layout="vertical" className="erp-info-form" onValuesChange={() => { if (isInfoEditing) setIsDirty(true) }}>
           {(() => {
             const LC = ({ children, accent }) => (
