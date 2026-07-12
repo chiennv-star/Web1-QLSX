@@ -6358,14 +6358,24 @@ function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false
       .then(({ data }) => {
         const ids = new Set()
         const roomNameMap = Object.fromEntries(PHONG_ROOMS.map(r => [r.name.toLowerCase(), r.id]))
+        const lookupRoom = (str) => {
+          const key = str.trim().toLowerCase()
+          let rid = roomNameMap[key] || PHONG_TH_TO_ROOM[key]
+          if (!rid && key.startsWith('phòng ')) rid = roomNameMap[key.slice(6)] || PHONG_TH_TO_ROOM[key.slice(6)]
+          return rid
+        }
         ;(data.content || []).forEach(r => {
           if (r.phongThucHien) {
-            const rid = PHONG_TH_TO_ROOM[r.phongThucHien.trim().toLowerCase()]
+            const name = r.phongThucHien.trim()
+            let rid = lookupRoom(name)
+            if (!rid) {
+              const dashIdx = name.indexOf(' - ')
+              if (dashIdx !== -1) rid = lookupRoom(name.substring(dashIdx + 3))
+            }
             if (rid) ids.add(rid)
           }
           if (r.phongSanXuat) {
-            const key = r.phongSanXuat.trim().toLowerCase()
-            const rid = roomNameMap[key] || PHONG_TH_TO_ROOM[key]
+            const rid = lookupRoom(r.phongSanXuat)
             if (rid) ids.add(rid)
           }
         })
