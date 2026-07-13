@@ -3828,6 +3828,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
         if (sl > 0 || cong > 0) detailRecs.push({
           id: r.id, lsx: r.lsx, maTp: r.maTp,
           tenSp: pmMap[r.maTp]?.tenSanPham || '',
+          toThucHien: r.toThucHien || '',
           soLuong: r.soLuong, sl, cong,
           ns: cong > 0 ? Math.round(sl / cong) : null,
         })
@@ -4412,7 +4413,9 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
   const detailCols = [
     { title: 'LSX', dataIndex: 'lsx', key: 'lsx', width: 90, fixed: 'left' },
     { title: 'Mã TP', dataIndex: 'maTp', key: 'maTp', width: 80 },
-    { title: 'Tên SP', dataIndex: 'tenSp', key: 'tenSp', ellipsis: true },
+    { title: 'Tên SP', dataIndex: 'tenSp', key: 'tenSp', ellipsis: true, minWidth: 140 },
+    { title: 'Tổ TH', dataIndex: 'toThucHien', key: 'toThucHien', width: 80, align: 'center',
+      render: v => v ? <span style={{ fontWeight: 600, color: '#0369a1' }}>{v}</span> : '—' },
     { title: 'SL KH', dataIndex: 'soLuong', key: 'soLuong', width: 80, align: 'right',
       render: v => fmtN(v) },
     { title: 'SL tính', dataIndex: 'sl', key: 'sl', width: 90, align: 'right',
@@ -4429,7 +4432,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
         open={!!detailGroup}
         onCancel={() => setDetailGroup(null)}
         title={detailGrpObj ? `Chi tiết: ${detailGrpObj.label} — ${detailGrpObj.detailRecs?.length || 0} lô` : ''}
-        width={900}
+        width={1000}
         footer={null}
         destroyOnClose
       >
