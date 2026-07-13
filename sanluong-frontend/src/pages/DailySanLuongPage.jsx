@@ -6723,7 +6723,8 @@ function DashboardGDTab() {
     raw.forEach(r => {
       const cd = resolveGdCd(r)
       if (!byTo[cd]) return
-      const sl   = Number(r.sanLuong      || 0)
+      const isCC = r.congDoan?.toUpperCase() === 'CC'
+      const sl   = isCC ? 0 : Number(r.sanLuong || 0)
       const cong = Number(r.congThucHien  || 0)
       byTo[cd].sl += sl; byTo[cd].cong += cong; byTo[cd].lo++
       totalSl += sl; totalCong += cong
