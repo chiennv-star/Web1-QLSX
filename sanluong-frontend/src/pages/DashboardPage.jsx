@@ -3825,7 +3825,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
       const detailRecs = []
       g.recs.forEach(r => {
         const sl = g.getSL(r); const cong = g.getCong(r)
-        totalSL += sl; totalCong += cong
+        if (cong > 0) { totalSL += sl; totalCong += cong }
         if (sl > 0) loCount++
         if (sl > 0 && cong > 0) { nangSuatSum += sl / cong; nangSuatCount++ }
         if (sl > 0 || cong > 0) detailRecs.push({
