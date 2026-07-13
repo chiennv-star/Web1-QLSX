@@ -3602,6 +3602,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
   const [filterMode, setFilterMode] = useState('all')
   const [customRange, setCustomRange] = useState(null)
   const [activeSubTab, setActiveSubTab] = useState(() => localStorage.getItem('phanTichSL_tab') || 'thoi_gian')
+  const [detailGroup, setDetailGroup] = useState(null)
 
   useEffect(() => {
     if (loaded) return
@@ -3818,13 +3819,20 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
     ]
     return GROUPS.map(g => {
       let totalSL = 0, totalCong = 0, loCount = 0, nangSuatSum = 0, nangSuatCount = 0
+      const detailRecs = []
       g.recs.forEach(r => {
         const sl = g.getSL(r); const cong = g.getCong(r)
         totalSL += sl; totalCong += cong
         if (sl > 0) loCount++
         if (sl > 0 && cong > 0) { nangSuatSum += sl / cong; nangSuatCount++ }
+        if (sl > 0 || cong > 0) detailRecs.push({
+          id: r.id, lsx: r.lsx, maTp: r.maTp,
+          tenSp: pmMap[r.maTp]?.tenSanPham || '',
+          soLuong: r.soLuong, sl, cong,
+          ns: cong > 0 ? Math.round(sl / cong) : null,
+        })
       })
-      return { ...g, recs: undefined, totalSL, totalCong, loCount,
+      return { ...g, recs: undefined, totalSL, totalCong, loCount, detailRecs,
         nangSuat: totalCong > 0 ? Math.round(totalSL / totalCong) : null,
         nangSuatTB: nangSuatCount > 0 ? Math.round(nangSuatSum / nangSuatCount) : null,
         slTb: loCount > 0 ? Math.round(totalSL / loCount) : null }
@@ -4371,7 +4379,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
             <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 12 }}>Số lớn = NS TB/lô (trung bình SL÷công từng lô) | NS tổng hợp = Tổng SL ÷ Tổng công | SL của PCPL1/PCPL2 dùng SL kế hoạch (soLuong)</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
               {groupNangSuat.map(g => (
-                <div key={g.key} style={{ borderRadius: 8, padding: 14, border: `2px solid ${g.border}`, background: `${g.color}08` }}>
+                <div key={g.key} onClick={() => setDetailGroup(g.key)} style={{ borderRadius: 8, padding: 14, border: `2px solid ${g.border}`, background: `${g.color}08`, cursor: 'pointer' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 2 }}>
                     <span style={{ fontWeight: 800, color: g.color, fontSize: 15 }}>{g.label}</span>
                     {g.sub && <span style={{ fontSize: 10, color: '#94a3b8' }}>{g.sub}</span>}
@@ -4400,8 +4408,48 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
     },
   ]
 
+  const detailGrpObj = groupNangSuat.find(g => g.key === detailGroup)
+  const detailCols = [
+    { title: 'LSX', dataIndex: 'lsx', key: 'lsx', width: 90, fixed: 'left' },
+    { title: 'Mã TP', dataIndex: 'maTp', key: 'maTp', width: 80 },
+    { title: 'Tên SP', dataIndex: 'tenSp', key: 'tenSp', ellipsis: true },
+    { title: 'SL KH', dataIndex: 'soLuong', key: 'soLuong', width: 80, align: 'right',
+      render: v => fmtN(v) },
+    { title: 'SL tính', dataIndex: 'sl', key: 'sl', width: 90, align: 'right',
+      render: v => <span style={{ fontWeight: 600 }}>{fmtN(v)}</span> },
+    { title: 'Công', dataIndex: 'cong', key: 'cong', width: 80, align: 'right',
+      render: v => v > 0 ? Number(v).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—' },
+    { title: 'NS/lô', dataIndex: 'ns', key: 'ns', width: 90, align: 'right',
+      render: v => v != null ? <span style={{ color: detailGrpObj?.color, fontWeight: 700 }}>{fmtN(v)}</span> : '—' },
+  ]
+
   return (
     <div style={{ padding: '8px 12px' }}>
+      <Modal
+        open={!!detailGroup}
+        onCancel={() => setDetailGroup(null)}
+        title={detailGrpObj ? `Chi tiết: ${detailGrpObj.label} — ${detailGrpObj.detailRecs?.length || 0} lô` : ''}
+        width={900}
+        footer={null}
+        destroyOnClose
+      >
+        {detailGrpObj && (
+          <div style={{ marginBottom: 8, fontSize: 12, color: '#6b7280' }}>
+            NS TB/lô: <b style={{ color: detailGrpObj.color }}>{fmtN(detailGrpObj.nangSuatTB)} SL/công</b>
+            &nbsp;|&nbsp; NS tổng hợp: <b style={{ color: detailGrpObj.color }}>{fmtN(detailGrpObj.nangSuat)} SL/công</b>
+            &nbsp;|&nbsp; Tổng SL: <b>{fmtN(detailGrpObj.totalSL)}</b>
+            &nbsp;|&nbsp; Tổng công: <b>{Number(detailGrpObj.totalCong).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</b>
+          </div>
+        )}
+        <Table
+          columns={detailCols}
+          dataSource={detailGrpObj?.detailRecs || []}
+          rowKey="id"
+          size="small"
+          pagination={{ pageSize: 20, showTotal: t => `${t} lô` }}
+          scroll={{ x: 700 }}
+        />
+      </Modal>
       <Spin spinning={loading}>
         {/* Time range filter toolbar */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap', padding: '10px 14px', background: '#f0fafa', borderRadius: 8, border: '1px solid #b2dfdb' }}>
