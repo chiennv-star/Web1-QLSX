@@ -6659,8 +6659,8 @@ function DashboardGDTab() {
     api.get('/san-luong-tong-hop', { params: { page: 0, size: 9999 } })
       .then(({ data: res }) => {
         const rows = res.content || []
-        const agg2025  = { PCPL1: 0, PCPL2: 0, PL: 0, DG: 0, BBC1: 0 }
-        const aggH1_26 = { PCPL1: 0, PCPL2: 0, PL: 0, DG: 0, BBC1: 0 }
+        const mk = () => ({ PCPL1: { sl: 0, cong: 0 }, PCPL2: { sl: 0, cong: 0 }, PL: { sl: 0, cong: 0 }, DG: { sl: 0, cong: 0 }, BBC1: { sl: 0, cong: 0 } })
+        const acc2025 = mk(), accH1_26 = mk()
         rows.forEach(r => {
           const lsx = r.lsx || ''
           if (lsx.length < 6) return
@@ -6669,16 +6669,28 @@ function DashboardGDTab() {
           const is2025  = yy === '25'
           const isH1_26 = yy === '26' && Number(mm) <= 6
           if (!is2025 && !isH1_26) return
+          const acc = is2025 ? acc2025 : accH1_26
           const to = (r.toThucHien || '').toUpperCase()
-          const target = is2025 ? agg2025 : aggH1_26
-          if (to === 'PCPL1') target.PCPL1 += Number(r.soLuong) || 0
-          if (to === 'PCPL2') target.PCPL2 += Number(r.soLuong) || 0
-          target.PL   += Number(r.pcPl)   || 0
-          target.DG   += Number(r.dg2)    || 0
-          target.BBC1 += Number(r.bbc1_2) || 0
+          if (to === 'PCPL1') {
+            acc.PCPL1.sl   += Number(r.soLuong) || 0
+            acc.PCPL1.cong += (Number(r.pcChiPhi) || 0) + (Number(r.plChiPhi) || 0)
+          }
+          if (to === 'PCPL2') {
+            acc.PCPL2.sl   += Number(r.soLuong) || 0
+            acc.PCPL2.cong += (Number(r.pcChiPhi) || 0) + (Number(r.ccChiPhi) || 0)
+          }
+          acc.PL.sl   += Number(r.pcPl)    || 0
+          acc.PL.cong += Number(r.plChiPhi) || 0
+          acc.DG.sl   += Number(r.dg2)     || 0
+          acc.DG.cong += Number(r.dgChiPhi) || 0
+          acc.BBC1.sl   += Number(r.bbc1_2) || 0
+          acc.BBC1.cong += Number(r.bbc1_3) || 0
         })
-        setRef2025ByTo(agg2025)
-        setRefH1_26ByTo(aggH1_26)
+        const toNS = acc => Object.fromEntries(
+          Object.entries(acc).map(([k, { sl, cong }]) => [k, cong > 0 ? Math.round(sl / cong) : null])
+        )
+        setRef2025ByTo(toNS(acc2025))
+        setRefH1_26ByTo(toNS(accH1_26))
       })
       .catch(() => {})
   }, []) // eslint-disable-line
@@ -6900,7 +6912,7 @@ function DashboardGDTab() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ background: '#f8fafc' }}>
-                  {['Tổ', 'Sản Lượng', 'Công', 'NS (SP/cg)', '% SL', '% Công', 'SL TB/T-2025', '6T đầu 2026'].map(h => (
+                  {['Tổ', 'Sản Lượng', 'Công', 'NS (SP/cg)', '% SL', '% Công', 'NS TB 2025', 'NS 6T-2026'].map(h => (
                     <th key={h} style={{ padding: '7px 10px', textAlign: h === 'Tổ' ? 'left' : 'right', fontWeight: 700, color: '#64748b', fontSize: 10, borderBottom: '2px solid #e2e8f0', textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</th>
                   ))}
                 </tr>
@@ -6948,14 +6960,14 @@ function DashboardGDTab() {
                       </td>
                       <td style={{ padding: '10px 10px', textAlign: 'right', color: '#475569' }}>
                         {ref2025ByTo
-                          ? (ref2025ByTo[t.key] > 0
-                            ? Math.round(ref2025ByTo[t.key] / 12).toLocaleString('vi-VN')
+                          ? (ref2025ByTo[t.key] != null
+                            ? ref2025ByTo[t.key].toLocaleString('vi-VN')
                             : <span style={{ color: '#d9d9d9' }}>—</span>)
                           : <span style={{ color: '#d9d9d9' }}>…</span>}
                       </td>
                       <td style={{ padding: '10px 10px', textAlign: 'right', color: '#475569' }}>
                         {refH1_26ByTo
-                          ? (refH1_26ByTo[t.key] > 0
+                          ? (refH1_26ByTo[t.key] != null
                             ? refH1_26ByTo[t.key].toLocaleString('vi-VN')
                             : <span style={{ color: '#d9d9d9' }}>—</span>)
                           : <span style={{ color: '#d9d9d9' }}>…</span>}
@@ -6973,16 +6985,8 @@ function DashboardGDTab() {
                   <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#0e7490' }}>{kpi.nsTb > 0 ? kpi.nsTb.toLocaleString('vi-VN',{maximumFractionDigits:1}) : '—'}</td>
                   <td style={{ padding: '10px', textAlign: 'right', color: '#94a3b8' }}>—</td>
                   <td style={{ padding: '10px', textAlign: 'right', color: '#94a3b8' }}>—</td>
-                  <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#0e7490' }}>
-                    {ref2025ByTo
-                      ? (() => { const tot = GD_TO.reduce((s, t) => s + (ref2025ByTo[t.key] || 0), 0); return tot > 0 ? Math.round(tot / 12).toLocaleString('vi-VN') : '—' })()
-                      : '…'}
-                  </td>
-                  <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#0e7490' }}>
-                    {refH1_26ByTo
-                      ? (() => { const tot = GD_TO.reduce((s, t) => s + (refH1_26ByTo[t.key] || 0), 0); return tot > 0 ? tot.toLocaleString('vi-VN') : '—' })()
-                      : '…'}
-                  </td>
+                  <td style={{ padding: '10px', textAlign: 'right', color: '#94a3b8' }}>—</td>
+                  <td style={{ padding: '10px', textAlign: 'right', color: '#94a3b8' }}>—</td>
                 </tr>
               </tbody>
             </table>
