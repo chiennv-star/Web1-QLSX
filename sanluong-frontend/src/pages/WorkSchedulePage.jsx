@@ -2046,38 +2046,28 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                     <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={() => addShiftPerfRow(k, machineName)} style={{ marginTop: 8, fontSize: 11, color: '#92400e', borderColor: '#fde68a' }}>
                                       + Thêm dòng
                                     </Button>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8, marginTop: 12 }}>
-                                      {[
-                                        { label: 'SL lý thuyết tổng', val: sumLT > 0 ? Number(sumLT).toLocaleString('vi-VN') + ' SP' : '— SP', color: '#1e3a5f' },
-                                        { label: 'SL thực tế tổng', val: sumTT > 0 ? Number(sumTT).toLocaleString('vi-VN') + ' SP' : '— SP', color: '#16a34a' },
-                                        { label: 'Tổng tổn thất (SP)', val: sumLT > 0 ? Number(tonThat).toLocaleString('vi-VN') + ' SP' : '— SP', color: '#dc2626' },
-                                        { label: 'P ngày (%)', val: pPct != null ? `${pPct}%` : '—', color: pColor },
-                                        { label: 'Đánh giá', val: pPct == null ? '—' : pPct >= 95 ? '✓ Đạt' : pPct >= 80 ? '△ Cần cải thiện' : '✗ Chưa đạt', color: pColor },
-                                      ].map(({ label, val, color }) => (
-                                        <div key={label} style={{ background: '#fff', border: '1px solid #fde68a', borderRadius: 8, padding: '7px 10px' }}>
-                                          <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, marginBottom: 2 }}>{label}</div>
-                                          <div style={{ fontSize: 14, fontWeight: 700, color, fontFamily: 'monospace' }}>{val}</div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                    {spEntries.length > 0 && (() => {
+                                    {(() => {
                                       const byType = { 'Giảm tốc độ': 0, 'Dừng nhỏ / Ngắt quãng': 0, 'Nhân công / Điều chỉnh': 0 }
                                       spEntries.forEach(e => {
                                         const tt = (e.slLyThuyet || 0) - (e.slThucTe || 0)
                                         if (tt > 0 && byType[e.nguyenNhan] !== undefined) byType[e.nguyenNhan] += tt
                                       })
+                                      const allCards = [
+                                        { label: 'SL lý thuyết', val: sumLT > 0 ? Number(sumLT).toLocaleString('vi-VN') + ' SP' : '— SP', color: '#1e3a5f', border: '#fde68a' },
+                                        { label: 'SL thực tế', val: sumTT > 0 ? Number(sumTT).toLocaleString('vi-VN') + ' SP' : '— SP', color: '#16a34a', border: '#fde68a' },
+                                        { label: 'Tổng tổn thất', val: sumLT > 0 ? Number(tonThat).toLocaleString('vi-VN') + ' SP' : '— SP', color: '#dc2626', border: '#fde68a' },
+                                        { label: 'P ngày', val: pPct != null ? `${pPct}%` : '—', color: pColor, border: '#fde68a' },
+                                        { label: 'Đánh giá', val: pPct == null ? '—' : pPct >= 95 ? '✓ Đạt' : pPct >= 80 ? '△ Cần cải thiện' : '✗ Chưa đạt', color: pColor, border: '#fde68a' },
+                                        { label: '📉 Giảm tốc độ', val: byType['Giảm tốc độ'] > 0 ? Number(byType['Giảm tốc độ']).toLocaleString('vi-VN') + ' SP' : '— SP', color: byType['Giảm tốc độ'] > 0 ? '#dc2626' : '#9ca3af', border: '#fecaca' },
+                                        { label: '⏸ Dừng nhỏ / Ngắt quãng', val: byType['Dừng nhỏ / Ngắt quãng'] > 0 ? Number(byType['Dừng nhỏ / Ngắt quãng']).toLocaleString('vi-VN') + ' SP' : '— SP', color: byType['Dừng nhỏ / Ngắt quãng'] > 0 ? '#d97706' : '#9ca3af', border: '#fde68a' },
+                                        { label: '⚡ Nhân công / Điều chỉnh', val: byType['Nhân công / Điều chỉnh'] > 0 ? Number(byType['Nhân công / Điều chỉnh']).toLocaleString('vi-VN') + ' SP' : '— SP', color: byType['Nhân công / Điều chỉnh'] > 0 ? '#7c3aed' : '#9ca3af', border: '#e9d5ff' },
+                                      ]
                                       return (
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginTop: 8 }}>
-                                          {[
-                                            { label: 'SP mất do giảm tốc độ', key: 'Giảm tốc độ', icon: '📉', color: '#dc2626' },
-                                            { label: 'SP mất do dừng nhỏ / ngắt quãng', key: 'Dừng nhỏ / Ngắt quãng', icon: '⏸', color: '#d97706' },
-                                            { label: 'SP mất do nhân công / điều chỉnh', key: 'Nhân công / Điều chỉnh', icon: '⚡', color: '#7c3aed' },
-                                          ].map(({ label, key, icon, color }) => (
-                                            <div key={key} style={{ background: '#fff', border: `1px solid ${color}22`, borderRadius: 8, padding: '8px 12px' }}>
-                                              <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, marginBottom: 3 }}>{icon} {label}</div>
-                                              <div style={{ fontSize: 15, fontWeight: 700, color: byType[key] > 0 ? color : '#9ca3af', fontFamily: 'monospace' }}>
-                                                {byType[key] > 0 ? Number(byType[key]).toLocaleString('vi-VN') + ' SP' : '— SP'}
-                                              </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginTop: 10 }}>
+                                          {allCards.map(({ label, val, color, border }) => (
+                                            <div key={label} style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: 6, padding: '5px 8px' }}>
+                                              <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, marginBottom: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+                                              <div style={{ fontSize: 13, fontWeight: 700, color, fontFamily: 'monospace' }}>{val}</div>
                                             </div>
                                           ))}
                                         </div>
