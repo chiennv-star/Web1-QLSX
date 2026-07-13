@@ -2012,20 +2012,27 @@ export default function WorkEfficiencyPage() {
   // Merge report data with full employee list — every employee gets a row
   const mergedData = useMemo(() => {
     const reportMap = new Map(data.map(r => [r.maNhanVien, r]))
-    return employees.map(emp => reportMap.get(emp.maNhanVien) || {
-      maNhanVien: emp.maNhanVien,
-      hoVaTen: emp.hoVaTen,
-      toNhom: emp.toNhom,
-      viTri: emp.viTri || null,
-      soCa: 0,
-      soCaTruong: 0,
-      tongCong: 0,
-      tongSanLuong: 0,
-      nangSuatTB: null,
-      soLanDat: 0,
-      soLanKhongDat: 0,
-      weId: null,
-    })
+    const seen = new Set()
+    return employees
+      .filter(emp => {
+        if (!emp.maNhanVien || seen.has(emp.maNhanVien)) return false
+        seen.add(emp.maNhanVien)
+        return true
+      })
+      .map(emp => reportMap.get(emp.maNhanVien) || {
+        maNhanVien: emp.maNhanVien,
+        hoVaTen: emp.hoVaTen,
+        toNhom: emp.toNhom,
+        viTri: emp.viTri || null,
+        soCa: 0,
+        soCaTruong: 0,
+        tongCong: 0,
+        tongSanLuong: 0,
+        nangSuatTB: null,
+        soLanDat: 0,
+        soLanKhongDat: 0,
+        weId: null,
+      })
   }, [employees, data])
 
   // displayData: merge → filter group → filter search → filter NHAN_VIEN
