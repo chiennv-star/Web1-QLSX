@@ -6652,6 +6652,30 @@ function DashboardGDTab() {
   const [analysisTab, setAnalysisTab] = useState('chung')
   const [trendTab, setTrendTab] = useState('chung')
   const [gdSubTab, setGdSubTab] = useState('tongquan')
+  const [ref2025ByTo, setRef2025ByTo]     = useState(null)
+  const [refH1_26ByTo, setRefH1_26ByTo]   = useState(null)
+
+  useEffect(() => {
+    const aggRows = rows => {
+      const agg = {}
+      GD_TO.forEach(t => { agg[t.key] = 0 })
+      ;(Array.isArray(rows) ? rows : [])
+        .filter(r => r.status === 'SAVED' || r.status === 'PENDING')
+        .forEach(r => {
+          const cd = resolveGdCd(r)
+          if (!(cd in agg)) return
+          const sl = r.congDoan?.toUpperCase() === 'CC' ? 0 : Number(r.sanLuong || 0)
+          agg[cd] += sl
+        })
+      return agg
+    }
+    api.get('/work-schedule-session/daily-report', { params: { fromDate: '2025-01-01', toDate: '2025-12-31' } })
+      .then(({ data }) => setRef2025ByTo(aggRows(data)))
+      .catch(() => {})
+    api.get('/work-schedule-session/daily-report', { params: { fromDate: '2026-01-01', toDate: '2026-06-30' } })
+      .then(({ data }) => setRefH1_26ByTo(aggRows(data)))
+      .catch(() => {})
+  }, []) // eslint-disable-line
 
   const fetchGD = useCallback(async (range = dateRange) => {
     setLoading(true)
@@ -6870,7 +6894,7 @@ function DashboardGDTab() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ background: '#f8fafc' }}>
-                  {['Tổ', 'Sản Lượng', 'Công', 'NS (SP/cg)', '% SL', '% Công'].map(h => (
+                  {['Tổ', 'Sản Lượng', 'Công', 'NS (SP/cg)', '% SL', '% Công', 'SL TB/T-2025', '6T đầu 2026'].map(h => (
                     <th key={h} style={{ padding: '7px 10px', textAlign: h === 'Tổ' ? 'left' : 'right', fontWeight: 700, color: '#64748b', fontSize: 10, borderBottom: '2px solid #e2e8f0', textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</th>
                   ))}
                 </tr>
@@ -6916,6 +6940,20 @@ function DashboardGDTab() {
                       <td style={{ padding: '10px 10px', textAlign: 'right', color: '#64748b' }}>
                         {pCong > 0 ? pCong.toFixed(1) + '%' : <span style={{ color: '#d9d9d9' }}>—</span>}
                       </td>
+                      <td style={{ padding: '10px 10px', textAlign: 'right', color: '#475569' }}>
+                        {ref2025ByTo
+                          ? (ref2025ByTo[t.key] > 0
+                            ? Math.round(ref2025ByTo[t.key] / 12).toLocaleString('vi-VN')
+                            : <span style={{ color: '#d9d9d9' }}>—</span>)
+                          : <span style={{ color: '#d9d9d9' }}>…</span>}
+                      </td>
+                      <td style={{ padding: '10px 10px', textAlign: 'right', color: '#475569' }}>
+                        {refH1_26ByTo
+                          ? (refH1_26ByTo[t.key] > 0
+                            ? refH1_26ByTo[t.key].toLocaleString('vi-VN')
+                            : <span style={{ color: '#d9d9d9' }}>—</span>)
+                          : <span style={{ color: '#d9d9d9' }}>…</span>}
+                      </td>
                     </tr>
                   )
                 })}
@@ -6929,6 +6967,16 @@ function DashboardGDTab() {
                   <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#0e7490' }}>{kpi.nsTb > 0 ? kpi.nsTb.toLocaleString('vi-VN',{maximumFractionDigits:1}) : '—'}</td>
                   <td style={{ padding: '10px', textAlign: 'right', color: '#94a3b8' }}>—</td>
                   <td style={{ padding: '10px', textAlign: 'right', color: '#94a3b8' }}>—</td>
+                  <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#0e7490' }}>
+                    {ref2025ByTo
+                      ? (() => { const tot = GD_TO.reduce((s, t) => s + (ref2025ByTo[t.key] || 0), 0); return tot > 0 ? Math.round(tot / 12).toLocaleString('vi-VN') : '—' })()
+                      : '…'}
+                  </td>
+                  <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#0e7490' }}>
+                    {refH1_26ByTo
+                      ? (() => { const tot = GD_TO.reduce((s, t) => s + (refH1_26ByTo[t.key] || 0), 0); return tot > 0 ? tot.toLocaleString('vi-VN') : '—' })()
+                      : '…'}
+                  </td>
                 </tr>
               </tbody>
             </table>

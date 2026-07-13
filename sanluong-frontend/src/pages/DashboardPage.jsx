@@ -4383,7 +4383,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
           </div>
           <div style={{ background: '#fff', padding: 16, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,.08)', marginBottom: 20 }}>
             <div style={{ fontWeight: 600, color: '#006666', marginBottom: 4 }}>Năng Suất Trung Bình Của Các Tổ</div>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 12 }}>Số lớn = NS TB/lô (trung bình SL÷công từng lô) | NS tổng hợp = Tổng SL ÷ Tổng công | SL của PCPL1/PCPL2 dùng SL kế hoạch (soLuong)</div>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 12 }}>NS tổng hợp = Tổng SL ÷ Tổng công | SL của PCPL1/PCPL2 dùng SL kế hoạch (soLuong)</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
               {groupNangSuat.map(g => (
                 <div key={g.key} onClick={() => setDetailGroup(g.key)} style={{ borderRadius: 8, padding: 14, border: `2px solid ${g.border}`, background: `${g.color}08`, cursor: 'pointer' }}>
@@ -4392,13 +4392,12 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
                     {g.sub && <span style={{ fontSize: 10, color: '#94a3b8' }}>{g.sub}</span>}
                   </div>
                   <div style={{ fontSize: 20, fontWeight: 900, color: g.color, fontFamily: 'monospace', marginBottom: 10, letterSpacing: -0.5 }}>
-                    {g.nangSuatTB != null ? `${fmtN(g.nangSuatTB)} SL/công` : '—'}
+                    {g.nangSuat != null ? `${fmtN(g.nangSuat)} SL/công` : '—'}
                   </div>
                   {[
                     ['Tổng SL', fmtN(g.totalSL)],
                     ['Số lô phát sinh', fmtN(g.loCount)],
                     ['SL TB/lô', g.slTb != null ? fmtN(g.slTb) : '—'],
-                    ['NS tổng hợp', g.nangSuat != null ? `${fmtN(g.nangSuat)} SL/công` : '—'],
                     ['Tổng công', g.totalCong > 0 ? Number(g.totalCong).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'],
                   ].map(([l, v]) => (
                     <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '3px 0', borderBottom: `1px solid ${g.border}` }}>
@@ -4444,8 +4443,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
       >
         {detailGrpObj && (
           <div style={{ marginBottom: 8, fontSize: 12, color: '#6b7280' }}>
-            NS TB/lô: <b style={{ color: detailGrpObj.color }}>{fmtN(detailGrpObj.nangSuatTB)} SL/công</b>
-            &nbsp;|&nbsp; NS tổng hợp: <b style={{ color: detailGrpObj.color }}>{fmtN(detailGrpObj.nangSuat)} SL/công</b>
+            NS tổng hợp: <b style={{ color: detailGrpObj.color }}>{fmtN(detailGrpObj.nangSuat)} SL/công</b>
             &nbsp;|&nbsp; Tổng SL: <b>{fmtN(detailGrpObj.totalSL)}</b>
             &nbsp;|&nbsp; Tổng công: <b>{Number(detailGrpObj.totalCong).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</b>
           </div>
