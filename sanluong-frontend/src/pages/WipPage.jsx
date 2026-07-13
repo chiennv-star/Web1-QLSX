@@ -202,9 +202,10 @@ const STAGE_CFG = {
     summaryLabel: 'Tổng dở dang PC',
     slLabel: 'Năng suất PC',
     mayMocLabel: 'Máy Móc PC',
-    doDang: r => (r.soLuong || 0) - (parseInt(r.slPc) || 0),
-    renderDoDang: (_, r) => (r.soLuong || 0) - (parseInt(r.slPc) || 0),
+    doDang: r => r.pcTrangThai === 'doing' ? (r.soLuong || 0) - (parseInt(r.slPc) || 0) : 0,
+    renderDoDang: (_, r) => r.pcTrangThai === 'doing' ? (r.soLuong || 0) - (parseInt(r.slPc) || 0) : 0,
     calcCongDuKien: r => {
+      if (r.pcTrangThai !== 'doing') return '—'
       const ns = parseFloat(r.slTrungBinh)
       const doDang = (r.soLuong || 0) - (parseInt(r.slPc) || 0)
       if (!ns || doDang <= 0) return '—'
@@ -236,9 +237,10 @@ const STAGE_CFG = {
     summaryLabel: 'Tổng dở dang BBC1',
     slLabel: 'Năng suất BBC1',
     mayMocLabel: 'Máy Móc BBC1',
-    doDang: r => (r.soLuong || 0) - (parseInt(r.bbc1_2) || 0),
-    renderDoDang: (_, r) => (r.soLuong || 0) - (parseInt(r.bbc1_2) || 0),
+    doDang: r => r.bbc1TrangThai === 'doing' ? (r.soLuong || 0) - (parseInt(r.bbc1_2) || 0) : 0,
+    renderDoDang: (_, r) => r.bbc1TrangThai === 'doing' ? (r.soLuong || 0) - (parseInt(r.bbc1_2) || 0) : 0,
     calcCongDuKien: r => {
+      if (r.bbc1TrangThai !== 'doing') return '—'
       const ns = parseFloat(r.slTrungBinh)
       const doDang = (r.soLuong || 0) - (parseInt(r.bbc1_2) || 0)
       if (!ns || doDang <= 0) return '—'
