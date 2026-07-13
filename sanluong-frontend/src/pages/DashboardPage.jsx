@@ -3792,6 +3792,43 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
     return [...rows, { loai: 'TỔNG CỘNG', soTp: tot.soTp, pcpl1: tot.pcpl1, pcpl2: tot.pcpl2, pl: tot.pl, dg: tot.dg, bbc1: tot.bbc1, tong: tot.pcpl1+tot.pcpl2+tot.pl+tot.dg+tot.bbc1, _total: true }]
   }, [filteredData])
 
+  // ── Năng suất trung bình theo tổ ──
+  const groupNangSuat = React.useMemo(() => {
+    const GROUPS = [
+      { key: 'PCPL1', label: 'PCPL1', sub: 'gồm Cân Chia', color: '#1565c0', border: '#bbdefb',
+        recs: filteredData.filter(r => (r.toThucHien || '').toUpperCase() === 'PCPL1'),
+        getSL: r => Number(r.slPc) || 0,
+        getCong: r => (Number(r.pcChiPhi) || 0) + (Number(r.ccChiPhi) || 0) },
+      { key: 'PCPL2', label: 'PCPL2', sub: 'gồm Cân Chia', color: '#0891b2', border: '#cffafe',
+        recs: filteredData.filter(r => (r.toThucHien || '').toUpperCase() === 'PCPL2'),
+        getSL: r => Number(r.slPc) || 0,
+        getCong: r => (Number(r.pcChiPhi) || 0) + (Number(r.ccChiPhi) || 0) },
+      { key: 'PCPL3', label: 'PCPL3 (PL)', sub: '', color: '#7c3aed', border: '#ede9fe',
+        recs: filteredData,
+        getSL: r => Number(r.pcPl) || 0,
+        getCong: r => Number(r.plChiPhi) || 0 },
+      { key: 'BBC1', label: 'BBC1', sub: '', color: '#0f766e', border: '#ccfbf1',
+        recs: filteredData,
+        getSL: r => Number(r.bbc1_2) || 0,
+        getCong: r => Number(r.bbc1_3) || 0 },
+      { key: 'DG', label: 'ĐG', sub: '', color: '#d97706', border: '#fef3c7',
+        recs: filteredData,
+        getSL: r => Number(r.dg2) || 0,
+        getCong: r => Number(r.dgChiPhi) || 0 },
+    ]
+    return GROUPS.map(g => {
+      let totalSL = 0, totalCong = 0, loCount = 0
+      g.recs.forEach(r => {
+        const sl = g.getSL(r); const cong = g.getCong(r)
+        totalSL += sl; totalCong += cong
+        if (sl > 0) loCount++
+      })
+      return { ...g, recs: undefined, totalSL, totalCong, loCount,
+        nangSuat: totalCong > 0 ? Math.round(totalSL / totalCong) : null,
+        slTb: loCount > 0 ? Math.round(totalSL / loCount) : null }
+    })
+  }, [filteredData])
+
   // ── Monthly cong by to ──
   const monthCongByTo = React.useMemo(() => {
     const map = {}
@@ -4321,6 +4358,34 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
                   {[['Số TP', fmtN(p.soTp)], ['SL PL', fmtN(p.pl)], ['SL ĐG', fmtN(p.dg)], ['SL BBC1', fmtN(p.bbc1)], ['Tổng SL', fmtN(p.tong)]].map(([l, v]) => (
                     <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '3px 0', borderBottom: '1px solid #e0f2f1' }}>
                       <span style={{ color: '#666' }}>{l}</span><span style={{ fontWeight: 600, color: '#0f766e' }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ background: '#fff', padding: 16, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,.08)', marginBottom: 20 }}>
+            <div style={{ fontWeight: 600, color: '#006666', marginBottom: 4 }}>Năng Suất Trung Bình Của Các Tổ</div>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 12 }}>Năng suất = Tổng SL ÷ Tổng công | PCPL1/PCPL2 tính theo tổ thực hiện (toThucHien)</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
+              {groupNangSuat.map(g => (
+                <div key={g.key} style={{ borderRadius: 8, padding: 14, border: `2px solid ${g.border}`, background: `${g.color}08` }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 2 }}>
+                    <span style={{ fontWeight: 800, color: g.color, fontSize: 15 }}>{g.label}</span>
+                    {g.sub && <span style={{ fontSize: 10, color: '#94a3b8' }}>{g.sub}</span>}
+                  </div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: g.color, fontFamily: 'monospace', marginBottom: 10, letterSpacing: -0.5 }}>
+                    {g.nangSuat != null ? `${fmtN(g.nangSuat)} SL/công` : '—'}
+                  </div>
+                  {[
+                    ['Tổng SL', fmtN(g.totalSL)],
+                    ['Số lô phát sinh', fmtN(g.loCount)],
+                    ['SL TB/lô', g.slTb != null ? fmtN(g.slTb) : '—'],
+                    ['Tổng công', g.totalCong > 0 ? Number(g.totalCong).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'],
+                  ].map(([l, v]) => (
+                    <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '3px 0', borderBottom: `1px solid ${g.border}` }}>
+                      <span style={{ color: '#666' }}>{l}</span>
+                      <span style={{ fontWeight: 600, color: g.color }}>{v}</span>
                     </div>
                   ))}
                 </div>
