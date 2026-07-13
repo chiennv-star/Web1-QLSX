@@ -54,6 +54,27 @@ const fmtSL   = v => (v || 0).toLocaleString('vi-VN')
 const fmtCong = (v, d = 4) => (v || 0).toLocaleString('vi-VN', { minimumFractionDigits: d, maximumFractionDigits: d })
 const delay   = ms => new Promise(res => setTimeout(res, ms))
 
+// Resolve session → { cd, addSL }
+// PCPL1: PC session chỉ đóng góp CÔNG (SL lấy từ PL session PCPL1)
+//        PL session nhomThucHien=PCPL1 → cả SL + CÔNG
+// PL column: chỉ PL session của nhóm PCPL2/PCPL3 (không lấy PCPL1)
+function resolveSession(r) {
+  let cd = r.congDoan?.toUpperCase()
+  if (!cd) return null
+  if (cd === 'PCPL3') cd = 'PL'
+  const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
+  if (cd === 'PC') {
+    if (nhom === 'PCPL2') return { cd: 'PCPL2', addSL: true }
+    if (nhom === 'PCPL3' || nhom === 'PL') return { cd: 'PL', addSL: true }
+    return { cd: 'PCPL1', addSL: false } // PCPL1 (và fallback): công có, SL không
+  }
+  if (cd === 'PL') {
+    if (nhom === 'PCPL1') return { cd: 'PCPL1', addSL: true }
+    return { cd: 'PL', addSL: true }
+  }
+  return { cd, addSL: true }
+}
+
 // ─── Bảng tổng hợp ngày ──────────────────────────────────────────────────────
 
 const SUMMARY_DEPTS = [
@@ -1338,17 +1359,11 @@ function DayDetailModal({ open, date, rows, onClose }) {
     const totals = {}
     STAGES.forEach(s => { totals[s.key] = { sl: 0, cong: 0, soPhien: 0 } })
     rows.forEach(r => {
-      let cd = r.congDoan?.toUpperCase()
-      if (cd === 'PC') {
-        const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
-        if (nhom === 'PCPL1') cd = 'PCPL1'
-        else if (nhom === 'PCPL2') cd = 'PCPL2'
-        else if (nhom === 'PCPL3' || nhom === 'PL') cd = 'PL'
-        else cd = 'PCPL1'
-      }
-      if (cd === 'PCPL3') cd = 'PL'
+      const resolved = resolveSession(r)
+      if (!resolved) return
+      const { cd, addSL } = resolved
       if (totals[cd]) {
-        totals[cd].sl      += Number(r.sanLuong     || 0)
+        totals[cd].sl      += addSL ? Number(r.sanLuong || 0) : 0
         totals[cd].cong    += Number(r.congThucHien || 0)
         totals[cd].soPhien += 1
       }
@@ -1476,18 +1491,7 @@ function DayDetailModal({ open, date, rows, onClose }) {
         {STAGES.map(s => {
           const d = kpi[s.key]
           if (!d.soPhien) return null
-          const stageRows = rows.filter(r => {
-            let cd = r.congDoan?.toUpperCase()
-            if (cd === 'PC') {
-              const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
-              if (nhom === 'PCPL1') cd = 'PCPL1'
-              else if (nhom === 'PCPL2') cd = 'PCPL2'
-              else if (nhom === 'PCPL3' || nhom === 'PL') cd = 'PL'
-              else cd = 'PCPL1'
-            }
-            if (cd === 'PCPL3') cd = 'PL'
-            return cd === s.key
-          })
+          const stageRows = rows.filter(r => resolveSession(r)?.cd === s.key)
           const miniCols = [
             { title: 'Mã SP', dataIndex: 'maSp', width: 75, align: 'center',
               render: v => <Tag color="blue" style={{ marginRight: 0, fontSize: 11 }}>{v || '—'}</Tag> },
@@ -1688,19 +1692,12 @@ function TongHopTab() {
       const date = r.ngay
       if (!date) return
       if (!map[date]) map[date] = { ngay: date }
-      let cd = r.congDoan?.toUpperCase()
-      if (!cd) return
-      if (cd === 'PC') {
-        const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
-        if (nhom === 'PCPL1') cd = 'PCPL1'
-        else if (nhom === 'PCPL2') cd = 'PCPL2'
-        else if (nhom === 'PCPL3' || nhom === 'PL') cd = 'PL'
-        else cd = 'PCPL1'
-      }
-      if (cd === 'PCPL3') cd = 'PL'
+      const resolved = resolveSession(r)
+      if (!resolved) return
+      const { cd, addSL } = resolved
       if (!map[date][cd]) map[date][cd] = { sl: 0, cong: 0, soPhien: 0, _mm: new Set() }
-      map[date][cd].sl      += Number(r.sanLuong      || 0)
-      map[date][cd].cong    += Number(r.congThucHien  || 0)
+      map[date][cd].sl      += addSL ? Number(r.sanLuong || 0) : 0
+      map[date][cd].cong    += Number(r.congThucHien || 0)
       map[date][cd].soPhien += 1
       const mkey = (cd === 'PCPL1' || cd === 'PCPL2') ? 'mayMocPc'
         : cd === 'PL' ? 'mayMocPl' : cd === 'DG' ? 'mayMocDg'
@@ -2162,18 +2159,11 @@ function TongHopChiTietTab() {
         map[key] = { key, maSp: r.maSp, tenTrinh: r.tenTrinh, soLo: r.soLo, coLo: r.coLo }
         STAGES.forEach(s => { map[key][s.key] = { sl: 0, cong: 0, soPhien: 0, _mm: new Set() } })
       }
-      let cd = r.congDoan?.toUpperCase()
-      if (!cd) return
-      if (cd === 'PC') {
-        const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
-        if (nhom === 'PCPL1') cd = 'PCPL1'
-        else if (nhom === 'PCPL2') cd = 'PCPL2'
-        else if (nhom === 'PCPL3' || nhom === 'PL') cd = 'PL'
-        else cd = 'PCPL1'
-      }
-      if (cd === 'PCPL3') cd = 'PL'
+      const resolved = resolveSession(r)
+      if (!resolved) return
+      const { cd, addSL } = resolved
       if (!map[key][cd]) return
-      map[key][cd].sl      += Number(r.sanLuong     || 0)
+      map[key][cd].sl      += addSL ? Number(r.sanLuong || 0) : 0
       map[key][cd].cong    += Number(r.congThucHien || 0)
       map[key][cd].soPhien += 1
       const mkey = (cd === 'PCPL1' || cd === 'PCPL2') ? 'mayMocPc'
@@ -2398,18 +2388,11 @@ function PhanTichChiTietTab() {
         map[key] = { key, maSp: r.maSp, tenTrinh: r.tenTrinh, soLo: r.soLo, coLo: r.coLo }
         STAGES.forEach(s => { map[key][s.key] = { sl: 0, cong: 0, soPhien: 0, _mm: new Set() } })
       }
-      let cd = r.congDoan?.toUpperCase()
-      if (!cd) return
-      if (cd === 'PC') {
-        const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
-        if (nhom === 'PCPL1') cd = 'PCPL1'
-        else if (nhom === 'PCPL2') cd = 'PCPL2'
-        else if (nhom === 'PCPL3' || nhom === 'PL') cd = 'PL'
-        else cd = 'PCPL1'
-      }
-      if (cd === 'PCPL3') cd = 'PL'
+      const resolved = resolveSession(r)
+      if (!resolved) return
+      const { cd, addSL } = resolved
       if (!map[key][cd]) return
-      map[key][cd].sl      += Number(r.sanLuong     || 0)
+      map[key][cd].sl      += addSL ? Number(r.sanLuong || 0) : 0
       map[key][cd].cong    += Number(r.congThucHien || 0)
       map[key][cd].soPhien += 1
       const mkey = (cd === 'PCPL1' || cd === 'PCPL2') ? 'mayMocPc'
