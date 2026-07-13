@@ -6656,24 +6656,30 @@ function DashboardGDTab() {
   const [refH1_26ByTo, setRefH1_26ByTo]   = useState(null)
 
   useEffect(() => {
-    const aggRows = rows => {
-      const agg = {}
-      GD_TO.forEach(t => { agg[t.key] = 0 })
-      ;(Array.isArray(rows) ? rows : [])
-        .filter(r => r.status === 'SAVED' || r.status === 'PENDING')
-        .forEach(r => {
-          const cd = resolveGdCd(r)
-          if (!(cd in agg)) return
-          const sl = r.congDoan?.toUpperCase() === 'CC' ? 0 : Number(r.sanLuong || 0)
-          agg[cd] += sl
+    api.get('/san-luong-tong-hop', { params: { page: 0, size: 9999 } })
+      .then(({ data: res }) => {
+        const rows = res.content || []
+        const agg2025  = { PCPL1: 0, PCPL2: 0, PL: 0, DG: 0, BBC1: 0 }
+        const aggH1_26 = { PCPL1: 0, PCPL2: 0, PL: 0, DG: 0, BBC1: 0 }
+        rows.forEach(r => {
+          const lsx = r.lsx || ''
+          if (lsx.length < 6) return
+          const mm = lsx.slice(2, 4), yy = lsx.slice(4, 6)
+          if (!/^\d{2}$/.test(mm) || !/^\d{2}$/.test(yy)) return
+          const is2025  = yy === '25'
+          const isH1_26 = yy === '26' && Number(mm) <= 6
+          if (!is2025 && !isH1_26) return
+          const to = (r.toThucHien || '').toUpperCase()
+          const target = is2025 ? agg2025 : aggH1_26
+          if (to === 'PCPL1') target.PCPL1 += Number(r.soLuong) || 0
+          if (to === 'PCPL2') target.PCPL2 += Number(r.soLuong) || 0
+          target.PL   += Number(r.pcPl)   || 0
+          target.DG   += Number(r.dg2)    || 0
+          target.BBC1 += Number(r.bbc1_2) || 0
         })
-      return agg
-    }
-    api.get('/work-schedule-session/daily-report', { params: { fromDate: '2025-01-01', toDate: '2025-12-31' } })
-      .then(({ data }) => setRef2025ByTo(aggRows(data)))
-      .catch(() => {})
-    api.get('/work-schedule-session/daily-report', { params: { fromDate: '2026-01-01', toDate: '2026-06-30' } })
-      .then(({ data }) => setRefH1_26ByTo(aggRows(data)))
+        setRef2025ByTo(agg2025)
+        setRefH1_26ByTo(aggH1_26)
+      })
       .catch(() => {})
   }, []) // eslint-disable-line
 
