@@ -6282,6 +6282,7 @@ const PHONG_ROOMS = [
 const PHONG_ZONES = ['Pha chế','Phân liều','Biệt trữ','Airlock','Vệ sinh & thay đồ','Khu vực khác']
 // Các phòng hạ tầng luôn trong trạng thái hoạt động (không phụ thuộc kế hoạch hay toggle)
 const ALWAYS_ACTIVE_ROOMS = new Set([
+  'pcan',                                             // Phòng Cân
   'bt','btnl',                                        // Biệt trữ
   'al1','al2','al3','al4',                            // Airlock
   'vsbc1','vsbbnl','giatqa','ruadc','dcsach',         // Vệ sinh
