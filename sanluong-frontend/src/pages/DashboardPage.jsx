@@ -3658,7 +3658,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
   // ── Summary ──
   const summary = React.useMemo(() => ({
     totalRecords: filteredData.length,
-    totalSL: filteredData.reduce((s, r) => s + numTP(r), 0),
+    totalSL: filteredData.reduce((s, r) => s + numDG(r), 0),
     uniqueTP: new Set(filteredData.map(r => r.maTp).filter(Boolean)).size,
     uniqueLoai: new Set(filteredData.map(r => r.loaiSanPham).filter(Boolean)).size,
   }), [filteredData])
@@ -3978,7 +3978,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
   const CARD_COLORS = ['#006666','#7b1fa2','#0891b2','#b45309']
   const summaryCards = [
     { label: 'Tổng Bản Ghi', value: summary.totalRecords, unit: 'sản phẩm/LSX' },
-    { label: 'Tổng Sản Lượng', value: summary.totalSL, unit: 'đơn vị' },
+    { label: 'Tổng Sản Lượng (ĐG)', value: summary.totalSL, unit: 'đơn vị đóng gói' },
     { label: 'Loại Sản Phẩm', value: summary.uniqueLoai, unit: 'loại' },
     { label: 'Sản Phẩm Khác Nhau', value: summary.uniqueTP, unit: 'mã TP' },
   ]
