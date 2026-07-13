@@ -185,9 +185,10 @@ const STAGE_CFG = {
     summaryLabel: 'Tổng dở dang ĐG',
     slLabel: 'SL Trung bình',
     mayMocLabel: 'Máy Móc ĐG',
-    doDang: r => (parseInt(r.pcPl) || 0) - (parseInt(r.dg2) || 0),
-    renderDoDang: (_, r) => (parseInt(r.pcPl) || 0) - (parseInt(r.dg2) || 0),
+    doDang: r => r.dgTrangThai === 'doing' ? (parseInt(r.pcPl) || 0) - (parseInt(r.dg2) || 0) : 0,
+    renderDoDang: (_, r) => r.dgTrangThai === 'doing' ? (parseInt(r.pcPl) || 0) - (parseInt(r.dg2) || 0) : 0,
     calcCongDuKien: r => {
+      if (r.dgTrangThai !== 'doing') return '—'
       const slTb = parseFloat(r.slTrungBinh)
       const doDang = (parseInt(r.pcPl) || 0) - (parseInt(r.dg2) || 0)
       if (!slTb || doDang <= 0) return '—'
@@ -356,7 +357,8 @@ function WipSummaryTab({ onNavigate, tabOffset = 0 }) {
       const v = cfg.calcCongDuKien(r)
       return v === '—' ? sum : sum + parseFloat(v)
     }, 0)
-    return { key, label, color, tongDoDang, tongCDK, soLo: rows.length }
+    const soLo = rows.filter(r => cfg.doDang(r) > 0).length
+    return { key, label, color, tongDoDang, tongCDK, soLo }
   })
 
   const totalDoDang = stageRows.reduce((s, r) => s + r.tongDoDang, 0)
