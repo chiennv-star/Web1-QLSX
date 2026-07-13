@@ -3827,7 +3827,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
         if (sl > 0 && cong > 0) { nangSuatSum += sl / cong; nangSuatCount++ }
         if (sl > 0 || cong > 0) detailRecs.push({
           id: r.id, lsx: r.lsx, maTp: r.maTp,
-          tenSp: pmMap[r.maTp]?.tenSanPham || '',
+          tenSp: r.tienTrinh || pmMap[r.maBravo]?.tenSanPham || '',
           toThucHien: r.toThucHien || '',
           soLuong: r.soLuong, sl, cong,
           ns: cong > 0 ? Math.round(sl / cong) : null,

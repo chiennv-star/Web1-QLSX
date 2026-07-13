@@ -11,7 +11,7 @@ import {
   CopyOutlined, ScissorOutlined, CloseCircleOutlined, FileTextOutlined,
   CalendarOutlined, ShoppingOutlined, HistoryOutlined, SwapOutlined, BarChartOutlined,
   FormOutlined, UnorderedListOutlined, CheckSquareOutlined,
-  FullscreenOutlined, FullscreenExitOutlined,
+  FullscreenOutlined, FullscreenExitOutlined, DatabaseOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
@@ -20,6 +20,7 @@ import { useAuth } from '../context/AuthContext'
 import PhongThucHienSelect from '../components/PhongThucHienSelect'
 import DonHangPage from './DonHangPage'
 import LenhSanXuatTab from './LenhSanXuatTab'
+import NvlPhanBoTab from './NvlPhanBoTab'
 
 dayjs.extend(isoWeek)
 
@@ -3617,6 +3618,11 @@ export default function KhoachPage() {
         key: 'don-hang',
         label: <span><ShoppingOutlined style={{ marginRight: 5 }} />Đơn Hàng</span>,
         children: <DonHangPage />,
+      },
+      {
+        key: 'phan-bo-nvl',
+        label: <span><DatabaseOutlined style={{ marginRight: 5 }} />Phân Bổ NVL</span>,
+        children: <NvlPhanBoTab />,
       },
     ] : []),
   ], [canViewExtra, filterSlot, lenhChuaPhatHanh]) // eslint-disable-line react-hooks/exhaustive-deps
