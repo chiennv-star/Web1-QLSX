@@ -6525,34 +6525,8 @@ function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false
       {/* Floor plan */}
       {viewMode === 'map' && (
         <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid #dbe0e6', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.06)', marginBottom: 16 }}>
-          <div style={{ position: 'relative', minWidth: 900 }}>
-            <img src="/mat-bang.png" alt="Sơ đồ mặt bằng" style={{ display: 'block', width: '100%', height: 'auto', userSelect: 'none', pointerEvents: 'none' }} />
-            {FLOOR_PLAN_ROOMS_GRID.map(fr => {
-              const room = PHONG_ROOMS.find(r => r.id === fr.id)
-              if (!room) return null
-              const isActive = isRoomActive(fr.id)
-              const [c0,c1,r0,r1] = fr.g
-              return (
-                <div key={fr.id}
-                  title={`${room.name}${room.area ? ' — ' + room.area.toFixed(1) + ' m²' : ''}\n${isActive ? 'ĐANG SỬ DỤNG' : 'TRỐNG'}`}
-                  style={{
-                    position: 'absolute',
-                    left: ((c0-1)/FP_COLS*100)+'%',
-                    top:  ((r0-1)/FP_ROWS*100)+'%',
-                    width: ((c1-c0)/FP_COLS*100)+'%',
-                    height:((r1-r0)/FP_ROWS*100)+'%',
-                    background: isActive ? 'rgba(22,163,74,0.25)' : 'rgba(79,70,229,0.04)',
-                    border: `1.5px solid ${isActive ? 'rgba(22,163,74,.6)' : 'rgba(79,70,229,0)'}`,
-                    borderRadius: 4, cursor: 'default', transition: 'background .12s',
-                  }}>
-                  {isActive && (
-                    <div style={{ position: 'absolute', top: 2, left: 2, fontSize: 8, fontWeight: 700, padding: '1px 4px', borderRadius: 999, background: '#16a34a', color: '#fff', fontFamily: 'monospace', lineHeight: 1.4 }}>
-                      ●
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+          <div style={{ minWidth: 900 }}>
+            <img src="/mat-bang.png" alt="Sơ đồ mặt bằng" style={{ display: 'block', width: '100%', height: 'auto', userSelect: 'none' }} />
           </div>
         </div>
       )}
