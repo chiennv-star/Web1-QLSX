@@ -1217,6 +1217,7 @@ function DailyDetailTab() {
             { label: 'Tuần này',   value: [dayjs().startOf('isoWeek'), dayjs().endOf('isoWeek')] },
             { label: 'Tuần trước', value: [dayjs().subtract(1,'week').startOf('isoWeek'), dayjs().subtract(1,'week').endOf('isoWeek')] },
             { label: 'Tháng này',  value: [dayjs().startOf('month'), dayjs()] },
+            { label: 'Tháng trước', value: [dayjs().subtract(1,'month').startOf('month'), dayjs().subtract(1,'month').endOf('month')] },
           ]}
         />
         <Select size="small" value={congDoan} onChange={lockedCongDoan ? undefined : setCongDoan}
@@ -1860,6 +1861,7 @@ function TongHopTab() {
             { label: 'Tuần này',   value: [dayjs().startOf('isoWeek'), dayjs().endOf('isoWeek')] },
             { label: 'Tuần trước', value: [dayjs().subtract(1,'week').startOf('isoWeek'), dayjs().subtract(1,'week').endOf('isoWeek')] },
             { label: 'Tháng này',  value: [dayjs().startOf('month'), dayjs()] },
+            { label: 'Tháng trước', value: [dayjs().subtract(1,'month').startOf('month'), dayjs().subtract(1,'month').endOf('month')] },
           ]}
         />
         <Button size="small" type="primary" icon={<SearchOutlined />}
