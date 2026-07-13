@@ -36,6 +36,9 @@ public class MachineShiftPerfLog {
     @Column(name = "sort_order")
     private Integer sortOrder;
 
+    @Column(name = "ten_may", length = 200)
+    private String tenMay;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -67,6 +70,8 @@ public class MachineShiftPerfLog {
     public void setGhiChu(String ghiChu) { this.ghiChu = ghiChu; }
     public Integer getSortOrder() { return sortOrder; }
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+    public String getTenMay() { return tenMay; }
+    public void setTenMay(String tenMay) { this.tenMay = tenMay; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 }

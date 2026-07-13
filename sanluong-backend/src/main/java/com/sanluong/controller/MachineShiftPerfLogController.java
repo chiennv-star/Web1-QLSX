@@ -116,7 +116,11 @@ public class MachineShiftPerfLogController {
     @GetMapping
     public ResponseEntity<List<MachineShiftPerfLog>> get(
             @RequestParam Long workScheduleId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ngay) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ngay,
+            @RequestParam(required = false) String tenMay) {
+        if (tenMay != null && !tenMay.isBlank()) {
+            return ResponseEntity.ok(repo.findByWorkScheduleIdAndNgayAndTenMayOrderBySortOrderAscIdAsc(workScheduleId, ngay, tenMay.trim()));
+        }
         return ResponseEntity.ok(repo.findByWorkScheduleIdAndNgayOrderBySortOrderAscIdAsc(workScheduleId, ngay));
     }
 
@@ -132,13 +136,20 @@ public class MachineShiftPerfLogController {
     public ResponseEntity<List<MachineShiftPerfLog>> bulk(
             @RequestParam Long workScheduleId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ngay,
+            @RequestParam(required = false) String tenMay,
             @RequestBody List<Map<String, Object>> rows) {
-        repo.deleteByWorkScheduleIdAndNgay(workScheduleId, ngay);
+        String normalizedMay = (tenMay != null && !tenMay.isBlank()) ? tenMay.trim() : null;
+        if (normalizedMay != null) {
+            repo.deleteByWorkScheduleIdAndNgayAndTenMay(workScheduleId, ngay, normalizedMay);
+        } else {
+            repo.deleteByWorkScheduleIdAndNgay(workScheduleId, ngay);
+        }
         int order = 0;
         for (Map<String, Object> row : rows) {
             MachineShiftPerfLog log = new MachineShiftPerfLog();
             log.setWorkScheduleId(workScheduleId);
             log.setNgay(ngay);
+            log.setTenMay(normalizedMay);
             log.setCaLo(str(row, "caLo"));
             log.setSlLyThuyet(dbl(row, "slLyThuyet"));
             log.setSlThucTe(dbl(row, "slThucTe"));
@@ -146,6 +157,9 @@ public class MachineShiftPerfLogController {
             log.setGhiChu(str(row, "ghiChu"));
             log.setSortOrder(order++);
             repo.save(log);
+        }
+        if (normalizedMay != null) {
+            return ResponseEntity.ok(repo.findByWorkScheduleIdAndNgayAndTenMayOrderBySortOrderAscIdAsc(workScheduleId, ngay, normalizedMay));
         }
         return ResponseEntity.ok(repo.findByWorkScheduleIdAndNgayOrderBySortOrderAscIdAsc(workScheduleId, ngay));
     }

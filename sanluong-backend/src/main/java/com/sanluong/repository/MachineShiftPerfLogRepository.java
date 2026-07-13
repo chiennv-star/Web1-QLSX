@@ -15,6 +15,11 @@ public interface MachineShiftPerfLogRepository extends JpaRepository<MachineShif
 
     List<MachineShiftPerfLog> findByNgayBetween(LocalDate tuNgay, LocalDate denNgay);
 
+    List<MachineShiftPerfLog> findByWorkScheduleIdAndNgayAndTenMayOrderBySortOrderAscIdAsc(Long workScheduleId, LocalDate ngay, String tenMay);
+
     @Transactional
     void deleteByWorkScheduleIdAndNgay(Long workScheduleId, LocalDate ngay);
+
+    @Transactional
+    void deleteByWorkScheduleIdAndNgayAndTenMay(Long workScheduleId, LocalDate ngay, String tenMay);
 }
