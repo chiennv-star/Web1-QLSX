@@ -262,6 +262,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   const [openTabs, setOpenTabs] = useState(['list'])
   const [activeTabKey, setActiveTabKey] = useState('list')
   const [daySlMap, setDaySlMap] = useState({})
+  const [dayRoomMap, setDayRoomMap] = useState({})
   const [dayMachinesMap, setDayMachinesMap] = useState({}) // ngayKey → string[]
   const [savingDay, setSavingDay] = useState(null)
   const [pendingDays, setPendingDays] = useState([])
@@ -310,6 +311,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     setPendingDays([])
     setSessions([])
     setDaySlMap({})
+    setDayRoomMap({})
     setEditingKeys(new Set())
     setBatchEditDays(new Set())
     setBatchSaving(new Set())
@@ -473,9 +475,15 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
           }
         }
       })
+      const roomMap = {}
+      normalized.forEach(s => {
+        const key = s.ngay || 'unknown'
+        if (roomMap[key] === undefined && s.phongSanXuat) roomMap[key] = s.phongSanXuat
+      })
       setDaySlMap(slMap)
       setSavedSlKeys(new Set(Object.keys(slMap)))
       setDayMachinesMap(machineMap)
+      setDayRoomMap(roomMap)
       // Load machine runtime for all days (non-blocking)
       const days = [...new Set(normalized.map(s => s.ngay).filter(Boolean))]
       if (days.length > 0) {
@@ -1264,6 +1272,19 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     finally { setSavingDay(null) }
   }
 
+  const saveDayRoom = async (ngayKey, phong) => {
+    const rows = sessionsRef.current.filter(s => (s.ngay || 'unknown') === ngayKey)
+    const first = rows.find(r => r.id)
+    if (!first) return
+    try {
+      await api.patch(`/work-schedule-session/${first.id}/phong-san-xuat`, { phongSanXuat: phong || null })
+      setSessions(prev => prev.map(r => r.id === first.id ? { ...r, phongSanXuat: phong || null } : r))
+      setDayRoomMap(prev => ({ ...prev, [ngayKey]: phong || '' }))
+    } catch (err) {
+      message.error('Lưu phòng thực hiện thất bại')
+    }
+  }
+
   const cellStyle = { padding: '5px 8px', border: '1px solid #d9d9d9', verticalAlign: 'middle' }
   const headStyle = { ...cellStyle, background: '#e6f4ff', fontWeight: 600, color: '#1677ff', whiteSpace: 'nowrap' }
   const subHeadStyle = { ...cellStyle, background: '#fff7e6', fontWeight: 600, color: '#1890ff', whiteSpace: 'nowrap' }
@@ -1425,6 +1446,16 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                     return <b style={{ color }}>{nsNgay.toLocaleString('vi-VN')}{arrow}</b>
                   })() : <b style={{ color: '#aaa' }}>—</b>}
                 </span>
+                {/* Phòng thực hiện */}
+                <PhongSanXuatSelect
+                  size="small"
+                  value={dayRoomMap[k] || undefined}
+                  onChange={v => saveDayRoom(k, v || '')}
+                  disabled={!canEditDetail}
+                  style={{ width: 180, fontSize: 11, flexShrink: 0 }}
+                  placeholder="Phòng thực hiện..."
+                />
+
                 {/* Actions */}
                 {canEditDetail && (
                   <div style={{ marginLeft: 'auto', display: 'flex', gap: 5, alignItems: 'center', flexShrink: 0 }}>

@@ -6295,6 +6295,14 @@ const PHONG_ROOMS = [
   {id:'ipc',       name:'IPC',                         area:11.6,  zone:'Khu vực khác'},
 ]
 const PHONG_ZONES = ['Pha chế','Phân liều','Biệt trữ','Airlock','Vệ sinh & thay đồ','Khu vực khác']
+// Các phòng hạ tầng luôn trong trạng thái hoạt động (không phụ thuộc kế hoạch hay toggle)
+const ALWAYS_ACTIVE_ROOMS = new Set([
+  'bt','btnl',                                        // Biệt trữ
+  'al1','al2','al3','al4',                            // Airlock
+  'vsbc1','vsbbnl','giatqa','ruadc','dcsach',         // Vệ sinh
+  'tdnu2','tdnam2','rac',                             // Thay đồ / Rác
+  'hoanthien','hanhlang','quandoc','ipc',             // Khu vực khác
+])
 const WEEKDAYS_VI = ['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7']
 
 // Mapping: phongThucHien name (lowercase) → PHONG_ROOMS id
@@ -6328,6 +6336,43 @@ const PHONG_TH_TO_ROOM = {
   'biệt trữ bán thành phẩm': 'btbtp',
 }
 
+// Grid coords for floor plan hotspots — grid is 46 cols × 34 rows
+// g = [col_start, col_end, row_start, row_end] (1-based)
+const FP_COLS = 46, FP_ROWS = 34
+const FLOOR_PLAN_ROOMS_GRID = [
+  {id:'pc05',     g:[2,6,9,17]},
+  {id:'btbtp',    g:[7,10,9,11]},
+  {id:'al4',      g:[7,10,11,14]},
+  {id:'pl05',     g:[7,10,14,17]},
+  {id:'hoanthien',g:[11,19,9,17]},
+  {id:'pl04',     g:[2,6,17,19]},
+  {id:'bt',       g:[7,17,17,24]},
+  {id:'vsbc1',    g:[17,20,17,21]},
+  {id:'giatqa',   g:[20,22,17,21]},
+  {id:'quandoc',  g:[22,25,17,21]},
+  {id:'pl03',     g:[2,6,19,21]},
+  {id:'vsbbnl',   g:[22,25,21,23]},
+  {id:'pl02',     g:[2,6,21,24]},
+  {id:'btnl',     g:[22,25,23,25]},
+  {id:'rac',      g:[2,4,24,26]},
+  {id:'al3',      g:[4,6,24,26]},
+  {id:'pl01',     g:[7,10,24,26]},
+  {id:'pc04',     g:[10,13,24,26]},
+  {id:'pc03',     g:[13,17,24,26]},
+  {id:'al2',      g:[17,20,21,26]},
+  {id:'al1',      g:[20,22,21,26]},
+  {id:'tdnu2',    g:[22,25,25,27]},
+  {id:'hanhlang', g:[7,22,26,27]},
+  {id:'ruadc',    g:[2,6,27,31]},
+  {id:'dcsach',   g:[6,9,27,31]},
+  {id:'ipc',      g:[9,12,27,31]},
+  {id:'pc02',     g:[12,15,27,31]},
+  {id:'pc01',     g:[15,19,27,31]},
+  {id:'pcan',     g:[19,21,27,31]},
+  {id:'tdnam2',   g:[22,25,27,31]},
+  {id:'pc06',     g:[43,46,14,18]},
+]
+
 function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false }) {
   const todayStr = dayjs().format('YYYY-MM-DD')
   const [currentDate, setCurrentDate] = useState(todayStr)
@@ -6336,6 +6381,7 @@ function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false
   const [historyDates, setHistoryDates] = useState([])
   const [machineOptions, setMachineOptions] = useState([])
   const [scheduleRoomIds, setScheduleRoomIds] = useState(new Set())
+  const [viewMode, setViewMode] = useState('list')
 
   const loadDate = (dateStr) => {
     try {
@@ -6421,7 +6467,7 @@ function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false
     setShowHistory(true)
   }
 
-  const isRoomActive = (id) => !!(currentData[id]?.inUse || scheduleRoomIds.has(id))
+  const isRoomActive = (id) => !!(currentData[id]?.inUse || scheduleRoomIds.has(id) || ALWAYS_ACTIVE_ROOMS.has(id))
   const totalRooms = PHONG_ROOMS.length
   const activeRooms = PHONG_ROOMS.filter(r => isRoomActive(r.id)).length
   const activeArea  = PHONG_ROOMS.filter(r => isRoomActive(r.id)).reduce((s, r) => s + r.area, 0)
@@ -6460,8 +6506,60 @@ function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false
           style={{ background: '#fff', color: '#374151', border: '1px solid #00bcd4', borderRadius: 20, padding: '7px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>🕘 Lịch sử</button>
       </div>
 
+      {/* View mode toggle */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+        {[
+          { key: 'list', label: '📋 Danh sách phòng' },
+          { key: 'map',  label: '🗺️ Sơ đồ mặt bằng' },
+        ].map(v => (
+          <button key={v.key} onClick={() => setViewMode(v.key)} style={{
+            padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700,
+            border: 'none', cursor: 'pointer',
+            background: viewMode === v.key ? '#0e7490' : '#fff',
+            color: viewMode === v.key ? '#fff' : '#374151',
+            boxShadow: viewMode === v.key ? '0 2px 8px rgba(14,116,144,.3)' : '0 1px 3px rgba(0,0,0,.08)',
+          }}>{v.label}</button>
+        ))}
+      </div>
+
+      {/* Floor plan */}
+      {viewMode === 'map' && (
+        <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid #dbe0e6', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.06)', marginBottom: 16 }}>
+          <div style={{ position: 'relative', minWidth: 900 }}>
+            <img src="/mat-bang.png" alt="Sơ đồ mặt bằng" style={{ display: 'block', width: '100%', height: 'auto', userSelect: 'none', pointerEvents: 'none' }} />
+            {FLOOR_PLAN_ROOMS_GRID.map(fr => {
+              const room = PHONG_ROOMS.find(r => r.id === fr.id)
+              if (!room) return null
+              const isActive = isRoomActive(fr.id)
+              const fromSchedule = scheduleRoomIds.has(fr.id) && !(currentData[fr.id]?.inUse)
+              const [c0,c1,r0,r1] = fr.g
+              return (
+                <div key={fr.id}
+                  title={`${room.name}${room.area ? ' — ' + room.area.toFixed(1) + ' m²' : ''}\n${fromSchedule ? 'THEO KẾ HOẠCH' : isActive ? 'ĐANG SỬ DỤNG' : 'TRỐNG'}`}
+                  style={{
+                    position: 'absolute',
+                    left: ((c0-1)/FP_COLS*100)+'%',
+                    top:  ((r0-1)/FP_ROWS*100)+'%',
+                    width: ((c1-c0)/FP_COLS*100)+'%',
+                    height:((r1-r0)/FP_ROWS*100)+'%',
+                    background: fromSchedule ? 'rgba(2,132,199,0.22)' : isActive ? 'rgba(22,163,74,0.25)' : 'rgba(79,70,229,0.04)',
+                    border: `1.5px solid ${fromSchedule ? 'rgba(2,132,199,.6)' : isActive ? 'rgba(22,163,74,.6)' : 'rgba(79,70,229,0)'}`,
+                    borderRadius: 4, cursor: 'default', transition: 'background .12s',
+                  }}>
+                  {isActive && (
+                    <div style={{ position: 'absolute', top: 2, left: 2, fontSize: 8, fontWeight: 700, padding: '1px 4px', borderRadius: 999, background: fromSchedule ? '#0284c7' : '#16a34a', color: '#fff', fontFamily: 'monospace', lineHeight: 1.4 }}>
+                      {fromSchedule ? 'KH' : '●'}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Zone grids */}
-      {PHONG_ZONES.map(zone => {
+      {viewMode === 'list' && PHONG_ZONES.map(zone => {
         const rooms = PHONG_ROOMS.filter(r => r.zone === zone)
         if (!rooms.length) return null
         const zoneActive = rooms.filter(r => isRoomActive(r.id)).length
@@ -6477,7 +6575,9 @@ function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false
               {rooms.map(r => {
                 const st = currentData[r.id] || {inUse: false, note: ''}
                 const isActive = isRoomActive(r.id)
-                const fromSchedule = scheduleRoomIds.has(r.id) && !st.inUse
+                const alwaysOn = ALWAYS_ACTIVE_ROOMS.has(r.id)
+                const fromSchedule = scheduleRoomIds.has(r.id) && !st.inUse && !alwaysOn
+                const toggleOn = isActive  // toggle visual reflects real active state
                 return (
                   <div key={r.id} style={{
                     background: isActive ? '#99FFFF' : '#fff',
@@ -6490,11 +6590,11 @@ function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false
                         <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>{r.name}</div>
                         <div style={{ fontSize: 11, color: '#9aa2b1', fontFamily: 'monospace', marginTop: 2 }}>{r.area.toFixed(1)} m²</div>
                       </div>
-                      <label style={{ position: 'relative', width: 40, height: 22, flexShrink: 0, cursor: 'pointer' }}>
-                        <input type="checkbox" checked={!!st.inUse} onChange={() => toggleRoom(r.id)}
+                      <label style={{ position: 'relative', width: 40, height: 22, flexShrink: 0, cursor: alwaysOn ? 'default' : 'pointer', opacity: alwaysOn ? 0.6 : 1 }}>
+                        <input type="checkbox" checked={toggleOn} disabled={alwaysOn} onChange={alwaysOn ? undefined : () => toggleRoom(r.id)}
                           style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }} />
-                        <span style={{ position: 'absolute', inset: 0, background: st.inUse ? '#16a34a' : '#f1f2f4', border: `1px solid ${st.inUse ? '#16a34a' : '#e2e5ea'}`, borderRadius: 999, display: 'block' }}>
-                          <span style={{ position: 'absolute', width: 16, height: 16, top: 2, left: st.inUse ? 20 : 2, background: '#fff', borderRadius: '50%', transition: 'left .15s', boxShadow: '0 1px 2px rgba(0,0,0,.25)', display: 'block' }} />
+                        <span style={{ position: 'absolute', inset: 0, background: toggleOn ? '#16a34a' : '#f1f2f4', border: `1px solid ${toggleOn ? '#16a34a' : '#e2e5ea'}`, borderRadius: 999, display: 'block' }}>
+                          <span style={{ position: 'absolute', width: 16, height: 16, top: 2, left: toggleOn ? 20 : 2, background: '#fff', borderRadius: '50%', transition: 'left .15s', boxShadow: '0 1px 2px rgba(0,0,0,.25)', display: 'block' }} />
                         </span>
                       </label>
                     </div>

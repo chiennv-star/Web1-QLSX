@@ -159,6 +159,18 @@ public class WorkScheduleSessionController {
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/{id}/phong-san-xuat")
+    public ResponseEntity<Void> patchPhongSanXuat(@PathVariable Long id,
+                                                   @RequestBody Map<String, Object> body,
+                                                   Authentication auth) {
+        WorkScheduleSession existing = service.getById(id);
+        WorkSchedule schedule = resolveSchedule(existing.getWorkScheduleId());
+        checkStageWritePermission(auth, schedule.getCongDoan(), schedule.getSource(), schedule.isPlanned());
+        String phong = body.get("phongSanXuat") != null ? body.get("phongSanXuat").toString() : null;
+        service.patchPhongSanXuat(id, phong);
+        return ResponseEntity.noContent().build();
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id, Authentication auth) {
         WorkScheduleSession existing = service.getById(id);

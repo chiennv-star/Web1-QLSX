@@ -67,6 +67,9 @@ public class WorkScheduleSession {
     @Column(name = "is_tang_ca", nullable = false)
     private boolean isTangCa = false;
 
+    @Column(name = "phong_san_xuat", length = 100)
+    private String phongSanXuat;
+
     // null = SCHEDULE (Sản Lượng Tổ, backward compatible); 'KH_TO' = Kế Hoạch Tổ riêng
     @Column(name = "loai_session", length = 20)
     private String loaiSession;
@@ -132,4 +135,6 @@ public class WorkScheduleSession {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public String getLoaiSession() { return loaiSession; }
     public void setLoaiSession(String loaiSession) { this.loaiSession = loaiSession; }
+    public String getPhongSanXuat() { return phongSanXuat; }
+    public void setPhongSanXuat(String phongSanXuat) { this.phongSanXuat = phongSanXuat; }
 }

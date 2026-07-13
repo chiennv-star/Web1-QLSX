@@ -157,6 +157,13 @@ public class WorkScheduleSessionService {
     }
 
     @Transactional
+    public void patchPhongSanXuat(Long id, String phong) {
+        WorkScheduleSession s = getById(id);
+        s.setPhongSanXuat(phong == null || phong.isBlank() ? null : phong.trim());
+        repository.save(s);
+    }
+
+    @Transactional
     public void delete(Long id) {
         WorkScheduleSession existing = repository.findById(id).orElse(null);
         Long workScheduleId = existing != null ? existing.getWorkScheduleId() : null;
