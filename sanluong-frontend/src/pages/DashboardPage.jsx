@@ -3795,10 +3795,10 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
   // ── Năng suất trung bình theo tổ ──
   const groupNangSuat = React.useMemo(() => {
     const GROUPS = [
-      { key: 'PCPL1', label: 'PCPL1', sub: 'gồm Cân Chia', color: '#1565c0', border: '#bbdefb',
+      { key: 'PCPL1', label: 'PCPL1', sub: '', color: '#1565c0', border: '#bbdefb',
         recs: filteredData.filter(r => (r.toThucHien || '').toUpperCase() === 'PCPL1'),
         getSL: r => Number(r.slPc) || 0,
-        getCong: r => (Number(r.pcChiPhi) || 0) + (Number(r.ccChiPhi) || 0) },
+        getCong: r => Number(r.pcChiPhi) || 0 },
       { key: 'PCPL2', label: 'PCPL2', sub: 'gồm Cân Chia', color: '#0891b2', border: '#cffafe',
         recs: filteredData.filter(r => (r.toThucHien || '').toUpperCase() === 'PCPL2'),
         getSL: r => Number(r.slPc) || 0,
@@ -3817,14 +3817,16 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
         getCong: r => Number(r.dgChiPhi) || 0 },
     ]
     return GROUPS.map(g => {
-      let totalSL = 0, totalCong = 0, loCount = 0
+      let totalSL = 0, totalCong = 0, loCount = 0, nangSuatSum = 0, nangSuatCount = 0
       g.recs.forEach(r => {
         const sl = g.getSL(r); const cong = g.getCong(r)
         totalSL += sl; totalCong += cong
         if (sl > 0) loCount++
+        if (sl > 0 && cong > 0) { nangSuatSum += sl / cong; nangSuatCount++ }
       })
       return { ...g, recs: undefined, totalSL, totalCong, loCount,
         nangSuat: totalCong > 0 ? Math.round(totalSL / totalCong) : null,
+        nangSuatTB: nangSuatCount > 0 ? Math.round(nangSuatSum / nangSuatCount) : null,
         slTb: loCount > 0 ? Math.round(totalSL / loCount) : null }
     })
   }, [filteredData])
@@ -4366,7 +4368,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
           </div>
           <div style={{ background: '#fff', padding: 16, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,.08)', marginBottom: 20 }}>
             <div style={{ fontWeight: 600, color: '#006666', marginBottom: 4 }}>Năng Suất Trung Bình Của Các Tổ</div>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 12 }}>Năng suất = Tổng SL ÷ Tổng công | PCPL1/PCPL2 tính theo tổ thực hiện (toThucHien)</div>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 12 }}>Số lớn = NS TB/lô (trung bình SL÷công từng lô) | NS tổng hợp = Tổng SL ÷ Tổng công | PCPL1/PCPL2 theo tổ thực hiện</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
               {groupNangSuat.map(g => (
                 <div key={g.key} style={{ borderRadius: 8, padding: 14, border: `2px solid ${g.border}`, background: `${g.color}08` }}>
@@ -4375,12 +4377,13 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
                     {g.sub && <span style={{ fontSize: 10, color: '#94a3b8' }}>{g.sub}</span>}
                   </div>
                   <div style={{ fontSize: 20, fontWeight: 900, color: g.color, fontFamily: 'monospace', marginBottom: 10, letterSpacing: -0.5 }}>
-                    {g.nangSuat != null ? `${fmtN(g.nangSuat)} SL/công` : '—'}
+                    {g.nangSuatTB != null ? `${fmtN(g.nangSuatTB)} SL/công` : '—'}
                   </div>
                   {[
                     ['Tổng SL', fmtN(g.totalSL)],
                     ['Số lô phát sinh', fmtN(g.loCount)],
                     ['SL TB/lô', g.slTb != null ? fmtN(g.slTb) : '—'],
+                    ['NS tổng hợp', g.nangSuat != null ? `${fmtN(g.nangSuat)} SL/công` : '—'],
                     ['Tổng công', g.totalCong > 0 ? Number(g.totalCong).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'],
                   ].map(([l, v]) => (
                     <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '3px 0', borderBottom: `1px solid ${g.border}` }}>
