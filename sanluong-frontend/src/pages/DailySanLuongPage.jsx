@@ -6651,7 +6651,11 @@ function resolveGdCd(r) {
     else if (nhom === 'PCPL3' || nhom === 'PL') cd = 'PL'
     else cd = 'PCPL1'
   }
-  if (cd === 'PCPL3' || cd === 'CC') cd = 'PL'
+  if (cd === 'PCPL3') cd = 'PL'
+  if (cd === 'CC') {
+    const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
+    cd = nhom === 'PCPL2' ? 'PCPL2' : 'PCPL1'
+  }
   return cd
 }
 
@@ -6898,7 +6902,12 @@ function DashboardGDTab() {
                       <td style={{ padding: '10px 10px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <div style={{ width: 4, height: 22, borderRadius: 2, background: t.slColor, flexShrink: 0 }} />
-                          <span style={{ fontWeight: 800, color: t.slColor, fontSize: 13 }}>{t.label}</span>
+                          <div>
+                            <span style={{ fontWeight: 800, color: t.slColor, fontSize: 13 }}>{t.label}</span>
+                            {(t.key === 'PCPL1' || t.key === 'PCPL2') && (
+                              <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 500, marginTop: 1 }}>gồm Cân Chia</div>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700, color: '#0f172a', fontSize: 13 }}>

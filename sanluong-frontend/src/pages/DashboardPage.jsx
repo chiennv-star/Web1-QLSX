@@ -3617,7 +3617,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
   const numDG      = r => Number(r.dg2)      || 0
   const numBBC1    = r => Number(r.bbc1_2)   || 0
   const numTP      = r => numPL(r) + numDG(r) + numBBC1(r)
-  const numCongPC  = r => Number(r.pcChiPhi) || 0
+  const numCongPC  = r => (Number(r.pcChiPhi) || 0) + (Number(r.ccChiPhi) || 0)
   const numCongPL  = r => Number(r.plChiPhi) || 0
   const numCongDG  = r => Number(r.dgChiPhi) || 0
   const numCongBBC1= r => Number(r.bbc1_3)   || 0
@@ -4201,8 +4201,8 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
           <Table size="small" bordered columns={[
             { title: 'Loại Sản Phẩm', dataIndex: 'loai', key: 'loai', onHeaderCell: hc({ textAlign: 'left' }), render: (v, r) => r._total ? <b>{v}</b> : v },
             { title: 'Số TP', dataIndex: 'soTp', key: 'soTp', width: 70, align: 'right', onHeaderCell: hc(), render: fmtN },
-            { title: 'Công PC (PCPL1)', dataIndex: 'pcpl1', key: 'pcpl1', width: 140, align: 'right', onHeaderCell: hc(), render: (v, r) => <span style={{ color: '#1565c0', fontWeight: r._total ? 700 : 400 }}>{Number(v||0).toLocaleString('vi-VN',{maximumFractionDigits:1})}</span> },
-            { title: 'Công PC (PCPL2)', dataIndex: 'pcpl2', key: 'pcpl2', width: 140, align: 'right', onHeaderCell: hc(), render: (v, r) => <span style={{ color: '#0891b2', fontWeight: r._total ? 700 : 400 }}>{Number(v||0).toLocaleString('vi-VN',{maximumFractionDigits:1})}</span> },
+            { title: 'Công PC+CC (PCPL1)', dataIndex: 'pcpl1', key: 'pcpl1', width: 150, align: 'right', onHeaderCell: hc(), render: (v, r) => <span style={{ color: '#1565c0', fontWeight: r._total ? 700 : 400 }}>{Number(v||0).toLocaleString('vi-VN',{maximumFractionDigits:1})}</span> },
+            { title: 'Công PC+CC (PCPL2)', dataIndex: 'pcpl2', key: 'pcpl2', width: 150, align: 'right', onHeaderCell: hc(), render: (v, r) => <span style={{ color: '#0891b2', fontWeight: r._total ? 700 : 400 }}>{Number(v||0).toLocaleString('vi-VN',{maximumFractionDigits:1})}</span> },
             { title: 'Công PL', dataIndex: 'pl', key: 'pl', width: 110, align: 'right', onHeaderCell: hc(), render: (v, r) => <span style={{ color: '#7b1fa2', fontWeight: r._total ? 700 : 400 }}>{Number(v||0).toLocaleString('vi-VN',{maximumFractionDigits:1})}</span> },
             { title: 'Công ĐG', dataIndex: 'dg', key: 'dg', width: 110, align: 'right', onHeaderCell: hc(), render: (v, r) => <span style={{ color: '#e65100', fontWeight: r._total ? 700 : 400 }}>{Number(v||0).toLocaleString('vi-VN',{maximumFractionDigits:1})}</span> },
             { title: 'Công BBC1', dataIndex: 'bbc1', key: 'bbc1', width: 110, align: 'right', onHeaderCell: hc(), render: (v, r) => <span style={{ color: '#00695c', fontWeight: r._total ? 700 : 400 }}>{Number(v||0).toLocaleString('vi-VN',{maximumFractionDigits:1})}</span> },
@@ -4222,8 +4222,8 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(1)}K` : Number(v).toFixed(1)} />
                   <RechartTooltip formatter={(v, n) => [Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 1 }), n]} />
                   <Legend />
-                  <Line type="monotone" dataKey="PCPL1" stroke="#1565c0" dot={false} strokeWidth={2} />
-                  <Line type="monotone" dataKey="PCPL2" stroke="#0891b2" dot={false} strokeWidth={2} />
+                  <Line type="monotone" dataKey="PCPL1" name="PCPL1 (gồm CC)" stroke="#1565c0" dot={false} strokeWidth={2} />
+                  <Line type="monotone" dataKey="PCPL2" name="PCPL2 (gồm CC)" stroke="#0891b2" dot={false} strokeWidth={2} />
                   <Line type="monotone" dataKey="PL"    stroke="#7b1fa2" dot={false} strokeWidth={2} />
                   <Line type="monotone" dataKey="ĐG"    stroke="#e65100" dot={false} strokeWidth={2} />
                   <Line type="monotone" dataKey="BBC1"  stroke="#00695c" dot={false} strokeWidth={2} />
