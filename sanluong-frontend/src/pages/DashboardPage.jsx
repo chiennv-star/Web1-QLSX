@@ -3797,11 +3797,11 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
     const GROUPS = [
       { key: 'PCPL1', label: 'PCPL1', sub: '', color: '#1565c0', border: '#bbdefb',
         recs: filteredData.filter(r => (r.toThucHien || '').toUpperCase() === 'PCPL1'),
-        getSL: r => Number(r.slPc) || 0,
+        getSL: r => Number(r.soLuong) || 0,
         getCong: r => Number(r.pcChiPhi) || 0 },
       { key: 'PCPL2', label: 'PCPL2', sub: 'gồm Cân Chia', color: '#0891b2', border: '#cffafe',
         recs: filteredData.filter(r => (r.toThucHien || '').toUpperCase() === 'PCPL2'),
-        getSL: r => Number(r.slPc) || 0,
+        getSL: r => Number(r.soLuong) || 0,
         getCong: r => (Number(r.pcChiPhi) || 0) + (Number(r.ccChiPhi) || 0) },
       { key: 'PCPL3', label: 'PCPL3 (PL)', sub: '', color: '#7c3aed', border: '#ede9fe',
         recs: filteredData,
@@ -4368,7 +4368,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
           </div>
           <div style={{ background: '#fff', padding: 16, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,.08)', marginBottom: 20 }}>
             <div style={{ fontWeight: 600, color: '#006666', marginBottom: 4 }}>Năng Suất Trung Bình Của Các Tổ</div>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 12 }}>Số lớn = NS TB/lô (trung bình SL÷công từng lô) | NS tổng hợp = Tổng SL ÷ Tổng công | PCPL1/PCPL2 theo tổ thực hiện</div>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 12 }}>Số lớn = NS TB/lô (trung bình SL÷công từng lô) | NS tổng hợp = Tổng SL ÷ Tổng công | SL của PCPL1/PCPL2 dùng SL kế hoạch (soLuong)</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
               {groupNangSuat.map(g => (
                 <div key={g.key} style={{ borderRadius: 8, padding: 14, border: `2px solid ${g.border}`, background: `${g.color}08` }}>
