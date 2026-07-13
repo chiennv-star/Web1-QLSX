@@ -6993,6 +6993,9 @@ function DashboardGDTab() {
                 </tr>
               </tbody>
             </table>
+            <div style={{ padding: '6px 14px 8px', fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>
+              * Dữ liệu NS TB 2025 &amp; NS 6T-2026 bắt đầu nhập từ tháng 6/2026
+            </div>
           </div>
         </div>
 
