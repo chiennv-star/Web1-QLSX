@@ -3799,7 +3799,7 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
       { key: 'PCPL1', label: 'PCPL1', sub: '', color: '#1565c0', border: '#bbdefb',
         recs: filteredData.filter(r => (r.toThucHien || '').toUpperCase() === 'PCPL1'),
         getSL: r => Number(r.soLuong) || 0,
-        getCong: r => Number(r.pcChiPhi) || 0 },
+        getCong: r => (Number(r.pcChiPhi) || 0) + (Number(r.plChiPhi) || 0) },
       { key: 'PCPL2', label: 'PCPL2', sub: 'gồm Cân Chia', color: '#0891b2', border: '#cffafe',
         recs: filteredData.filter(r => (r.toThucHien || '').toUpperCase() === 'PCPL2'),
         getSL: r => Number(r.soLuong) || 0,
