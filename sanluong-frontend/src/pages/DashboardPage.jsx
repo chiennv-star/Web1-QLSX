@@ -3645,6 +3645,9 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
     else if (filterMode === '3m') from = dayjs().subtract(3, 'month')
     else if (filterMode === '6m') from = dayjs().subtract(6, 'month')
     else if (filterMode === 'year') from = dayjs().startOf('year')
+    else if (filterMode === 'last_year') { from = dayjs().subtract(1, 'year').startOf('year'); to = dayjs().subtract(1, 'year').endOf('year') }
+    else if (filterMode === 'last_year_h1') { from = dayjs().subtract(1, 'year').startOf('year'); to = dayjs().subtract(1, 'year').month(5).endOf('month') }
+    else if (filterMode === 'last_year_h2') { from = dayjs().subtract(1, 'year').month(6).startOf('month'); to = dayjs().subtract(1, 'year').endOf('year') }
     else if (filterMode === 'custom' && customRange?.[0] && customRange?.[1]) {
       from = customRange[0].startOf('day')
       to = customRange[1].endOf('day')
@@ -4004,6 +4007,9 @@ function PhanTichSanLuongTab({ pmMap = {} }) {
     { key: '3m', label: '3 Tháng' },
     { key: '6m', label: '6 Tháng' },
     { key: 'year', label: 'Năm nay' },
+    { key: 'last_year', label: 'Năm ngoái' },
+    { key: 'last_year_h1', label: '6T đầu năm ngoái' },
+    { key: 'last_year_h2', label: '6T cuối năm ngoái' },
     { key: 'all', label: 'Tất cả' },
   ]
 
