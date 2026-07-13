@@ -239,6 +239,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   const [shiftPerfOpenDays, setShiftPerfOpenDays] = useState(new Set())
   const [shiftPerfSaving, setShiftPerfSaving] = useState(new Set())
   const [shiftPerfDirtyDays, setShiftPerfDirtyDays] = useState(new Set())
+  const [machineGioKHMap, setMachineGioKHMap] = useState({})    // "${ngay}|${tenMay}" → gioKh (giờ)
 
   const [renamingDay, setRenamingDay] = useState(null)   // ngayKey đang đổi ngày
   const [renameDayVal, setRenameDayVal] = useState('')   // giá trị ngày mới
@@ -506,6 +507,14 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
               setShiftPerfMap(spMap)
             })
         }
+        // Load giờ kế hoạch overrides
+        api.get('/machine-runtime/gio-kh-list', { params: { tuNgay: days[0], denNgay: days[days.length - 1] } })
+          .then(({ data }) => {
+            const map = {}
+            data.forEach(({ ngay, tenMay, gioKh }) => { map[`${ngay}|${tenMay}`] = gioKh })
+            setMachineGioKHMap(map)
+          })
+          .catch(() => {})
       }
     } catch { message.error('Không thể tải dữ liệu chi tiết') }
     finally { setLoading(false) }
@@ -1808,6 +1817,20 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                               disabled={!canEditDetail}
                               style={{ width: 195, fontSize: 11 }}
                               placeholder="Chọn máy thực hiện..."
+                            />
+                            <InputNumber
+                              size="small"
+                              min={0} max={24} step={0.5}
+                              value={machineGioKHMap[rtKey] ?? null}
+                              onChange={v => {
+                                if (v == null) return
+                                setMachineGioKHMap(prev => ({ ...prev, [rtKey]: v }))
+                                api.put('/machine-runtime/gio-kh', null, { params: { ngay: k, tenMay: machineName, gioKh: v } }).catch(() => {})
+                              }}
+                              placeholder="16"
+                              style={{ width: 100 }}
+                              addonBefore={<span style={{ fontSize: 10, color: '#64748b' }}>KH</span>}
+                              addonAfter={<span style={{ fontSize: 10, color: '#64748b' }}>h</span>}
                             />
                             {runMin > 0 && <Tag color="success" style={{ margin: 0, fontSize: 11 }}>Chạy {runMin}p</Tag>}
                             {downMin > 0 && <Tag color="error" style={{ margin: 0, fontSize: 11 }}>Nghỉ {downMin}p</Tag>}

@@ -83,6 +83,23 @@ public class MachineRuntimeLogController {
         return ResponseEntity.ok(repo.findByWorkScheduleIdInAndNgayOrderBySortOrderAscIdAsc(wsIds, ngay));
     }
 
+    /** Lấy danh sách giờ kế hoạch trong khoảng ngày */
+    @GetMapping("/gio-kh-list")
+    public ResponseEntity<List<Map<String, Object>>> listGioKh(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate tuNgay,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate denNgay) {
+        List<Map<String, Object>> result = gioKhRepo.findByNgayBetween(tuNgay, denNgay).stream()
+                .map(o -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("ngay", o.getNgay().toString());
+                    m.put("tenMay", o.getTenMay());
+                    m.put("gioKh", o.getGioKh());
+                    return m;
+                })
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(result);
+    }
+
     /** Lưu/cập nhật giờ kế hoạch cho ngày × máy cụ thể */
     @PutMapping("/gio-kh")
     @Transactional
