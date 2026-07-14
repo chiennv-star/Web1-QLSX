@@ -6252,7 +6252,6 @@ const PHONG_ROOMS = [
   {id:'pc03', name:'Phòng Pha Chế 03', area:26.0, zone:'Pha chế'},
   {id:'pc04', name:'Pha Chế 04',       area:19.1, zone:'Pha chế'},
   {id:'pc05', name:'Phòng Pha Chế 05', area:40.5, zone:'Pha chế'},
-  {id:'pc06', name:'Phòng Pha Chế 06', area:30.0, zone:'Pha chế'},
   {id:'pcan', name:'Phòng Cân',        area:16.2, zone:'Pha chế'},
   {id:'pl01', name:'Phân Liều 01',              area:24.2, zone:'Phân liều'},
   {id:'pl02', name:'Phân Liều 02',              area:12.9, zone:'Phân liều'},
@@ -6298,8 +6297,7 @@ const PHONG_TH_TO_ROOM = {
   'pha chế 03': 'pc03', 'pha chế 3': 'pc03', 'phòng pha chế 03': 'pc03',
   'pha chế 04': 'pc04', 'pha chế 4': 'pc04', 'phòng pha chế 04': 'pc04',
   'pha chế 05': 'pc05', 'pha chế 5': 'pc05', 'phòng pha chế 05': 'pc05',
-  'pha chế 06': 'pc06', 'pha chế 6': 'pc06', 'phòng pha chế 06': 'pc06',
-  'máy nhũ hóa 500l': 'pc06', 'máy nhũ hoá 500l': 'pc06',
+  'máy nhũ hóa 500l': 'pc05', 'máy nhũ hoá 500l': 'pc05',
   'máy khuấy 700l':  'pc01',
   'máy khuấy 1500l': 'pc02',
   'máy chiết báng răng': 'btbtp', 'máy chiết bang rang': 'btbtp',
@@ -6826,7 +6824,7 @@ function DashboardGDTab() {
         {[
           { key: 'tongquan', label: '📊 Tổng quan sản xuất' },
           { key: 'phong',    label: '🏠 Phòng đang sử dụng' },
-          { key: 'kehoach',  label: '📋 Phòng KẾ Hoạch' },
+          { key: 'kehoach',  label: '📋 Phòng Kế Hoạch' },
         ].map(t => (
           <button key={t.key} onClick={() => setGdSubTab(t.key)} style={{
             padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 700,
