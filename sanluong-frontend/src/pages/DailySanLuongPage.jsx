@@ -6290,6 +6290,13 @@ const ALWAYS_ACTIVE_ROOMS = new Set([
 ])
 const WEEKDAYS_VI = ['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7']
 
+// Keyword để tìm máy mặc định theo phòng (match label case-insensitive)
+const ROOM_DEFAULT_MACHINE_KEYWORDS = {
+  'pc05': '500l',          // Máy nhũ hóa 500L
+  'pl02': 'tube hàn',     // Máy đóng tube hàn nhiệt
+  'pl03': '1500l',         // Máy Khuấy 1500L
+}
+
 // Mapping: phongThucHien name (lowercase) → PHONG_ROOMS id
 const PHONG_TH_TO_ROOM = {
   'pha chế 01': 'pc01', 'pha chế 1': 'pc01', 'phòng pha chế 01': 'pc01',
@@ -6531,6 +6538,13 @@ function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 10 }}>
               {rooms.map(r => {
                 const st = currentData[r.id] || {inUse: false, note: ''}
+                const effectiveMachines = (() => {
+                  if (st.machines !== undefined) return st.machines
+                  const kw = ROOM_DEFAULT_MACHINE_KEYWORDS[r.id]
+                  if (!kw) return []
+                  const match = machineOptions.find(o => o.label.toLowerCase().includes(kw.toLowerCase()))
+                  return match ? [match.value] : []
+                })()
                 const isActive = isRoomActive(r.id)
                 const alwaysOn = ALWAYS_ACTIVE_ROOMS.has(r.id)
                 const fromSchedule = scheduleRoomIds.has(r.id) && !st.inUse && !alwaysOn
@@ -6564,7 +6578,7 @@ function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false
                         size="small"
                         placeholder="Máy thực hiện..."
                         style={{ width: '100%' }}
-                        value={st.machines || []}
+                        value={effectiveMachines}
                         onChange={ids => updateMachines(r.id, ids)}
                         options={machineOptions}
                         optionFilterProp="label"
