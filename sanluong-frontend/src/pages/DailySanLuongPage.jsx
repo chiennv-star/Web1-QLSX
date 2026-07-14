@@ -6747,7 +6747,7 @@ function DashboardGDTab() {
 
   const { byTo, kpi, dailyTrend, byLoai, byMay, teamProductMap } = useMemo(() => {
     const byTo = {}
-    GD_TO.forEach(t => { byTo[t.key] = { sl: 0, cong: 0, lo: 0 } })
+    GD_TO.forEach(t => { byTo[t.key] = { sl: 0, cong: 0, congPc: 0, lo: 0 } })
     const teamProductMap = {}
     GD_TO.forEach(t => { teamProductMap[t.key] = {} })
     const dayMap = {}, loaiAgg = {}, mayAgg = {}
@@ -6770,6 +6770,7 @@ function DashboardGDTab() {
       const sl   = isCC ? 0 : Number(r.sanLuong || 0)
       const cong = Number(r.congThucHien  || 0)
       byTo[cd].sl += sl; byTo[cd].cong += cong; byTo[cd].lo++
+      if (!isCC) byTo[cd].congPc += cong
       totalSl += sl; totalCong += cong
       // teamProductMap: gộp dữ liệu theo tổ + mã SP (cho drill-down)
       const maSp_dr = r.maSp || '?'
@@ -6950,8 +6951,8 @@ function DashboardGDTab() {
               <tbody>
                 {GD_TO.map((t, i) => {
                   const d   = byTo[t.key] || { sl: 0, cong: 0 }
-                  // PCPL1: tổng công = PC (PCPL1) + PL (phân liều cùng sản phẩm)
-                  const effectiveCong = t.key === 'PCPL1' ? (d.cong + (byTo['PL']?.cong || 0)) : d.cong
+                  // PCPL1: tổng công = congPc của PCPL1 (không gồm CC) + toàn bộ PL công
+                  const effectiveCong = t.key === 'PCPL1' ? ((d.congPc || 0) + (byTo['PL']?.cong || 0)) : d.cong
                   const ns  = effectiveCong > 0 ? d.sl / effectiveCong : 0
                   const pSl   = kpi.tongSl   > 0 ? d.sl   / kpi.tongSl   * 100 : 0
                   const pCong = kpi.tongCong > 0 ? d.cong / kpi.tongCong * 100 : 0
