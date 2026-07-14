@@ -6950,7 +6950,9 @@ function DashboardGDTab() {
               <tbody>
                 {GD_TO.map((t, i) => {
                   const d   = byTo[t.key] || { sl: 0, cong: 0 }
-                  const ns  = d.cong > 0 ? d.sl / d.cong : 0
+                  // PCPL1: tổng công = PC (PCPL1) + PL (phân liều cùng sản phẩm)
+                  const effectiveCong = t.key === 'PCPL1' ? (d.cong + (byTo['PL']?.cong || 0)) : d.cong
+                  const ns  = effectiveCong > 0 ? d.sl / effectiveCong : 0
                   const pSl   = kpi.tongSl   > 0 ? d.sl   / kpi.tongSl   * 100 : 0
                   const pCong = kpi.tongCong > 0 ? d.cong / kpi.tongCong * 100 : 0
                   return (
@@ -6963,9 +6965,8 @@ function DashboardGDTab() {
                           <div style={{ width: 4, height: 22, borderRadius: 2, background: t.slColor, flexShrink: 0 }} />
                           <div>
                             <span style={{ fontWeight: 800, color: t.slColor, fontSize: 13 }}>{t.label}</span>
-                            {(t.key === 'PCPL1' || t.key === 'PCPL2') && (
-                              <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 500, marginTop: 1 }}>gồm Cân Chia</div>
-                            )}
+                            {t.key === 'PCPL1' && <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 500, marginTop: 1 }}>gồm Công PL</div>}
+                            {t.key === 'PCPL2' && <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 500, marginTop: 1 }}>gồm Cân Chia</div>}
                           </div>
                         </div>
                       </td>
@@ -6973,7 +6974,7 @@ function DashboardGDTab() {
                         {d.sl > 0 ? d.sl.toLocaleString('vi-VN') : <span style={{ color: '#d9d9d9' }}>—</span>}
                       </td>
                       <td style={{ padding: '10px 10px', textAlign: 'right', color: '#374151' }}>
-                        {d.cong > 0 ? d.cong.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : <span style={{ color: '#d9d9d9' }}>—</span>}
+                        {effectiveCong > 0 ? effectiveCong.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : <span style={{ color: '#d9d9d9' }}>—</span>}
                       </td>
                       <td style={{ padding: '10px 10px', textAlign: 'right', color: '#475569' }}>
                         {ns > 0 ? ns.toLocaleString('vi-VN', { maximumFractionDigits: 1 }) : <span style={{ color: '#d9d9d9' }}>—</span>}
