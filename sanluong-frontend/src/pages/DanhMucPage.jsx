@@ -2609,6 +2609,16 @@ function EmployeeTab() {
     setSaving(true)
     try {
       const values = await form.validateFields()
+      values.maNhanVien = values.maNhanVien?.trim().toUpperCase()
+
+      // Kiểm tra trùng mã NV
+      const { data: checkRes } = await api.get('/employees', { params: { search: values.maNhanVien, size: 10 } })
+      const conflict = (checkRes.content || []).find(r => r.maNhanVien === values.maNhanVien && r.id !== editing?.id)
+      if (conflict) {
+        message.error(`Mã NV "${values.maNhanVien}" đã tồn tại (${conflict.hoVaTen})`)
+        return
+      }
+
       const payload = {
         ...values,
         ngaySinh:          values.ngaySinh          ? values.ngaySinh.format('YYYY-MM-DD')          : null,
@@ -2625,7 +2635,10 @@ function EmployeeTab() {
       setModalOpen(false)
       fetchData(pagination.current - 1, pagination.pageSize, search, activeGroup)
       fetchGroupCounts()
-    } catch { message.error('Lưu thất bại') }
+    } catch (e) {
+      if (e?.errorFields) return
+      message.error('Lưu thất bại')
+    }
     finally { setSaving(false) }
   }
 
@@ -2845,7 +2858,7 @@ function EmployeeTab() {
           <Row gutter={12}>
             <Col span={8}>
               <Form.Item label="Mã NV" name="maNhanVien" rules={[{ required: true, message: 'Nhập mã NV' }]}>
-                <Input style={{ fontFamily: 'monospace' }} disabled={!!editing} />
+                <Input style={{ fontFamily: 'monospace' }} />
               </Form.Item>
             </Col>
             <Col span={16}>
