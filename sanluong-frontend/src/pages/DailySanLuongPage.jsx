@@ -6774,10 +6774,12 @@ function DashboardGDTab() {
       // teamProductMap: gộp dữ liệu theo tổ + mã SP (cho drill-down)
       const maSp_dr = r.maSp || '?'
       if (!teamProductMap[cd][maSp_dr]) {
-        teamProductMap[cd][maSp_dr] = { maSp: maSp_dr, tenTrinh: r.tenTrinh || '', sl: 0, cong: 0, congPc: 0, congCc: 0, loCount: new Set() }
+        teamProductMap[cd][maSp_dr] = { maSp: maSp_dr, maBravo: r.maBravo || '', tenTrinh: r.tenTrinh || '', sl: 0, cong: 0, congPc: 0, congCc: 0, loCount: new Set() }
       }
       const _tp = teamProductMap[cd][maSp_dr]
       _tp.sl += sl; _tp.cong += cong
+      if (!_tp.maBravo && r.maBravo) _tp.maBravo = r.maBravo
+      if (!_tp.tenTrinh && r.tenTrinh) _tp.tenTrinh = r.tenTrinh
       if (r.soLo) _tp.loCount.add(r.soLo)
       if (isCC) _tp.congCc += cong; else _tp.congPc += cong
       if (cd === 'DG') slDg += sl
@@ -7253,7 +7255,7 @@ function DashboardGDTab() {
         const isPcpl2 = drillTeam === 'PCPL2'
         const showBreakdown = isPcpl1 || isPcpl2
         const products = Object.values(teamProductMap[drillTeam] || {}).sort((a, b) => b.sl - a.sl)
-        const colCount = showBreakdown ? 5 : 4
+        const colCount = showBreakdown ? 6 : 5
         return (
           <Modal
             title={
@@ -7266,14 +7268,15 @@ function DashboardGDTab() {
             open={!!drillTeam}
             onCancel={() => setDrillTeam(null)}
             footer={null}
-            width={showBreakdown ? 820 : 650}
-            styles={{ body: { padding: '16px 20px', maxHeight: '70vh', overflowY: 'auto' } }}
+            width={showBreakdown ? 1100 : 950}
+            styles={{ body: { padding: '16px 20px', maxHeight: '75vh', overflowY: 'auto' } }}
           >
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ background: '#f8fafc' }}>
                   {[
-                    { label: 'Mã SP', align: 'left' },
+                    { label: 'Sản phẩm', align: 'left' },
+                    { label: 'Số lô', align: 'left' },
                     { label: 'SL', align: 'right' },
                     ...(isPcpl1 ? [{ label: 'Công PC', align: 'right' }, { label: 'Công PL', align: 'right' }] : []),
                     ...(isPcpl2 ? [{ label: 'Công PC', align: 'right' }, { label: 'Công CC', align: 'right' }] : []),
@@ -7289,11 +7292,27 @@ function DashboardGDTab() {
                   const congPl = isPcpl1 ? (teamProductMap['PL']?.[p.maSp]?.cong || 0) : 0
                   const totalCong = isPcpl1 ? (p.congPc + congPl) : p.cong
                   const fmtCong = n => n > 0 ? n.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
+                  const lots = [...p.loCount]
                   return (
                     <tr key={p.maSp} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa', borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '9px 10px' }}>
-                        <span style={{ fontFamily: 'monospace', color: gdTo?.slColor, fontWeight: 700 }}>{p.maSp}</span>
-                        {p.loCount.size > 0 && <span style={{ color: '#94a3b8', fontSize: 10, marginLeft: 8 }}>{p.loCount.size} lô</span>}
+                      {/* Sản phẩm: Mã SP + Mã Bravo + Tên SP */}
+                      <td style={{ padding: '9px 10px', minWidth: 180 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontFamily: 'monospace', color: gdTo?.slColor, fontWeight: 700 }}>{p.maSp}</span>
+                          {p.maBravo && <span style={{ fontFamily: 'monospace', color: '#1677ff', fontSize: 11, background: '#eff6ff', padding: '1px 5px', borderRadius: 3 }}>{p.maBravo}</span>}
+                        </div>
+                        {p.tenTrinh && <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.tenTrinh}</div>}
+                      </td>
+                      {/* Số lô */}
+                      <td style={{ padding: '9px 10px', maxWidth: 200 }}>
+                        {lots.length > 0
+                          ? <div style={{ fontSize: 10, color: '#475569', lineHeight: 1.6, wordBreak: 'break-word' }}>
+                              {lots.map((lo, li) => (
+                                <span key={lo} style={{ display: 'inline-block', background: '#f1f5f9', borderRadius: 3, padding: '0 5px', marginRight: 3, marginBottom: 2 }}>{lo}</span>
+                              ))}
+                            </div>
+                          : <span style={{ color: '#cbd5e1', fontSize: 11 }}>—</span>
+                        }
                       </td>
                       <td style={{ padding: '9px 10px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>
                         {p.sl > 0 ? p.sl.toLocaleString('vi-VN') : '—'}
