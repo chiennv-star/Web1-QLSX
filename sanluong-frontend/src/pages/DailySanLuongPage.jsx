@@ -7255,7 +7255,7 @@ function DashboardGDTab() {
         const isPcpl1 = drillTeam === 'PCPL1'
         const isPcpl2 = drillTeam === 'PCPL2'
         const showBreakdown = isPcpl1 || isPcpl2
-        const products = Object.values(teamProductMap[drillTeam] || {}).sort((a, b) => b.sl - a.sl)
+        const products = Object.values(teamProductMap[drillTeam] || {}).filter(p => p.sl > 0).sort((a, b) => b.sl - a.sl)
         const colCount = showBreakdown ? 6 : 5
         return (
           <Modal
