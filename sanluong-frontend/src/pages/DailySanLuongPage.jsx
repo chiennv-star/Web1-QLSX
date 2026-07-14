@@ -6667,6 +6667,7 @@ function DashboardGDTab() {
   const [analysisTab, setAnalysisTab] = useState('chung')
   const [trendTab, setTrendTab] = useState('chung')
   const [gdSubTab, setGdSubTab] = useState('tongquan')
+  const [drillTeam, setDrillTeam] = useState(null)
   const [ref2025ByTo, setRef2025ByTo]     = useState(null)
   const [refH1_26ByTo, setRefH1_26ByTo]   = useState(null)
 
@@ -6744,9 +6745,11 @@ function DashboardGDTab() {
     setPeriod(key); setDateRange(r); fetchGD(r)
   }
 
-  const { byTo, kpi, dailyTrend, byLoai, byMay } = useMemo(() => {
+  const { byTo, kpi, dailyTrend, byLoai, byMay, teamProductMap } = useMemo(() => {
     const byTo = {}
     GD_TO.forEach(t => { byTo[t.key] = { sl: 0, cong: 0, lo: 0 } })
+    const teamProductMap = {}
+    GD_TO.forEach(t => { teamProductMap[t.key] = {} })
     const dayMap = {}, loaiAgg = {}, mayAgg = {}
     const days = new Set(), cas = new Set()
     let totalSl = 0, totalCong = 0, slDg = 0
@@ -6768,6 +6771,15 @@ function DashboardGDTab() {
       const cong = Number(r.congThucHien  || 0)
       byTo[cd].sl += sl; byTo[cd].cong += cong; byTo[cd].lo++
       totalSl += sl; totalCong += cong
+      // teamProductMap: gộp dữ liệu theo tổ + mã SP (cho drill-down)
+      const maSp_dr = r.maSp || '?'
+      if (!teamProductMap[cd][maSp_dr]) {
+        teamProductMap[cd][maSp_dr] = { maSp: maSp_dr, tenTrinh: r.tenTrinh || '', sl: 0, cong: 0, congPc: 0, congCc: 0, loCount: new Set() }
+      }
+      const _tp = teamProductMap[cd][maSp_dr]
+      _tp.sl += sl; _tp.cong += cong
+      if (r.soLo) _tp.loCount.add(r.soLo)
+      if (isCC) _tp.congCc += cong; else _tp.congPc += cong
       if (cd === 'DG') slDg += sl
       if (r.ngay) {
         days.add(r.ngay)
@@ -6799,6 +6811,7 @@ function DashboardGDTab() {
 
     return {
       byTo,
+      teamProductMap,
       kpi: { tongSl: totalSl, slDg, tongCong: totalCong, nsTb: totalCong > 0 ? slDg / totalCong : 0, soNgay: days.size, soCa: cas.size },
       dailyTrend: Object.values(dayMap).sort((a, b) => a.ngay.localeCompare(b.ngay))
         .map(d => ({ ...d, label: dayjs(d.ngay).format('DD/MM') })),
@@ -6939,7 +6952,10 @@ function DashboardGDTab() {
                   const pSl   = kpi.tongSl   > 0 ? d.sl   / kpi.tongSl   * 100 : 0
                   const pCong = kpi.tongCong > 0 ? d.cong / kpi.tongCong * 100 : 0
                   return (
-                    <tr key={t.key} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa', borderBottom: '1px solid #f1f5f9' }}>
+                    <tr key={t.key}
+                      onClick={() => setDrillTeam(t.key)}
+                      style={{ background: i % 2 === 0 ? '#fff' : '#fafafa', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
+                    >
                       <td style={{ padding: '10px 10px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <div style={{ width: 4, height: 22, borderRadius: 2, background: t.slColor, flexShrink: 0 }} />
@@ -7229,6 +7245,81 @@ function DashboardGDTab() {
 
       </Spin>
       </>}
+
+      {/* ── Drill-down: chi tiết sản phẩm theo tổ ── */}
+      {drillTeam && (() => {
+        const gdTo = GD_TO.find(t => t.key === drillTeam)
+        const isPcpl1 = drillTeam === 'PCPL1'
+        const isPcpl2 = drillTeam === 'PCPL2'
+        const showBreakdown = isPcpl1 || isPcpl2
+        const products = Object.values(teamProductMap[drillTeam] || {}).sort((a, b) => b.sl - a.sl)
+        const colCount = showBreakdown ? 5 : 4
+        return (
+          <Modal
+            title={
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 4, height: 18, borderRadius: 2, background: gdTo?.slColor }} />
+                <span>Chi tiết sản phẩm — {gdTo?.label}</span>
+                <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 400, marginLeft: 4 }}>({products.length} mã SP)</span>
+              </div>
+            }
+            open={!!drillTeam}
+            onCancel={() => setDrillTeam(null)}
+            footer={null}
+            width={showBreakdown ? 820 : 650}
+            styles={{ body: { padding: '16px 20px', maxHeight: '70vh', overflowY: 'auto' } }}
+          >
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: '#f8fafc' }}>
+                  {[
+                    { label: 'Mã SP', align: 'left' },
+                    { label: 'SL', align: 'right' },
+                    ...(isPcpl1 ? [{ label: 'Công PC', align: 'right' }, { label: 'Công PL', align: 'right' }] : []),
+                    ...(isPcpl2 ? [{ label: 'Công PC', align: 'right' }, { label: 'Công CC', align: 'right' }] : []),
+                    ...(!showBreakdown ? [{ label: 'Công', align: 'right' }] : []),
+                    { label: 'Tổng Công', align: 'right' },
+                  ].map(h => (
+                    <th key={h.label} style={{ padding: '7px 10px', textAlign: h.align, fontWeight: 700, color: '#64748b', fontSize: 10, borderBottom: '2px solid #e2e8f0', textTransform: 'uppercase', letterSpacing: 0.5 }}>{h.label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {products.map((p, i) => {
+                  const congPl = isPcpl1 ? (teamProductMap['PL']?.[p.maSp]?.cong || 0) : 0
+                  const totalCong = isPcpl1 ? (p.congPc + congPl) : p.cong
+                  const fmtCong = n => n > 0 ? n.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
+                  return (
+                    <tr key={p.maSp} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa', borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '9px 10px' }}>
+                        <span style={{ fontFamily: 'monospace', color: gdTo?.slColor, fontWeight: 700 }}>{p.maSp}</span>
+                        {p.loCount.size > 0 && <span style={{ color: '#94a3b8', fontSize: 10, marginLeft: 8 }}>{p.loCount.size} lô</span>}
+                      </td>
+                      <td style={{ padding: '9px 10px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>
+                        {p.sl > 0 ? p.sl.toLocaleString('vi-VN') : '—'}
+                      </td>
+                      {isPcpl1 && <>
+                        <td style={{ padding: '9px 10px', textAlign: 'right', color: '#374151' }}>{fmtCong(p.congPc)}</td>
+                        <td style={{ padding: '9px 10px', textAlign: 'right', color: '#0e7490', fontWeight: congPl > 0 ? 600 : 400 }}>{fmtCong(congPl)}</td>
+                      </>}
+                      {isPcpl2 && <>
+                        <td style={{ padding: '9px 10px', textAlign: 'right', color: '#374151' }}>{fmtCong(p.congPc)}</td>
+                        <td style={{ padding: '9px 10px', textAlign: 'right', color: '#b45309', fontWeight: p.congCc > 0 ? 600 : 400 }}>{fmtCong(p.congCc)}</td>
+                      </>}
+                      {!showBreakdown && <td style={{ padding: '9px 10px', textAlign: 'right', color: '#374151' }}>{fmtCong(p.cong)}</td>}
+                      <td style={{ padding: '9px 10px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>{fmtCong(totalCong)}</td>
+                    </tr>
+                  )
+                })}
+                {products.length === 0 && (
+                  <tr><td colSpan={colCount} style={{ padding: 20, textAlign: 'center', color: '#94a3b8' }}>Không có dữ liệu</td></tr>
+                )}
+              </tbody>
+            </table>
+          </Modal>
+        )
+      })()}
+
     </div>
   )
 }
