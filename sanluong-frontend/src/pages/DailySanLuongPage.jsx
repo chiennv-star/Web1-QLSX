@@ -7307,7 +7307,7 @@ function DashboardGDTab() {
                       <td style={{ padding: '9px 10px', maxWidth: 200 }}>
                         {lots.length > 0
                           ? <div style={{ fontSize: 10, color: '#475569', lineHeight: 1.6, wordBreak: 'break-word' }}>
-                              {lots.map((lo, li) => (
+                              {lots.map((lo) => (
                                 <span key={lo} style={{ display: 'inline-block', background: '#f1f5f9', borderRadius: 3, padding: '0 5px', marginRight: 3, marginBottom: 2 }}>{lo}</span>
                               ))}
                             </div>
@@ -7334,6 +7334,36 @@ function DashboardGDTab() {
                   <tr><td colSpan={colCount} style={{ padding: 20, textAlign: 'center', color: '#94a3b8' }}>Không có dữ liệu</td></tr>
                 )}
               </tbody>
+              {/* Hàng tổng */}
+              {products.length > 0 && (() => {
+                const fmtCong = n => n > 0 ? n.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
+                const sumSl      = products.reduce((s, p) => s + p.sl, 0)
+                const sumCongPc  = products.reduce((s, p) => s + p.congPc, 0)
+                const sumCongCc  = products.reduce((s, p) => s + p.congCc, 0)
+                const sumCongPl  = isPcpl1 ? products.reduce((s, p) => s + (teamProductMap['PL']?.[p.maSp]?.cong || 0), 0) : 0
+                const sumCong    = products.reduce((s, p) => s + p.cong, 0)
+                const sumTotal   = isPcpl1 ? (sumCongPc + sumCongPl) : sumCong
+                const cellStyle  = { padding: '9px 10px', textAlign: 'right', fontWeight: 700, color: '#0f172a', fontSize: 12 }
+                return (
+                  <tfoot>
+                    <tr style={{ background: '#f0f9ff', borderTop: '2px solid #bae6fd' }}>
+                      <td style={{ padding: '9px 10px', fontWeight: 700, color: '#0f172a', fontSize: 12 }}>TỔNG</td>
+                      <td style={{ padding: '9px 10px', fontSize: 11, color: '#64748b' }}>{products.length} mã SP</td>
+                      <td style={{ ...cellStyle, color: gdTo?.slColor || '#0f172a' }}>{sumSl > 0 ? sumSl.toLocaleString('vi-VN') : '—'}</td>
+                      {isPcpl1 && <>
+                        <td style={cellStyle}>{fmtCong(sumCongPc)}</td>
+                        <td style={{ ...cellStyle, color: '#0e7490' }}>{fmtCong(sumCongPl)}</td>
+                      </>}
+                      {isPcpl2 && <>
+                        <td style={cellStyle}>{fmtCong(sumCongPc)}</td>
+                        <td style={{ ...cellStyle, color: '#b45309' }}>{fmtCong(sumCongCc)}</td>
+                      </>}
+                      {!showBreakdown && <td style={cellStyle}>{fmtCong(sumCong)}</td>}
+                      <td style={{ ...cellStyle, color: '#0369a1' }}>{fmtCong(sumTotal)}</td>
+                    </tr>
+                  </tfoot>
+                )
+              })()}
             </table>
           </Modal>
         )
