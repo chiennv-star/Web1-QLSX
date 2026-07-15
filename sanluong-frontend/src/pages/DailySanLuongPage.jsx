@@ -3004,6 +3004,9 @@ function ThongKeSanXuatTab() {
   const toStats = useMemo(() => {
     const map = {}
     TO_CONFIG_TK.forEach(t => { map[t.key] = { ...t, tongLo: 0, dat: 0, khongDat: 0, chuaNhap: 0, tongSl: 0, tongCong: 0 } })
+    // Cross-ref: PCPL1 SP list và PL công per maSp
+    const pcpl1SpSl = {}   // maSp → có SL trong PCPL1
+    const plCongPerSp = {} // maSp → tổng cong của PL
     raw.forEach(r => {
       let key = r.congDoan?.toUpperCase()
       if (key === 'PCPL3' || key === 'CC') key = 'PL'
@@ -3020,15 +3023,22 @@ function ThongKeSanXuatTab() {
         else map[key].chuaNhap++
         map[key].tongSl   += sl
         map[key].tongCong += cong
+        // Ghi nhận để cross-ref PCPL1↔PL
+        if (key === 'PCPL1' && sl > 0 && r.maSp) pcpl1SpSl[r.maSp] = true
+        if (key === 'PL' && r.maSp) plCongPerSp[r.maSp] = (plCongPerSp[r.maSp] || 0) + cong
       } else {
         map[key].chuaNhap++
       }
     })
+    // PL công chỉ cho các SP có SL trong PCPL1 (khớp logic modal)
+    const pcpl1PlCongTk = Object.keys(pcpl1SpSl).reduce((s, maSp) => s + (plCongPerSp[maSp] || 0), 0)
     return Object.values(map).map(t => {
       const base    = t.dat + t.khongDat
       const tyLeDat = base > 0 ? +(t.dat / base * 100).toFixed(1) : null
-      const ns      = t.tongCong > 0 ? +(t.tongSl / t.tongCong).toFixed(1) : null
-      return { ...t, tyLeDat, nangSuat: ns, datMucTieu: tyLeDat != null && tyLeDat >= MT_DAT_TK }
+      // PCPL1: tổng công = PC cong + PL cong cross-ref (giống Dashboard GĐ)
+      const effectiveCong = t.key === 'PCPL1' ? (t.tongCong + pcpl1PlCongTk) : t.tongCong
+      const ns      = effectiveCong > 0 ? +(t.tongSl / effectiveCong).toFixed(1) : null
+      return { ...t, tongCong: effectiveCong, tyLeDat, nangSuat: ns, datMucTieu: tyLeDat != null && tyLeDat >= MT_DAT_TK }
     }).sort((a, b) => (b.tyLeDat ?? -1) - (a.tyLeDat ?? -1))
   }, [raw])
 
