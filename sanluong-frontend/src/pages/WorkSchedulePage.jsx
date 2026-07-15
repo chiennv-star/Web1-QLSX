@@ -274,6 +274,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   const caChangedRef = useRef({}) // { rowKey: { ngay, maNhanVien, newCa } }
   const sessionsRef = useRef([]) // luôn trỏ tới sessions mới nhất, tránh stale closure trong onBlur
   const pendingSlRef = useRef({}) // track giá trị đang gõ để tránh stale closure trong InputNumber onBlur
+  const shiftPerfAutoLoadRef = useRef(new Set()) // guard: mỗi spKey chỉ auto-load 1 lần
   const VAI_TRO_KEY = 'vaitro_options'
   const DEFAULT_VAI_TRO = ['Trưởng ca', 'Phụ máy']
   const [vaiTroOptions, setVaiTroOptions] = useState(() => {
@@ -1834,159 +1835,268 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                 )
               })()}
 
-              {/* ── Máy thực hiện ── */}
+              {/* ── Máy thực hiện + Sản lượng theo ca (2 cột song song) ── */}
               {(() => {
                 const PREDEFINED_REASONS_RT = ['Chờ nguyên liệu', 'Hỏng máy', 'Chuyển đổi mã', 'Vệ sinh / bảo trì']
                 const machines = dayMachinesMap[k] || []
                 const allRtEntries = machineRuntimeMap[k] || []
                 const { runMin: totalRun, downMin: totalDown } = computeRtStats(allRtEntries)
                 return (
-                  <div style={{ borderTop: '1px solid #e0f2fe' }}>
-                    {/* Section header */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: '#f0f9ff', borderBottom: machines.length > 0 ? '1px solid #e0f2fe' : 'none' }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#0369a1' }}>⚙️ Máy thực hiện</span>
-                      {totalRun > 0 && <Tag color="success" style={{ margin: 0, fontSize: 11 }}>Chạy {totalRun}p</Tag>}
-                      {totalDown > 0 && <Tag color="error" style={{ margin: 0, fontSize: 11 }}>Nghỉ {totalDown}p</Tag>}
-                      {canEditDetail && (
-                        <Button size="small" type="dashed" icon={<PlusOutlined />}
-                          style={{ marginLeft: 'auto', fontSize: 11, color: '#0369a1', borderColor: '#7dd3fc', height: 24, lineHeight: '22px' }}
-                          onClick={() => {
-                            addMachineToDay(k)
-                            if (!machineRuntimeMap[k]) loadMachineRuntime(k)
-                          }}>
-                          + Thêm máy
-                        </Button>
+                  <div style={{ borderTop: '1px solid #e0f2fe', display: 'flex', alignItems: 'stretch' }}>
+
+                    {/* ── LEFT: Máy thực hiện ── */}
+                    <div style={{ flex: '0 0 50%', maxWidth: '50%', borderRight: '1px solid #e0f2fe' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: '#f0f9ff', borderBottom: machines.length > 0 ? '1px solid #e0f2fe' : 'none' }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#0369a1' }}>⚙️ Máy thực hiện</span>
+                        {totalRun > 0 && <Tag color="success" style={{ margin: 0, fontSize: 11 }}>Chạy {totalRun}p</Tag>}
+                        {totalDown > 0 && <Tag color="error" style={{ margin: 0, fontSize: 11 }}>Nghỉ {totalDown}p</Tag>}
+                        {canEditDetail && (
+                          <Button size="small" type="dashed" icon={<PlusOutlined />}
+                            style={{ marginLeft: 'auto', fontSize: 11, color: '#0369a1', borderColor: '#7dd3fc', height: 24, lineHeight: '22px' }}
+                            onClick={() => { addMachineToDay(k); if (!machineRuntimeMap[k]) loadMachineRuntime(k) }}>
+                            + Thêm máy
+                          </Button>
+                        )}
+                      </div>
+
+                      {machines.map((machineName, mIdx) => {
+                        const rtKey = `${k}|${machineName}`
+                        const rtEntries = allRtEntries.filter(e => e.tenMay === machineName || (!e.tenMay && mIdx === 0))
+                        const { runMin, downMin } = computeRtStats(rtEntries)
+                        const total = runMin + downMin
+                        const avail = total > 0 ? (runMin / total * 100).toFixed(1) : null
+                        const isOpen = machineRuntimeOpenDays.has(rtKey)
+                        const isSaving = machineRuntimeSaving.has(rtKey)
+                        const isDirty = machineRuntimeDirtyDays.has(rtKey)
+                        return (
+                          <div key={`${k}-m-${mIdx}`} style={{ borderBottom: '1px solid #e0f2fe' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', background: '#fff', flexWrap: 'wrap' }}>
+                              <PhongThucHienSelect
+                                size="small"
+                                value={machineName || undefined}
+                                onChange={v => updateMachineInDay(k, mIdx, v || '')}
+                                disabled={!canEditDetail}
+                                style={{ width: 195, fontSize: 11 }}
+                                placeholder="Chọn máy thực hiện..."
+                              />
+                              <InputNumber
+                                size="small" min={0} max={24} step={0.5}
+                                value={machineGioKHMap[rtKey] ?? null}
+                                onChange={v => {
+                                  if (v == null) return
+                                  setMachineGioKHMap(prev => ({ ...prev, [rtKey]: v }))
+                                  api.put('/machine-runtime/gio-kh', null, { params: { ngay: k, tenMay: machineName, gioKh: v } }).catch(() => {})
+                                }}
+                                placeholder="16" style={{ width: 100 }}
+                                addonBefore={<span style={{ fontSize: 10, color: '#64748b' }}>KH</span>}
+                                addonAfter={<span style={{ fontSize: 10, color: '#64748b' }}>h</span>}
+                              />
+                              {runMin > 0 && <Tag color="success" style={{ margin: 0, fontSize: 11 }}>Chạy {runMin}p</Tag>}
+                              {downMin > 0 && <Tag color="error" style={{ margin: 0, fontSize: 11 }}>Nghỉ {downMin}p</Tag>}
+                              {avail && <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>A={avail}%</Tag>}
+                              {isDirty && <Tag color="warning" style={{ margin: 0, fontSize: 11 }}>Chưa lưu</Tag>}
+                              <button
+                                onClick={() => {
+                                  if (isOpen && isDirty) {
+                                    Modal.confirm({
+                                      title: 'Chưa lưu thay đổi',
+                                      content: 'Bảng thời gian chạy máy có thay đổi chưa được lưu. Thoát mà không lưu?',
+                                      okText: 'Thoát không lưu', cancelText: 'Ở lại', okType: 'danger',
+                                      onOk: () => {
+                                        loadMachineRuntime(k)
+                                        setMachineRuntimeOpenDays(prev => { const n = new Set(prev); n.delete(rtKey); return n })
+                                      },
+                                    })
+                                    return
+                                  }
+                                  setMachineRuntimeOpenDays(prev => { const n = new Set(prev); n.has(rtKey) ? n.delete(rtKey) : n.add(rtKey); return n })
+                                  if (!machineRuntimeOpenDays.has(rtKey) && !machineRuntimeMap[k]) loadMachineRuntime(k)
+                                }}
+                                style={{ border: '1px solid #bae6fd', borderRadius: 5, background: isOpen ? '#e0f2fe' : '#f8fafc', color: '#0369a1', fontSize: 11, padding: '2px 10px', cursor: 'pointer', fontWeight: 600 }}>
+                                {isOpen ? '▲ Thu gọn' : '▼ Nhập TG'}
+                              </button>
+                              {canEditDetail && machines.length > 1 && (
+                                <button onClick={() => removeMachineFromDay(k, mIdx)}
+                                  style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 16, lineHeight: 1, padding: '0 4px', marginLeft: 'auto' }}
+                                  title="Xóa máy này">×</button>
+                              )}
+                            </div>
+                            {isOpen && (
+                              <div style={{ padding: '10px 14px 14px', background: '#f8fbff' }}>
+                                <div style={{ overflowX: 'auto' }}>
+                                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                    <thead>
+                                      <tr>
+                                        {['#', 'Từ giờ', 'Đến giờ', 'Trạng thái', 'Lý do dừng', 'Ghi chú', ''].map((h, i) => (
+                                          <th key={i} style={{ padding: '6px 8px', background: '#e0f2fe', color: '#0c4a6e', fontWeight: 600, fontSize: 11, textAlign: 'left', borderBottom: '1px solid #bae6fd', whiteSpace: 'nowrap' }}>{h}</th>
+                                        ))}
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {rtEntries.length === 0 && (
+                                        <tr><td colSpan={7} style={{ textAlign: 'center', color: '#aaa', padding: '12px 0', fontSize: 12 }}>Chưa có dữ liệu — nhấn "+ Thêm dòng"</td></tr>
+                                      )}
+                                      {rtEntries.map((row, idx) => {
+                                        const isChay = row.trangThai !== 'Dừng máy'
+                                        return (
+                                          <tr key={row._id} style={{ background: idx % 2 === 0 ? '#fff' : '#f0f9ff' }}>
+                                            <td style={{ padding: '4px 8px', color: '#94a3b8', fontSize: 11, textAlign: 'center', width: 28 }}>{idx + 1}</td>
+                                            <td style={{ padding: '3px 6px', width: 95 }}>
+                                              <TimePicker format="HH:mm" size="small" style={{ width: '100%' }}
+                                                value={row.tuGio ? dayjs(row.tuGio, 'HH:mm') : null}
+                                                onChange={(_, s) => updateMachineRuntimeRow(k, machineName, row._id, { tuGio: s })} />
+                                            </td>
+                                            <td style={{ padding: '3px 6px', width: 95 }}>
+                                              <TimePicker format="HH:mm" size="small" style={{ width: '100%' }}
+                                                value={row.denGio ? dayjs(row.denGio, 'HH:mm') : null}
+                                                onChange={(_, s) => updateMachineRuntimeRow(k, machineName, row._id, { denGio: s })} />
+                                            </td>
+                                            <td style={{ padding: '3px 6px', width: 110 }}>
+                                              <select value={row.trangThai || 'Chạy máy'} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12, color: isChay ? '#16a34a' : '#dc2626', fontWeight: 600 }}
+                                                onChange={e => updateMachineRuntimeRow(k, machineName, row._id, { trangThai: e.target.value, lyDo: '' })}>
+                                                <option value="Chạy máy">Chạy máy</option>
+                                                <option value="Dừng máy">Dừng máy</option>
+                                              </select>
+                                            </td>
+                                            <td style={{ padding: '3px 6px', width: 170 }}>
+                                              {(!isChay && !!row.lyDo && !PREDEFINED_REASONS_RT.includes(row.lyDo)) ? (
+                                                <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                                                  <input autoFocus value={row.lyDo} placeholder="Nhập lý do..."
+                                                    style={{ flex: 1, border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 6px', fontSize: 12, minWidth: 0 }}
+                                                    onChange={e => updateMachineRuntimeRow(k, machineName, row._id, { lyDo: e.target.value })} />
+                                                  <button onClick={() => updateMachineRuntimeRow(k, machineName, row._id, { lyDo: '' })}
+                                                    title="Quay lại danh sách"
+                                                    style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 15, padding: '0 2px', lineHeight: 1, flexShrink: 0 }}>↩</button>
+                                                </div>
+                                              ) : (
+                                                <select value={row.lyDo || ''} disabled={isChay} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12, background: isChay ? '#f3f4f6' : '#fff' }}
+                                                  onChange={e => updateMachineRuntimeRow(k, machineName, row._id, { lyDo: e.target.value })}>
+                                                  <option value="">—</option>
+                                                  {PREDEFINED_REASONS_RT.map(o => <option key={o} value={o}>{o}</option>)}
+                                                  <option value="Khác">Khác...</option>
+                                                </select>
+                                              )}
+                                            </td>
+                                            <td style={{ padding: '3px 6px' }}>
+                                              <input value={row.ghiChu || ''} placeholder="Ghi chú..." style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 6px', fontSize: 12 }}
+                                                onChange={e => updateMachineRuntimeRow(k, machineName, row._id, { ghiChu: e.target.value })} />
+                                            </td>
+                                            <td style={{ padding: '3px 6px', width: 30, textAlign: 'center' }}>
+                                              <button onClick={() => removeMachineRuntimeRow(k, machineName, row._id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
+                                            </td>
+                                          </tr>
+                                        )
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                                <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={() => addMachineRuntimeRow(k, machineName)}
+                                  style={{ marginTop: 8, fontSize: 11, color: '#0369a1', borderColor: '#bae6fd' }}>
+                                  + Thêm dòng
+                                </Button>
+                                {(runMin > 0 || downMin > 0) && (
+                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginTop: 12 }}>
+                                    {[
+                                      { label: 'Tổng TG kế hoạch', val: `${total} phút`, color: '#0f4c4c' },
+                                      { label: 'Tổng TG chạy máy', val: `${runMin} phút`, color: '#16a34a' },
+                                      { label: 'Tổng TG nghỉ', val: `${downMin} phút`, color: '#dc2626' },
+                                      { label: 'Availability (A)', val: avail ? `${avail}%` : '—', color: '#4f46e5' },
+                                    ].map(({ label, val, color }) => (
+                                      <div key={label} style={{ background: '#fff', border: '1px solid #e0f2fe', borderRadius: 8, padding: '8px 12px' }}>
+                                        <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, marginBottom: 2 }}>{label}</div>
+                                        <div style={{ fontSize: 16, fontWeight: 700, color, fontFamily: 'monospace' }}>{val}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
+                                  <Button type="primary" size="small" loading={isSaving} onClick={() => saveMachineRuntime(k, machineName)}
+                                    style={{ background: isDirty ? '#0369a1' : '#16a34a', borderColor: isDirty ? '#0369a1' : '#16a34a', fontSize: 12 }}>
+                                    {isDirty ? 'Lưu' : '✓ Đã lưu'}
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                      {machines.length === 0 && (
+                        <div style={{ padding: '8px 14px', fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>
+                          Chưa có máy thực hiện — nhấn "+ Thêm máy" để thêm
+                        </div>
                       )}
                     </div>
 
-                    {machines.map((machineName, mIdx) => {
-                      const rtKey = `${k}|${machineName}`
-                      const rtEntries = allRtEntries.filter(e => e.tenMay === machineName || (!e.tenMay && mIdx === 0))
-                      const { runMin, downMin } = computeRtStats(rtEntries)
-                      const total = runMin + downMin
-                      const avail = total > 0 ? (runMin / total * 100).toFixed(1) : null
-                      const isOpen = machineRuntimeOpenDays.has(rtKey)
-                      const isSaving = machineRuntimeSaving.has(rtKey)
-                      const isDirty = machineRuntimeDirtyDays.has(rtKey)
-                      return (
-                        <div key={`${k}-m-${mIdx}`} style={{ borderBottom: '1px solid #e0f2fe' }}>
-                          {/* Machine row */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', background: '#fff', flexWrap: 'wrap' }}>
-                            <PhongThucHienSelect
-                              size="small"
-                              value={machineName || undefined}
-                              onChange={v => updateMachineInDay(k, mIdx, v || '')}
-                              disabled={!canEditDetail}
-                              style={{ width: 195, fontSize: 11 }}
-                              placeholder="Chọn máy thực hiện..."
-                            />
-                            <InputNumber
-                              size="small"
-                              min={0} max={24} step={0.5}
-                              value={machineGioKHMap[rtKey] ?? null}
-                              onChange={v => {
-                                if (v == null) return
-                                setMachineGioKHMap(prev => ({ ...prev, [rtKey]: v }))
-                                api.put('/machine-runtime/gio-kh', null, { params: { ngay: k, tenMay: machineName, gioKh: v } }).catch(() => {})
-                              }}
-                              placeholder="16"
-                              style={{ width: 100 }}
-                              addonBefore={<span style={{ fontSize: 10, color: '#64748b' }}>KH</span>}
-                              addonAfter={<span style={{ fontSize: 10, color: '#64748b' }}>h</span>}
-                            />
-                            {runMin > 0 && <Tag color="success" style={{ margin: 0, fontSize: 11 }}>Chạy {runMin}p</Tag>}
-                            {downMin > 0 && <Tag color="error" style={{ margin: 0, fontSize: 11 }}>Nghỉ {downMin}p</Tag>}
-                            {avail && <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>A={avail}%</Tag>}
-                            {isDirty && <Tag color="warning" style={{ margin: 0, fontSize: 11 }}>Chưa lưu</Tag>}
-                            <button
-                              onClick={() => {
-                                if (isOpen && isDirty) {
-                                  Modal.confirm({
-                                    title: 'Chưa lưu thay đổi',
-                                    content: 'Bảng thời gian chạy máy có thay đổi chưa được lưu. Thoát mà không lưu?',
-                                    okText: 'Thoát không lưu', cancelText: 'Ở lại', okType: 'danger',
-                                    onOk: () => {
-                                      loadMachineRuntime(k)
-                                      setMachineRuntimeOpenDays(prev => { const n = new Set(prev); n.delete(rtKey); return n })
-                                    },
-                                  })
-                                  return
-                                }
-                                setMachineRuntimeOpenDays(prev => { const n = new Set(prev); n.has(rtKey) ? n.delete(rtKey) : n.add(rtKey); return n })
-                                if (!machineRuntimeOpenDays.has(rtKey) && !machineRuntimeMap[k]) loadMachineRuntime(k)
-                              }}
-                              style={{ border: '1px solid #bae6fd', borderRadius: 5, background: isOpen ? '#e0f2fe' : '#f8fafc', color: '#0369a1', fontSize: 11, padding: '2px 10px', cursor: 'pointer', fontWeight: 600 }}>
-                              {isOpen ? '▲ Thu gọn' : '▼ Nhập TG'}
-                            </button>
-                            {canEditDetail && machines.length > 1 && (
-                              <button onClick={() => removeMachineFromDay(k, mIdx)}
-                                style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 16, lineHeight: 1, padding: '0 4px', marginLeft: 'auto' }}
-                                title="Xóa máy này">×</button>
-                            )}
-                          </div>
-                          {/* Runtime log panel */}
-                          {isOpen && (
-                            <div style={{ padding: '10px 14px 14px', background: '#f8fbff' }}>
+                    {/* ── RIGHT: Sản lượng theo ca ── */}
+                    <div style={{ flex: '0 0 50%', maxWidth: '50%' }}>
+                      {machines.map((machineName, mIdx) => {
+                        const spKey = `${k}|${machineName}`
+                        if (shiftPerfMap[spKey] === undefined && !shiftPerfAutoLoadRef.current.has(spKey)) {
+                          shiftPerfAutoLoadRef.current.add(spKey)
+                          loadShiftPerf(k, machineName)
+                        }
+                        const spEntries = shiftPerfMap[spKey] || []
+                        const { sumLT, sumTT, pPct, tonThat } = computeShiftPerfStats(spEntries)
+                        const isSavingSP = shiftPerfSaving.has(spKey)
+                        const isDirtySP = shiftPerfDirtyDays.has(spKey)
+                        const pColor = pPct == null ? '#9ca3af' : pPct >= 95 ? '#16a34a' : pPct >= 80 ? '#d97706' : '#dc2626'
+                        return (
+                          <div key={`${k}-sp-${mIdx}`} style={{ borderBottom: machines.length > 1 ? '1px solid #fde68a' : 'none' }}>
+                            {/* Header */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: spEntries.length > 0 ? '#fffbeb' : '#f8fafc', borderBottom: '1px solid #fde68a' }}>
+                              <span style={{ fontSize: 13 }}>⚡</span>
+                              <span style={{ fontWeight: 600, fontSize: 12, color: '#92400e' }}>Sản lượng theo ca</span>
+                              {pPct != null && <Tag color={pPct >= 95 ? 'success' : pPct >= 80 ? 'warning' : 'error'} style={{ margin: 0, fontSize: 11 }}>P = {pPct}%</Tag>}
+                              {pPct == null && spEntries.length > 0 && <Tag color="default" style={{ margin: 0, fontSize: 11 }}>P = —</Tag>}
+                              {isDirtySP && <Tag color="warning" style={{ margin: 0, fontSize: 11 }}>Chưa lưu</Tag>}
+                              {canEditDetail && (
+                                <Button size="small" type="primary" icon={<PlusOutlined />}
+                                  style={{ marginLeft: 'auto', fontSize: 11, background: '#7c3aed', borderColor: '#7c3aed', height: 24, lineHeight: '22px' }}
+                                  onClick={() => addShiftPerfRow(k, machineName)}>
+                                  + Thêm dòng
+                                </Button>
+                              )}
+                            </div>
+                            {/* Content — always expanded */}
+                            <div style={{ padding: '8px 14px 12px', background: '#fffdf0' }}>
                               <div style={{ overflowX: 'auto' }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                                   <thead>
                                     <tr>
-                                      {['#', 'Từ giờ', 'Đến giờ', 'Trạng thái', 'Lý do dừng', 'Ghi chú', ''].map((h, i) => (
-                                        <th key={i} style={{ padding: '6px 8px', background: '#e0f2fe', color: '#0c4a6e', fontWeight: 600, fontSize: 11, textAlign: 'left', borderBottom: '1px solid #bae6fd', whiteSpace: 'nowrap' }}>{h}</th>
+                                      {['#', 'Ca / Lô', 'SL lý thuyết', 'SL thực tế', 'P ca (%)', ''].map((h, i) => (
+                                        <th key={i} style={{ padding: '5px 7px', background: '#fef3c7', color: '#92400e', fontWeight: 600, fontSize: 11, textAlign: 'left', borderBottom: '1px solid #fde68a', whiteSpace: 'nowrap' }}>{h}</th>
                                       ))}
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {rtEntries.length === 0 && (
-                                      <tr><td colSpan={7} style={{ textAlign: 'center', color: '#aaa', padding: '12px 0', fontSize: 12 }}>Chưa có dữ liệu — nhấn "+ Thêm dòng"</td></tr>
+                                    {spEntries.length === 0 && (
+                                      <tr><td colSpan={6} style={{ textAlign: 'center', color: '#aaa', padding: '12px 0', fontSize: 12 }}>Chưa có dữ liệu — nhấn "+ Thêm dòng"</td></tr>
                                     )}
-                                    {rtEntries.map((row, idx) => {
-                                      const isChay = row.trangThai !== 'Dừng máy'
+                                    {spEntries.map((row, idx) => {
+                                      const pCa = row.slLyThuyet > 0 && row.slThucTe != null ? Math.round(row.slThucTe / row.slLyThuyet * 1000) / 10 : null
                                       return (
-                                        <tr key={row._id} style={{ background: idx % 2 === 0 ? '#fff' : '#f0f9ff' }}>
-                                          <td style={{ padding: '4px 8px', color: '#94a3b8', fontSize: 11, textAlign: 'center', width: 28 }}>{idx + 1}</td>
-                                          <td style={{ padding: '3px 6px', width: 95 }}>
-                                            <TimePicker format="HH:mm" size="small" style={{ width: '100%' }}
-                                              value={row.tuGio ? dayjs(row.tuGio, 'HH:mm') : null}
-                                              onChange={(_, s) => updateMachineRuntimeRow(k, machineName, row._id, { tuGio: s })} />
-                                          </td>
-                                          <td style={{ padding: '3px 6px', width: 95 }}>
-                                            <TimePicker format="HH:mm" size="small" style={{ width: '100%' }}
-                                              value={row.denGio ? dayjs(row.denGio, 'HH:mm') : null}
-                                              onChange={(_, s) => updateMachineRuntimeRow(k, machineName, row._id, { denGio: s })} />
-                                          </td>
-                                          <td style={{ padding: '3px 6px', width: 110 }}>
-                                            <select value={row.trangThai || 'Chạy máy'} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12, color: isChay ? '#16a34a' : '#dc2626', fontWeight: 600 }}
-                                              onChange={e => updateMachineRuntimeRow(k, machineName, row._id, { trangThai: e.target.value, lyDo: '' })}>
-                                              <option value="Chạy máy">Chạy máy</option>
-                                              <option value="Dừng máy">Dừng máy</option>
+                                        <tr key={row._id} style={{ background: idx % 2 === 0 ? '#fff' : '#fffbeb' }}>
+                                          <td style={{ padding: '4px 7px', color: '#94a3b8', fontSize: 11, textAlign: 'center', width: 24 }}>{idx + 1}</td>
+                                          <td style={{ padding: '3px 5px', width: 90 }}>
+                                            <select value={row.caLo || ''} style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 5px', fontSize: 12, fontWeight: 600 }}
+                                              onChange={e => updateShiftPerfRow(spKey, row._id, { caLo: e.target.value })}>
+                                              <option value="">—</option>
+                                              {['Ca 1', 'Ca 2', 'Ca 3', 'Lô 1', 'Lô 2'].map(o => <option key={o} value={o}>{o}</option>)}
                                             </select>
                                           </td>
-                                          <td style={{ padding: '3px 6px', width: 170 }}>
-                                            {(!isChay && !!row.lyDo && !PREDEFINED_REASONS_RT.includes(row.lyDo)) ? (
-                                              <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                                                <input autoFocus value={row.lyDo} placeholder="Nhập lý do..."
-                                                  style={{ flex: 1, border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 6px', fontSize: 12, minWidth: 0 }}
-                                                  onChange={e => updateMachineRuntimeRow(k, machineName, row._id, { lyDo: e.target.value })} />
-                                                <button onClick={() => updateMachineRuntimeRow(k, machineName, row._id, { lyDo: '' })}
-                                                  title="Quay lại danh sách"
-                                                  style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 15, padding: '0 2px', lineHeight: 1, flexShrink: 0 }}>↩</button>
-                                              </div>
-                                            ) : (
-                                              <select value={row.lyDo || ''} disabled={isChay} style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 5px', fontSize: 12, background: isChay ? '#f3f4f6' : '#fff' }}
-                                                onChange={e => updateMachineRuntimeRow(k, machineName, row._id, { lyDo: e.target.value })}>
-                                                <option value="">—</option>
-                                                {PREDEFINED_REASONS_RT.map(o => <option key={o} value={o}>{o}</option>)}
-                                                <option value="Khác">Khác...</option>
-                                              </select>
-                                            )}
+                                          <td style={{ padding: '3px 5px', width: 100 }}>
+                                            <input type="number" value={row.slLyThuyet ?? ''} placeholder="SP tối đa" style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 6px', fontSize: 12, textAlign: 'right' }}
+                                              onChange={e => updateShiftPerfRow(spKey, row._id, { slLyThuyet: e.target.value === '' ? null : Number(e.target.value) })} />
                                           </td>
-                                          <td style={{ padding: '3px 6px' }}>
-                                            <input value={row.ghiChu || ''} placeholder="Ghi chú..." style={{ width: '100%', border: '1px solid #bae6fd', borderRadius: 5, padding: '3px 6px', fontSize: 12 }}
-                                              onChange={e => updateMachineRuntimeRow(k, machineName, row._id, { ghiChu: e.target.value })} />
+                                          <td style={{ padding: '3px 5px', width: 100 }}>
+                                            <input type="number" value={row.slThucTe ?? ''} placeholder="SP thực tế" style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 6px', fontSize: 12, textAlign: 'right', color: '#1d4ed8', fontWeight: 700 }}
+                                              onChange={e => updateShiftPerfRow(spKey, row._id, { slThucTe: e.target.value === '' ? null : Number(e.target.value) })} />
                                           </td>
-                                          <td style={{ padding: '3px 6px', width: 30, textAlign: 'center' }}>
-                                            <button onClick={() => removeMachineRuntimeRow(k, machineName, row._id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
+                                          <td style={{ padding: '3px 5px', width: 60, textAlign: 'center', fontWeight: 700, color: pCa == null ? '#9ca3af' : pCa >= 95 ? '#16a34a' : pCa >= 80 ? '#d97706' : '#dc2626' }}>
+                                            {pCa != null ? `${pCa}%` : '—'}
+                                          </td>
+                                          <td style={{ padding: '3px 5px', width: 28, textAlign: 'center' }}>
+                                            <button onClick={() => removeShiftPerfRow(spKey, row._id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
                                           </td>
                                         </tr>
                                       )
@@ -1994,170 +2104,41 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                   </tbody>
                                 </table>
                               </div>
-                              <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={() => addMachineRuntimeRow(k, machineName)}
-                                style={{ marginTop: 8, fontSize: 11, color: '#0369a1', borderColor: '#bae6fd' }}>
-                                + Thêm dòng
-                              </Button>
-                              {(runMin > 0 || downMin > 0) && (
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginTop: 12 }}>
-                                  {[
-                                    { label: 'Tổng TG kế hoạch', val: `${total} phút`, color: '#0f4c4c' },
-                                    { label: 'Tổng TG chạy máy', val: `${runMin} phút`, color: '#16a34a' },
-                                    { label: 'Tổng TG nghỉ', val: `${downMin} phút`, color: '#dc2626' },
-                                    { label: 'Availability (A)', val: avail ? `${avail}%` : '—', color: '#4f46e5' },
-                                  ].map(({ label, val, color }) => (
-                                    <div key={label} style={{ background: '#fff', border: '1px solid #e0f2fe', borderRadius: 8, padding: '8px 12px' }}>
-                                      <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, marginBottom: 2 }}>{label}</div>
-                                      <div style={{ fontSize: 16, fontWeight: 700, color, fontFamily: 'monospace' }}>{val}</div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                              <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
-                                <Button type="primary" size="small" loading={isSaving} onClick={() => saveMachineRuntime(k, machineName)}
-                                  style={{ background: isDirty ? '#0369a1' : '#16a34a', borderColor: isDirty ? '#0369a1' : '#16a34a', fontSize: 12 }}>
-                                  {isDirty ? 'Lưu' : '✓ Đã lưu'}
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 8 }}>
+                                {[
+                                  { label: 'SL lý thuyết', val: sumLT > 0 ? Number(sumLT).toLocaleString('vi-VN') + ' SP' : '— SP', color: '#1e3a5f' },
+                                  { label: 'SL thực tế', val: sumTT > 0 ? Number(sumTT).toLocaleString('vi-VN') + ' SP' : '— SP', color: '#16a34a' },
+                                  { label: 'Tổng tổn thất', val: sumLT > 0 ? Number(tonThat).toLocaleString('vi-VN') + ' SP' : '— SP', color: '#dc2626' },
+                                  { label: 'P ngày', val: pPct != null ? `${pPct}%` : '—', color: pColor },
+                                ].map(({ label, val, color }) => (
+                                  <div key={label} style={{ background: '#fff', border: '1px solid #fde68a', borderRadius: 6, padding: '5px 8px' }}>
+                                    <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, marginBottom: 1 }}>{label}</div>
+                                    <div style={{ fontSize: 13, fontWeight: 700, color, fontFamily: 'monospace' }}>{val}</div>
+                                  </div>
+                                ))}
+                              </div>
+                              <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <Button type="primary" size="small" loading={isSavingSP} onClick={() => saveShiftPerf(k, machineName)}
+                                  style={{ background: isDirtySP ? '#d97706' : '#16a34a', borderColor: isDirtySP ? '#d97706' : '#16a34a', fontSize: 12 }}>
+                                  {isDirtySP ? 'Lưu' : '✓ Đã lưu'}
                                 </Button>
+                                <Button size="small" danger onClick={() => { setShiftPerfMap(prev => ({ ...prev, [spKey]: [] })); _spMarkDirty(spKey) }} style={{ fontSize: 12 }}>
+                                  Xóa trắng
+                                </Button>
+                                {!isDirtySP && spEntries.length > 0 && <span style={{ fontSize: 11, color: '#9ca3af' }}>Cập nhật: {spEntries[0]?.updatedAt ? new Date(spEntries[0].updatedAt).toLocaleString('vi-VN') : '—'}</span>}
                               </div>
                             </div>
-                          )}
-                          {/* ── Sản lượng theo ca - riêng theo máy ── */}
-                          {(() => {
-                            const spKey = `${k}|${machineName}`
-                            const spEntries = shiftPerfMap[spKey] || []
-                            const { sumLT, sumTT, pPct, tonThat } = computeShiftPerfStats(spEntries)
-                            const isOpenSP = shiftPerfOpenDays.has(spKey)
-                            const isSavingSP = shiftPerfSaving.has(spKey)
-                            const isDirtySP = shiftPerfDirtyDays.has(spKey)
-                            const LOSS_TYPES = ['— Chọn loại tổn thất —', 'Giảm tốc độ', 'Dừng nhỏ / Ngắt quãng', 'Nhân công / Điều chỉnh', 'Chất lượng / Làm lại', 'Khác']
-                            const lossColors = { 'Giảm tốc độ': '#dc2626', 'Dừng nhỏ / Ngắt quãng': '#d97706', 'Nhân công / Điều chỉnh': '#7c3aed', 'Chất lượng / Làm lại': '#0369a1', 'Khác': '#6b7280' }
-                            const pColor = pPct == null ? '#9ca3af' : pPct >= 95 ? '#16a34a' : pPct >= 80 ? '#d97706' : '#dc2626'
-                            return (
-                              <div style={{ borderTop: '1px solid #fde68a' }}>
-                                <div
-                                  onClick={() => {
-                                    setShiftPerfOpenDays(prev => { const n = new Set(prev); n.has(spKey) ? n.delete(spKey) : n.add(spKey); return n })
-                                    if (!shiftPerfOpenDays.has(spKey) && shiftPerfMap[spKey] === undefined) loadShiftPerf(k, machineName)
-                                  }}
-                                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, userSelect: 'none', background: spEntries.length > 0 ? '#fffbeb' : '#f8fafc', color: '#92400e' }}
-                                >
-                                  <span>⚡</span>
-                                  <span style={{ fontWeight: 600 }}>Sản lượng theo ca</span>
-                                  {pPct != null && <Tag color={pPct >= 95 ? 'success' : pPct >= 80 ? 'warning' : 'error'} style={{ margin: 0, fontSize: 11 }}>P = {pPct}%</Tag>}
-                                  {pPct == null && spEntries.length > 0 && <Tag color="default" style={{ margin: 0, fontSize: 11 }}>P = —</Tag>}
-                                  {isDirtySP && <Tag color="warning" style={{ margin: 0, fontSize: 11 }}>Chưa lưu</Tag>}
-                                  <span style={{ marginLeft: 'auto', fontSize: 11, color: '#9ca3af' }}>{isOpenSP ? '▲ Thu gọn' : '▼ Xem / Nhập'}</span>
-                                </div>
-                                {isOpenSP && (
-                                  <div style={{ padding: '10px 14px 14px', background: '#fffdf0' }}>
-                                    <div style={{ overflowX: 'auto' }}>
-                                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                                        <thead>
-                                          <tr>
-                                            {['#', 'Ca / Lô', 'SL lý thuyết', 'SL thực tế sản xuất', 'P ca (%)', 'Tổn thất tốc độ', 'Nguyên nhân giảm tốc', ''].map((h, i) => (
-                                              <th key={i} style={{ padding: '5px 7px', background: '#fef3c7', color: '#92400e', fontWeight: 600, fontSize: 11, textAlign: 'left', borderBottom: '1px solid #fde68a', whiteSpace: 'nowrap' }}>{h}</th>
-                                            ))}
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {spEntries.length === 0 && (
-                                            <tr><td colSpan={8} style={{ textAlign: 'center', color: '#aaa', padding: '12px 0', fontSize: 12 }}>Chưa có dữ liệu — nhấn "+ Thêm dòng"</td></tr>
-                                          )}
-                                          {spEntries.map((row, idx) => {
-                                            const pCa = row.slLyThuyet > 0 && row.slThucTe != null ? Math.round(row.slThucTe / row.slLyThuyet * 1000) / 10 : null
-                                            const tt = row.slLyThuyet != null && row.slThucTe != null ? row.slLyThuyet - row.slThucTe : null
-                                            return (
-                                              <tr key={row._id} style={{ background: idx % 2 === 0 ? '#fff' : '#fffbeb' }}>
-                                                <td style={{ padding: '4px 7px', color: '#94a3b8', fontSize: 11, textAlign: 'center', width: 24 }}>{idx + 1}</td>
-                                                <td style={{ padding: '3px 5px', width: 90 }}>
-                                                  <select value={row.caLo || ''} style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 5px', fontSize: 12, fontWeight: 600 }}
-                                                    onChange={e => updateShiftPerfRow(spKey, row._id, { caLo: e.target.value })}>
-                                                    <option value="">—</option>
-                                                    {['Ca 1', 'Ca 2', 'Ca 3', 'Lô 1', 'Lô 2'].map(o => <option key={o} value={o}>{o}</option>)}
-                                                  </select>
-                                                </td>
-                                                <td style={{ padding: '3px 5px', width: 110 }}>
-                                                  <input type="number" value={row.slLyThuyet ?? ''} placeholder="SP tối đa" style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 6px', fontSize: 12, textAlign: 'right' }}
-                                                    onChange={e => updateShiftPerfRow(spKey, row._id, { slLyThuyet: e.target.value === '' ? null : Number(e.target.value) })} />
-                                                </td>
-                                                <td style={{ padding: '3px 5px', width: 130 }}>
-                                                  <input type="number" value={row.slThucTe ?? ''} placeholder="SP thực tế" style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 6px', fontSize: 12, textAlign: 'right', color: '#1d4ed8', fontWeight: 700 }}
-                                                    onChange={e => updateShiftPerfRow(spKey, row._id, { slThucTe: e.target.value === '' ? null : Number(e.target.value) })} />
-                                                </td>
-                                                <td style={{ padding: '3px 5px', width: 70, textAlign: 'center', fontWeight: 700, color: pCa == null ? '#9ca3af' : pCa >= 95 ? '#16a34a' : pCa >= 80 ? '#d97706' : '#dc2626' }}>
-                                                  {pCa != null ? `${pCa}%` : '—'}
-                                                </td>
-                                                <td style={{ padding: '3px 5px', width: 90, textAlign: 'right', color: tt > 0 ? '#dc2626' : '#6b7280', fontWeight: tt > 0 ? 600 : 400 }}>
-                                                  {tt != null ? Number(tt).toLocaleString('vi-VN') : '—'}
-                                                </td>
-                                                <td style={{ padding: '3px 5px' }}>
-                                                  <select value={row.nguyenNhan || ''} style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 5px', fontSize: 11, color: lossColors[row.nguyenNhan] || '#6b7280' }}
-                                                    onChange={e => updateShiftPerfRow(spKey, row._id, { nguyenNhan: e.target.value || null })}>
-                                                    {LOSS_TYPES.map(o => <option key={o} value={o === '— Chọn loại tổn thất —' ? '' : o}>{o}</option>)}
-                                                  </select>
-                                                </td>
-                                                <td style={{ padding: '3px 5px', width: 28, textAlign: 'center' }}>
-                                                  <button onClick={() => removeShiftPerfRow(spKey, row._id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
-                                                </td>
-                                              </tr>
-                                            )
-                                          })}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                    <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={() => addShiftPerfRow(k, machineName)} style={{ marginTop: 8, fontSize: 11, color: '#92400e', borderColor: '#fde68a' }}>
-                                      + Thêm dòng
-                                    </Button>
-                                    {(() => {
-                                      const byType = { 'Giảm tốc độ': 0, 'Dừng nhỏ / Ngắt quãng': 0, 'Nhân công / Điều chỉnh': 0 }
-                                      spEntries.forEach(e => {
-                                        const tt = (e.slLyThuyet || 0) - (e.slThucTe || 0)
-                                        if (tt > 0 && byType[e.nguyenNhan] !== undefined) byType[e.nguyenNhan] += tt
-                                      })
-                                      const allCards = [
-                                        { label: 'SL lý thuyết', val: sumLT > 0 ? Number(sumLT).toLocaleString('vi-VN') + ' SP' : '— SP', color: '#1e3a5f', border: '#fde68a' },
-                                        { label: 'SL thực tế', val: sumTT > 0 ? Number(sumTT).toLocaleString('vi-VN') + ' SP' : '— SP', color: '#16a34a', border: '#fde68a' },
-                                        { label: 'Tổng tổn thất', val: sumLT > 0 ? Number(tonThat).toLocaleString('vi-VN') + ' SP' : '— SP', color: '#dc2626', border: '#fde68a' },
-                                        { label: 'P ngày', val: pPct != null ? `${pPct}%` : '—', color: pColor, border: '#fde68a' },
-                                        { label: 'Đánh giá', val: pPct == null ? '—' : pPct >= 95 ? '✓ Đạt' : pPct >= 80 ? '△ Cần cải thiện' : '✗ Chưa đạt', color: pColor, border: '#fde68a' },
-                                        { label: '📉 Giảm tốc độ', val: byType['Giảm tốc độ'] > 0 ? Number(byType['Giảm tốc độ']).toLocaleString('vi-VN') + ' SP' : '— SP', color: byType['Giảm tốc độ'] > 0 ? '#dc2626' : '#9ca3af', border: '#fecaca' },
-                                        { label: '⏸ Dừng nhỏ / Ngắt quãng', val: byType['Dừng nhỏ / Ngắt quãng'] > 0 ? Number(byType['Dừng nhỏ / Ngắt quãng']).toLocaleString('vi-VN') + ' SP' : '— SP', color: byType['Dừng nhỏ / Ngắt quãng'] > 0 ? '#d97706' : '#9ca3af', border: '#fde68a' },
-                                        { label: '⚡ Nhân công / Điều chỉnh', val: byType['Nhân công / Điều chỉnh'] > 0 ? Number(byType['Nhân công / Điều chỉnh']).toLocaleString('vi-VN') + ' SP' : '— SP', color: byType['Nhân công / Điều chỉnh'] > 0 ? '#7c3aed' : '#9ca3af', border: '#e9d5ff' },
-                                      ]
-                                      return (
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginTop: 10 }}>
-                                          {allCards.map(({ label, val, color, border }) => (
-                                            <div key={label} style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: 6, padding: '5px 8px' }}>
-                                              <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, marginBottom: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
-                                              <div style={{ fontSize: 13, fontWeight: 700, color, fontFamily: 'monospace' }}>{val}</div>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )
-                                    })()}
-                                    <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
-                                      <Button type="primary" size="small" loading={isSavingSP} onClick={() => saveShiftPerf(k, machineName)}
-                                        style={{ background: isDirtySP ? '#d97706' : '#16a34a', borderColor: isDirtySP ? '#d97706' : '#16a34a', fontSize: 12 }}>
-                                        {isDirtySP ? 'Lưu' : '✓ Đã lưu'}
-                                      </Button>
-                                      <Button size="small" danger onClick={() => { setShiftPerfMap(prev => ({ ...prev, [spKey]: [] })); _spMarkDirty(spKey) }} style={{ fontSize: 12 }}>
-                                        Xóa trắng
-                                      </Button>
-                                      {!isDirtySP && spEntries.length > 0 && <span style={{ fontSize: 11, color: '#9ca3af' }}>Cập nhật: {spEntries[0]?.updatedAt ? new Date(spEntries[0].updatedAt).toLocaleString('vi-VN') : '—'}</span>}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            )
-                          })()}
+                          </div>
+                        )
+                      })}
+                      {machines.length === 0 && (
+                        <div style={{ padding: '6px 14px', background: '#f8fafc', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 13 }}>⚡</span>
+                          <span style={{ fontWeight: 600, fontSize: 12, color: '#92400e' }}>Sản lượng theo ca</span>
                         </div>
-                      )
-                    })}
-                    {machines.length === 0 && (
-                      <div style={{ padding: '8px 14px', fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>
-                        Chưa có máy thực hiện — nhấn "+ Thêm máy" để thêm
-                      </div>
-                    )}
+                      )}
+                    </div>
+
                   </div>
                 )
               })()}
