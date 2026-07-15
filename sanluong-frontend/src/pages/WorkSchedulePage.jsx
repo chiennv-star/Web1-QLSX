@@ -330,6 +330,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     setNonprodEntries({})
     setNonprodDirtyDays(new Set())
     setNonprodSavingDays(new Set())
+    setMachineRuntimeMap({})
+    setMachineRuntimeOpenDays(new Set())
     api.get(`/non-productive-time/by-schedule/${schedule.id}`)
       .then(({ data }) => {
         const map = {}
@@ -534,6 +536,16 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
               if (res.status === 'fulfilled') rtMap[days[i]] = res.value.data.map(r => ({ ...r, _id: r.id }))
             })
             setMachineRuntimeMap(rtMap)
+            // Auto-expand sections that already have runtime data
+            const autoOpen = new Set()
+            days.forEach(ngay => {
+              const entries = rtMap[ngay] || []
+              if (entries.length === 0) return
+              ;(machineMap[ngay] || []).forEach(machineName => {
+                if (entries.some(e => !e.tenMay || e.tenMay === machineName)) autoOpen.add(`${ngay}|${machineName}`)
+              })
+            })
+            if (autoOpen.size > 0) setMachineRuntimeOpenDays(autoOpen)
           })
         const spPairs = days.flatMap(ngay => (machineMap[ngay] || []).map(m => ({ ngay, m })))
         if (spPairs.length > 0) {
