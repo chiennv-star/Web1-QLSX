@@ -519,10 +519,14 @@ function DonHangDetailModal({ open, record, onClose, onSaved }) {
       const { data: res } = await api.get('/work-schedule', { params: { source: 'PLAN', page: 0, size: 1000 } })
       const all = Array.isArray(res) ? res : (res.content || [])
       setKhoachList(all.filter(r => {
-        // maDonHang lưu trong DB → ưu tiên cao nhất
-        if (record.maDonHang && r.maDonHang)
-          return r.maDonHang === record.maDonHang
-        // Fallback: maBravo (@Transient, enriched từ ProductMaster)
+        // Phải khớp Mã Đơn Hàng — và nếu cả 2 bên đều có Mã Bravo thì phải khớp luôn,
+        // tránh gộp nhầm 2 sản phẩm khác nhau trùng Mã ĐH (giống logic ở trang danh sách Đơn Hàng)
+        if (record.maDonHang && r.maDonHang) {
+          if (r.maDonHang !== record.maDonHang) return false
+          if (record.maBravo && r.maBravo && r.maBravo !== record.maBravo) return false
+          return true
+        }
+        // Fallback khi đơn hàng chưa có Mã ĐH: khớp theo maBravo (@Transient, enriched từ ProductMaster)
         if (record.maBravo && r.maBravo)
           return r.maBravo === record.maBravo
         return false
