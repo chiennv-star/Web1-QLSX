@@ -5280,8 +5280,11 @@ function NhapKhoTongHopTable({ data, loading, onRowClick }) {
 
 function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
   const [localRecord, setLocalRecord] = useState(initialRecord)
-  const [slNK,   setSlNK]   = useState(null)
-  const [ngayNK, setNgayNK] = useState(dayjs())
+  const [slNK,       setSlNK]       = useState(null)
+  const [ngayNK,     setNgayNK]     = useState(dayjs())
+  const [tinhTrang,  setTinhTrang]  = useState('')
+  const [tenNth,     setTenNth]     = useState('')
+  const [ghiChu,     setGhiChu]     = useState('')
   const [saving, setSaving] = useState(false)
   const [entries, setEntries] = useState([])
   const [dgSl,   setDgSl]   = useState(null)   // null = loading/unknown, number = fetched
@@ -5394,7 +5397,9 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
       const body = {
         tpNhapKho:        String(slNK),
         ngayXuatKho:      ngayNK ? ngayNK.format('YYYY-MM-DD') : '',
-        tinhTrangNhapKho: '',
+        tinhTrangNhapKho: tinhTrang || '',
+        tenNthNhapKho:    tenNth.trim(),
+        ghiChuNhapKho:    ghiChu.trim(),
       }
       const isNewEntry = (r.soLanNhapKho || 0) > 0
       if (isNewEntry) {
@@ -5411,6 +5416,9 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
       }))
       setSlNK(null)
       setNgayNK(dayjs())
+      setTinhTrang('')
+      setTenNth('')
+      setGhiChu('')
       fetchEntries(r.id)
       onSaved()
     } catch { message.error('Lưu thất bại') }
@@ -5528,21 +5536,31 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
                   <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, padding: '12px', color: '#bbb', fontSize: 13, textAlign: 'center' }}>Chưa có lịch sử nhập kho</div>
                 ) : (
                   <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 1fr 30px', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
-                      <div style={{ padding: '5px 6px', fontSize: 11, fontWeight: 700, color: '#64748b', borderRight: '1px solid #e2e8f0' }}>#</div>
-                      <div style={{ padding: '5px 8px', fontSize: 11, fontWeight: 700, color: '#64748b', borderRight: '1px solid #e2e8f0' }}>Ngày NK</div>
-                      <div style={{ padding: '5px 8px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'right', borderRight: '1px solid #e2e8f0' }}>Số lượng</div>
-                      <div style={{ padding: '5px 4px', fontSize: 11, color: '#64748b' }} />
+                    <div style={{ display: 'grid', gridTemplateColumns: '22px 78px 62px 68px 80px 1fr 26px', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
+                      {['#', 'Ngày NK', 'SL', 'Tình trạng', 'Tên NTH', 'Ghi chú', ''].map((h, i) => (
+                        <div key={i} style={{ padding: '5px 6px', fontSize: 10, fontWeight: 700, color: '#64748b', borderRight: i < 6 ? '1px solid #e2e8f0' : 'none', textAlign: i === 2 ? 'right' : 'left' }}>{h}</div>
+                      ))}
                     </div>
                     <div style={{ maxHeight: 160, overflowY: 'auto' }}>
                       {entries.map((e, i) => (
-                        <div key={e.id} style={{ display: 'grid', gridTemplateColumns: '28px 1fr 1fr 30px', borderBottom: i < entries.length - 1 ? '1px solid #f0f4f8' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc', alignItems: 'center' }}>
-                          <div style={{ padding: '5px 6px', fontSize: 12, color: '#94a3b8', borderRight: '1px solid #f0f4f8' }}>{i + 1}</div>
-                          <div style={{ padding: '5px 8px', fontSize: 12, color: '#374151', borderRight: '1px solid #f0f4f8' }}>
+                        <div key={e.id} style={{ display: 'grid', gridTemplateColumns: '22px 78px 62px 68px 80px 1fr 26px', borderBottom: i < entries.length - 1 ? '1px solid #f0f4f8' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc', alignItems: 'center' }}>
+                          <div style={{ padding: '4px 5px', fontSize: 11, color: '#94a3b8', borderRight: '1px solid #f0f4f8' }}>{i + 1}</div>
+                          <div style={{ padding: '4px 6px', fontSize: 11, color: '#374151', borderRight: '1px solid #f0f4f8' }}>
                             {e.ngayXuatKho ? dayjs(e.ngayXuatKho).format('DD/MM/YYYY') : '—'}
                           </div>
-                          <div style={{ padding: '5px 8px', fontSize: 12, fontWeight: 600, color: '#1d4ed8', textAlign: 'right', borderRight: '1px solid #f0f4f8' }}>
+                          <div style={{ padding: '4px 6px', fontSize: 11, fontWeight: 600, color: '#1d4ed8', textAlign: 'right', borderRight: '1px solid #f0f4f8' }}>
                             {e.tpNhapKho != null ? Number(e.tpNhapKho).toLocaleString('vi-VN') : '—'}
+                          </div>
+                          <div style={{ padding: '4px 6px', fontSize: 11, borderRight: '1px solid #f0f4f8' }}>
+                            {e.tinhTrangNhapKho
+                              ? <span style={{ background: e.tinhTrangNhapKho === 'Hoàn tất' ? '#dcfce7' : '#fef3c7', color: e.tinhTrangNhapKho === 'Hoàn tất' ? '#15803d' : '#92400e', borderRadius: 4, padding: '1px 5px', fontSize: 10, fontWeight: 700 }}>{e.tinhTrangNhapKho}</span>
+                              : <span style={{ color: '#d1d5db' }}>—</span>}
+                          </div>
+                          <div style={{ padding: '4px 6px', fontSize: 11, color: '#374151', borderRight: '1px solid #f0f4f8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {e.tenNthNhapKho || <span style={{ color: '#d1d5db' }}>—</span>}
+                          </div>
+                          <div style={{ padding: '4px 6px', fontSize: 11, color: '#374151', borderRight: '1px solid #f0f4f8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {e.ghiChuNhapKho || <span style={{ color: '#d1d5db' }}>—</span>}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Popconfirm
@@ -5610,6 +5628,43 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
                   onChange={setNgayNK}
                   format="DD/MM/YYYY"
                   placeholder="Chọn ngày nhập kho"
+                />
+              </div>
+
+              <div>
+                <div style={{ marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#374151' }}>Tình trạng</div>
+                <Select
+                  style={{ width: '100%' }}
+                  size="large"
+                  allowClear
+                  value={tinhTrang || undefined}
+                  onChange={v => setTinhTrang(v || '')}
+                  placeholder="Chọn tình trạng..."
+                  options={[
+                    { value: 'Hoàn tất', label: 'Hoàn tất' },
+                    { value: 'Chốt', label: 'Chốt' },
+                    { value: 'Chờ xử lý', label: 'Chờ xử lý' },
+                  ]}
+                />
+              </div>
+
+              <div>
+                <div style={{ marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#374151' }}>Tên NTH</div>
+                <Input
+                  size="large"
+                  value={tenNth}
+                  onChange={e => setTenNth(e.target.value)}
+                  placeholder="Tên người thực hiện..."
+                />
+              </div>
+
+              <div>
+                <div style={{ marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#374151' }}>Ghi chú</div>
+                <Input.TextArea
+                  rows={2}
+                  value={ghiChu}
+                  onChange={e => setGhiChu(e.target.value)}
+                  placeholder="Ghi chú..."
                 />
               </div>
 
