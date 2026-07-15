@@ -4051,6 +4051,304 @@ function PhanTichSanLuongTab() {
   )
 }
 
+// ─── Tab: Sử dụng máy theo ngày (chỉ số A / P) ────────────────────────────────
+
+const GIO_CHUAN_CA = 8 // giờ chuẩn / ca — dùng làm mẫu số cho chỉ số A
+
+function timeToMinutes(t) {
+  if (!t) return null
+  const m = /^(\d{1,2}):(\d{2})/.exec(String(t).trim())
+  if (!m) return null
+  const h = Number(m[1]), mi = Number(m[2])
+  if (Number.isNaN(h) || Number.isNaN(mi)) return null
+  return h * 60 + mi
+}
+
+// Hợp các khung giờ (union) để tránh đếm trùng khi nhiều người cùng dùng 1 máy
+function mergeIntervalMinutes(intervals) {
+  if (!intervals.length) return 0
+  const sorted = [...intervals].sort((a, b) => a[0] - b[0])
+  let total = 0
+  let [curS, curE] = sorted[0]
+  for (let i = 1; i < sorted.length; i++) {
+    const [s, e] = sorted[i]
+    if (s <= curE) { if (e > curE) curE = e }
+    else { total += curE - curS; curS = s; curE = e }
+  }
+  total += curE - curS
+  return total
+}
+
+function MachineUsageTab() {
+  const [dateRange, setDateRange] = useState([dayjs().subtract(6, 'day'), dayjs()])
+  const [loading, setLoading] = useState(false)
+  const [raw, setRaw] = useState([])
+  const [machineMap, setMachineMap] = useState({}) // maSp → { pc, pl, dg, bbc1 }
+  const [mayFilter, setMayFilter] = useState([])
+  const [activeQuickRange, setActiveQuickRange] = useState('Tuần này')
+
+  const fetchData = useCallback(async (range = dateRange) => {
+    setLoading(true)
+    try {
+      const { data: res } = await api.get('/work-schedule-session/daily-report', {
+        params: { fromDate: range[0].format('YYYY-MM-DD'), toDate: range[1].format('YYYY-MM-DD') },
+      })
+      const rows = res.filter(r => r.status !== 'PENDING' && r.status !== 'IN_PROGRESS')
+      setRaw(rows)
+      const codes = [...new Set(rows.map(r => r.maSp).filter(Boolean))]
+      if (codes.length > 0) {
+        api.get('/product-master/lookup-batch', { params: { codes } })
+          .then(({ data: bm }) => {
+            const mm = {}
+            codes.forEach(c => {
+              if (bm[c]) mm[c] = { pc: bm[c].mayMocPc, pl: bm[c].mayMocPl, dg: bm[c].mayMocDg, bbc1: bm[c].mayMocBbc1 }
+            })
+            setMachineMap(mm)
+          })
+          .catch(() => {})
+      } else {
+        setMachineMap({})
+      }
+    } catch {
+      message.error('Không thể tải dữ liệu sử dụng máy')
+    } finally {
+      setLoading(false)
+    }
+  }, [dateRange])
+
+  useEffect(() => { fetchData() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Gộp theo (ngày, máy): A = giờ máy chạy thực tế / (số ca × giờ chuẩn/ca)
+  //                        P = năng suất thực tế / năng suất chuẩn (nangSuatTrungBinh)
+  const rows = useMemo(() => {
+    const groupMap = {}
+    raw.forEach(r => {
+      if (!r.ngay) return
+      const cd = resolveGdCd(r)
+      const mkey = (cd === 'PCPL1' || cd === 'PCPL2') ? 'pc' : cd === 'PL' ? 'pl' : cd === 'DG' ? 'dg' : cd === 'BBC1' ? 'bbc1' : null
+      if (!mkey) return
+      const rawMay = machineMap[r.maSp]?.[mkey]
+      if (!rawMay) return
+      const mayList = rawMay.split(',').map(m => m.trim()).filter(Boolean)
+      if (!mayList.length) return
+
+      const start = timeToMinutes(r.thoiGianBatDau)
+      const end0  = timeToMinutes(r.thoiGianKetThuc)
+      let interval = null
+      if (start != null && end0 != null) {
+        const end = end0 <= start ? end0 + 24 * 60 : end0
+        interval = [start, end]
+      }
+      const sl    = Number(r.sanLuong || 0) / mayList.length
+      const cong  = Number(r.congThucHien || 0) / mayList.length
+      const stdNs = Number(r.nangSuatTrungBinh || 0)
+
+      mayList.forEach(may => {
+        const key = r.ngay + '||' + may
+        if (!groupMap[key]) {
+          groupMap[key] = { ngay: r.ngay, may, intervals: [], caSet: new Set(), sl: 0, cong: 0, stdSum: 0, stdWeight: 0 }
+        }
+        const g = groupMap[key]
+        if (interval) g.intervals.push(interval)
+        if (r.caSanXuat) g.caSet.add(r.caSanXuat)
+        g.sl += sl
+        g.cong += cong
+        if (stdNs > 0 && cong > 0) { g.stdSum += stdNs * cong; g.stdWeight += cong }
+      })
+    })
+
+    return Object.values(groupMap).map(g => {
+      const usageHours   = mergeIntervalMinutes(g.intervals) / 60
+      const plannedHours = g.caSet.size * GIO_CHUAN_CA
+      const aIndex   = plannedHours > 0 ? usageHours / plannedHours : null
+      const actualNs = g.cong > 0 ? g.sl / g.cong : null
+      const stdNs    = g.stdWeight > 0 ? g.stdSum / g.stdWeight : null
+      const pIndex   = (actualNs != null && stdNs) ? actualNs / stdNs : null
+      return {
+        key: g.ngay + '||' + g.may,
+        ngay: g.ngay, may: g.may, caCount: g.caSet.size,
+        usageHours, plannedHours, aIndex,
+        sl: g.sl, cong: g.cong, actualNs, stdNs, pIndex,
+      }
+    }).sort((a, b) => (a.ngay < b.ngay ? 1 : a.ngay > b.ngay ? -1 : a.may.localeCompare(b.may, 'vi')))
+  }, [raw, machineMap])
+
+  const filteredRows = useMemo(
+    () => mayFilter.length ? rows.filter(r => mayFilter.includes(r.may)) : rows,
+    [rows, mayFilter]
+  )
+
+  const mayOptions = useMemo(
+    () => [...new Set(rows.map(r => r.may))].sort((a, b) => a.localeCompare(b, 'vi')).map(m => ({ value: m, label: m })),
+    [rows]
+  )
+
+  const withA = filteredRows.filter(r => r.aIndex != null)
+  const withP = filteredRows.filter(r => r.pIndex != null)
+  const avgA = withA.length ? withA.reduce((s, r) => s + r.aIndex, 0) / withA.length : null
+  const avgP = withP.length ? withP.reduce((s, r) => s + r.pIndex, 0) / withP.length : null
+  const totalUsageHours = filteredRows.reduce((s, r) => s + r.usageHours, 0)
+  const machineCount = new Set(filteredRows.map(r => r.may)).size
+
+  const pctColor = v => {
+    if (v == null) return '#94a3b8'
+    if (v >= 0.85) return '#059669'
+    if (v >= 0.6) return '#d97706'
+    return '#dc2626'
+  }
+  const fmtPct = v => v == null ? '—' : (v * 100).toFixed(1) + '%'
+  const fmtH   = v => v == null ? '—' : v.toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+
+  const statCards = [
+    { label: 'Chỉ số A trung bình', value: fmtPct(avgA), color: pctColor(avgA) },
+    { label: 'Chỉ số P trung bình', value: fmtPct(avgP), color: pctColor(avgP) },
+    { label: 'Tổng giờ máy chạy',   value: fmtH(totalUsageHours) + ' h', color: '#0f766e' },
+    { label: 'Số máy theo dõi',     value: machineCount, color: '#0f766e' },
+  ]
+
+  const mayColumn = {
+    title: 'Máy', dataIndex: 'may', ellipsis: true,
+    render: v => <Tooltip title={v}><span style={{ fontWeight: 600, color: '#1e3a5f' }}>{v}</span></Tooltip>,
+    sorter: (a, b) => a.may.localeCompare(b.may, 'vi'),
+  }
+  const ngayColumn = {
+    title: 'Ngày', dataIndex: 'ngay', width: 110, fixed: 'left',
+    render: v => <span style={{ fontWeight: 700, color: '#1677ff' }}>{dayjs(v).format('DD/MM/YYYY')}</span>,
+    sorter: (a, b) => a.ngay.localeCompare(b.ngay), defaultSortOrder: 'descend',
+  }
+
+  const colA = [
+    ngayColumn, mayColumn,
+    { title: 'Số ca', dataIndex: 'caCount', width: 80, align: 'right' },
+    { title: 'Giờ máy chạy', dataIndex: 'usageHours', width: 120, align: 'right', render: fmtH,
+      sorter: (a, b) => a.usageHours - b.usageHours },
+    { title: 'Giờ kế hoạch', dataIndex: 'plannedHours', width: 120, align: 'right', render: fmtH },
+    { title: 'Chỉ số A', dataIndex: 'aIndex', width: 100, align: 'right',
+      render: v => <span style={{ fontWeight: 700, color: pctColor(v) }}>{fmtPct(v)}</span>,
+      sorter: (a, b) => (a.aIndex ?? -1) - (b.aIndex ?? -1) },
+  ]
+
+  const colP = [
+    ngayColumn, mayColumn,
+    { title: 'Sản lượng', dataIndex: 'sl', width: 110, align: 'right', render: fmtSL,
+      sorter: (a, b) => a.sl - b.sl },
+    { title: 'Công', dataIndex: 'cong', width: 100, align: 'right', render: v => fmtCong(v, 2),
+      sorter: (a, b) => a.cong - b.cong },
+    { title: 'NS thực tế', dataIndex: 'actualNs', width: 100, align: 'right',
+      render: v => v == null ? '—' : v.toLocaleString('vi-VN', { maximumFractionDigits: 1 }) },
+    { title: 'NS chuẩn', dataIndex: 'stdNs', width: 100, align: 'right',
+      render: v => v == null ? '—' : v.toLocaleString('vi-VN', { maximumFractionDigits: 1 }) },
+    { title: 'Chỉ số P', dataIndex: 'pIndex', width: 100, align: 'right',
+      render: v => <span style={{ fontWeight: 700, color: pctColor(v) }}>{fmtPct(v)}</span>,
+      sorter: (a, b) => (a.pIndex ?? -1) - (b.pIndex ?? -1) },
+  ]
+
+  return (
+    <div style={{ padding: '12px 16px' }}>
+      {/* Toolbar */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12,
+        background: '#f0fdfa', border: '1px solid #99f6e4', borderRadius: 8, padding: '10px 16px' }}>
+        <span style={{ fontWeight: 700, color: '#0f766e', whiteSpace: 'nowrap' }}>⏱️ Khoảng thời gian:</span>
+        <RangePicker
+          value={dateRange}
+          onChange={v => { if (v) { setDateRange(v); setActiveQuickRange(null); fetchData(v) } }}
+          format="DD/MM/YYYY"
+          size="small"
+          allowClear={false}
+          style={{ width: 230 }}
+        />
+        <Select
+          mode="multiple"
+          size="small"
+          allowClear
+          placeholder="Tất cả máy"
+          value={mayFilter}
+          onChange={setMayFilter}
+          style={{ minWidth: 200, maxWidth: 360 }}
+          options={mayOptions}
+          maxTagCount={2}
+        />
+        <Button size="small" type="primary" icon={<SearchOutlined />}
+          style={{ background: '#0f766e', borderColor: '#0f766e' }}
+          onClick={() => fetchData(dateRange)} loading={loading}>
+          Xem
+        </Button>
+        <Button size="small" icon={<ReloadOutlined />} onClick={() => fetchData(dateRange)} loading={loading} />
+      </div>
+
+      {/* Quick range buttons */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+        {QUICK_RANGES.map(q => {
+          const isActive = activeQuickRange === q.label
+          return (
+            <Button key={q.label} size="small"
+              style={{
+                fontSize: 12, borderRadius: 12,
+                borderColor: isActive ? '#0f766e' : '#99f6e4',
+                color: isActive ? '#fff' : '#0f766e',
+                background: isActive ? '#0f766e' : '#f0fdfa',
+                fontWeight: isActive ? 700 : 400,
+              }}
+              onClick={() => {
+                const r = q.range()
+                setDateRange(r)
+                setActiveQuickRange(q.label)
+                fetchData(r)
+              }}>
+              {q.label}
+            </Button>
+          )
+        })}
+      </div>
+
+      {/* Stat cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10, marginBottom: 10 }}>
+        {statCards.map(c => (
+          <div key={c.label} style={{ background: '#f8f9fa', borderLeft: `4px solid ${c.color}`, padding: '12px 16px', borderRadius: 4 }}>
+            <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', marginBottom: 4 }}>{c.label}</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: c.color }}>{c.value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 16 }}>
+        A = Giờ máy chạy thực tế / (Số ca hoạt động × {GIO_CHUAN_CA}h/ca) &nbsp;·&nbsp;
+        P = Năng suất thực tế / Năng suất chuẩn sản phẩm &nbsp;·&nbsp;
+        Chỉ tính các mã SP đã gán máy trong Danh mục sản phẩm
+      </div>
+
+      {/* Bảng A */}
+      <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 700, color: '#0f766e' }}>
+        Bảng 1 — Chỉ số A (Hiệu suất khả dụng máy)
+      </div>
+      <Table
+        size="small"
+        columns={colA}
+        dataSource={filteredRows}
+        rowKey="key"
+        loading={loading}
+        scroll={{ x: 700 }}
+        pagination={{ defaultPageSize: 20, showSizeChanger: true, pageSizeOptions: ['20', '50', '100'], showTotal: t => `Tổng ${t} dòng` }}
+        style={{ marginBottom: 24 }}
+      />
+
+      {/* Bảng P */}
+      <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 700, color: '#0f766e' }}>
+        Bảng 2 — Chỉ số P (Hiệu suất thực hiện)
+      </div>
+      <Table
+        size="small"
+        columns={colP}
+        dataSource={filteredRows}
+        rowKey="key"
+        loading={loading}
+        scroll={{ x: 750 }}
+        pagination={{ defaultPageSize: 20, showSizeChanger: true, pageSizeOptions: ['20', '50', '100'], showTotal: t => `Tổng ${t} dòng` }}
+      />
+    </div>
+  )
+}
+
 // ─── Tab: Nhập Kho ───────────────────────────────────────────────────────────
 
 const TINH_TRANG_NK_OPTIONS = ['Done', 'Chốt']
@@ -7244,7 +7542,9 @@ function DashboardGDTab() {
                             <td style={{ padding: '8px 7px', maxWidth: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <div style={{ width: 3, height: 16, borderRadius: 2, background: MAY_COLORS[i % MAY_COLORS.length], flexShrink: 0 }} />
-                                <span style={{ fontWeight: 600, color: '#1e3a5f', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.may}</span>
+                                <Tooltip title={row.may} placement="topLeft">
+                                  <span style={{ fontWeight: 600, color: '#1e3a5f', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'default' }}>{row.may}</span>
+                                </Tooltip>
                               </div>
                               <div style={{ height: 3, background: '#f1f5f9', borderRadius: 2, marginTop: 4, overflow: 'hidden' }}>
                                 <div style={{ width: `${totalMaySl > 0 ? row.sl / totalMaySl * 100 : 0}%`, height: '100%', background: MAY_COLORS[i % MAY_COLORS.length], borderRadius: 2 }} />
@@ -7425,7 +7725,7 @@ export default function DailySanLuongPage() {
   const [activeTab, setActiveTab] = useState(() => {
     if (manHinh) return 'baocao'
     const t = tabFromUrl || localStorage.getItem('dailysl_activeTab') || 'daily'
-    if (!canViewAnalytics && (t === 'thongke' || t === 'phantich')) return 'daily'
+    if (!canViewAnalytics && (t === 'thongke' || t === 'phantich' || t === 'suDungMay')) return 'daily'
     if (!canViewNhapKho && t === 'nhapkho') return 'daily'
     return t
   })
@@ -7524,6 +7824,16 @@ export default function DailySanLuongPage() {
         </span>
       ),
       children: <PhanTichSanLuongTab />,
+    }] : []),
+    ...(canViewAnalytics ? [{
+      key: 'suDungMay',
+      label: (
+        <span>
+          <ClockCircleOutlined style={{ marginRight: 5 }} />
+          Sử dụng máy
+        </span>
+      ),
+      children: <MachineUsageTab />,
     }] : []),
     ...(canViewNhapKho ? [{
       key: 'nhapkho',
