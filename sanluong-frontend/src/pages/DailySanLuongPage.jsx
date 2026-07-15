@@ -6580,17 +6580,28 @@ function NhapKhoTab() {
                   <div style={{ color: '#bbb', fontSize: 13, textAlign: 'center', padding: '8px 0' }}>Chưa có lịch sử nhập kho</div>
                 ) : (
                   <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 1fr 30px', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
-                      {['#','Ngày NK','Số lượng',''].map((h, i) => (
-                        <div key={i} style={{ padding: '5px 8px', fontSize: 11, fontWeight: 700, color: '#64748b', borderRight: i < 3 ? '1px solid #e2e8f0' : 'none', textAlign: i === 2 ? 'right' : 'left' }}>{h}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '22px 80px 70px 72px 90px 1fr 26px', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
+                      {['#','Ngày NK','Số lượng','Tình trạng','Tên NTH','Ghi chú',''].map((h, i) => (
+                        <div key={i} style={{ padding: '5px 6px', fontSize: 10, fontWeight: 700, color: '#64748b', borderRight: i < 6 ? '1px solid #e2e8f0' : 'none', textAlign: i === 2 ? 'right' : 'left' }}>{h}</div>
                       ))}
                     </div>
                     {drawerEntries.map((e, i) => (
-                      <div key={e.id} style={{ display: 'grid', gridTemplateColumns: '28px 1fr 1fr 30px', borderBottom: i < drawerEntries.length - 1 ? '1px solid #f0f4f8' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc', alignItems: 'center' }}>
-                        <div style={{ padding: '5px 8px', fontSize: 12, color: '#94a3b8', borderRight: '1px solid #f0f4f8' }}>{i + 1}</div>
-                        <div style={{ padding: '5px 8px', fontSize: 12, color: '#374151', borderRight: '1px solid #f0f4f8' }}>{e.ngayXuatKho ? dayjs(e.ngayXuatKho).format('DD/MM/YYYY') : '—'}</div>
-                        <div style={{ padding: '5px 8px', fontSize: 12, fontWeight: 600, color: '#1d4ed8', textAlign: 'right', borderRight: '1px solid #f0f4f8' }}>
+                      <div key={e.id} style={{ display: 'grid', gridTemplateColumns: '22px 80px 70px 72px 90px 1fr 26px', borderBottom: i < drawerEntries.length - 1 ? '1px solid #f0f4f8' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc', alignItems: 'center' }}>
+                        <div style={{ padding: '4px 5px', fontSize: 11, color: '#94a3b8', borderRight: '1px solid #f0f4f8' }}>{i + 1}</div>
+                        <div style={{ padding: '4px 6px', fontSize: 11, color: '#374151', borderRight: '1px solid #f0f4f8' }}>{e.ngayXuatKho ? dayjs(e.ngayXuatKho).format('DD/MM/YYYY') : '—'}</div>
+                        <div style={{ padding: '4px 6px', fontSize: 11, fontWeight: 600, color: '#1d4ed8', textAlign: 'right', borderRight: '1px solid #f0f4f8' }}>
                           {e.tpNhapKho != null ? Number(e.tpNhapKho).toLocaleString('vi-VN') : '—'}
+                        </div>
+                        <div style={{ padding: '4px 6px', fontSize: 11, borderRight: '1px solid #f0f4f8' }}>
+                          {e.tinhTrangNhapKho
+                            ? <span style={{ background: e.tinhTrangNhapKho === 'Hoàn tất' ? '#dcfce7' : '#fef3c7', color: e.tinhTrangNhapKho === 'Hoàn tất' ? '#15803d' : '#92400e', borderRadius: 4, padding: '1px 5px', fontSize: 10, fontWeight: 700 }}>{e.tinhTrangNhapKho}</span>
+                            : <span style={{ color: '#d1d5db' }}>—</span>}
+                        </div>
+                        <div style={{ padding: '4px 6px', fontSize: 11, color: '#374151', borderRight: '1px solid #f0f4f8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {e.tenNthNhapKho || <span style={{ color: '#d1d5db' }}>—</span>}
+                        </div>
+                        <div style={{ padding: '4px 6px', fontSize: 11, color: '#374151', borderRight: '1px solid #f0f4f8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {e.ghiChuNhapKho || <span style={{ color: '#d1d5db' }}>—</span>}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Popconfirm title="Xóa lần nhập kho này?" okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }} placement="left"
