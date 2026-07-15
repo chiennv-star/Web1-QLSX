@@ -228,9 +228,11 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   const [syncKhLoadingDays, setSyncKhLoadingDays] = useState(new Set())
   const [syncToKhLoading, setSyncToKhLoading] = useState(false)
   const [khToExists, setKhToExists] = useState(false)
-  const [nonprodEntries, setNonprodEntries] = useState({})   // ngayKey → [{_id, act, cat, person, min, note}]
+  const [nonprodEntries, setNonprodEntries] = useState({})   // ngayKey → [{_id, id, act, cat, person, min, note}]
   const [nonprodOpenDays, setNonprodOpenDays] = useState(new Set())
   const [nonprodAddingAct, setNonprodAddingAct] = useState(null) // ngayKey đang mở dropdown chọn hoạt động
+  const [nonprodDirtyDays, setNonprodDirtyDays] = useState(new Set())  // ngayKey có thay đổi chưa lưu
+  const [nonprodSavingDays, setNonprodSavingDays] = useState(new Set()) // ngayKey đang sync lên backend
   const [machineRuntimeMap, setMachineRuntimeMap] = useState({})  // ngayKey → [{_id, id, tuGio, denGio, trangThai, lyDo, ghiChu}]
   const [machineRuntimeOpenDays, setMachineRuntimeOpenDays] = useState(new Set())
   const [machineRuntimeSaving, setMachineRuntimeSaving] = useState(new Set())
@@ -320,10 +322,28 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     setKhToExists(false)
     setNonprodOpenDays(new Set())
     setNonprodAddingAct(null)
-    try {
-      const saved = localStorage.getItem(`nonprod_ws_${schedule.id}`)
-      setNonprodEntries(saved ? JSON.parse(saved) : {})
-    } catch { setNonprodEntries({}) }
+    setNonprodEntries({})
+    setNonprodDirtyDays(new Set())
+    setNonprodSavingDays(new Set())
+    api.get(`/non-productive-time/by-schedule/${schedule.id}`)
+      .then(({ data }) => {
+        const map = {}
+        ;(Array.isArray(data) ? data : []).forEach(e => {
+          const k = e.ngay
+          if (!map[k]) map[k] = []
+          map[k].push({
+            _id: `np_${e.id}`,
+            id: e.id,
+            act: e.hoatDong || '',
+            cat: e.phanLoai || '',
+            person: e.nguoiThucHien || '',
+            min: Math.round((parseFloat(e.gio) || 0) * 60),
+            note: e.ghiChu || '',
+          })
+        })
+        setNonprodEntries(map)
+      })
+      .catch(() => {})
     pendingSlRef.current = {}
     fetchSessions()
     api.get(`/product-master/lookup/${encodeURIComponent(schedule.maSp || '')}`)
@@ -682,24 +702,52 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   }
 
   // ── Non-productive time helpers ─────────────────────────────────────────────
-  const saveNonprod = (entries) => {
+  const saveNonprod = (entries, dirtyKey) => {
     setNonprodEntries(entries)
-    try { localStorage.setItem(`nonprod_ws_${schedule?.id}`, JSON.stringify(entries)) } catch {}
+    if (dirtyKey) setNonprodDirtyDays(prev => new Set([...prev, dirtyKey]))
   }
   const addNonprodEntry = (ngayKey, act, cat, person = '') => {
-    const entry = { _id: `np_${Date.now()}_${Math.random().toString(36).slice(2)}`, act, cat, person, min: 0, note: '' }
+    const entry = { _id: `np_${Date.now()}_${Math.random().toString(36).slice(2)}`, id: null, act, cat, person, min: 0, note: '' }
     const prev = nonprodEntries[ngayKey] || []
-    saveNonprod({ ...nonprodEntries, [ngayKey]: [...prev, entry] })
+    saveNonprod({ ...nonprodEntries, [ngayKey]: [...prev, entry] }, ngayKey)
   }
   const updateNonprodEntry = (ngayKey, _id, patch) => {
     saveNonprod({
       ...nonprodEntries,
       [ngayKey]: (nonprodEntries[ngayKey] || []).map(e => e._id === _id ? { ...e, ...patch } : e),
-    })
+    }, ngayKey)
   }
   const removeNonprodEntry = (ngayKey, _id) => {
     const next = (nonprodEntries[ngayKey] || []).filter(e => e._id !== _id)
-    saveNonprod({ ...nonprodEntries, [ngayKey]: next })
+    saveNonprod({ ...nonprodEntries, [ngayKey]: next }, ngayKey)
+  }
+  const syncNonprodDay = (ngayKey) => {
+    if (!schedule?.id) return
+    setNonprodSavingDays(prev => new Set([...prev, ngayKey]))
+    const dayEntries = nonprodEntries[ngayKey] || []
+    const dtos = dayEntries.map(e => ({
+      hoatDong: e.act || '',
+      phanLoai: e.cat || '',
+      nguoiThucHien: e.person || '',
+      gio: (parseInt(e.min) || 0) / 60,
+      ghiChu: e.note || '',
+    }))
+    api.post(`/non-productive-time/by-schedule/${schedule.id}/sync-day`, dtos, { params: { ngay: ngayKey } })
+      .then(({ data }) => {
+        const updated = (Array.isArray(data) ? data : []).map(e => ({
+          _id: `np_${e.id}`,
+          id: e.id,
+          act: e.hoatDong || '',
+          cat: e.phanLoai || '',
+          person: e.nguoiThucHien || '',
+          min: Math.round((parseFloat(e.gio) || 0) * 60),
+          note: e.ghiChu || '',
+        }))
+        setNonprodEntries(prev => ({ ...prev, [ngayKey]: updated }))
+        setNonprodDirtyDays(prev => { const n = new Set(prev); n.delete(ngayKey); return n })
+      })
+      .catch(() => message.error('Lưu thất bại'))
+      .finally(() => setNonprodSavingDays(prev => { const n = new Set(prev); n.delete(ngayKey); return n }))
   }
 
   const openDetail = (ngayKey) => {
@@ -1659,6 +1707,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                 const dayEntries = nonprodEntries[k] || []
                 const totalMin = dayEntries.reduce((sum, e) => sum + (parseInt(e.min) || 0), 0)
                 const isNpOpen = nonprodOpenDays.has(k)
+                const isNpDirty = nonprodDirtyDays.has(k)
+                const isNpSaving = nonprodSavingDays.has(k)
                 const actGroups = {}
                 dayEntries.forEach(e => {
                   if (!actGroups[e.act]) actGroups[e.act] = { cat: e.cat, entries: [] }
@@ -1679,6 +1729,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                       <span>⏱</span>
                       <span style={{ fontWeight: 600 }}>Thời gian không tạo sản phẩm</span>
                       {totalMin > 0 && <Tag color="orange" style={{ margin: 0, fontSize: 11 }}>{totalMin} phút</Tag>}
+                      {isNpSaving && <SyncOutlined spin style={{ color: '#d97706', fontSize: 11 }} />}
+                      {isNpDirty && !isNpSaving && <Tag color="warning" style={{ margin: 0, fontSize: 10 }}>chưa lưu</Tag>}
                       <span style={{ marginLeft: 'auto', fontSize: 11, color: '#9ca3af' }}>{isNpOpen ? '▲ Thu gọn' : '▼ Xem / Nhập'}</span>
                     </div>
                     {/* Panel content */}
@@ -1765,6 +1817,16 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                             onClick={() => setNonprodAddingAct(k)}>
                             + Hoạt động
                           </Button>
+                        )}
+                        {/* Nút lưu — chỉ hiện khi có thay đổi chưa sync */}
+                        {isNpDirty && (
+                          <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end', borderTop: '1px dashed #fde68a', paddingTop: 6 }}>
+                            <Button size="small" type="primary" loading={isNpSaving}
+                              style={{ background: '#d97706', borderColor: '#d97706', fontSize: 11 }}
+                              onClick={e => { e.stopPropagation(); syncNonprodDay(k) }}>
+                              Lưu ngày này
+                            </Button>
+                          </div>
                         )}
                       </div>
                     )}
@@ -2508,7 +2570,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
        editingKeys, batchEditDays, batchSaving, saving, savingDay,
        nsTrungBinh, employees, vaiTroOptions, canEditDetail, multiAddModal, maNvErrorKeys,
        tongCong, tongSanLuong, ngayKeys, renamingDay, renameDayVal, renameSaving,
-       nonprodEntries, nonprodOpenDays, nonprodAddingAct,
+       nonprodEntries, nonprodOpenDays, nonprodAddingAct, nonprodDirtyDays, nonprodSavingDays,
        schedule, contextMenu])
 
   const handleDrawerClose = () => {

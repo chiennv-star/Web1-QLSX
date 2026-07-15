@@ -136,6 +136,15 @@ public class SecurityConfig {
                     "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3"
                 )
 
+                // ── Thời gian không tạo sản phẩm: tất cả xem, tất cả ADMIN_* + TKSX sửa ──
+                .requestMatchers(HttpMethod.GET, "/api/non-productive-time/**").hasAnyRole(ALL_ROLES)
+                .requestMatchers("/api/non-productive-time/**").hasAnyRole(
+                    "ADMIN", "TKSX",
+                    "ADMIN_KH", "ADMIN_PC", "ADMIN_BBC1",
+                    "ADMIN_PL", "ADMIN_DG",
+                    "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3"
+                )
+
                 // ── Nhân sự: tất cả xem, nhân viên tự cập nhật hồ sơ cá nhân ──
                 .requestMatchers(HttpMethod.GET, "/api/employees/**").hasAnyRole(ALL_ROLES)
                 .requestMatchers(HttpMethod.PUT, "/api/employees/me").hasAnyRole(ALL_ROLES)
