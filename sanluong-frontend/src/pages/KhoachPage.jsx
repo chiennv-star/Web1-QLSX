@@ -1596,6 +1596,7 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
   const [donHangList, setDonHangList] = useState([])
   const [donHangLoading, setDonHangLoading] = useState(false)
   const [dhSearch, setDhSearch] = useState('')
+  const [slXepPcMap, setSlXepPcMap] = useState({}) // "maBravo||maDonHang" → SL đã xếp PCPL1+PCPL2 (toàn thời gian)
 
   useEffect(() => {
     saveDateRange(dateRange)
@@ -1615,8 +1616,12 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
   const fetchDonHang = useCallback(async () => {
     setDonHangLoading(true)
     try {
-      const { data: res } = await api.get('/don-hang', { params: { page: 0, size: 1000 } })
+      const [{ data: res }, xepMapRes] = await Promise.all([
+        api.get('/don-hang', { params: { page: 0, size: 1000 } }),
+        api.get('/work-schedule/sl-xep-pc-map').catch(() => ({ data: {} })),
+      ])
       setDonHangList(Array.isArray(res) ? res : (res.content || []))
+      setSlXepPcMap(xepMapRes.data || {})
     } catch { /* silent */ }
     finally { setDonHangLoading(false) }
   }, [])
@@ -3218,14 +3223,9 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
         const doneDhList   = donHangList.filter(dh => dh.tinhTrangSx === 'done'  && dhFilter(dh)).sort(sortDonHang)
         const matched = [...activeDhList, ...doneDhList]
 
-        // For each matched order, calculate SL đã xếp KH — chỉ tính PCPL1+PCPL2 (tổ pha chế chính)
-        const slXepMap = {}
-        data.forEach(r => {
-          if (!r.maBravo || !r.maDonHang) return
-          if (r.toNhom !== 'PCPL1' && r.toNhom !== 'PCPL2') return
-          const k = `${r.maBravo}||${r.maDonHang}`
-          slXepMap[k] = (slXepMap[k] || 0) + (Number(r.coLo) || 0)
-        })
+        // SL đã xếp KH — chỉ tính PCPL1+PCPL2 (tổ pha chế chính), toàn thời gian (không phụ thuộc
+        // khoảng ngày đang lọc trên lịch) — lấy từ backend qua slXepPcMap thay vì tính lại từ `data`
+        const slXepMap = slXepPcMap
 
         // Which toNhom handles this order in the current kế hoạch
         const toNhomMap = {}

@@ -401,6 +401,20 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
             @Param("soLo")       String soLo
     );
 
+    /** Tổng coLo PLAN theo PCPL1+PCPL2 (tổ pha chế chính), group theo maBravo+maDonHang —
+     *  không giới hạn theo ngày, dùng cho cột "SL Đã Xếp KH" ở bảng đơn hàng (Kế hoạch) */
+    @Query("""
+        SELECT w.maBravo, w.maDonHang, SUM(w.coLo)
+        FROM WorkSchedule w
+        WHERE w.source = 'PLAN'
+          AND w.deletedAt IS NULL
+          AND w.toNhom IN ('PCPL1', 'PCPL2')
+          AND w.maBravo IS NOT NULL
+          AND w.maDonHang IS NOT NULL
+        GROUP BY w.maBravo, w.maDonHang
+        """)
+    List<Object[]> sumCoLoPcByOrder();
+
     // For machine runtime daily summary
     List<WorkSchedule> findByCongDoan(String congDoan);
     List<WorkSchedule> findByCongDoanAndToNhomIn(String congDoan, List<String> toNhom);

@@ -105,6 +105,19 @@ public class WorkScheduleService {
         });
     }
 
+    /** Map "maBravo||maDonHang" → tổng coLo đã xếp PLAN ở PCPL1+PCPL2 (toàn thời gian) —
+     *  dùng cho cột "SL Đã Xếp KH" ở bảng đơn hàng, không phụ thuộc khoảng ngày đang lọc trên lịch. */
+    public Map<String, BigDecimal> getSlXepPcMap() {
+        Map<String, BigDecimal> result = new HashMap<>();
+        for (Object[] row : repository.sumCoLoPcByOrder()) {
+            String maBravo = (String) row[0];
+            String maDonHang = (String) row[1];
+            BigDecimal sum = (BigDecimal) row[2];
+            result.put(maBravo + "||" + maDonHang, sum != null ? sum : BigDecimal.ZERO);
+        }
+        return result;
+    }
+
     public Page<WorkSchedule> search(LocalDate fromDate, LocalDate toDate,
                                       String maSp, String tenTrinh, String soLo, String maBravo,
                                       String maDonHang, String tinhTrang, String congDoan, String source,

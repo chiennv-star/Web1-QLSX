@@ -147,6 +147,12 @@ public class WorkScheduleController {
         return ResponseEntity.ok(service.search(fromDate, toDate, maSp, tenTrinh, soLo, maBravo, maDonHang, tinhTrang, congDoan, source, toNhom, isPlanned, page, size));
     }
 
+    // Map "maBravo||maDonHang" → tổng coLo đã xếp PLAN ở PCPL1+PCPL2, toàn thời gian (không phụ thuộc fromDate/toDate)
+    @GetMapping("/sl-xep-pc-map")
+    public ResponseEntity<Map<String, java.math.BigDecimal>> slXepPcMap() {
+        return ResponseEntity.ok(service.getSlXepPcMap());
+    }
+
     @GetMapping("/suggestions")
     public ResponseEntity<List<Map<String, String>>> suggestions() {
         return ResponseEntity.ok(service.getSuggestions());
