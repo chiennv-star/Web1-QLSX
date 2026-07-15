@@ -60,6 +60,10 @@ public class EmployeeService {
     }
 
     public Employee create(EmployeeDto dto, String username) {
+        String maNv = dto.getMaNhanVien() != null ? dto.getMaNhanVien().trim().toUpperCase() : null;
+        repository.findByMaNhanVien(maNv).ifPresent(existing -> {
+            throw new RuntimeException("Mã NV \"" + maNv + "\" đã tồn tại (" + existing.getHoVaTen() + ")");
+        });
         Employee e = toEntity(dto);
         e.setCreatedBy(username);
         e.setUpdatedBy(username);
@@ -71,6 +75,12 @@ public class EmployeeService {
     public Employee update(Long id, EmployeeDto dto, String username) {
         Employee e = getById(id);
         String oldMaNhanVien = e.getMaNhanVien();
+        String newMaNv = dto.getMaNhanVien() != null ? dto.getMaNhanVien().trim().toUpperCase() : null;
+        if (newMaNv != null && !newMaNv.equalsIgnoreCase(oldMaNhanVien)) {
+            repository.findByMaNhanVien(newMaNv).ifPresent(existing -> {
+                throw new RuntimeException("Mã NV \"" + newMaNv + "\" đã tồn tại (" + existing.getHoVaTen() + ")");
+            });
+        }
         applyDto(e, dto);
         e.setUpdatedBy(username);
         Employee saved = repository.save(e);

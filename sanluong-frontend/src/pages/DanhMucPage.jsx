@@ -2637,7 +2637,7 @@ function EmployeeTab() {
       fetchGroupCounts()
     } catch (e) {
       if (e?.errorFields) return
-      message.error('Lưu thất bại')
+      message.error(e?.response?.data?.message || 'Lưu thất bại')
     }
     finally { setSaving(false) }
   }
