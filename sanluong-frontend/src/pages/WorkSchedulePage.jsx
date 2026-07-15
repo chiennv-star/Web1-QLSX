@@ -236,6 +236,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   const [machineRuntimeMap, setMachineRuntimeMap] = useState({})  // ngayKey → [{_id, id, tuGio, denGio, trangThai, lyDo, ghiChu}]
   const [machineRuntimeOpenDays, setMachineRuntimeOpenDays] = useState(new Set())
   const [machineRuntimeSaving, setMachineRuntimeSaving] = useState(new Set())
+  const [pcplNangSuatMe, setPcplNangSuatMe] = useState([])  // [{soMe, nangSuat}] cho PCPL2
+  const [loaiSpOptions, setLoaiSpOptions] = useState([])    // distinct loại SP cho PCPL2
   const [machineRuntimeDirtyDays, setMachineRuntimeDirtyDays] = useState(new Set())
   const [shiftPerfMap, setShiftPerfMap] = useState({})           // ngayKey → [{_id, id, caLo, slLyThuyet, slThucTe, nguyenNhan, ghiChu}]
   const [shiftPerfOpenDays, setShiftPerfOpenDays] = useState(new Set())
@@ -332,6 +334,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     setNonprodSavingDays(new Set())
     setMachineRuntimeMap({})
     setMachineRuntimeOpenDays(new Set())
+    setPcplNangSuatMe([])
     api.get(`/non-productive-time/by-schedule/${schedule.id}`)
       .then(({ data }) => {
         const map = {}
@@ -360,7 +363,11 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
         const val = r.data[field]
         setNsTrungBinh(val != null ? Number(val) : null)
         setPcplFromProduct(r.data.toNhomPcpl || null)
+        try { setPcplNangSuatMe(JSON.parse(r.data.nangSuatPcMe || '[]')) } catch { setPcplNangSuatMe([]) }
       })
+      .catch(() => {})
+    api.get('/product-master/loai-san-pham-distinct')
+      .then(r => setLoaiSpOptions(r.data || []))
       .catch(() => {})
     api.get('/employees', { params: { page: 0, size: 500 } })
       .then(r => setEmployees(r.data.content || []))
@@ -2077,19 +2084,16 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                               <div style={{ overflowX: 'auto' }}>
                                 {(() => {
                                   const isPcpl2 = schedule?.congDoan?.toUpperCase() === 'PCPL2'
-                                  const ltLabel = isPcpl2 ? 'Số mẻ KH' : 'Tốc độ LT (sp/phút)'
+                                  const col1Label = isPcpl2 ? 'Loại sản phẩm' : 'Ca / Lô'
+                                  const ltLabel = isPcpl2 ? 'Giờ kế hoạch' : 'Tốc độ LT (sp/phút)'
                                   const ttLabel = isPcpl2 ? 'Số mẻ TH' : 'Tốc độ TT (sp/phút)'
-                                  const ltPlaceholder = isPcpl2 ? 'mẻ KH' : 'sp/phút'
+                                  const ltPlaceholder = isPcpl2 ? 'giờ' : 'sp/phút'
                                   const ttPlaceholder = isPcpl2 ? 'mẻ TH' : 'sp/phút'
-                                  const unit = isPcpl2 ? ' mẻ' : ' sp/phút'
-                                  const sumLtLabel = isPcpl2 ? 'Số mẻ kế hoạch' : 'Tốc độ Lý Thuyết'
-                                  const sumTtLabel = isPcpl2 ? 'Số mẻ thực hiện' : 'Tốc độ Thực tế'
-                                  const tonThatLabel = isPcpl2 ? 'Chênh lệch mẻ' : 'Tổng tổn thất'
                                   return (
                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                                   <thead>
                                     <tr>
-                                      {['#', 'Ca / Lô', ltLabel, ttLabel, 'P ca (%)', ''].map((h, i) => (
+                                      {['#', col1Label, ltLabel, ttLabel, 'P ca (%)', ''].map((h, i) => (
                                         <th key={i} style={{ padding: '5px 7px', background: '#fef3c7', color: '#92400e', fontWeight: 600, fontSize: 11, textAlign: 'left', borderBottom: '1px solid #fde68a', whiteSpace: 'nowrap' }}>{h}</th>
                                       ))}
                                     </tr>
@@ -2103,12 +2107,25 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                       return (
                                         <tr key={row._id} style={{ background: idx % 2 === 0 ? '#fff' : '#fffbeb' }}>
                                           <td style={{ padding: '4px 7px', color: '#94a3b8', fontSize: 11, textAlign: 'center', width: 24 }}>{idx + 1}</td>
-                                          <td style={{ padding: '3px 5px', width: 90 }}>
-                                            <select value={row.caLo || ''} style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 5px', fontSize: 12, fontWeight: 600 }}
-                                              onChange={e => updateShiftPerfRow(spKey, row._id, { caLo: e.target.value })}>
-                                              <option value="">—</option>
-                                              {['Ca 1', 'Ca 2', 'Ca 3', 'Lô 1', 'Lô 2'].map(o => <option key={o} value={o}>{o}</option>)}
-                                            </select>
+                                          <td style={{ padding: '3px 5px', width: isPcpl2 ? 130 : 90 }}>
+                                            {isPcpl2 ? (
+                                              <>
+                                                <input list={`loai-sp-list-${spKey}-${row._id}`}
+                                                  value={row.caLo || ''}
+                                                  placeholder="Chọn hoặc nhập..."
+                                                  style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 5px', fontSize: 12, fontWeight: 600 }}
+                                                  onChange={e => updateShiftPerfRow(spKey, row._id, { caLo: e.target.value })} />
+                                                <datalist id={`loai-sp-list-${spKey}-${row._id}`}>
+                                                  {loaiSpOptions.map(o => <option key={o} value={o} />)}
+                                                </datalist>
+                                              </>
+                                            ) : (
+                                              <select value={row.caLo || ''} style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 5px', fontSize: 12, fontWeight: 600 }}
+                                                onChange={e => updateShiftPerfRow(spKey, row._id, { caLo: e.target.value })}>
+                                                <option value="">—</option>
+                                                {['Ca 1', 'Ca 2', 'Ca 3', 'Lô 1', 'Lô 2'].map(o => <option key={o} value={o}>{o}</option>)}
+                                              </select>
+                                            )}
                                           </td>
                                           <td style={{ padding: '3px 5px', width: 100 }}>
                                             <input type="number" value={row.slLyThuyet ?? ''} placeholder={ltPlaceholder} style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 6px', fontSize: 12, textAlign: 'right' }}
@@ -2116,7 +2133,15 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                           </td>
                                           <td style={{ padding: '3px 5px', width: 100 }}>
                                             <input type="number" value={row.slThucTe ?? ''} placeholder={ttPlaceholder} style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 6px', fontSize: 12, textAlign: 'right', color: '#1d4ed8', fontWeight: 700 }}
-                                              onChange={e => updateShiftPerfRow(spKey, row._id, { slThucTe: e.target.value === '' ? null : Number(e.target.value) })} />
+                                              onChange={e => {
+                                                const val = e.target.value === '' ? null : Number(e.target.value)
+                                                if (isPcpl2 && val != null) {
+                                                  const found = pcplNangSuatMe.find(r => r.soMe === val)
+                                                  updateShiftPerfRow(spKey, row._id, { slThucTe: val, ...(found ? { slLyThuyet: found.nangSuat } : {}) })
+                                                } else {
+                                                  updateShiftPerfRow(spKey, row._id, { slThucTe: val })
+                                                }
+                                              }} />
                                           </td>
                                           <td style={{ padding: '3px 5px', width: 60, textAlign: 'center', fontWeight: 700, color: pCa == null ? '#9ca3af' : pCa >= 95 ? '#16a34a' : pCa >= 80 ? '#d97706' : '#dc2626' }}>
                                             {pCa != null ? `${pCa}%` : '—'}
@@ -2135,14 +2160,15 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 8 }}>
                                 {(() => {
                                   const isPcpl2 = schedule?.congDoan?.toUpperCase() === 'PCPL2'
-                                  const unit = isPcpl2 ? ' mẻ' : ' sp/phút'
-                                  const sumLtLabel = isPcpl2 ? 'Số mẻ kế hoạch' : 'Tốc độ Lý Thuyết'
-                                  const sumTtLabel = isPcpl2 ? 'Số mẻ thực hiện' : 'Tốc độ Thực tế'
-                                  const tonThatLabel = isPcpl2 ? 'Chênh lệch mẻ' : 'Tổng tổn thất'
+                                  if (isPcpl2) return [
+                                    { label: 'Tổng giờ KH', val: sumLT > 0 ? Number(sumLT).toLocaleString('vi-VN') + ' giờ' : '—', color: '#1e3a5f' },
+                                    { label: 'Tổng số mẻ TH', val: sumTT > 0 ? Number(sumTT).toLocaleString('vi-VN') + ' mẻ' : '—', color: '#16a34a' },
+                                  ]
+                                  const unit = ' sp/phút'
                                   return [
-                                  { label: sumLtLabel, val: sumLT > 0 ? Number(sumLT).toLocaleString('vi-VN') + unit : '—', color: '#1e3a5f' },
-                                  { label: sumTtLabel, val: sumTT > 0 ? Number(sumTT).toLocaleString('vi-VN') + unit : '—', color: '#16a34a' },
-                                  { label: tonThatLabel, val: sumLT > 0 ? Number(tonThat).toLocaleString('vi-VN') + unit : '—', color: '#dc2626' },
+                                  { label: 'Tốc độ Lý Thuyết', val: sumLT > 0 ? Number(sumLT).toLocaleString('vi-VN') + unit : '—', color: '#1e3a5f' },
+                                  { label: 'Tốc độ Thực tế', val: sumTT > 0 ? Number(sumTT).toLocaleString('vi-VN') + unit : '—', color: '#16a34a' },
+                                  { label: 'Tổng tổn thất', val: sumLT > 0 ? Number(tonThat).toLocaleString('vi-VN') + unit : '—', color: '#dc2626' },
                                   { label: 'P ngày', val: pPct != null ? `${pPct}%` : '—', color: pColor },
                                 ]})().map(({ label, val, color }) => (
                                   <div key={label} style={{ background: '#fff', border: '1px solid #fde68a', borderRadius: 6, padding: '5px 8px' }}>
