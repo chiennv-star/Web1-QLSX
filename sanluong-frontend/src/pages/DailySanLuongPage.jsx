@@ -6745,7 +6745,7 @@ function DashboardGDTab() {
     setPeriod(key); setDateRange(r); fetchGD(r)
   }
 
-  const { byTo, kpi, dailyTrend, byLoai, byMay, teamProductMap } = useMemo(() => {
+  const { byTo, kpi, dailyTrend, byLoai, byMay, teamProductMap, plOnlyMap, byPlOnly } = useMemo(() => {
     const byTo = {}
     GD_TO.forEach(t => { byTo[t.key] = { sl: 0, cong: 0, congPc: 0, lo: 0 } })
     const teamProductMap = {}
@@ -6812,9 +6812,21 @@ function DashboardGDTab() {
       })
     })
 
+    // PL display: chỉ SP không có trong PCPL1 (SP của PCPL1 đã được tính vào effectiveCong PCPL1)
+    const plOnlyMap = Object.fromEntries(
+      Object.entries(teamProductMap['PL'] || {})
+        .filter(([maSp, p]) => p.sl > 0 && !(teamProductMap['PCPL1']?.[maSp]?.sl > 0))
+    )
+    const byPlOnly = Object.values(plOnlyMap).reduce(
+      (a, p) => ({ sl: a.sl + p.sl, cong: a.cong + p.cong }),
+      { sl: 0, cong: 0 }
+    )
+
     return {
       byTo,
       teamProductMap,
+      plOnlyMap,
+      byPlOnly,
       kpi: { tongSl: totalSl, slDg, tongCong: totalCong, nsTb: totalCong > 0 ? slDg / totalCong : 0, soNgay: days.size, soCa: cas.size },
       dailyTrend: Object.values(dayMap).sort((a, b) => a.ngay.localeCompare(b.ngay))
         .map(d => ({ ...d, label: dayjs(d.ngay).format('DD/MM') })),
@@ -6950,9 +6962,12 @@ function DashboardGDTab() {
               </thead>
               <tbody>
                 {GD_TO.map((t, i) => {
-                  const d   = byTo[t.key] || { sl: 0, cong: 0 }
-                  // PCPL1: tổng công = congPc của PCPL1 (không gồm CC) + toàn bộ PL công
-                  const effectiveCong = t.key === 'PCPL1' ? ((d.congPc || 0) + (byTo['PL']?.cong || 0)) : d.cong
+                  // PL row: chỉ SP không thuộc PCPL1 (SP PCPL1 đã gộp vào effectiveCong PCPL1)
+                  const d   = t.key === 'PL'
+                    ? { ...byTo['PL'], sl: byPlOnly.sl, cong: byPlOnly.cong }
+                    : (byTo[t.key] || { sl: 0, cong: 0 })
+                  // PCPL1: tổng công = congPc của PCPL1 (không gồm CC) + toàn bộ PL công (byTo['PL'].cong)
+                  const effectiveCong = t.key === 'PCPL1' ? ((byTo['PCPL1']?.congPc || 0) + (byTo['PL']?.cong || 0)) : d.cong
                   const ns  = effectiveCong > 0 ? d.sl / effectiveCong : 0
                   const pSl   = kpi.tongSl   > 0 ? d.sl   / kpi.tongSl   * 100 : 0
                   const pCong = kpi.tongCong > 0 ? d.cong / kpi.tongCong * 100 : 0
@@ -7256,7 +7271,10 @@ function DashboardGDTab() {
         const isPcpl1 = drillTeam === 'PCPL1'
         const isPcpl2 = drillTeam === 'PCPL2'
         const showBreakdown = isPcpl1 || isPcpl2
-        const products = Object.values(teamProductMap[drillTeam] || {}).filter(p => p.sl > 0).sort((a, b) => b.sl - a.sl)
+        const products = (drillTeam === 'PL'
+          ? Object.values(plOnlyMap)
+          : Object.values(teamProductMap[drillTeam] || {}).filter(p => p.sl > 0)
+        ).sort((a, b) => b.sl - a.sl)
         const colCount = showBreakdown ? 6 : 5
         return (
           <Modal
