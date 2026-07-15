@@ -6721,6 +6721,7 @@ function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false
   const [historyDates, setHistoryDates] = useState([])
   const [machineOptions, setMachineOptions] = useState([])
   const [scheduleRoomIds, setScheduleRoomIds] = useState(new Set())
+  const [scheduleRoomInfo, setScheduleRoomInfo] = useState({}) // roomId → "tenTrinh – soLo ..."
   const [viewMode, setViewMode] = useState('list')
 
   const loadDate = (dateStr) => {
@@ -6740,15 +6741,22 @@ function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false
   useEffect(() => {
     if (!autoFromSchedule) return
     setScheduleRoomIds(new Set())
+    setScheduleRoomInfo({})
     api.get('/work-schedule', { params: { page: 0, size: 500, source: 'PLAN', fromDate: currentDate, toDate: currentDate } })
       .then(({ data }) => {
         const ids = new Set()
+        const infoMap = {}
         const roomNameMap = Object.fromEntries(PHONG_ROOMS.map(r => [r.name.toLowerCase(), r.id]))
         const lookupRoom = (str) => {
           const key = str.trim().toLowerCase()
           let rid = roomNameMap[key] || PHONG_TH_TO_ROOM[key]
           if (!rid && key.startsWith('phòng ')) rid = roomNameMap[key.slice(6)] || PHONG_TH_TO_ROOM[key.slice(6)]
           return rid
+        }
+        const addInfo = (rid, r) => {
+          const info = [r.tenTrinh, r.soLo].filter(Boolean).join(' – ')
+          if (!info) return
+          infoMap[rid] = infoMap[rid] ? infoMap[rid] + '\n' + info : info
         }
         ;(data.content || []).forEach(r => {
           if (r.phongThucHien) {
@@ -6758,14 +6766,15 @@ function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false
               const dashIdx = name.indexOf(' - ')
               if (dashIdx !== -1) rid = lookupRoom(name.substring(dashIdx + 3))
             }
-            if (rid) ids.add(rid)
+            if (rid) { ids.add(rid); addInfo(rid, r) }
           }
           if (r.phongSanXuat) {
             const rid = lookupRoom(r.phongSanXuat)
-            if (rid) ids.add(rid)
+            if (rid) { ids.add(rid); addInfo(rid, r) }
           }
         })
         setScheduleRoomIds(ids)
+        setScheduleRoomInfo(infoMap)
       }).catch(() => {})
   }, [currentDate, autoFromSchedule])
 
@@ -6931,16 +6940,22 @@ function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false
                         onChange={ids => updateMachines(r.id, ids)}
                         options={machineOptions}
                         optionFilterProp="label"
-                        maxTagCount="responsive"
                       />
                     )}
-                    <input
-                      key={r.id + '|' + currentDate}
-                      defaultValue={st.note || ''}
-                      placeholder="Ghi chú: LSX / tổ / ca..."
-                      onBlur={e => updateNote(r.id, e.target.value)}
-                      style={{ width: '100%', border: '1px solid #e2e5ea', borderRadius: 8, padding: '5px 8px', fontSize: 12, color: '#1c2430', background: '#fafbfc', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                    />
+                    {(() => {
+                      const hasStored = r.id in currentData && 'note' in currentData[r.id]
+                      const autoNote = hasStored ? (currentData[r.id].note || '') : (scheduleRoomInfo[r.id] || '')
+                      return (
+                        <textarea
+                          key={r.id + '|' + currentDate + '|' + (scheduleRoomInfo[r.id] || '')}
+                          defaultValue={autoNote}
+                          placeholder="Ghi chú: LSX / tổ / ca..."
+                          onBlur={e => updateNote(r.id, e.target.value)}
+                          rows={autoNote.includes('\n') ? autoNote.split('\n').length + 1 : 2}
+                          style={{ width: '100%', border: '1px solid #e2e5ea', borderRadius: 8, padding: '5px 8px', fontSize: 12, color: '#1c2430', background: autoNote && !hasStored ? '#fffbe6' : '#fafbfc', fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.5 }}
+                        />
+                      )
+                    })()}
                     {currentData[r.id]?.updatedAt && (
                       <div style={{ fontSize: 10.5, color: '#9aa2b1', fontFamily: 'monospace' }}>
                         Cập nhật: {new Date(currentData[r.id].updatedAt).toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'})}
