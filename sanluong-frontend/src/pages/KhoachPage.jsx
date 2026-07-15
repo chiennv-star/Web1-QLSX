@@ -1934,12 +1934,15 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
     setCopiedRecord(null)
     message.destroy('copy-hint')
     try {
-      const congField = CONG_FIELD_MAP[src.congDoan]
+      const targetCongDoan = GROUP_DEFAULT_CD[toNhom] || src.congDoan || 'PC'
+      const srcCongField   = CONG_FIELD_MAP[src.congDoan]
+      const tgtCongField   = CONG_FIELD_MAP[targetCongDoan]
+      const congValue      = srcCongField ? (src[srcCongField] ?? null) : null
       const payload = {
         source:        'PLAN',
         ngayThucHien:  toDate,
         toNhom,
-        congDoan:      src.congDoan      || null,
+        congDoan:      targetCongDoan,
         maBravo:       src.maBravo       || null,
         maDonHang:     src.maDonHang     || null,
         maSp:          src.maSp          || null,
@@ -1950,7 +1953,7 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
         chuY:          src.chuY          || null,
         saiLech:       src.saiLech       || null,
         tinhTrang:     src.tinhTrang     || null,
-        ...(congField ? { [congField]: src[congField] ?? null } : {}),
+        ...(tgtCongField ? { [tgtCongField]: congValue } : {}),
       }
       const { data: newWs } = await api.post('/work-schedule', payload)
       if (newWs?.id) api.post(`/lenh-san-xuat/from-work-schedule/${newWs.id}`, {}).catch(() => {})
