@@ -4095,9 +4095,8 @@ const GRP_HDR = (label, bg) => ({
 function MachineUsageTab() {
   const [dateRange, setDateRange] = useState([dayjs().subtract(6, 'day'), dayjs()])
   const [loading, setLoading] = useState(false)
-  const [raw, setRaw] = useState([])
   const [machineARaw, setMachineARaw] = useState([])
-  const [machineMap, setMachineMap] = useState({})
+  const [machinePRaw, setMachinePRaw] = useState([])
   const [mayFilter, setMayFilter] = useState([])
   const [toNhomFilter, setToNhomFilter] = useState([])
   const [activeQuickRange, setActiveQuickRange] = useState('Tuần này')
@@ -4108,34 +4107,26 @@ function MachineUsageTab() {
       const tuNgay = range[0].format('YYYY-MM-DD')
       const denNgay = range[1].format('YYYY-MM-DD')
 
-      const aKeys = ['PCPL1', 'PCPL2', 'PL', 'DG', 'BBC1']
-      const aResults = await Promise.allSettled(
-        aKeys.map(k => api.get('/machine-runtime/daily-summary', { params: { congDoanKey: k, tuNgay, denNgay } }))
-      )
+      const cdKeys = ['PCPL1', 'PCPL2', 'PL', 'DG', 'BBC1']
+      const [aResults, pResults] = await Promise.all([
+        Promise.allSettled(
+          cdKeys.map(k => api.get('/machine-runtime/daily-summary', { params: { congDoanKey: k, tuNgay, denNgay } }))
+        ),
+        Promise.allSettled(
+          cdKeys.map(k => api.get('/machine-perf/daily-summary', { params: { congDoanKey: k, tuNgay, denNgay } }))
+        ),
+      ])
+
       const aData = aResults
         .filter(r => r.status === 'fulfilled')
         .flatMap(r => r.value.data || [])
       setMachineARaw(aData)
 
-      const { data: res } = await api.get('/work-schedule-session/daily-report', {
-        params: { fromDate: tuNgay, toDate: denNgay },
-      })
-      const rows = res.filter(r => r.status !== 'PENDING' && r.status !== 'IN_PROGRESS')
-      setRaw(rows)
-      const codes = [...new Set(rows.map(r => r.maSp).filter(Boolean))]
-      if (codes.length > 0) {
-        api.get('/product-master/lookup-batch', { params: { codes } })
-          .then(({ data: bm }) => {
-            const mm = {}
-            codes.forEach(c => {
-              if (bm[c]) mm[c] = { pc: bm[c].mayMocPc, pl: bm[c].mayMocPl, dg: bm[c].mayMocDg, bbc1: bm[c].mayMocBbc1 }
-            })
-            setMachineMap(mm)
-          })
-          .catch(() => {})
-      } else {
-        setMachineMap({})
-      }
+      const pData = pResults
+        .filter(r => r.status === 'fulfilled')
+        .flatMap(r => r.value.data || [])
+      pData.sort((a, b) => (b.ngay || '').localeCompare(a.ngay || '') || (a.tenMay || '').localeCompare(b.tenMay || '', 'vi'))
+      setMachinePRaw(pData)
     } catch {
       message.error('Không thể tải dữ liệu sử dụng máy')
     } finally {
@@ -4159,45 +4150,6 @@ function MachineUsageTab() {
   })).sort((a, b) => a.ngay < b.ngay ? 1 : a.ngay > b.ngay ? -1 : a.may.localeCompare(b.may, 'vi')),
   [machineARaw])
 
-  // Bảng P: session-level (không gộp), mỗi dòng = 1 session × 1 máy
-  const rowsP = useMemo(() => {
-    const result = []
-    raw.forEach((r, idx) => {
-      if (!r.ngay) return
-      const cd = resolveGdCd(r)
-      const mkey = (cd === 'PCPL1' || cd === 'PCPL2') ? 'pc' : cd === 'PL' ? 'pl' : cd === 'DG' ? 'dg' : cd === 'BBC1' ? 'bbc1' : null
-      if (!mkey) return
-      const rawMay = machineMap[r.maSp]?.[mkey]
-      if (!rawMay) return
-      const mayList = rawMay.split(',').map(m => m.trim()).filter(Boolean)
-      if (!mayList.length) return
-
-      const stdNs = Number(r.nangSuatTrungBinh || 0)
-      mayList.forEach(may => {
-        const sl = Number(r.sanLuong || 0) / mayList.length
-        const cong = Number(r.congThucHien || 0) / mayList.length
-        const slLyThuyet = stdNs > 0 && cong > 0 ? stdNs * cong : null
-        const pIndex = slLyThuyet > 0 ? sl / slLyThuyet : null
-        const tonThat = slLyThuyet != null ? slLyThuyet - sl : null
-        result.push({
-          key: `${r.ngay}||${may}||${r.sessionId ?? idx}`,
-          ngay: r.ngay,
-          may,
-          cdKey: cd,
-          tenSanPham: r.tenTrinh,
-          soLo: r.soLo,
-          stdNs,
-          slLyThuyet,
-          sl,
-          cong,
-          pIndex,
-          tonThat,
-        })
-      })
-    })
-    return result.sort((a, b) => a.ngay < b.ngay ? 1 : a.ngay > b.ngay ? -1 : a.may.localeCompare(b.may, 'vi'))
-  }, [raw, machineMap])
-
   const filteredMachineA = useMemo(() => {
     let data = machineARows
     if (mayFilter.length) data = data.filter(r => mayFilter.includes(r.may))
@@ -4205,37 +4157,43 @@ function MachineUsageTab() {
     return data
   }, [machineARows, mayFilter, toNhomFilter])
 
+  // Bảng P: dữ liệu từ /machine-perf/daily-summary — giống hệt WorkSchedulePage
   const filteredRowsP = useMemo(() => {
-    let data = rowsP
-    if (mayFilter.length) data = data.filter(r => mayFilter.includes(r.may))
-    if (toNhomFilter.length) data = data.filter(r => toNhomFilter.includes(r.cdKey))
+    let data = machinePRaw
+    if (mayFilter.length) data = data.filter(r => mayFilter.includes(r.tenMay))
+    if (toNhomFilter.length) data = data.filter(r => toNhomFilter.includes(r.toNhom))
     return data
-  }, [rowsP, mayFilter, toNhomFilter])
+  }, [machinePRaw, mayFilter, toNhomFilter])
 
   const mayOptions = useMemo(
-    () => [...new Set([...machineARows.map(r => r.may), ...rowsP.map(r => r.may)])].sort((a, b) => a.localeCompare(b, 'vi')).map(m => ({ value: m, label: m })),
-    [machineARows, rowsP]
+    () => [...new Set([
+      ...machineARows.map(r => r.may),
+      ...machinePRaw.map(r => r.tenMay).filter(Boolean),
+    ])].sort((a, b) => a.localeCompare(b, 'vi')).map(m => ({ value: m, label: m })),
+    [machineARows, machinePRaw]
   )
 
   const withA = filteredMachineA.filter(r => r.aIndex != null)
-  const withP = filteredRowsP.filter(r => r.pIndex != null)
+  const withP = filteredRowsP.filter(r => r.pPct != null)
   const avgA = withA.length ? withA.reduce((s, r) => s + r.aIndex, 0) / withA.length : null
-  const avgP = withP.length ? withP.reduce((s, r) => s + r.pIndex, 0) / withP.length : null
+  const avgPPct = withP.length ? withP.reduce((s, r) => s + r.pPct, 0) / withP.length : null
   const totalUsageHours = filteredMachineA.reduce((s, r) => s + r.usageHours, 0)
-  const machineCount = new Set([...filteredMachineA.map(r => r.may), ...filteredRowsP.map(r => r.may)]).size
+  const machineCount = new Set([...filteredMachineA.map(r => r.may), ...filteredRowsP.map(r => r.tenMay)]).size
 
-  const pctColor = v => {
+  const aColor = v => {
     if (v == null) return '#94a3b8'
     if (v >= 0.85) return '#059669'
     if (v >= 0.6) return '#d97706'
     return '#dc2626'
   }
-  const fmtPct = v => v == null ? '—' : (v * 100).toFixed(1) + '%'
-  const fmtH   = v => v == null ? '—' : v.toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+  const pColor = v => v == null ? '#9ca3af' : v >= 95 ? '#16a34a' : v >= 80 ? '#d97706' : '#dc2626'
+  const pBg = v => v == null ? 'transparent' : v >= 95 ? '#f0fdf4' : v >= 80 ? '#fffbeb' : '#fef2f2'
+  const fmtA = v => v == null ? '—' : (v * 100).toFixed(1) + '%'
+  const fmtH = v => v == null ? '—' : v.toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 
   const statCards = [
-    { label: 'Chỉ số A trung bình', value: fmtPct(avgA), color: pctColor(avgA) },
-    { label: 'Chỉ số P trung bình', value: fmtPct(avgP), color: pctColor(avgP) },
+    { label: 'Chỉ số A trung bình', value: fmtA(avgA), color: aColor(avgA) },
+    { label: 'Chỉ số P trung bình', value: avgPPct != null ? avgPPct.toFixed(1) + '%' : '—', color: pColor(avgPPct) },
     { label: 'Tổng giờ máy chạy',   value: fmtH(totalUsageHours) + ' h', color: '#0f766e' },
     { label: 'Số máy theo dõi',     value: machineCount, color: '#0f766e' },
   ]
@@ -4261,57 +4219,11 @@ function MachineUsageTab() {
     { title: 'Giờ dừng (H)', dataIndex: 'gioDung', width: 105, align: 'right',
       render: v => v > 0 ? <span style={{ color: '#dc2626', fontWeight: 600 }}>{fmtH(v)}</span> : fmtH(v) },
     { title: 'Chỉ số A', dataIndex: 'aIndex', width: 95, align: 'right',
-      render: v => <span style={{ fontWeight: 700, color: pctColor(v) }}>{fmtPct(v)}</span>,
+      render: v => <span style={{ fontWeight: 700, color: aColor(v) }}>{fmtA(v)}</span>,
       sorter: (a, b) => (a.aIndex ?? -1) - (b.aIndex ?? -1) },
     { title: 'Số lần dừng', dataIndex: 'soLanDung', width: 105, align: 'right',
       render: v => v > 0 ? <span style={{ color: '#dc2626', fontWeight: 600 }}>{v}</span> : '—' },
     { title: 'Lý do dừng', dataIndex: 'lyDoDung', ellipsis: true, render: v => v || '—' },
-  ]
-
-  const colP = [
-    {
-      ...GRP_HDR('THÔNG TIN SẢN XUẤT', '#1e3a5f'),
-      children: [
-        { title: 'STT', width: 48, align: 'center', render: (_, __, i) => <span style={{ color: '#888', fontSize: 11 }}>{i + 1}</span> },
-        ngayCol,
-        { title: 'Tên sản phẩm', dataIndex: 'tenSanPham', ellipsis: true, minWidth: 160,
-          render: v => <Tooltip title={v}><span style={{ fontSize: 12 }}>{v || '—'}</span></Tooltip> },
-        { title: 'Số lô', dataIndex: 'soLo', width: 80, align: 'center',
-          render: v => v ? <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', fontSize: 12 }}>{v}</span> : '—' },
-        mayCol(true),
-        { title: 'Tổ/Nhóm', dataIndex: 'cdKey', width: 80, align: 'center',
-          render: v => v ? <Tag color="blue" style={{ fontSize: 11, margin: 0 }}>{v}</Tag> : '—' },
-      ]
-    },
-    {
-      ...GRP_HDR('THÔNG SỐ TỐC ĐỘ', '#065f46'),
-      children: [
-        { title: 'Tốc độ chuẩn (SP/h)', dataIndex: 'stdNs', width: 130, align: 'right',
-          render: v => v > 0 ? v.toLocaleString('vi-VN', { maximumFractionDigits: 0 }) : '—' },
-        { title: 'SL lý thuyết', dataIndex: 'slLyThuyet', width: 110, align: 'right',
-          render: v => v != null ? <span style={{ color: '#0f766e' }}>{Math.round(v).toLocaleString('vi-VN')}</span> : '—' },
-        { title: 'SL thực tế', dataIndex: 'sl', width: 110, align: 'right',
-          render: v => <span style={{ fontWeight: 600 }}>{Math.round(v).toLocaleString('vi-VN')}</span>,
-          sorter: (a, b) => a.sl - b.sl },
-      ]
-    },
-    {
-      ...GRP_HDR('P (%)', '#4c1d95'),
-      children: [
-        { title: 'P (%)', dataIndex: 'pIndex', width: 90, align: 'center',
-          render: v => <span style={{ fontWeight: 700, fontSize: 13, color: pctColor(v) }}>{fmtPct(v)}</span>,
-          sorter: (a, b) => (a.pIndex ?? -1) - (b.pIndex ?? -1) },
-      ]
-    },
-    {
-      ...GRP_HDR('PHÂN TÍCH TỔN THẤT', '#7c2d12'),
-      children: [
-        { title: 'Tổn thất tốc độ (SP)', dataIndex: 'tonThat', width: 140, align: 'right',
-          render: v => v != null && v > 0 ? <span style={{ color: '#dc2626', fontWeight: 600 }}>{Math.round(v).toLocaleString('vi-VN')}</span> : '—' },
-        { title: 'Nguyên nhân', width: 150, render: () => <span style={{ color: '#cbd5e1' }}>—</span> },
-        { title: 'Ghi chú / Hành động', width: 160, render: () => <span style={{ color: '#cbd5e1' }}>—</span> },
-      ]
-    },
   ]
 
   const TableHeader = ({ title, subtitle, bg }) => (
@@ -4406,9 +4318,8 @@ function MachineUsageTab() {
       </div>
 
       <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 18 }}>
-        A = Giờ chạy thực tế / Giờ kế hoạch (lấy từ bảng Chỉ số máy trong Sản lượng tổ) &nbsp;·&nbsp;
-        P = SL thực tế / (Tốc độ chuẩn × Công) &nbsp;·&nbsp;
-        Bảng P chỉ tính các mã SP đã gán máy trong Danh mục sản phẩm
+        A = Giờ chạy thực tế / Giờ kế hoạch (từ bảng Chỉ số A trong Sản lượng tổ) &nbsp;·&nbsp;
+        P = SL thực tế / SL lý thuyết — nhập từ bảng Chỉ số P trong Sản lượng tổ
       </div>
 
       {/* Bảng A */}
@@ -4428,22 +4339,101 @@ function MachineUsageTab() {
         style={{ marginBottom: 28, borderTop: 'none' }}
       />
 
-      {/* Bảng P */}
+      {/* Bảng P — giống hệt WorkSchedulePage */}
       <TableHeader
         bg="linear-gradient(135deg, #1e1b4b 0%, #3730a3 100%)"
         title="BẢNG 2 — CHỈ SỐ P (HIỆU SUẤT THỰC HIỆN)"
-        subtitle={`P = Σ(SL thực tế × T chuẩn SP) / Σ(Thời gian chạy) · Mục tiêu ≥ 95% · Tính từ chi tiết ca sản xuất · ${dayjs().year()}`}
+        subtitle={`Performance = Σ(SL thực tế × T chuẩn SP) / Σ(Thời gian chạy) · Mục tiêu ≥ 95% · Tính từ chi tiết ca sản xuất · ${dayjs().year()}`}
       />
-      <Table
-        size="small"
-        columns={colP}
-        dataSource={filteredRowsP}
-        rowKey="key"
-        loading={loading}
-        scroll={{ x: 1300 }}
-        pagination={{ defaultPageSize: 20, showSizeChanger: true, pageSizeOptions: ['20', '50', '100'], showTotal: t => `Tổng ${t} dòng` }}
-        style={{ borderTop: 'none' }}
-      />
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '40px 0', background: '#fff', border: '1px solid #a78bfa', borderTop: 'none' }}>
+          <span style={{ color: '#7c3aed' }}>Đang tải...</span>
+        </div>
+      ) : (
+        <div style={{ overflowX: 'auto', border: '1px solid #a78bfa', borderTop: 'none', background: '#fff' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr>
+                <th colSpan={5} style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11, letterSpacing: 0.5, color: '#fff', background: '#2e1065' }}>THÔNG TIN SẢN XUẤT</th>
+                <th colSpan={3} style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11, letterSpacing: 0.5, color: '#fff', background: '#1e3a5f' }}>THÔNG SỐ TỐC ĐỘ</th>
+                <th colSpan={2} style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11, letterSpacing: 0.5, color: '#fff', background: '#7c3aed' }}>P (%)</th>
+                <th colSpan={2} style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11, letterSpacing: 0.5, color: '#fff', background: '#5b21b6' }}>PHÂN TÍCH TỔN THẤT</th>
+              </tr>
+              <tr>
+                {[
+                  { label: 'STT', w: 28 }, { label: 'Ngày', w: 90 }, { label: 'Tên sản phẩm', w: 260 },
+                  { label: 'Số lô', w: 80 }, { label: 'Tổ/Nhóm', w: 80 },
+                  { label: 'Tốc độ chuẩn (Lý thuyết)', w: 130 }, { label: 'SL lý thuyết tối đa', w: 110 }, { label: 'SL thực tế sản xuất', w: 110 },
+                  { label: 'P (%)', w: 70 }, { label: 'Tổn thất tốc độ (SP/ca)', w: 110 },
+                  { label: 'Nguyên nhân giảm tốc', w: 200 }, { label: 'Ghi chú / Hành động', w: 180 },
+                ].map(h => (
+                  <th key={h.label} style={{ background: '#f5f3ff', color: '#1e293b', padding: '6px 6px', border: '1px solid #a78bfa', fontWeight: 700, fontSize: 11, textAlign: 'center', whiteSpace: 'nowrap', minWidth: h.w }}>
+                    {h.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRowsP.length === 0 ? (
+                <tr>
+                  <td colSpan={12} style={{ textAlign: 'center', padding: '32px 8px', color: '#9ca3af', border: '1px solid #e2e8f0' }}>
+                    Chưa có dữ liệu chỉ số P trong khoảng thời gian này.
+                  </td>
+                </tr>
+              ) : (() => {
+                const expandedRows = []
+                filteredRowsP.forEach((row, parentIdx) => {
+                  const wsGroup = row.workScheduleInfos || []
+                  if (wsGroup.length <= 1) {
+                    expandedRows.push({ row, wsInfo: wsGroup[0] || null, wsIdx: 0, wsCount: 1, parentIdx })
+                  } else {
+                    wsGroup.forEach((wsInfo, wsIdx) => {
+                      expandedRows.push({ row, wsInfo, wsIdx, wsCount: wsGroup.length, parentIdx })
+                    })
+                  }
+                })
+                return expandedRows.map(({ row, wsInfo, wsIdx, wsCount, parentIdx }) => {
+                  const pval = row.pPct
+                  const rowBg = parentIdx % 2 === 0 ? '#fff' : '#faf5ff'
+                  const td = (extra = {}) => ({ padding: '6px 6px', border: '1px solid #e2e8f0', background: rowBg, overflow: 'hidden', textOverflow: 'ellipsis', ...extra })
+                  return (
+                    <tr key={`${parentIdx}-${wsIdx}`}>
+                      {wsIdx === 0 && <td rowSpan={wsCount} style={td({ textAlign: 'center', color: '#94a3b8', fontSize: 11 })}>{parentIdx + 1}</td>}
+                      {wsIdx === 0 && <td rowSpan={wsCount} style={td({ whiteSpace: 'nowrap', fontWeight: 500 })}>{dayjs(row.ngay).isValid() ? dayjs(row.ngay).format('DD/MM/YYYY') : row.ngay}</td>}
+                      <td style={td({ fontWeight: 600 })}>{wsInfo?.tenTrinh || row.tenMay}</td>
+                      <td style={td({ textAlign: 'center', fontFamily: 'monospace', color: '#000099', fontWeight: 600 })}>{wsInfo?.soLo || '—'}</td>
+                      {wsIdx === 0 && <td rowSpan={wsCount} style={td({ textAlign: 'center' })}>{row.toNhom || '—'}</td>}
+                      {wsIdx === 0 && <td rowSpan={wsCount} style={td({ textAlign: 'center', fontSize: 11 })}>{row.tocDoChuanLabel || <span style={{ color: '#d1d5db' }}>—</span>}</td>}
+                      {wsIdx === 0 && (
+                        <td rowSpan={wsCount} style={td({ textAlign: 'right' })}>
+                          {row.slLyThuyet != null ? Number(row.slLyThuyet).toLocaleString('vi-VN') : <span style={{ color: '#d1d5db' }}>—</span>}
+                        </td>
+                      )}
+                      {wsIdx === 0 && (
+                        <td rowSpan={wsCount} style={td({ textAlign: 'right', color: '#1d4ed8', fontWeight: 700 })}>
+                          {row.slThucTe != null ? Number(row.slThucTe).toLocaleString('vi-VN') : <span style={{ color: '#d1d5db' }}>—</span>}
+                        </td>
+                      )}
+                      {wsIdx === 0 && (
+                        <td rowSpan={wsCount} style={td({ textAlign: 'center', fontWeight: 800, fontSize: 13, color: pColor(pval), background: pBg(pval) })}>
+                          {pval != null ? `${pval}%` : '—'}
+                        </td>
+                      )}
+                      {wsIdx === 0 && (
+                        <td rowSpan={wsCount} style={td({ textAlign: 'right', color: row.tonThat > 0 ? '#dc2626' : '#6b7280', fontWeight: row.tonThat > 0 ? 700 : 400 })}>
+                          {row.tonThat != null ? Number(row.tonThat).toLocaleString('vi-VN') : '—'}
+                        </td>
+                      )}
+                      {wsIdx === 0 && <td rowSpan={wsCount} style={td({ fontSize: 11 })}>{row.nguyenNhanGiamToc || <span style={{ color: '#d1d5db' }}>—</span>}</td>}
+                      {wsIdx === 0 && <td rowSpan={wsCount} style={td({ fontSize: 11 })}>{row.ghiChu || <span style={{ color: '#d1d5db' }}>—</span>}</td>}
+                    </tr>
+                  )
+                })
+              })()}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
