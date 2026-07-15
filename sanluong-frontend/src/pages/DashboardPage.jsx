@@ -2700,6 +2700,10 @@ export default function DashboardPage() {
                 columns={[
                   ...columns.filter(c => c.key !== 'action'),
                   {
+                    title: 'Ngày TK', key: 'hoSoHoanThienAt', dataIndex: 'hoSoHoanThienAt', width: 110, align: 'center',
+                    render: v => v ? new Date(v).toLocaleDateString('vi-VN') : '—',
+                  },
+                  {
                     title: '', key: 'action', width: 110, fixed: 'right', align: 'center',
                     render: (_, record) => (isAdmin() || isAdminKH()) ? (
                       <Popconfirm

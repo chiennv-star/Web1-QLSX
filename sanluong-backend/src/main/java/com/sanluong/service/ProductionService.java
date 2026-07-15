@@ -477,7 +477,9 @@ public class ProductionService {
     public ProductionRecord toggleHoSoHoanThien(Long id, String username) {
         ProductionRecord r = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));
-        r.setHoSoHoanThien(!Boolean.TRUE.equals(r.getHoSoHoanThien()));
+        boolean next = !Boolean.TRUE.equals(r.getHoSoHoanThien());
+        r.setHoSoHoanThien(next);
+        r.setHoSoHoanThienAt(next ? LocalDateTime.now() : null);
         r.setUpdatedBy(username);
         return repository.save(r);
     }

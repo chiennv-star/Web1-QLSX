@@ -178,6 +178,9 @@ public class ProductionRecord {
     @Column(name = "ho_so_hoan_thien")
     private Boolean hoSoHoanThien;
 
+    @Column(name = "ho_so_hoan_thien_at")
+    private LocalDateTime hoSoHoanThienAt;
+
     @Column(name = "phat_lenh")
     private Boolean phatLenh;
 
@@ -381,6 +384,8 @@ public class ProductionRecord {
     public void setGhiChuNhapKho(String ghiChuNhapKho) { this.ghiChuNhapKho = ghiChuNhapKho; }
     public Boolean getHoSoHoanThien() { return hoSoHoanThien; }
     public void setHoSoHoanThien(Boolean hoSoHoanThien) { this.hoSoHoanThien = hoSoHoanThien; }
+    public LocalDateTime getHoSoHoanThienAt() { return hoSoHoanThienAt; }
+    public void setHoSoHoanThienAt(LocalDateTime hoSoHoanThienAt) { this.hoSoHoanThienAt = hoSoHoanThienAt; }
     public Boolean getPhatLenh() { return phatLenh; }
     public void setPhatLenh(Boolean phatLenh) { this.phatLenh = phatLenh; }
     public Boolean getHidden() { return hidden; }
