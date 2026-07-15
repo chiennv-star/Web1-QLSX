@@ -6745,7 +6745,7 @@ function DashboardGDTab() {
     setPeriod(key); setDateRange(r); fetchGD(r)
   }
 
-  const { byTo, kpi, dailyTrend, byLoai, byMay, teamProductMap, plOnlyMap, byPlOnly } = useMemo(() => {
+  const { byTo, kpi, dailyTrend, byLoai, byMay, teamProductMap, plOnlyMap, byPlOnly, pcpl1PlCong } = useMemo(() => {
     const byTo = {}
     GD_TO.forEach(t => { byTo[t.key] = { sl: 0, cong: 0, congPc: 0, lo: 0 } })
     const teamProductMap = {}
@@ -6812,6 +6812,11 @@ function DashboardGDTab() {
       })
     })
 
+    // PL công cross-ref cho PCPL1: chỉ SP có SL trong PCPL1 (khớp với cột Công PL trong modal)
+    const pcpl1PlCong = Object.entries(teamProductMap['PCPL1'] || {})
+      .filter(([, p]) => p.sl > 0)
+      .reduce((s, [maSp]) => s + (teamProductMap['PL']?.[maSp]?.cong || 0), 0)
+
     // PL display: chỉ SP không có trong PCPL1 (SP của PCPL1 đã được tính vào effectiveCong PCPL1)
     const plOnlyMap = Object.fromEntries(
       Object.entries(teamProductMap['PL'] || {})
@@ -6827,6 +6832,7 @@ function DashboardGDTab() {
       teamProductMap,
       plOnlyMap,
       byPlOnly,
+      pcpl1PlCong,
       kpi: { tongSl: totalSl, slDg, tongCong: totalCong, nsTb: totalCong > 0 ? slDg / totalCong : 0, soNgay: days.size, soCa: cas.size },
       dailyTrend: Object.values(dayMap).sort((a, b) => a.ngay.localeCompare(b.ngay))
         .map(d => ({ ...d, label: dayjs(d.ngay).format('DD/MM') })),
@@ -6966,8 +6972,8 @@ function DashboardGDTab() {
                   const d   = t.key === 'PL'
                     ? { ...byTo['PL'], sl: byPlOnly.sl, cong: byPlOnly.cong }
                     : (byTo[t.key] || { sl: 0, cong: 0 })
-                  // PCPL1: tổng công = congPc của PCPL1 (không gồm CC) + toàn bộ PL công (byTo['PL'].cong)
-                  const effectiveCong = t.key === 'PCPL1' ? ((byTo['PCPL1']?.congPc || 0) + (byTo['PL']?.cong || 0)) : d.cong
+                  // PCPL1: tổng công = congPc (PC only) + PL công cross-ref theo maSp của PCPL1
+                  const effectiveCong = t.key === 'PCPL1' ? ((byTo['PCPL1']?.congPc || 0) + pcpl1PlCong) : d.cong
                   const ns  = effectiveCong > 0 ? d.sl / effectiveCong : 0
                   const pSl   = kpi.tongSl   > 0 ? d.sl   / kpi.tongSl   * 100 : 0
                   const pCong = kpi.tongCong > 0 ? d.cong / kpi.tongCong * 100 : 0
