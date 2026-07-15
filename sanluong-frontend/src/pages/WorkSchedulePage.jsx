@@ -2063,7 +2063,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                                   <thead>
                                     <tr>
-                                      {['#', 'Ca / Lô', 'SL lý thuyết', 'SL thực tế', 'P ca (%)', ''].map((h, i) => (
+                                      {['#', 'Ca / Lô', 'Tốc độ LT (sp/phút)', 'Tốc độ TT (sp/phút)', 'P ca (%)', ''].map((h, i) => (
                                         <th key={i} style={{ padding: '5px 7px', background: '#fef3c7', color: '#92400e', fontWeight: 600, fontSize: 11, textAlign: 'left', borderBottom: '1px solid #fde68a', whiteSpace: 'nowrap' }}>{h}</th>
                                       ))}
                                     </tr>
@@ -2085,11 +2085,11 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                             </select>
                                           </td>
                                           <td style={{ padding: '3px 5px', width: 100 }}>
-                                            <input type="number" value={row.slLyThuyet ?? ''} placeholder="SP tối đa" style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 6px', fontSize: 12, textAlign: 'right' }}
+                                            <input type="number" value={row.slLyThuyet ?? ''} placeholder="sp/phút" style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 6px', fontSize: 12, textAlign: 'right' }}
                                               onChange={e => updateShiftPerfRow(spKey, row._id, { slLyThuyet: e.target.value === '' ? null : Number(e.target.value) })} />
                                           </td>
                                           <td style={{ padding: '3px 5px', width: 100 }}>
-                                            <input type="number" value={row.slThucTe ?? ''} placeholder="SP thực tế" style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 6px', fontSize: 12, textAlign: 'right', color: '#1d4ed8', fontWeight: 700 }}
+                                            <input type="number" value={row.slThucTe ?? ''} placeholder="sp/phút" style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 6px', fontSize: 12, textAlign: 'right', color: '#1d4ed8', fontWeight: 700 }}
                                               onChange={e => updateShiftPerfRow(spKey, row._id, { slThucTe: e.target.value === '' ? null : Number(e.target.value) })} />
                                           </td>
                                           <td style={{ padding: '3px 5px', width: 60, textAlign: 'center', fontWeight: 700, color: pCa == null ? '#9ca3af' : pCa >= 95 ? '#16a34a' : pCa >= 80 ? '#d97706' : '#dc2626' }}>
@@ -2106,9 +2106,9 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                               </div>
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 8 }}>
                                 {[
-                                  { label: 'SL lý thuyết', val: sumLT > 0 ? Number(sumLT).toLocaleString('vi-VN') + ' SP' : '— SP', color: '#1e3a5f' },
-                                  { label: 'SL thực tế', val: sumTT > 0 ? Number(sumTT).toLocaleString('vi-VN') + ' SP' : '— SP', color: '#16a34a' },
-                                  { label: 'Tổng tổn thất', val: sumLT > 0 ? Number(tonThat).toLocaleString('vi-VN') + ' SP' : '— SP', color: '#dc2626' },
+                                  { label: 'Tốc độ Lý Thuyết', val: sumLT > 0 ? Number(sumLT).toLocaleString('vi-VN') + ' sp/phút' : '—', color: '#1e3a5f' },
+                                  { label: 'Tốc độ Thực tế', val: sumTT > 0 ? Number(sumTT).toLocaleString('vi-VN') + ' sp/phút' : '—', color: '#16a34a' },
+                                  { label: 'Tổng tổn thất', val: sumLT > 0 ? Number(tonThat).toLocaleString('vi-VN') + ' sp/phút' : '—', color: '#dc2626' },
                                   { label: 'P ngày', val: pPct != null ? `${pPct}%` : '—', color: pColor },
                                 ].map(({ label, val, color }) => (
                                   <div key={label} style={{ background: '#fff', border: '1px solid #fde68a', borderRadius: 6, padding: '5px 8px' }}>
