@@ -5637,7 +5637,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
               <span style={{ fontWeight: 700, fontSize: 14, color: '#92400e' }}>⏱ Thời gian không tạo sản phẩm</span>
               <span style={{ fontSize: 11, color: '#9ca3af' }}>Lưu cục bộ (localStorage)</span>
               <Button size="small" type="primary" icon={<PlusOutlined />} style={{ marginLeft: 'auto', background: '#d97706', borderColor: '#d97706' }}
-                onClick={() => setNpForm({ date: dayjs().format('YYYY-MM-DD'), act: '', to: '', person: '', gio: '', cong: '' })}>
+                onClick={() => setNpForm({ date: dayjs().format('YYYY-MM-DD'), act: '', to: '', persons: [], gio: '', cong: '' })}>
                 Thêm mới
               </Button>
               {nonprodData.length > 0 && (
@@ -5674,20 +5674,26 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                 {/* Tổ thực hiện */}
                 <div>
                   <div style={{ fontSize: 11, color: '#92400e', fontWeight: 600, marginBottom: 3 }}>Tổ TH</div>
-                  <select value={npForm.to || ''} onChange={e => setNpForm(f => ({ ...f, to: e.target.value, person: '' }))}
+                  <select value={npForm.to || ''} onChange={e => setNpForm(f => ({ ...f, to: e.target.value, persons: [] }))}
                     style={{ border: '1px solid #fcd34d', borderRadius: 5, padding: '5px 8px', fontSize: 12, background: '#fff', minWidth: 90 }}>
                     <option value="">-- Tổ --</option>
                     {NP_TO_LIST.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
-                {/* Người thực hiện — select từ danh sách nhân sự */}
-                <div style={{ minWidth: 160 }}>
+                {/* Người thực hiện — chọn nhiều từ danh sách nhân sự, mỗi người sẽ tạo 1 dòng riêng */}
+                <div style={{ minWidth: 220 }}>
                   <div style={{ fontSize: 11, color: '#92400e', fontWeight: 600, marginBottom: 3 }}>Người thực hiện</div>
-                  <select value={npForm.person || ''} onChange={e => setNpForm(f => ({ ...f, person: e.target.value }))}
-                    style={{ border: '1px solid #fcd34d', borderRadius: 5, padding: '5px 8px', fontSize: 12, background: '#fff', width: '100%' }}>
-                    <option value="">-- Chọn người --</option>
-                    {npFilteredEmps.map(emp => <option key={emp.id} value={emp.hoVaTen}>{emp.hoVaTen}</option>)}
-                  </select>
+                  <Select
+                    mode="multiple"
+                    allowClear
+                    size="middle"
+                    value={npForm.persons || []}
+                    onChange={vals => setNpForm(f => ({ ...f, persons: vals }))}
+                    placeholder="-- Chọn người (có thể chọn nhiều) --"
+                    style={{ width: '100%' }}
+                    maxTagCount="responsive"
+                    options={npFilteredEmps.map(emp => ({ value: emp.hoVaTen, label: emp.hoVaTen }))}
+                  />
                 </div>
                 {/* Giờ */}
                 <div>
@@ -5712,15 +5718,18 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                     onClick={() => {
                       if (!npForm.date || !npForm.act) { message.warning('Vui lòng nhập Ngày và Hoạt động'); return }
                       const g = parseFloat(npForm.gio) || 0
-                      const entry = {
+                      const cong = g > 0 ? parseFloat((g / 8).toFixed(3)) : 0
+                      // Nhiều người được chọn → mỗi người 1 dòng riêng (cùng giờ/công); không chọn ai → 1 dòng để trống người
+                      const persons = (npForm.persons && npForm.persons.length > 0) ? npForm.persons : ['']
+                      const newEntries = persons.map(person => ({
                         _id: `np_${Date.now()}_${Math.random().toString(36).slice(2)}`,
                         date: npForm.date, act: npForm.act,
-                        to: npForm.to, person: npForm.person,
-                        gio: g, cong: g > 0 ? parseFloat((g / 8).toFixed(3)) : 0,
-                      }
-                      saveNpData([...nonprodData, entry])
+                        to: npForm.to, person,
+                        gio: g, cong,
+                      }))
+                      saveNpData([...nonprodData, ...newEntries])
                       // giữ ngày + tổ để tiếp tục nhập
-                      setNpForm(f => ({ ...f, act: '', person: '', gio: '', cong: '' }))
+                      setNpForm(f => ({ ...f, act: '', persons: [], gio: '', cong: '' }))
                     }}>Lưu & tiếp</Button>
                   <Button size="small" onClick={() => setNpForm(null)}>Đóng</Button>
                 </div>
