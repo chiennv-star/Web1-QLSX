@@ -4160,6 +4160,8 @@ function MachineUsageTab() {
   // Bảng P: dữ liệu từ /machine-perf/daily-summary — giống hệt WorkSchedulePage
   const filteredRowsP = useMemo(() => {
     let data = machinePRaw
+    // Chỉ hiển thị những row đã nhập đủ thông số: SL thực tế phải có
+    data = data.filter(r => r.slThucTe != null)
     if (mayFilter.length) data = data.filter(r => mayFilter.includes(r.tenMay))
     if (toNhomFilter.length) data = data.filter(r => toNhomFilter.includes(r.toNhom))
     return data
