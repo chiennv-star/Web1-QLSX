@@ -6797,7 +6797,7 @@ function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false
   const updateMachines = (roomId, mIds) => {
     const now = new Date().toISOString()
     const prev = currentData[roomId] || {inUse: false, note: '', machines: []}
-    const next = { ...currentData, [roomId]: { ...prev, machines: mIds, updatedAt: now } }
+    const next = { ...currentData, [roomId]: { ...prev, machines: mIds, inUse: mIds.length > 0, updatedAt: now } }
     setCurrentData(next)
     saveData(currentDate, next)
   }
