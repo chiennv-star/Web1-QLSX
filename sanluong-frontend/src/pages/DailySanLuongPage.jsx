@@ -4083,6 +4083,7 @@ function MachineUsageTab() {
   const [dateRange, setDateRange] = useState([dayjs().subtract(6, 'day'), dayjs()])
   const [loading, setLoading] = useState(false)
   const [raw, setRaw] = useState([])
+  const [machineARaw, setMachineARaw] = useState([])
   const [machineMap, setMachineMap] = useState({}) // maSp → { pc, pl, dg, bbc1 }
   const [mayFilter, setMayFilter] = useState([])
   const [activeQuickRange, setActiveQuickRange] = useState('Tuần này')
@@ -4090,8 +4091,22 @@ function MachineUsageTab() {
   const fetchData = useCallback(async (range = dateRange) => {
     setLoading(true)
     try {
+      const tuNgay = range[0].format('YYYY-MM-DD')
+      const denNgay = range[1].format('YYYY-MM-DD')
+
+      // Fetch A từ machine-runtime/daily-summary (tất cả tổ song song)
+      const aKeys = ['PCPL1', 'PCPL2', 'PL', 'DG', 'BBC1']
+      const aResults = await Promise.allSettled(
+        aKeys.map(k => api.get('/machine-runtime/daily-summary', { params: { congDoanKey: k, tuNgay, denNgay } }))
+      )
+      const aData = aResults
+        .filter(r => r.status === 'fulfilled')
+        .flatMap(r => r.value.data || [])
+      setMachineARaw(aData)
+
+      // Fetch P từ session (giữ nguyên)
       const { data: res } = await api.get('/work-schedule-session/daily-report', {
-        params: { fromDate: range[0].format('YYYY-MM-DD'), toDate: range[1].format('YYYY-MM-DD') },
+        params: { fromDate: tuNgay, toDate: denNgay },
       })
       const rows = res.filter(r => r.status !== 'PENDING' && r.status !== 'IN_PROGRESS')
       setRaw(rows)
@@ -4173,22 +4188,41 @@ function MachineUsageTab() {
     }).sort((a, b) => (a.ngay < b.ngay ? 1 : a.ngay > b.ngay ? -1 : a.may.localeCompare(b.may, 'vi')))
   }, [raw, machineMap])
 
+  const machineARows = useMemo(() => machineARaw.map(r => ({
+    key: r.ngay + '||' + (r.tenMay || ''),
+    ngay: r.ngay,
+    may: r.tenMay || '',
+    toNhom: r.toNhom || '',
+    usageHours: r.gioChay ?? 0,
+    plannedHours: r.gioKH ?? 0,
+    gioDung: r.gioDung ?? 0,
+    aIndex: (r.gioKH ?? 0) > 0 ? (r.gioChay ?? 0) / r.gioKH : null,
+    soLanDung: r.soLanDung ?? 0,
+    lyDoDung: r.lyDoDung || '',
+  })).sort((a, b) => a.ngay < b.ngay ? 1 : a.ngay > b.ngay ? -1 : a.may.localeCompare(b.may, 'vi')),
+  [machineARaw])
+
+  const filteredMachineA = useMemo(
+    () => mayFilter.length ? machineARows.filter(r => mayFilter.includes(r.may)) : machineARows,
+    [machineARows, mayFilter]
+  )
+
   const filteredRows = useMemo(
     () => mayFilter.length ? rows.filter(r => mayFilter.includes(r.may)) : rows,
     [rows, mayFilter]
   )
 
   const mayOptions = useMemo(
-    () => [...new Set(rows.map(r => r.may))].sort((a, b) => a.localeCompare(b, 'vi')).map(m => ({ value: m, label: m })),
-    [rows]
+    () => [...new Set([...machineARows.map(r => r.may), ...rows.map(r => r.may)])].sort((a, b) => a.localeCompare(b, 'vi')).map(m => ({ value: m, label: m })),
+    [machineARows, rows]
   )
 
-  const withA = filteredRows.filter(r => r.aIndex != null)
+  const withA = filteredMachineA.filter(r => r.aIndex != null)
   const withP = filteredRows.filter(r => r.pIndex != null)
   const avgA = withA.length ? withA.reduce((s, r) => s + r.aIndex, 0) / withA.length : null
   const avgP = withP.length ? withP.reduce((s, r) => s + r.pIndex, 0) / withP.length : null
-  const totalUsageHours = filteredRows.reduce((s, r) => s + r.usageHours, 0)
-  const machineCount = new Set(filteredRows.map(r => r.may)).size
+  const totalUsageHours = filteredMachineA.reduce((s, r) => s + r.usageHours, 0)
+  const machineCount = new Set([...filteredMachineA.map(r => r.may), ...filteredRows.map(r => r.may)]).size
 
   const pctColor = v => {
     if (v == null) return '#94a3b8'
@@ -4219,13 +4253,20 @@ function MachineUsageTab() {
 
   const colA = [
     ngayColumn, mayColumn,
-    { title: 'Số ca', dataIndex: 'caCount', width: 80, align: 'right' },
-    { title: 'Giờ máy chạy', dataIndex: 'usageHours', width: 120, align: 'right', render: fmtH,
+    { title: 'Tổ/Nhóm', dataIndex: 'toNhom', width: 90, align: 'center',
+      render: v => v ? <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#1e3a5f' }}>{v}</span> : '—' },
+    { title: 'Giờ chạy (h)', dataIndex: 'usageHours', width: 110, align: 'right', render: fmtH,
       sorter: (a, b) => a.usageHours - b.usageHours },
-    { title: 'Giờ kế hoạch', dataIndex: 'plannedHours', width: 120, align: 'right', render: fmtH },
+    { title: 'Giờ KH (h)', dataIndex: 'plannedHours', width: 100, align: 'right', render: fmtH },
+    { title: 'Giờ dừng (h)', dataIndex: 'gioDung', width: 110, align: 'right',
+      render: v => v > 0 ? <span style={{ color: '#dc2626', fontWeight: 600 }}>{fmtH(v)}</span> : fmtH(v) },
     { title: 'Chỉ số A', dataIndex: 'aIndex', width: 100, align: 'right',
       render: v => <span style={{ fontWeight: 700, color: pctColor(v) }}>{fmtPct(v)}</span>,
       sorter: (a, b) => (a.aIndex ?? -1) - (b.aIndex ?? -1) },
+    { title: 'Số lần dừng', dataIndex: 'soLanDung', width: 105, align: 'right',
+      render: v => v > 0 ? <span style={{ color: '#dc2626', fontWeight: 600 }}>{v}</span> : '—' },
+    { title: 'Lý do dừng', dataIndex: 'lyDoDung', ellipsis: true,
+      render: v => v || '—' },
   ]
 
   const colP = [
@@ -4312,9 +4353,9 @@ function MachineUsageTab() {
       </div>
 
       <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 16 }}>
-        A = Giờ máy chạy thực tế / (Số ca hoạt động × {GIO_CHUAN_CA}h/ca) &nbsp;·&nbsp;
+        A = Giờ chạy thực tế / Giờ kế hoạch (lấy từ bảng Chỉ số máy trong Sản lượng tổ) &nbsp;·&nbsp;
         P = Năng suất thực tế / Năng suất chuẩn sản phẩm &nbsp;·&nbsp;
-        Chỉ tính các mã SP đã gán máy trong Danh mục sản phẩm
+        Bảng P chỉ tính các mã SP đã gán máy trong Danh mục sản phẩm
       </div>
 
       {/* Bảng A */}
@@ -4324,10 +4365,10 @@ function MachineUsageTab() {
       <Table
         size="small"
         columns={colA}
-        dataSource={filteredRows}
+        dataSource={filteredMachineA}
         rowKey="key"
         loading={loading}
-        scroll={{ x: 700 }}
+        scroll={{ x: 950 }}
         pagination={{ defaultPageSize: 20, showSizeChanger: true, pageSizeOptions: ['20', '50', '100'], showTotal: t => `Tổng ${t} dòng` }}
         style={{ marginBottom: 24 }}
       />
