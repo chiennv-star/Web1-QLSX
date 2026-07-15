@@ -6631,6 +6631,7 @@ const PHONG_ZONES = ['Pha chế','Phân liều','Biệt trữ','Airlock','Vệ s
 // Các phòng hạ tầng luôn trong trạng thái hoạt động (không phụ thuộc kế hoạch hay toggle)
 const ALWAYS_ACTIVE_ROOMS = new Set([
   'pcan',                                             // Phòng Cân
+  'pl04',                                             // Phòng hồ sơ tổ trưởng
   'bt','btnl',                                        // Biệt trữ
   'al1','al2','al3','al4',                            // Airlock
   'vsbc1','vsbbnl','giatqa','ruadc','dcsach',         // Vệ sinh
@@ -6638,6 +6639,11 @@ const ALWAYS_ACTIVE_ROOMS = new Set([
   'hoanthien','hanhlang','quandoc','ipc',             // Khu vực khác
 ])
 const WEEKDAYS_VI = ['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7']
+
+// Ghi chú cố định cho một số phòng đặc biệt
+const ROOM_DEFAULT_NOTES = {
+  'pl04': 'Phòng hồ sơ tổ trưởng',
+}
 
 // Keyword để tìm máy mặc định theo phòng (match label case-insensitive)
 const ROOM_DEFAULT_MACHINE_KEYWORDS = {
@@ -6944,7 +6950,7 @@ function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false
                     )}
                     {(() => {
                       const hasStored = r.id in currentData && 'note' in currentData[r.id]
-                      const autoNote = hasStored ? (currentData[r.id].note || '') : (scheduleRoomInfo[r.id] || '')
+                      const autoNote = hasStored ? (currentData[r.id].note || '') : (scheduleRoomInfo[r.id] || ROOM_DEFAULT_NOTES[r.id] || '')
                       return (
                         <textarea
                           key={r.id + '|' + currentDate + '|' + (scheduleRoomInfo[r.id] || '')}
