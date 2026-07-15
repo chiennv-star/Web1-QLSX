@@ -1102,30 +1102,31 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho }) {
     { key: 'BBC1',  label: 'BBC1',  accent: '#16a34a', doing: bbc1Doing,  done: bbc1Done  },
   ]
 
-  // ── Cảnh báo bất thường ──────────────────────────────────────────────────
+  // ── Tình trạng dở dang ────────────────────────────────────────────────────
+  const NEUTRAL = { color: '#475569', bg: '#f8fafc', border: '#e2e8f0' }
   const warnings = []
 
   const loChuaBatDauList = data.filter(r => !hasAnyStage(r))
   if (loChuaBatDauList.length > 0)
-    warnings.push({ level: 'warn', icon: '⏸', label: 'Chưa bắt đầu bất kỳ công đoạn nào', count: loChuaBatDauList.length, color: '#d48806', bg: '#fffbeb', border: '#fde68a' })
+    warnings.push({ icon: '⏸', label: 'Chưa bắt đầu bất kỳ công đoạn nào', count: loChuaBatDauList.length, ...NEUTRAL })
 
   const loBtpChoNhieu = data.filter(r => (parseInt(r.slPc)||0) > 0 && (parseInt(r.pcPl)||0) === 0)
   if (loBtpChoNhieu.length > 0)
-    warnings.push({ level: 'warn', icon: '📦', label: 'BTP sau PC chưa chuyển sang PL', count: loBtpChoNhieu.length, sl: loBtpChoNhieu.reduce((s, r) => s + Math.max(0, (parseInt(r.slPc)||0) - (parseInt(r.pcPl)||0)), 0), color: '#7c3aed', bg: '#faf5ff', border: '#ddd6fe' })
+    warnings.push({ icon: '📦', label: 'BTP sau PC chưa chuyển sang PL', count: loBtpChoNhieu.length, sl: loBtpChoNhieu.reduce((s, r) => s + Math.max(0, (parseInt(r.slPc)||0) - (parseInt(r.pcPl)||0)), 0), ...NEUTRAL })
 
   const loBtpChoDg = data.filter(r => (parseInt(r.pcPl)||0) > 0 && (parseInt(r.dg2)||0) === 0)
   if (loBtpChoDg.length > 0)
-    warnings.push({ level: 'info', icon: '🔬', label: 'BTP sau PL chưa qua ĐG', count: loBtpChoDg.length, sl: loBtpChoDg.reduce((s, r) => s + Math.max(0, (parseInt(r.pcPl)||0) - (parseInt(r.dg2)||0)), 0), color: '#d48806', bg: '#fffbeb', border: '#fde68a' })
+    warnings.push({ icon: '🔬', label: 'BTP sau PL chưa qua ĐG', count: loBtpChoDg.length, sl: loBtpChoDg.reduce((s, r) => s + Math.max(0, (parseInt(r.pcPl)||0) - (parseInt(r.dg2)||0)), 0), ...NEUTRAL })
 
   if (hangLoiCount > 0)
-    warnings.push({ level: 'error', icon: '⚠️', label: 'Có hàng lỗi cần xử lý', count: hangLoiCount, color: '#dc2626', bg: '#fff1f2', border: '#fecdd3' })
+    warnings.push({ icon: '⚠️', label: 'Có hàng lỗi cần xử lý', count: hangLoiCount, ...NEUTRAL })
 
   const loSlLechCao = data.filter(r => {
     const pc = parseInt(r.slPc)||0; const pl = parseInt(r.pcPl)||0
     return pc > 0 && pl > 0 && Math.abs(pc - pl) > pc * 0.15
   })
   if (loSlLechCao.length > 0)
-    warnings.push({ level: 'info', icon: '📊', label: 'SL lệch >15% giữa PC và PL', count: loSlLechCao.length, color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc' })
+    warnings.push({ icon: '📊', label: 'SL lệch >15% giữa PC và PL', count: loSlLechCao.length, ...NEUTRAL })
 
   // ── Sub-components ────────────────────────────────────────────────────────
   const KpiCard = ({ label, value, sub, bg, badge, icon }) => (
@@ -1384,10 +1385,10 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho }) {
         </div>
       </div>
 
-      {/* ── Row 5: Cảnh báo bất thường ── */}
+      {/* ── Row 5: Tình trạng dở dang ── */}
       {warnings.length > 0 && (
         <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: '10px 12px' }}>
-          <SectionLabel accent="#dc2626">Cảnh báo bất thường ({warnings.length})</SectionLabel>
+          <SectionLabel accent="#475569">Tình trạng dở dang ({warnings.length})</SectionLabel>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {warnings.map((w, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, background: w.bg, border: `1px solid ${w.border}`, borderRadius: 8, padding: '6px 12px', flexShrink: 0 }}>
@@ -1408,7 +1409,7 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho }) {
       {warnings.length === 0 && data.length > 0 && (
         <div style={{ background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 16 }}>✅</span>
-          <span style={{ fontSize: 12, color: '#15803d', fontWeight: 600 }}>Không phát hiện bất thường trong {total} lô đang sản xuất</span>
+          <span style={{ fontSize: 12, color: '#15803d', fontWeight: 600 }}>Không có bán thành phẩm dở dang trong {total} lô đang sản xuất</span>
         </div>
       )}
     </div>
