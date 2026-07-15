@@ -73,6 +73,7 @@ export default function RecordFormPage() {
   const watchPc      = Form.useWatch('pcChiPhi',      form) || 0
   const watchPl      = Form.useWatch('plChiPhi',      form) || 0
   const watchDg      = Form.useWatch('dgChiPhi',      form) || 0
+  const watchCc      = Form.useWatch('ccChiPhi',      form) || 0
   const watchGnnl    = Form.useWatch('temDb',         form) || 0
   const watchPcStatus   = Form.useWatch('pcTrangThai',   form)
   const watchPlStatus   = Form.useWatch('plTrangThai',   form)
@@ -796,6 +797,42 @@ export default function RecordFormPage() {
                                 </tr>
                               )
                             })}
+                            {/* CC — Cân chia */}
+                            <tr style={{ borderBottom: '1px solid #bae6fd', background: '#f0f9ff' }}>
+                              <td style={{ padding: '6px 14px', whiteSpace: 'nowrap' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                    width: 36, height: 22, borderRadius: 4,
+                                    background: '#0891b2', color: '#fff', fontWeight: 800, fontSize: 14, letterSpacing: 0.5,
+                                  }}>CC</span>
+                                  <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>Cân chia</span>
+                                </div>
+                              </td>
+                              <td colSpan={2} style={{ padding: '4px 10px', color: '#bbb', fontSize: 13 }}>—</td>
+                              <td style={{ padding: '4px 10px' }}>
+                                <Form.Item name="ccChiPhi" style={{ marginBottom: 0 }}>
+                                  <InputNumber size="small" style={{ width: '100%' }} step={0.0001} precision={4} placeholder="0.0000" disabled={ro} />
+                                </Form.Item>
+                              </td>
+                            </tr>
+                            {/* Tổng Công PC + Cân chia */}
+                            <tr style={{ borderBottom: '1px solid #a5f3fc', background: '#ecfeff' }}>
+                              <td style={{ padding: '6px 14px', whiteSpace: 'nowrap' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                    width: 64, height: 22, borderRadius: 4,
+                                    background: '#0369a1', color: '#fff', fontWeight: 800, fontSize: 11, letterSpacing: 0.3,
+                                  }}>PC + CC</span>
+                                </div>
+                              </td>
+                              <td colSpan={2} style={{ padding: '4px 10px', fontSize: 12, color: '#0369a1', fontStyle: 'italic' }}>Tổng công Pha chế + Cân chia</td>
+                              <td style={{ padding: '4px 14px', fontWeight: 800, color: '#0369a1', fontSize: 14 }}>
+                                {(watchPc + watchCc).toFixed(4)}
+                              </td>
+                            </tr>
+                            {/* GNNL */}
                             <tr style={{ borderBottom: '1px solid #f5e6ff', background: '#fdf4ff' }}>
                               <td style={{ padding: '6px 14px', whiteSpace: 'nowrap' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
