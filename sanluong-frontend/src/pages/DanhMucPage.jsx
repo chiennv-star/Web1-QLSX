@@ -1201,8 +1201,9 @@ function ProductMasterTab() {
   const [pagination,  setPagination]  = useState({ current: 1, pageSize: 20, total: 0 })
   const [keyword,     setKeyword]     = useState('')
   const [filterPcpl, setFilterPcpl]  = useState(null)
-  const [filterLoaiSp, setFilterLoaiSp] = useState(null)
-  const [filterMay,    setFilterMay]    = useState('')
+  const [filterLoaiSp,   setFilterLoaiSp]   = useState(null)
+  const [filterMay,      setFilterMay]      = useState('')
+  const [filterTinhTrang, setFilterTinhTrang] = useState(null)
   const [allData,      setAllData]      = useState(null) // loaded when local filters active
   const [allLoaiSp,    setAllLoaiSp]    = useState([])  // tất cả loại SP từ DB
   const [modalOpen,   setModalOpen]   = useState(false)
@@ -1251,7 +1252,7 @@ function ProductMasterTab() {
     finally { setLoading(false) }
   }, [keyword, filterPcpl])
 
-  // displayData: áp loaiSp + may filter lên allData (hoặc data nếu chưa load all)
+  // displayData: áp loaiSp + may + tinhTrang filter lên allData (hoặc data nếu chưa load all)
   const normStr = v => (v || '').trim().toLowerCase()
   const displayData = useMemo(() => {
     const base = allData ?? data
@@ -1266,16 +1267,18 @@ function ProductMasterTab() {
         (r.mayMocDg   || '').toLowerCase().includes(q)
       )
     }
+    if (filterTinhTrang === 'ma_cu') d = d.filter(r => r.tinhTrang === 'ma_cu')
+    else if (filterTinhTrang === 'ma_moi') d = d.filter(r => !r.tinhTrang || r.tinhTrang === 'ma_moi')
     return d
-  }, [data, allData, filterLoaiSp, filterMay])
+  }, [data, allData, filterLoaiSp, filterMay, filterTinhTrang])
 
-  const hasLocalFilter = !!(filterLoaiSp || filterMay?.trim())
+  const hasLocalFilter = !!(filterLoaiSp || filterMay?.trim() || filterTinhTrang)
 
   // Khi local filter thay đổi → load all; khi xóa filter → dùng lại data server
   useEffect(() => {
     if (hasLocalFilter) fetchAll()
     else setAllData(null)
-  }, [filterLoaiSp, filterMay]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filterLoaiSp, filterMay, filterTinhTrang]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchData() }, [])
 
@@ -1291,6 +1294,16 @@ function ProductMasterTab() {
     return () => window.removeEventListener('app:silent-refresh', handler)
   }, [fetchData, pagination.current, pagination.pageSize])
 
+  const doCreate = async (values) => {
+    const { data: created } = await api.post('/product-master', values)
+    message.success('Đã thêm')
+    setModalOpen(false)
+    setData(prev => [created, ...prev.filter(r => r.id !== created.id)])
+    setPagination(p => ({ ...p, current: 1, total: p.total + 1 }))
+    setNewItemId(created.id)
+    setTimeout(() => setNewItemId(null), 4000)
+  }
+
   const onSave = async () => {
     const values = await form.validateFields()
     try {
@@ -1300,25 +1313,51 @@ function ProductMasterTab() {
         if (!values.maTp) values.maTp = editItem.maTp
         const { data: updatedItem } = await api.put(`/product-master/${editItem.id}`, values)
         message.success('Đã cập nhật')
-        // Cập nhật cả data lẫn allData từ response để tránh stale state khi filter local đang bật
         setData(prev => prev.map(r => r.id === updatedItem.id ? updatedItem : r))
         if (allData) setAllData(prev => prev.map(r => r.id === updatedItem.id ? updatedItem : r))
-        // Reload history to show the new entry
         api.get(`/product-master/${editItem.id}/history`)
           .then(res => setHistory(res.data || []))
           .catch(() => {})
+        setModalOpen(false); fetchData(pagination.current - 1)
       } else {
-        const { data: created } = await api.post('/product-master', values)
-        message.success('Đã thêm')
-        setModalOpen(false)
-        // Prepend mã mới lên đầu trang 1 và highlight 4 giây
-        setData(prev => [created, ...prev.filter(r => r.id !== created.id)])
-        setPagination(p => ({ ...p, current: 1, total: p.total + 1 }))
-        setNewItemId(created.id)
-        setTimeout(() => setNewItemId(null), 4000)
-        return
+        // Kiểm tra trùng tên trước khi tạo
+        if (values.tienTrinh?.trim()) {
+          const { data: checkRes } = await api.get('/product-master', {
+            params: { keyword: values.tienTrinh.trim(), page: 0, size: 20 }
+          })
+          const matching = (checkRes.content || []).filter(
+            r => normStr(r.tienTrinh) === normStr(values.tienTrinh)
+          )
+          if (matching.length > 0) {
+            const hasMaCu = matching.some(r => r.tinhTrang === 'ma_cu')
+            Modal.confirm({
+              title: hasMaCu ? '⚠️ Tên này đã có Mã cũ!' : '⚠️ Tên sản phẩm đã tồn tại',
+              content: (
+                <div style={{ fontSize: 13 }}>
+                  <p style={{ marginBottom: 6 }}>
+                    <b>"{values.tienTrinh}"</b> đã có trong danh mục
+                    {hasMaCu ? ' với tình trạng ' : '.'}
+                    {hasMaCu && <Tag style={{ fontWeight: 700, color: '#92400e', background: '#fef3c7', borderColor: '#fcd34d' }}>Mã cũ</Tag>}
+                  </p>
+                  <p style={{ color: '#6b7280' }}>Bạn có chắc muốn tạo thêm mã mới?</p>
+                </div>
+              ),
+              okText: 'Vẫn tạo mới',
+              okButtonProps: { danger: hasMaCu },
+              cancelText: 'Hủy',
+              onOk: async () => {
+                try { await doCreate(values) }
+                catch (err) {
+                  const msg = err?.response?.data?.message || err?.response?.data || err?.message || 'Lưu thất bại'
+                  message.error(typeof msg === 'string' ? msg : 'Lưu thất bại')
+                }
+              },
+            })
+            return
+          }
+        }
+        await doCreate(values)
       }
-      setModalOpen(false); fetchData(pagination.current - 1)
     } catch (err) {
       const msg = err?.response?.data?.message || err?.response?.data || err?.message || 'Lưu thất bại'
       message.error(typeof msg === 'string' ? msg : 'Lưu thất bại')
@@ -1392,6 +1431,15 @@ function ProductMasterTab() {
     try {
       await api.patch(`/product-master/${record.id}/loai-san-pham`, { value: newValue ?? null })
       setData(prev => prev.map(r => r.id === record.id ? { ...r, loaiSanPham: newValue ?? null } : r))
+    } catch { message.error('Cập nhật thất bại') }
+  }
+
+  const patchTinhTrang = async (record, newValue) => {
+    try {
+      await api.patch(`/product-master/${record.id}/tinh-trang`, { value: newValue ?? null })
+      const updated = { ...record, tinhTrang: newValue ?? null }
+      setData(prev => prev.map(r => r.id === record.id ? updated : r))
+      if (allData) setAllData(prev => prev.map(r => r.id === record.id ? updated : r))
     } catch { message.error('Cập nhật thất bại') }
   }
 
@@ -1534,6 +1582,38 @@ function ProductMasterTab() {
     { title: 'Máy Móc BBC1', dataIndex: 'mayMocBbc1', key: 'mayMocBbc1', width: 160, render: txtCell },
     { title: 'Máy Móc ĐG', dataIndex: 'mayMocDg', key: 'mayMocDg', width: 140, render: txtCell },
     { title: 'Ghi chú', dataIndex: 'ghiChu', key: 'ghiChu', width: 200, ellipsis: true, render: txtCell },
+    { title: 'Tình Trạng', dataIndex: 'tinhTrang', key: 'tinhTrang', width: 110, align: 'center',
+      render: (v, record) => {
+        const isMaCu = v === 'ma_cu'
+        const badge = isMaCu
+          ? <Tag style={{ marginRight: 0, fontWeight: 700, fontSize: 11, color: '#92400e', background: '#fef3c7', borderColor: '#fcd34d' }}>Mã cũ</Tag>
+          : <Tag color="success" style={{ marginRight: 0, fontWeight: 700, fontSize: 11 }}>Mã mới</Tag>
+        if (!canEdit) return badge
+        const opts = [
+          { value: null,     label: 'Mã mới', color: 'success' },
+          { value: 'ma_cu',  label: 'Mã cũ',  color: 'warning' },
+        ]
+        const content = (
+          <div style={{ display: 'flex', gap: 6, flexDirection: 'column', minWidth: 90 }} onClick={e => e.stopPropagation()}>
+            {opts.map(o => {
+              const active = (o.value === null ? (!v || v === 'ma_moi') : v === o.value)
+              return (
+                <Tag key={o.value ?? 'moi'} color={active ? o.color : 'default'}
+                  style={{ cursor: 'pointer', fontWeight: 600, textAlign: 'center', margin: 0, opacity: active ? 1 : 0.55 }}
+                  onClick={() => patchTinhTrang(record, o.value)}>
+                  {active ? '✓ ' : ''}{o.label}
+                </Tag>
+              )
+            })}
+          </div>
+        )
+        return (
+          <Popover content={content} trigger="click" placement="bottom">
+            <div data-no-row-click style={{ cursor: 'pointer', display: 'inline-block' }}>{badge}</div>
+          </Popover>
+        )
+      }
+    },
     {
       title: '', key: 'action', width: canEdit ? 80 : 50, align: 'center', fixed: 'right',
       render: (_, r) => (
@@ -1581,6 +1661,12 @@ function ProductMasterTab() {
           options={loaiSpOptions.map(v => ({ value: v, label: v }))} />
         <Input size="small" placeholder="Tìm theo máy..." style={{ width: 150 }}
           value={filterMay} onChange={e => setFilterMay(e.target.value)} allowClear />
+        <Select size="small" allowClear placeholder="Tất cả tình trạng" style={{ width: 150 }}
+          value={filterTinhTrang} onChange={v => setFilterTinhTrang(v ?? null)}
+          options={[
+            { value: 'ma_moi', label: <><Tag color="success" style={{ marginRight: 4, fontSize: 11, fontWeight: 700 }}>Mã mới</Tag></> },
+            { value: 'ma_cu',  label: <><Tag style={{ marginRight: 4, fontSize: 11, fontWeight: 700, color: '#92400e', background: '#fef3c7', borderColor: '#fcd34d' }}>Mã cũ</Tag></> },
+          ]} />
         {hasLocalFilter && (
           <span style={{ fontSize: 11, color: '#1677ff', fontStyle: 'italic' }}>
             {displayData.length} kết quả
@@ -1715,6 +1801,15 @@ function ProductMasterTab() {
                 ]} />
               </Form.Item>
             </Col>
+            <Col span={8}>
+              <Form.Item label="Tình Trạng" name="tinhTrang" extra={<span style={{fontSize:11,color:'#6b7280'}}>Để trống = Mã mới</span>}>
+                <Select placeholder="— Mã mới —" allowClear options={[
+                  { value: 'ma_cu', label: <Tag style={{ fontWeight: 700, color: '#92400e', background: '#fef3c7', borderColor: '#fcd34d' }}>Mã cũ</Tag> },
+                ]} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={12}>
             <Col span={8}>
               <Form.Item label="Khối lượng 1 đơn vị (gram)" name="khoiLuong">
                 <InputNumber style={{ width: '100%' }} min={0} step={0.1}

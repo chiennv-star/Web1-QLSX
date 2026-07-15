@@ -40,6 +40,7 @@ public class ProductMasterService {
         FIELD_LABELS.put("mayMocDg",     "Máy Móc ĐG");
         FIELD_LABELS.put("toNhomPcpl",   "Tổ/Nhóm PCPL");
         FIELD_LABELS.put("ghiChu",       "Ghi chú");
+        FIELD_LABELS.put("tinhTrang",    "Tình trạng");
     }
 
     private final ProductMasterRepository repository;
@@ -125,6 +126,7 @@ public class ProductMasterService {
         addChange(entries, "mayMocDg",     old.getMayMocDg(),     dto.getMayMocDg());
         addChange(entries, "toNhomPcpl",  old.getToNhomPcpl(),  dto.getToNhomPcpl());
         addChange(entries, "ghiChu",      old.getGhiChu(),      dto.getGhiChu());
+        addChange(entries, "tinhTrang",   old.getTinhTrang(),   dto.getTinhTrang());
         if (entries.isEmpty()) return null;
         return "[" + String.join(",", entries) + "]";
     }
@@ -172,6 +174,7 @@ public class ProductMasterService {
         p.setKhoiLuong(dto.getKhoiLuong());
         p.setToNhomPcpl(dto.getToNhomPcpl());
         p.setGhiChu(dto.getGhiChu());
+        p.setTinhTrang(dto.getTinhTrang());
         p.setNangSuatPcMe(dto.getNangSuatPcMe());
         return p;
     }
@@ -189,6 +192,14 @@ public class ProductMasterService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy ID: " + id));
         String v = (value == null || value.isBlank()) ? null : value.trim();
         p.setLoaiSanPham(v);
+        return repository.save(p);
+    }
+
+    public ProductMaster patchTinhTrang(Long id, String value) {
+        ProductMaster p = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ID: " + id));
+        String v = (value == null || value.isBlank()) ? null : value.trim();
+        p.setTinhTrang(v);
         return repository.save(p);
     }
 
