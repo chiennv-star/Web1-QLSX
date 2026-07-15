@@ -4240,17 +4240,24 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const [hiddenCount, setHiddenCount] = useState(0)
   const [doneCount, setDoneCount] = useState(0)
   const [filterPanelOpen, setFilterPanelOpen] = useState(false)
-  // ── Không SX state (chỉ ADMIN) ──
-  const LS_NONPROD = `nonprod_stage_${congDoan}`
-  const [nonprodData, setNonprodData] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(`nonprod_stage_${congDoan}`)) || [] } catch { return [] }
-  })
+  // ── Không SX state (chỉ ADMIN) — lưu ở backend, bảng non_productive_time ──
+  const [nonprodData, setNonprodData] = useState([])
+  const [nonprodLoading, setNonprodLoading] = useState(false)
+  const [nonprodSaving, setNonprodSaving] = useState(false)
   const [npForm, setNpForm] = useState(null) // null=đóng, object=form đang mở
   const [npEmployees, setNpEmployees] = useState([]) // danh sách nhân sự cho tab Không SX
-  const saveNpData = (arr) => {
-    setNonprodData(arr)
-    try { localStorage.setItem(LS_NONPROD, JSON.stringify(arr)) } catch {}
-  }
+
+  const fetchNonprod = useCallback(() => {
+    setNonprodLoading(true)
+    api.get('/non-productive-time', { params: { congDoan } })
+      .then(({ data }) => setNonprodData(Array.isArray(data) ? data : []))
+      .catch(() => message.error('Không thể tải dữ liệu không SX'))
+      .finally(() => setNonprodLoading(false))
+  }, [congDoan])
+
+  useEffect(() => {
+    if (innerTab === 'nonprod') fetchNonprod()
+  }, [innerTab, fetchNonprod])
   const jumpApplied    = useRef(false)
   const detailRestored = useRef(false)
   const controlsRef    = useRef(null)
@@ -5635,14 +5642,18 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 700, fontSize: 14, color: '#92400e' }}>⏱ Thời gian không tạo sản phẩm</span>
-              <span style={{ fontSize: 11, color: '#9ca3af' }}>Lưu cục bộ (localStorage)</span>
+              {nonprodLoading && <SyncOutlined spin style={{ color: '#d97706', fontSize: 13 }} />}
               <Button size="small" type="primary" icon={<PlusOutlined />} style={{ marginLeft: 'auto', background: '#d97706', borderColor: '#d97706' }}
                 onClick={() => setNpForm({ date: dayjs().format('YYYY-MM-DD'), act: '', to: '', persons: [], gio: '', cong: '' })}>
                 Thêm mới
               </Button>
               {nonprodData.length > 0 && (
                 <Popconfirm title="Xóa toàn bộ dữ liệu không SX?" okType="danger" okText="Xóa hết" cancelText="Hủy"
-                  onConfirm={() => saveNpData([])}>
+                  onConfirm={() => {
+                    api.delete('/non-productive-time', { params: { congDoan } })
+                      .then(() => setNonprodData([]))
+                      .catch(() => message.error('Xóa thất bại'))
+                  }}>
                   <Button size="small" danger>Xóa tất cả</Button>
                 </Popconfirm>
               )}
@@ -5714,22 +5725,26 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                 </div>
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                  <Button size="small" type="primary" style={{ background: '#d97706', borderColor: '#d97706' }}
+                  <Button size="small" type="primary" loading={nonprodSaving} style={{ background: '#d97706', borderColor: '#d97706' }}
                     onClick={() => {
                       if (!npForm.date || !npForm.act) { message.warning('Vui lòng nhập Ngày và Hoạt động'); return }
                       const g = parseFloat(npForm.gio) || 0
-                      const cong = g > 0 ? parseFloat((g / 8).toFixed(3)) : 0
                       // Nhiều người được chọn → mỗi người 1 dòng riêng (cùng giờ/công); không chọn ai → 1 dòng để trống người
                       const persons = (npForm.persons && npForm.persons.length > 0) ? npForm.persons : ['']
-                      const newEntries = persons.map(person => ({
-                        _id: `np_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-                        date: npForm.date, act: npForm.act,
-                        to: npForm.to, person,
-                        gio: g, cong,
+                      const payload = persons.map(person => ({
+                        ngay: npForm.date, hoatDong: npForm.act,
+                        toThucHien: npForm.to, nguoiThucHien: person,
+                        gio: g,
                       }))
-                      saveNpData([...nonprodData, ...newEntries])
-                      // giữ ngày + tổ để tiếp tục nhập
-                      setNpForm(f => ({ ...f, act: '', persons: [], gio: '', cong: '' }))
+                      setNonprodSaving(true)
+                      api.post('/non-productive-time', payload, { params: { congDoan } })
+                        .then(({ data }) => {
+                          setNonprodData(prev => [...prev, ...data])
+                          // giữ ngày + tổ để tiếp tục nhập
+                          setNpForm(f => ({ ...f, act: '', persons: [], gio: '', cong: '' }))
+                        })
+                        .catch(() => message.error('Lưu thất bại'))
+                        .finally(() => setNonprodSaving(false))
                     }}>Lưu & tiếp</Button>
                   <Button size="small" onClick={() => setNpForm(null)}>Đóng</Button>
                 </div>
@@ -5760,18 +5775,22 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                     </tr>
                   </thead>
                   <tbody>
-                    {[...nonprodData].sort((a, b) => (a.date || '').localeCompare(b.date || '')).map((entry, idx) => (
-                      <tr key={entry._id} style={{ background: idx % 2 === 0 ? '#fff' : '#fffbf0', borderBottom: '1px solid #fef3c7' }}>
-                        <td style={{ padding: '5px 10px', whiteSpace: 'nowrap', fontWeight: 600 }}>{entry.date ? dayjs(entry.date).format('DD/MM/YYYY') : '—'}</td>
-                        <td style={{ padding: '5px 10px' }}>{entry.act || '—'}</td>
+                    {[...nonprodData].sort((a, b) => (a.ngay || '').localeCompare(b.ngay || '')).map((entry, idx) => (
+                      <tr key={entry.id} style={{ background: idx % 2 === 0 ? '#fff' : '#fffbf0', borderBottom: '1px solid #fef3c7' }}>
+                        <td style={{ padding: '5px 10px', whiteSpace: 'nowrap', fontWeight: 600 }}>{entry.ngay ? dayjs(entry.ngay).format('DD/MM/YYYY') : '—'}</td>
+                        <td style={{ padding: '5px 10px' }}>{entry.hoatDong || '—'}</td>
                         <td style={{ padding: '5px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                          {entry.to ? <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>{entry.to}</Tag> : '—'}
+                          {entry.toThucHien ? <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>{entry.toThucHien}</Tag> : '—'}
                         </td>
-                        <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{entry.person || '—'}</td>
+                        <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{entry.nguoiThucHien || '—'}</td>
                         <td style={{ padding: '5px 10px', textAlign: 'right', fontFamily: 'monospace' }}>{entry.gio || 0}</td>
                         <td style={{ padding: '5px 10px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: '#d97706' }}>{entry.cong || 0}</td>
                         <td style={{ padding: '5px 10px', textAlign: 'center' }}>
-                          <button onClick={() => saveNpData(nonprodData.filter(e => e._id !== entry._id))}
+                          <button onClick={() => {
+                              api.delete(`/non-productive-time/${entry.id}`)
+                                .then(() => setNonprodData(prev => prev.filter(e => e.id !== entry.id)))
+                                .catch(() => message.error('Xóa thất bại'))
+                            }}
                             style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 17, lineHeight: 1, padding: '0 4px' }} title="Xóa">×</button>
                         </td>
                       </tr>
