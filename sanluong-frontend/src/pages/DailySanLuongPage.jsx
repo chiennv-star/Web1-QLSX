@@ -6822,7 +6822,17 @@ function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false
     setShowHistory(true)
   }
 
-  const isRoomActive = (id) => !!(currentData[id]?.inUse || scheduleRoomIds.has(id) || ALWAYS_ACTIVE_ROOMS.has(id))
+  const isRoomActive = (id) => {
+    if (ALWAYS_ACTIVE_ROOMS.has(id)) return true
+    if (scheduleRoomIds.has(id)) return true
+    if (currentData[id]?.inUse) return true
+    const storedMachines = currentData[id]?.machines
+    if (storedMachines !== undefined) return storedMachines.length > 0
+    // Phòng có default machine keyword → coi như đang hoạt động nếu máy tồn tại
+    const kw = ROOM_DEFAULT_MACHINE_KEYWORDS[id]
+    if (kw && machineOptions.some(o => o.label.toLowerCase().includes(kw.toLowerCase()))) return true
+    return false
+  }
   const totalRooms = PHONG_ROOMS.length
   const activeRooms = PHONG_ROOMS.filter(r => isRoomActive(r.id)).length
   const activeArea  = PHONG_ROOMS.filter(r => isRoomActive(r.id)).reduce((s, r) => s + r.area, 0)
