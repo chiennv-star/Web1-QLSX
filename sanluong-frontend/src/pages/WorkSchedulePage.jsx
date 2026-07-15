@@ -1864,7 +1864,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                         const rtEntries = allRtEntries.filter(e => e.tenMay === machineName || (!e.tenMay && mIdx === 0))
                         const { runMin, downMin } = computeRtStats(rtEntries)
                         const total = runMin + downMin
-                        const avail = total > 0 ? (runMin / total * 100).toFixed(1) : null
+                        const khMin = (machineGioKHMap[rtKey] || 0) * 60
+                        const avail = khMin > 0 ? (runMin / khMin * 100).toFixed(1) : null
                         const isOpen = machineRuntimeOpenDays.has(rtKey)
                         const isSaving = machineRuntimeSaving.has(rtKey)
                         const isDirty = machineRuntimeDirtyDays.has(rtKey)
@@ -1997,7 +1998,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                 {(runMin > 0 || downMin > 0) && (
                                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginTop: 12 }}>
                                     {[
-                                      { label: 'Tổng TG kế hoạch', val: `${total} phút`, color: '#0f4c4c' },
+                                      { label: 'Tổng TG kế hoạch', val: khMin > 0 ? `${khMin} phút` : `${total} phút`, color: '#0f4c4c' },
                                       { label: 'Tổng TG chạy máy', val: `${runMin} phút`, color: '#16a34a' },
                                       { label: 'Tổng TG nghỉ', val: `${downMin} phút`, color: '#dc2626' },
                                       { label: 'Availability (A)', val: avail ? `${avail}%` : '—', color: '#4f46e5' },
