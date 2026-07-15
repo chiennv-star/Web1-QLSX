@@ -1996,16 +1996,16 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                   + Thêm dòng
                                 </Button>
                                 {(runMin > 0 || downMin > 0) && (
-                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginTop: 12 }}>
+                                  <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
                                     {[
-                                      { label: 'Tổng TG kế hoạch', val: khMin > 0 ? `${khMin} phút` : `${total} phút`, color: '#0f4c4c' },
-                                      { label: 'Tổng TG chạy máy', val: `${runMin} phút`, color: '#16a34a' },
-                                      { label: 'Tổng TG nghỉ', val: `${downMin} phút`, color: '#dc2626' },
-                                      { label: 'Availability (A)', val: avail ? `${avail}%` : '—', color: '#4f46e5' },
+                                      { label: 'KH', val: khMin > 0 ? `${khMin}p` : `${total}p`, color: '#0f4c4c' },
+                                      { label: 'Chạy', val: `${runMin}p`, color: '#16a34a' },
+                                      { label: 'Nghỉ', val: `${downMin}p`, color: '#dc2626' },
+                                      { label: 'A', val: avail ? `${avail}%` : '—', color: '#4f46e5' },
                                     ].map(({ label, val, color }) => (
-                                      <div key={label} style={{ background: '#fff', border: '1px solid #e0f2fe', borderRadius: 8, padding: '8px 12px' }}>
-                                        <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, marginBottom: 2 }}>{label}</div>
-                                        <div style={{ fontSize: 16, fontWeight: 700, color, fontFamily: 'monospace' }}>{val}</div>
+                                      <div key={label} style={{ background: '#fff', border: '1px solid #e0f2fe', borderRadius: 6, padding: '3px 8px', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <span style={{ fontSize: 10, color: '#9ca3af', fontWeight: 600 }}>{label}</span>
+                                        <span style={{ fontSize: 12, fontWeight: 700, color, fontFamily: 'monospace' }}>{val}</span>
                                       </div>
                                     ))}
                                   </div>
