@@ -255,6 +255,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   const computedQaTotal     = (Number(watchedQaKn) || 0) + (Number(watchedQaLm) || 0) + (Number(watchedQaKh) || 0)
   const [infoSaving, setInfoSaving] = useState(false)
   const [isInfoEditing, setIsInfoEditing] = useState(false)
+  const [phongSxEditing, setPhongSxEditing] = useState(false)
+  const [phongSxSaving, setPhongSxSaving] = useState(false)
   const [headerCollapsed, setHeaderCollapsed] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const [lookupStatus, setLookupStatus] = useState(null)
@@ -302,11 +304,13 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   useEffect(() => {
     if (!open || !schedule) {
       setIsInfoEditing(false)
+      setPhongSxEditing(false)
       setIsDirty(false)
       setLookupStatus(null)
       return
     }
     setIsInfoEditing(false)
+    setPhongSxEditing(false)
     setIsDirty(false)
     setOpenTabs(['list'])
     setActiveTabKey('list')
@@ -461,6 +465,20 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     } catch (err) {
       if (err?.response) message.error(err.response.data?.message || 'Lưu thất bại')
     } finally { setInfoSaving(false) }
+  }
+
+  const savePhongSx = async (val) => {
+    if (!schedule?.id) return
+    setPhongSxSaving(true)
+    try {
+      await api.patch(`/work-schedule/${schedule.id}/phong-san-xuat`, { phongSanXuat: val || null })
+      setPhongSxEditing(false)
+      onSaved()
+    } catch {
+      message.error('Lưu phòng thực hiện thất bại')
+    } finally {
+      setPhongSxSaving(false)
+    }
   }
 
   const infoLookupIcon = () => {
@@ -2836,9 +2854,37 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                   </VC>
                   <LC>🏢 Phòng SX</LC>
                   <VC style={{ borderRight: 'none' }}>
-                    <Form.Item name="phongSanXuat" noStyle>
-                      <PhongSanXuatSelect size="small" disabled={!isInfoEditing} style={{ width: '100%' }} placeholder="Chọn phòng SX..." />
-                    </Form.Item>
+                    {isInfoEditing ? (
+                      <Form.Item name="phongSanXuat" noStyle>
+                        <PhongSanXuatSelect size="small" style={{ width: '100%' }} placeholder="Chọn phòng SX..." />
+                      </Form.Item>
+                    ) : phongSxEditing ? (
+                      <PhongSanXuatSelect
+                        size="small"
+                        defaultValue={schedule?.phongSanXuat || undefined}
+                        onChange={val => savePhongSx(val)}
+                        onBlur={() => setPhongSxEditing(false)}
+                        style={{ width: '100%' }}
+                        placeholder="Chọn phòng SX..."
+                        autoFocus
+                        open
+                      />
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, minHeight: 24 }}>
+                        <span style={{ flex: 1, fontSize: 12, color: schedule?.phongSanXuat ? '#0f172a' : '#94a3b8', fontStyle: schedule?.phongSanXuat ? 'normal' : 'italic' }}>
+                          {schedule?.phongSanXuat || 'Chưa chọn phòng'}
+                        </span>
+                        {canEditDetail && (
+                          <Button
+                            size="small" type="link"
+                            loading={phongSxSaving}
+                            style={{ padding: '0 4px', fontSize: 11, height: 20 }}
+                            onClick={() => setPhongSxEditing(true)}>
+                            Đổi
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </VC>
 
                   {/* Row 4 — Personnel + Notes */}
