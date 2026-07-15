@@ -1596,6 +1596,7 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
   const [donHangList, setDonHangList] = useState([])
   const [donHangLoading, setDonHangLoading] = useState(false)
   const [dhSearch, setDhSearch] = useState('')
+  const [kwSearch, setKwSearch] = useState('')
   const [slXepPcMap, setSlXepPcMap] = useState({}) // "maBravo||maDonHang" → SL đã xếp PCPL1+PCPL2 (toàn thời gian)
 
   useEffect(() => {
@@ -2107,6 +2108,18 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
 
   const hiddenWeeks = weekChunks.filter(wk => collapsedWeeks.has(wk.weekIdx))
 
+  const filteredData = kwSearch.trim()
+    ? data.filter(r => {
+        const q = kwSearch.trim().toLowerCase()
+        return (r.tenTrinh      || '').toLowerCase().includes(q) ||
+               (r.maBravo      || '').toLowerCase().includes(q) ||
+               (r.maSp         || '').toLowerCase().includes(q) ||
+               (r.maDonHang    || '').toLowerCase().includes(q) ||
+               (r.soLo         || '').toLowerCase().includes(q) ||
+               (r.phongThucHien|| '').toLowerCase().includes(q)
+      })
+    : data
+
   const baseCell = { border: '1px solid #d9d9d9', padding: '4px 6px', verticalAlign: 'top' }
 
   return (
@@ -2266,6 +2279,20 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
               fetchData(r)
               setShowDatePicker(false)
             }} />
+            <Input
+              allowClear
+              placeholder="Tìm tên SP, mã Bravo, số lô..."
+              prefix={<SearchOutlined style={{ color: '#bbb' }} />}
+              value={kwSearch}
+              onChange={e => setKwSearch(e.target.value)}
+              style={{ width: 220 }}
+              size="small"
+            />
+            {kwSearch && (
+              <span style={{ fontSize: 12, color: '#8c8c8c' }}>
+                {filteredData.length}/{data.length} bản ghi
+              </span>
+            )}
             {weekChunks.length > 0 && (
               <Button onClick={() => setCollapsedWeeks(
                 collapsedWeeks.size === weekChunks.length
@@ -2377,7 +2404,7 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
             dgMap[d] = {}
             TO_GROUPS.forEach(g => { dgMap[d][g.key] = [] })
           })
-          data.forEach(r => {
+          filteredData.forEach(r => {
             if (r.ngayThucHien && dgMap[r.ngayThucHien] && r.toNhom && dgMap[r.ngayThucHien][r.toNhom])
               dgMap[r.ngayThucHien][r.toNhom].push(r)
           })
@@ -2696,7 +2723,7 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
           }}
           style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 155px)' }}>
           {TO_GROUPS.map(group => {
-            const groupRecs = data.filter(r => r.toNhom === group.key)
+            const groupRecs = filteredData.filter(r => r.toNhom === group.key)
 
             const dateMap = {}
             dates.forEach(d => { dateMap[d] = [] })
