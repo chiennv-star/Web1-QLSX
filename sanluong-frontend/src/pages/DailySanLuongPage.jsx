@@ -5184,8 +5184,8 @@ function NhapKhoTongHopTable({ data, loading, onRowClick }) {
       render: v => v ? <Tag style={{ marginRight: 0 }}>{v}</Tag> : '—',
     },
     {
-      title: 'Tên sản phẩm', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 240, ellipsis: true,
-      render: v => <Tooltip title={v}><span>{v || '—'}</span></Tooltip>,
+      title: 'Tên sản phẩm', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 260,
+      render: v => <span style={{ whiteSpace: 'normal', wordBreak: 'break-word', fontSize: 12 }}>{v || '—'}</span>,
     },
     {
       title: 'Số lô', dataIndex: 'lsx', key: 'lsx', width: 90, align: 'center',
@@ -5992,8 +5992,8 @@ function NhapKhoTab() {
       render: v => v ? <Tag style={{ marginRight: 0 }}>{v}</Tag> : '—',
     },
     {
-      title: 'Tên sản phẩm', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 240, ellipsis: true,
-      render: v => <Tooltip title={v}><span>{v || '—'}</span></Tooltip>,
+      title: 'Tên sản phẩm', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 260,
+      render: v => <span style={{ whiteSpace: 'normal', wordBreak: 'break-word', fontSize: 12 }}>{v || '—'}</span>,
     },
     {
       title: 'Số lô', dataIndex: 'lsx', key: 'lsx', width: 90, align: 'center',
