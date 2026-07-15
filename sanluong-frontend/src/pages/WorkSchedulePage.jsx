@@ -237,6 +237,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   const [machineRuntimeOpenDays, setMachineRuntimeOpenDays] = useState(new Set())
   const [machineRuntimeSaving, setMachineRuntimeSaving] = useState(new Set())
   const [pcplNangSuatMe, setPcplNangSuatMe] = useState([])  // [{soMe, nangSuat}] cho PCPL2
+  const [pcplLoaiSanPham, setPcplLoaiSanPham] = useState(null) // loại SP mặc định từ product master cho PCPL2
   const [loaiSpOptions, setLoaiSpOptions] = useState([])    // distinct loại SP cho PCPL2
   const [machineRuntimeDirtyDays, setMachineRuntimeDirtyDays] = useState(new Set())
   const [shiftPerfMap, setShiftPerfMap] = useState({})           // ngayKey → [{_id, id, caLo, slLyThuyet, slThucTe, nguyenNhan, ghiChu}]
@@ -335,6 +336,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     setMachineRuntimeMap({})
     setMachineRuntimeOpenDays(new Set())
     setPcplNangSuatMe([])
+    setPcplLoaiSanPham(null)
     api.get(`/non-productive-time/by-schedule/${schedule.id}`)
       .then(({ data }) => {
         const map = {}
@@ -363,6 +365,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
         const val = r.data[field]
         setNsTrungBinh(val != null ? Number(val) : null)
         setPcplFromProduct(r.data.toNhomPcpl || null)
+        setPcplLoaiSanPham(r.data.loaiSanPham || null)
         try { setPcplNangSuatMe(JSON.parse(r.data.nangSuatPcMe || '[]')) } catch { setPcplNangSuatMe([]) }
       })
       .catch(() => {})
@@ -701,7 +704,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     const spKey = `${ngay}|${machineName}`
     const _id = 'tmp_' + Date.now()
     const rows = shiftPerfMap[spKey] || []
-    const nextCa = rows.length === 0 ? 'Ca 1' : rows.length === 1 ? 'Ca 2' : ''
+    const isPcpl2 = schedule?.congDoan?.toUpperCase() === 'PCPL2'
+    const nextCa = isPcpl2 ? (pcplLoaiSanPham || '') : (rows.length === 0 ? 'Ca 1' : rows.length === 1 ? 'Ca 2' : '')
     setShiftPerfMap(prev => ({ ...prev, [spKey]: [...rows, { _id, id: null, caLo: nextCa, slLyThuyet: null, slThucTe: null, nguyenNhan: '', ghiChu: '' }] }))
     _spMarkDirty(spKey)
   }
@@ -2137,7 +2141,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                                 const val = e.target.value === '' ? null : Number(e.target.value)
                                                 if (isPcpl2 && val != null) {
                                                   const found = pcplNangSuatMe.find(r => r.soMe === val)
-                                                  updateShiftPerfRow(spKey, row._id, { slThucTe: val, ...(found ? { slLyThuyet: found.nangSuat } : {}) })
+                                                  const autoLoai = (!row.caLo || row.caLo === '') && pcplLoaiSanPham ? { caLo: pcplLoaiSanPham } : {}
+                                                  updateShiftPerfRow(spKey, row._id, { slThucTe: val, ...(found ? { slLyThuyet: found.nangSuat } : {}), ...autoLoai })
                                                 } else {
                                                   updateShiftPerfRow(spKey, row._id, { slThucTe: val })
                                                 }
