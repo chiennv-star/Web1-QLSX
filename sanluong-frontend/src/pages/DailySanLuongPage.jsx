@@ -4079,13 +4079,27 @@ function mergeIntervalMinutes(intervals) {
   return total
 }
 
+const TO_NHOM_OPTIONS = [
+  { value: 'PCPL1', label: 'PCPL1' },
+  { value: 'PCPL2', label: 'PCPL2' },
+  { value: 'PL', label: 'PL' },
+  { value: 'DG', label: 'ĐG' },
+  { value: 'BBC1', label: 'BBC1' },
+]
+
+const GRP_HDR = (label, bg) => ({
+  title: label,
+  onHeaderCell: () => ({ style: { background: bg, color: '#fff', fontWeight: 700, textAlign: 'center', whiteSpace: 'nowrap' } }),
+})
+
 function MachineUsageTab() {
   const [dateRange, setDateRange] = useState([dayjs().subtract(6, 'day'), dayjs()])
   const [loading, setLoading] = useState(false)
   const [raw, setRaw] = useState([])
   const [machineARaw, setMachineARaw] = useState([])
-  const [machineMap, setMachineMap] = useState({}) // maSp → { pc, pl, dg, bbc1 }
+  const [machineMap, setMachineMap] = useState({})
   const [mayFilter, setMayFilter] = useState([])
+  const [toNhomFilter, setToNhomFilter] = useState([])
   const [activeQuickRange, setActiveQuickRange] = useState('Tuần này')
 
   const fetchData = useCallback(async (range = dateRange) => {
@@ -4094,7 +4108,6 @@ function MachineUsageTab() {
       const tuNgay = range[0].format('YYYY-MM-DD')
       const denNgay = range[1].format('YYYY-MM-DD')
 
-      // Fetch A từ machine-runtime/daily-summary (tất cả tổ song song)
       const aKeys = ['PCPL1', 'PCPL2', 'PL', 'DG', 'BBC1']
       const aResults = await Promise.allSettled(
         aKeys.map(k => api.get('/machine-runtime/daily-summary', { params: { congDoanKey: k, tuNgay, denNgay } }))
@@ -4104,7 +4117,6 @@ function MachineUsageTab() {
         .flatMap(r => r.value.data || [])
       setMachineARaw(aData)
 
-      // Fetch P từ session (giữ nguyên)
       const { data: res } = await api.get('/work-schedule-session/daily-report', {
         params: { fromDate: tuNgay, toDate: denNgay },
       })
@@ -4133,63 +4145,8 @@ function MachineUsageTab() {
 
   useEffect(() => { fetchData() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Gộp theo (ngày, máy): A = giờ máy chạy thực tế / (số ca × giờ chuẩn/ca)
-  //                        P = năng suất thực tế / năng suất chuẩn (nangSuatTrungBinh)
-  const rows = useMemo(() => {
-    const groupMap = {}
-    raw.forEach(r => {
-      if (!r.ngay) return
-      const cd = resolveGdCd(r)
-      const mkey = (cd === 'PCPL1' || cd === 'PCPL2') ? 'pc' : cd === 'PL' ? 'pl' : cd === 'DG' ? 'dg' : cd === 'BBC1' ? 'bbc1' : null
-      if (!mkey) return
-      const rawMay = machineMap[r.maSp]?.[mkey]
-      if (!rawMay) return
-      const mayList = rawMay.split(',').map(m => m.trim()).filter(Boolean)
-      if (!mayList.length) return
-
-      const start = timeToMinutes(r.thoiGianBatDau)
-      const end0  = timeToMinutes(r.thoiGianKetThuc)
-      let interval = null
-      if (start != null && end0 != null) {
-        const end = end0 <= start ? end0 + 24 * 60 : end0
-        interval = [start, end]
-      }
-      const sl    = Number(r.sanLuong || 0) / mayList.length
-      const cong  = Number(r.congThucHien || 0) / mayList.length
-      const stdNs = Number(r.nangSuatTrungBinh || 0)
-
-      mayList.forEach(may => {
-        const key = r.ngay + '||' + may
-        if (!groupMap[key]) {
-          groupMap[key] = { ngay: r.ngay, may, intervals: [], caSet: new Set(), sl: 0, cong: 0, stdSum: 0, stdWeight: 0 }
-        }
-        const g = groupMap[key]
-        if (interval) g.intervals.push(interval)
-        if (r.caSanXuat) g.caSet.add(r.caSanXuat)
-        g.sl += sl
-        g.cong += cong
-        if (stdNs > 0 && cong > 0) { g.stdSum += stdNs * cong; g.stdWeight += cong }
-      })
-    })
-
-    return Object.values(groupMap).map(g => {
-      const usageHours   = mergeIntervalMinutes(g.intervals) / 60
-      const plannedHours = g.caSet.size * GIO_CHUAN_CA
-      const aIndex   = plannedHours > 0 ? usageHours / plannedHours : null
-      const actualNs = g.cong > 0 ? g.sl / g.cong : null
-      const stdNs    = g.stdWeight > 0 ? g.stdSum / g.stdWeight : null
-      const pIndex   = (actualNs != null && stdNs) ? actualNs / stdNs : null
-      return {
-        key: g.ngay + '||' + g.may,
-        ngay: g.ngay, may: g.may, caCount: g.caSet.size,
-        usageHours, plannedHours, aIndex,
-        sl: g.sl, cong: g.cong, actualNs, stdNs, pIndex,
-      }
-    }).sort((a, b) => (a.ngay < b.ngay ? 1 : a.ngay > b.ngay ? -1 : a.may.localeCompare(b.may, 'vi')))
-  }, [raw, machineMap])
-
   const machineARows = useMemo(() => machineARaw.map(r => ({
-    key: r.ngay + '||' + (r.tenMay || ''),
+    key: r.ngay + '||' + (r.tenMay || '') + '||' + (r.toNhom || ''),
     ngay: r.ngay,
     may: r.tenMay || '',
     toNhom: r.toNhom || '',
@@ -4202,27 +4159,70 @@ function MachineUsageTab() {
   })).sort((a, b) => a.ngay < b.ngay ? 1 : a.ngay > b.ngay ? -1 : a.may.localeCompare(b.may, 'vi')),
   [machineARaw])
 
-  const filteredMachineA = useMemo(
-    () => mayFilter.length ? machineARows.filter(r => mayFilter.includes(r.may)) : machineARows,
-    [machineARows, mayFilter]
-  )
+  // Bảng P: session-level (không gộp), mỗi dòng = 1 session × 1 máy
+  const rowsP = useMemo(() => {
+    const result = []
+    raw.forEach((r, idx) => {
+      if (!r.ngay) return
+      const cd = resolveGdCd(r)
+      const mkey = (cd === 'PCPL1' || cd === 'PCPL2') ? 'pc' : cd === 'PL' ? 'pl' : cd === 'DG' ? 'dg' : cd === 'BBC1' ? 'bbc1' : null
+      if (!mkey) return
+      const rawMay = machineMap[r.maSp]?.[mkey]
+      if (!rawMay) return
+      const mayList = rawMay.split(',').map(m => m.trim()).filter(Boolean)
+      if (!mayList.length) return
 
-  const filteredRows = useMemo(
-    () => mayFilter.length ? rows.filter(r => mayFilter.includes(r.may)) : rows,
-    [rows, mayFilter]
-  )
+      const stdNs = Number(r.nangSuatTrungBinh || 0)
+      mayList.forEach(may => {
+        const sl = Number(r.sanLuong || 0) / mayList.length
+        const cong = Number(r.congThucHien || 0) / mayList.length
+        const slLyThuyet = stdNs > 0 && cong > 0 ? stdNs * cong : null
+        const pIndex = slLyThuyet > 0 ? sl / slLyThuyet : null
+        const tonThat = slLyThuyet != null ? slLyThuyet - sl : null
+        result.push({
+          key: `${r.ngay}||${may}||${r.sessionId ?? idx}`,
+          ngay: r.ngay,
+          may,
+          cdKey: cd,
+          tenSanPham: r.tenTrinh,
+          soLo: r.soLo,
+          stdNs,
+          slLyThuyet,
+          sl,
+          cong,
+          pIndex,
+          tonThat,
+        })
+      })
+    })
+    return result.sort((a, b) => a.ngay < b.ngay ? 1 : a.ngay > b.ngay ? -1 : a.may.localeCompare(b.may, 'vi'))
+  }, [raw, machineMap])
+
+  const filteredMachineA = useMemo(() => {
+    let data = machineARows
+    if (mayFilter.length) data = data.filter(r => mayFilter.includes(r.may))
+    if (toNhomFilter.length) data = data.filter(r => toNhomFilter.includes(r.toNhom))
+    return data
+  }, [machineARows, mayFilter, toNhomFilter])
+
+  const filteredRowsP = useMemo(() => {
+    let data = rowsP
+    if (mayFilter.length) data = data.filter(r => mayFilter.includes(r.may))
+    if (toNhomFilter.length) data = data.filter(r => toNhomFilter.includes(r.cdKey))
+    return data
+  }, [rowsP, mayFilter, toNhomFilter])
 
   const mayOptions = useMemo(
-    () => [...new Set([...machineARows.map(r => r.may), ...rows.map(r => r.may)])].sort((a, b) => a.localeCompare(b, 'vi')).map(m => ({ value: m, label: m })),
-    [machineARows, rows]
+    () => [...new Set([...machineARows.map(r => r.may), ...rowsP.map(r => r.may)])].sort((a, b) => a.localeCompare(b, 'vi')).map(m => ({ value: m, label: m })),
+    [machineARows, rowsP]
   )
 
   const withA = filteredMachineA.filter(r => r.aIndex != null)
-  const withP = filteredRows.filter(r => r.pIndex != null)
+  const withP = filteredRowsP.filter(r => r.pIndex != null)
   const avgA = withA.length ? withA.reduce((s, r) => s + r.aIndex, 0) / withA.length : null
   const avgP = withP.length ? withP.reduce((s, r) => s + r.pIndex, 0) / withP.length : null
   const totalUsageHours = filteredMachineA.reduce((s, r) => s + r.usageHours, 0)
-  const machineCount = new Set([...filteredMachineA.map(r => r.may), ...filteredRows.map(r => r.may)]).size
+  const machineCount = new Set([...filteredMachineA.map(r => r.may), ...filteredRowsP.map(r => r.may)]).size
 
   const pctColor = v => {
     if (v == null) return '#94a3b8'
@@ -4240,54 +4240,96 @@ function MachineUsageTab() {
     { label: 'Số máy theo dõi',     value: machineCount, color: '#0f766e' },
   ]
 
-  const mayColumn = {
-    title: 'Máy', dataIndex: 'may', ellipsis: true,
-    render: v => <Tooltip title={v}><span style={{ fontWeight: 600, color: '#1e3a5f' }}>{v}</span></Tooltip>,
-    sorter: (a, b) => a.may.localeCompare(b.may, 'vi'),
-  }
-  const ngayColumn = {
-    title: 'Ngày', dataIndex: 'ngay', width: 110, fixed: 'left',
+  const ngayCol = {
+    title: 'Ngày', dataIndex: 'ngay', width: 105, fixed: 'left',
     render: v => <span style={{ fontWeight: 700, color: '#1677ff' }}>{dayjs(v).format('DD/MM/YYYY')}</span>,
     sorter: (a, b) => a.ngay.localeCompare(b.ngay), defaultSortOrder: 'descend',
   }
+  const mayCol = (ellipsis = true) => ({
+    title: 'Máy', dataIndex: 'may', ellipsis,
+    render: v => <Tooltip title={v}><span style={{ fontWeight: 600, color: '#1e3a5f' }}>{v}</span></Tooltip>,
+    sorter: (a, b) => a.may.localeCompare(b.may, 'vi'),
+  })
 
   const colA = [
-    ngayColumn, mayColumn,
+    ngayCol, mayCol(),
     { title: 'Tổ/Nhóm', dataIndex: 'toNhom', width: 90, align: 'center',
-      render: v => v ? <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#1e3a5f' }}>{v}</span> : '—' },
-    { title: 'Giờ chạy (h)', dataIndex: 'usageHours', width: 110, align: 'right', render: fmtH,
+      render: v => v ? <Tag color="blue" style={{ fontSize: 11, margin: 0 }}>{v}</Tag> : '—' },
+    { title: 'Giờ chạy (H)', dataIndex: 'usageHours', width: 105, align: 'right', render: fmtH,
       sorter: (a, b) => a.usageHours - b.usageHours },
-    { title: 'Giờ KH (h)', dataIndex: 'plannedHours', width: 100, align: 'right', render: fmtH },
-    { title: 'Giờ dừng (h)', dataIndex: 'gioDung', width: 110, align: 'right',
+    { title: 'Giờ KH (H)', dataIndex: 'plannedHours', width: 95, align: 'right', render: fmtH },
+    { title: 'Giờ dừng (H)', dataIndex: 'gioDung', width: 105, align: 'right',
       render: v => v > 0 ? <span style={{ color: '#dc2626', fontWeight: 600 }}>{fmtH(v)}</span> : fmtH(v) },
-    { title: 'Chỉ số A', dataIndex: 'aIndex', width: 100, align: 'right',
+    { title: 'Chỉ số A', dataIndex: 'aIndex', width: 95, align: 'right',
       render: v => <span style={{ fontWeight: 700, color: pctColor(v) }}>{fmtPct(v)}</span>,
       sorter: (a, b) => (a.aIndex ?? -1) - (b.aIndex ?? -1) },
     { title: 'Số lần dừng', dataIndex: 'soLanDung', width: 105, align: 'right',
       render: v => v > 0 ? <span style={{ color: '#dc2626', fontWeight: 600 }}>{v}</span> : '—' },
-    { title: 'Lý do dừng', dataIndex: 'lyDoDung', ellipsis: true,
-      render: v => v || '—' },
+    { title: 'Lý do dừng', dataIndex: 'lyDoDung', ellipsis: true, render: v => v || '—' },
   ]
 
   const colP = [
-    ngayColumn, mayColumn,
-    { title: 'Sản lượng', dataIndex: 'sl', width: 110, align: 'right', render: fmtSL,
-      sorter: (a, b) => a.sl - b.sl },
-    { title: 'Công', dataIndex: 'cong', width: 100, align: 'right', render: v => fmtCong(v, 2),
-      sorter: (a, b) => a.cong - b.cong },
-    { title: 'NS thực tế', dataIndex: 'actualNs', width: 100, align: 'right',
-      render: v => v == null ? '—' : v.toLocaleString('vi-VN', { maximumFractionDigits: 1 }) },
-    { title: 'NS chuẩn', dataIndex: 'stdNs', width: 100, align: 'right',
-      render: v => v == null ? '—' : v.toLocaleString('vi-VN', { maximumFractionDigits: 1 }) },
-    { title: 'Chỉ số P', dataIndex: 'pIndex', width: 100, align: 'right',
-      render: v => <span style={{ fontWeight: 700, color: pctColor(v) }}>{fmtPct(v)}</span>,
-      sorter: (a, b) => (a.pIndex ?? -1) - (b.pIndex ?? -1) },
+    {
+      ...GRP_HDR('THÔNG TIN SẢN XUẤT', '#1e3a5f'),
+      children: [
+        { title: 'STT', width: 48, align: 'center', render: (_, __, i) => <span style={{ color: '#888', fontSize: 11 }}>{i + 1}</span> },
+        ngayCol,
+        { title: 'Tên sản phẩm', dataIndex: 'tenSanPham', ellipsis: true, minWidth: 160,
+          render: v => <Tooltip title={v}><span style={{ fontSize: 12 }}>{v || '—'}</span></Tooltip> },
+        { title: 'Số lô', dataIndex: 'soLo', width: 80, align: 'center',
+          render: v => v ? <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff', fontSize: 12 }}>{v}</span> : '—' },
+        mayCol(true),
+        { title: 'Tổ/Nhóm', dataIndex: 'cdKey', width: 80, align: 'center',
+          render: v => v ? <Tag color="blue" style={{ fontSize: 11, margin: 0 }}>{v}</Tag> : '—' },
+      ]
+    },
+    {
+      ...GRP_HDR('THÔNG SỐ TỐC ĐỘ', '#065f46'),
+      children: [
+        { title: 'Tốc độ chuẩn (SP/h)', dataIndex: 'stdNs', width: 130, align: 'right',
+          render: v => v > 0 ? v.toLocaleString('vi-VN', { maximumFractionDigits: 0 }) : '—' },
+        { title: 'SL lý thuyết', dataIndex: 'slLyThuyet', width: 110, align: 'right',
+          render: v => v != null ? <span style={{ color: '#0f766e' }}>{Math.round(v).toLocaleString('vi-VN')}</span> : '—' },
+        { title: 'SL thực tế', dataIndex: 'sl', width: 110, align: 'right',
+          render: v => <span style={{ fontWeight: 600 }}>{Math.round(v).toLocaleString('vi-VN')}</span>,
+          sorter: (a, b) => a.sl - b.sl },
+      ]
+    },
+    {
+      ...GRP_HDR('P (%)', '#4c1d95'),
+      children: [
+        { title: 'P (%)', dataIndex: 'pIndex', width: 90, align: 'center',
+          render: v => <span style={{ fontWeight: 700, fontSize: 13, color: pctColor(v) }}>{fmtPct(v)}</span>,
+          sorter: (a, b) => (a.pIndex ?? -1) - (b.pIndex ?? -1) },
+      ]
+    },
+    {
+      ...GRP_HDR('PHÂN TÍCH TỔN THẤT', '#7c2d12'),
+      children: [
+        { title: 'Tổn thất tốc độ (SP)', dataIndex: 'tonThat', width: 140, align: 'right',
+          render: v => v != null && v > 0 ? <span style={{ color: '#dc2626', fontWeight: 600 }}>{Math.round(v).toLocaleString('vi-VN')}</span> : '—' },
+        { title: 'Nguyên nhân', width: 150, render: () => <span style={{ color: '#cbd5e1' }}>—</span> },
+        { title: 'Ghi chú / Hành động', width: 160, render: () => <span style={{ color: '#cbd5e1' }}>—</span> },
+      ]
+    },
   ]
+
+  const TableHeader = ({ title, subtitle, bg }) => (
+    <div style={{
+      background: bg,
+      borderRadius: '6px 6px 0 0',
+      padding: '10px 18px 8px',
+      marginBottom: 0,
+    }}>
+      <div style={{ color: '#fff', fontWeight: 700, fontSize: 13, letterSpacing: 0.5 }}>{title}</div>
+      {subtitle && <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11, marginTop: 2 }}>{subtitle}</div>}
+    </div>
+  )
 
   return (
     <div style={{ padding: '12px 16px' }}>
       {/* Toolbar */}
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12,
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8,
         background: '#f0fdfa', border: '1px solid #99f6e4', borderRadius: 8, padding: '10px 16px' }}>
         <span style={{ fontWeight: 700, color: '#0f766e', whiteSpace: 'nowrap' }}>⏱️ Khoảng thời gian:</span>
         <RangePicker
@@ -4302,10 +4344,21 @@ function MachineUsageTab() {
           mode="multiple"
           size="small"
           allowClear
+          placeholder="Tất cả tổ/nhóm"
+          value={toNhomFilter}
+          onChange={setToNhomFilter}
+          style={{ minWidth: 160, maxWidth: 260 }}
+          options={TO_NHOM_OPTIONS}
+          maxTagCount={3}
+        />
+        <Select
+          mode="multiple"
+          size="small"
+          allowClear
           placeholder="Tất cả máy"
           value={mayFilter}
           onChange={setMayFilter}
-          style={{ minWidth: 200, maxWidth: 360 }}
+          style={{ minWidth: 180, maxWidth: 340 }}
           options={mayOptions}
           maxTagCount={2}
         />
@@ -4352,16 +4405,18 @@ function MachineUsageTab() {
         ))}
       </div>
 
-      <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 16 }}>
+      <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 18 }}>
         A = Giờ chạy thực tế / Giờ kế hoạch (lấy từ bảng Chỉ số máy trong Sản lượng tổ) &nbsp;·&nbsp;
-        P = Năng suất thực tế / Năng suất chuẩn sản phẩm &nbsp;·&nbsp;
+        P = SL thực tế / (Tốc độ chuẩn × Công) &nbsp;·&nbsp;
         Bảng P chỉ tính các mã SP đã gán máy trong Danh mục sản phẩm
       </div>
 
       {/* Bảng A */}
-      <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 700, color: '#0f766e' }}>
-        Bảng 1 — Chỉ số A (Hiệu suất khả dụng máy)
-      </div>
+      <TableHeader
+        bg="linear-gradient(135deg, #0f4c75 0%, #1b6ca8 100%)"
+        title="BẢNG 1 — CHỈ SỐ A (HIỆU SUẤT KHẢ DỤNG MÁY)"
+        subtitle="A = Giờ chạy thực tế / Giờ kế hoạch · Mục tiêu ≥ 85%"
+      />
       <Table
         size="small"
         columns={colA}
@@ -4370,21 +4425,24 @@ function MachineUsageTab() {
         loading={loading}
         scroll={{ x: 950 }}
         pagination={{ defaultPageSize: 20, showSizeChanger: true, pageSizeOptions: ['20', '50', '100'], showTotal: t => `Tổng ${t} dòng` }}
-        style={{ marginBottom: 24 }}
+        style={{ marginBottom: 28, borderTop: 'none' }}
       />
 
       {/* Bảng P */}
-      <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 700, color: '#0f766e' }}>
-        Bảng 2 — Chỉ số P (Hiệu suất thực hiện)
-      </div>
+      <TableHeader
+        bg="linear-gradient(135deg, #1e1b4b 0%, #3730a3 100%)"
+        title="BẢNG 2 — CHỈ SỐ P (HIỆU SUẤT THỰC HIỆN)"
+        subtitle={`P = Σ(SL thực tế × T chuẩn SP) / Σ(Thời gian chạy) · Mục tiêu ≥ 95% · Tính từ chi tiết ca sản xuất · ${dayjs().year()}`}
+      />
       <Table
         size="small"
         columns={colP}
-        dataSource={filteredRows}
+        dataSource={filteredRowsP}
         rowKey="key"
         loading={loading}
-        scroll={{ x: 750 }}
+        scroll={{ x: 1300 }}
         pagination={{ defaultPageSize: 20, showSizeChanger: true, pageSizeOptions: ['20', '50', '100'], showTotal: t => `Tổng ${t} dòng` }}
+        style={{ borderTop: 'none' }}
       />
     </div>
   )
