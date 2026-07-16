@@ -2070,6 +2070,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                         const isSavingSP = shiftPerfSaving.has(spKey)
                         const isDirtySP = shiftPerfDirtyDays.has(spKey)
                         const pColor = pPct == null ? '#9ca3af' : pPct >= 95 ? '#16a34a' : pPct >= 80 ? '#d97706' : '#dc2626'
+                        const isPcpl2ForHint = schedule?.congDoan?.toUpperCase() === 'PCPL2'
                         return (
                           <div key={`${k}-sp-${mIdx}`} style={{ borderBottom: machines.length > 1 ? '1px solid #fde68a' : 'none' }}>
                             {/* Header */}
@@ -2087,6 +2088,11 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                 </Button>
                               )}
                             </div>
+                            {isPcpl2ForHint && pcplNangSuatMe.length === 0 && (
+                              <div style={{ padding: '5px 14px', background: '#fff7ed', borderBottom: '1px solid #fde68a', fontSize: 11, color: '#c2410c' }}>
+                                ⚠ Sản phẩm này chưa có dữ liệu "Năng suất PC theo số mẻ" trong Quản lý danh mục — cột "Giờ kế hoạch" sẽ không tự động điền theo Số mẻ TH cho tới khi được cấu hình.
+                              </div>
+                            )}
                             {/* Content — always expanded */}
                             <div style={{ padding: '8px 14px 12px', background: '#fffdf0' }}>
                               <div style={{ overflowX: 'auto' }}>
