@@ -1104,7 +1104,14 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho }) {
 
   // ── Tình trạng dở dang ────────────────────────────────────────────────────
   const NEUTRAL = { color: '#475569', bg: '#f8fafc', border: '#e2e8f0' }
+  const ALERT   = { color: '#cf1322', bg: '#fff1f0', border: '#ffccc7' }
   const warnings = []
+
+  // CL BTP dương (ĐG > PL): công đoạn sau đã nhập SL nhưng công đoạn trước chưa nhập đủ —
+  // về logic sản xuất tuần tự, ĐG không thể vượt PL, nên đây luôn là lỗi/thiếu dữ liệu, không phải tồn kho bình thường
+  const loClBtpDuong = data.filter(r => ((parseInt(r.dg2)||0) - (parseInt(r.pcPl)||0)) > 0)
+  if (loClBtpDuong.length > 0)
+    warnings.push({ icon: '🚨', label: 'CL BTP dương — ĐG vượt PL (thiếu SL công đoạn trước)', count: loClBtpDuong.length, sl: loClBtpDuong.reduce((s, r) => s + Math.max(0, (parseInt(r.dg2)||0) - (parseInt(r.pcPl)||0)), 0), ...ALERT })
 
   const loChuaBatDauList = data.filter(r => !hasAnyStage(r))
   if (loChuaBatDauList.length > 0)
