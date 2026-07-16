@@ -1437,7 +1437,15 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho }) {
           </span>
         ) : null}
       >
+        <style>{`
+          .warn-detail-table .ant-table-thead > tr > th {
+            background: #3399CC !important; color: #ffffff !important;
+            font-weight: 700 !important; font-size: 11px !important;
+          }
+          .warn-detail-table .ant-table-thead > tr > th::before { display: none !important; }
+        `}</style>
         <Table
+          className="warn-detail-table"
           size="small"
           rowKey={r => r.id}
           dataSource={warnDetail?.rows || []}

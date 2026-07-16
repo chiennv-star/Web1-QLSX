@@ -1648,6 +1648,7 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
 
   // ── Context menu (right-click trên header ngày) ───────────────────────────
   const [ctxMenu, setCtxMenu] = useState(null) // { date, groupKey, x, y }
+  const [ctxPickerMode, setCtxPickerMode] = useState(false) // true = đang hiện ô tìm đơn hàng thay vì menu chính
 
   // ── Mini-picker (V2 mode) ─────────────────────────────────────────────────
   // pickerCell: { date, toNhom } — ô đang mở mini-picker
@@ -2905,6 +2906,8 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
                                 const menuW = 210
                                 const x = Math.min(window.innerWidth - menuW - 8, Math.max(4, rect.left + rect.width / 2 - menuW / 2))
                                 setCtxMenu({ date: d, groupKey: group.key, x, y: rect.bottom + 4 })
+                                setCtxPickerMode(false)
+                                setPickerSearch('')
                               }}
                               style={{
                                 ...baseCell,
@@ -3471,13 +3474,23 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
       />
 
       {/* ── Context menu: right-click trên header ngày ── */}
-      {ctxMenu && (
+      {ctxMenu && (() => {
+        const ctxFiltered = donHangList.filter(dh => {
+          if (!pickerSearch) return true
+          const q = pickerSearch.toLowerCase()
+          return (dh.tenSanPham || '').toLowerCase().includes(q) ||
+            (dh.maDonHang || '').toLowerCase().includes(q) ||
+            (dh.maSp      || '').toLowerCase().includes(q) ||
+            (dh.maBravo   || '').toLowerCase().includes(q)
+        })
+        const closeCtx = () => { setCtxMenu(null); setCtxPickerMode(false); setPickerSearch('') }
+        return (
         <>
           {/* overlay trong suốt để đóng khi click ra ngoài */}
           <div
             style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
-            onClick={() => setCtxMenu(null)}
-            onContextMenu={e => { e.preventDefault(); setCtxMenu(null) }}
+            onClick={closeCtx}
+            onContextMenu={e => { e.preventDefault(); closeCtx() }}
           />
           <div style={{
             position: 'fixed',
@@ -3488,7 +3501,7 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
             boxShadow: '0 6px 24px rgba(0,0,0,0.14)',
             borderRadius: 8,
             padding: '4px 0',
-            minWidth: 200,
+            width: ctxPickerMode ? 320 : 210,
             border: '1px solid #e2e8f0',
             userSelect: 'none',
           }}>
@@ -3507,31 +3520,91 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
                 background: '#dbeafe', color: '#1e40af', fontWeight: 700,
               }}>{ctxMenu.groupKey}</span>
             </div>
-            {/* action: Thêm kế hoạch */}
-            <div
-              style={{
-                padding: '8px 14px',
-                cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 8,
-                color: '#1d4ed8', fontWeight: 600, fontSize: 13,
-                borderRadius: 4, margin: '0 4px',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              onClick={() => {
-                setEditItem(null)
-                setDefaultToNhom(ctxMenu.groupKey)
-                setDefaultDate(ctxMenu.date)
-                setModalOpen(true)
-                setCtxMenu(null)
-              }}
-            >
-              <PlusOutlined style={{ fontSize: 13 }} />
-              Thêm kế hoạch
-            </div>
+
+            {!ctxPickerMode ? (
+              <>
+                {/* action: Nhập thủ công */}
+                <div
+                  style={{
+                    padding: '8px 14px',
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    color: '#1d4ed8', fontWeight: 600, fontSize: 13,
+                    borderRadius: 4, margin: '0 4px',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  onClick={() => {
+                    setEditItem(null)
+                    setDefaultToNhom(ctxMenu.groupKey)
+                    setDefaultDate(ctxMenu.date)
+                    setModalOpen(true)
+                    closeCtx()
+                  }}
+                >
+                  <FormOutlined style={{ fontSize: 13 }} />
+                  Nhập thủ công
+                </div>
+                {/* action: Chọn từ đơn hàng */}
+                <div
+                  style={{
+                    padding: '8px 14px',
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    color: '#2f54eb', fontWeight: 600, fontSize: 13,
+                    borderRadius: 4, margin: '0 4px',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  onClick={() => { setCtxPickerMode(true); setPickerSearch('') }}
+                >
+                  <SearchOutlined style={{ fontSize: 13 }} />
+                  Chọn từ đơn hàng
+                </div>
+              </>
+            ) : (
+              <div style={{ padding: '4px 10px 6px' }}>
+                <Input size="small"
+                  placeholder="Tìm theo tên SP, mã ĐH..."
+                  prefix={<SearchOutlined style={{ color: '#bbb' }} />}
+                  value={pickerSearch}
+                  onChange={e => setPickerSearch(e.target.value)}
+                  autoFocus
+                  style={{ marginBottom: 6 }}
+                />
+                <div style={{ maxHeight: 240, overflowY: 'auto', borderTop: '1px solid #f0f0f0' }}>
+                  {donHangLoading ? (
+                    <div style={{ textAlign: 'center', padding: 12, color: '#999' }}>Đang tải...</div>
+                  ) : ctxFiltered.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: 12, color: '#bbb', fontSize: 12 }}>Không tìm thấy đơn hàng</div>
+                  ) : ctxFiltered.map(dh => (
+                    <div key={dh.id}
+                      onClick={() => { handleMiniPickerSelect(dh, ctxMenu.date, ctxMenu.groupKey); closeCtx() }}
+                      style={{ padding: '6px 8px', cursor: 'pointer', borderBottom: '1px solid #f5f5f5', transition: 'background 0.12s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#f0f7ff'}
+                      onMouseLeave={e => e.currentTarget.style.background = ''}
+                    >
+                      <div style={{ fontWeight: 600, fontSize: 12, color: '#1e293b', lineHeight: 1.4 }}>
+                        {dh.tenSanPham || dh.maSp || '(Chưa có tên)'}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>
+                        <span style={{ fontFamily: 'monospace', color: '#1677ff', fontWeight: 600 }}>{dh.maDonHang || '—'}</span>
+                        {dh.soLuongDatHang != null && (
+                          <span style={{ marginLeft: 8, color: '#389e0d', fontWeight: 600 }}>
+                            SL: {Number(dh.soLuongDatHang).toLocaleString('vi-VN')}
+                          </span>
+                        )}
+                        {dh.soLo && <span style={{ marginLeft: 8, color: '#8c8c8c' }}>Lô: {dh.soLo}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </>
-      )}
+        )
+      })()}
 
     </div>
   )
