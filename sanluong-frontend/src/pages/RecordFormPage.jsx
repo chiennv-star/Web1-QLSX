@@ -478,6 +478,10 @@ export default function RecordFormPage() {
       await api.patch(`/production/${id}/ho-so-hoan-thien`)
       message.success('Đã chuyển sang Tổng Kết Hồ Sơ')
       setDaBanHanh(true)
+      try {
+        const saved = JSON.parse(sessionStorage.getItem('dashboard_page_state') || '{}')
+        sessionStorage.setItem('dashboard_page_state', JSON.stringify({ ...saved, activeTab: 'ho_so' }))
+      } catch {}
     } catch { message.error('Thao tác thất bại') }
     finally { setHoSoLoading(false) }
   }

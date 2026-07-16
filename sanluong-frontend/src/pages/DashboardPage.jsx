@@ -1442,7 +1442,10 @@ export default function DashboardPage() {
   const [inboxOpen, setInboxOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [inboxCount, setInboxCount] = useState(0)
-  const [activeTab, setActiveTab] = useState('list')
+  const [activeTab, setActiveTab] = useState(() => {
+    if (location.state?.jumpTo) return 'list'
+    return getDashboardSaved()?.activeTab || 'list'
+  })
   const [selectedId, setSelectedId] = useState(null)
   const [ctxMenu, setCtxMenu] = useState({ visible: false, x: 0, y: 0, record: null })
   const [selectedIds, setSelectedIds] = useState([])
@@ -1696,9 +1699,9 @@ export default function DashboardPage() {
   useEffect(() => {
     paginationRef.current = { current: pagination.current, pageSize: pagination.pageSize }
     sessionStorage.setItem(DASHBOARD_STATE_KEY, JSON.stringify({
-      filters, page: pagination.current, pageSize: pagination.pageSize
+      filters, page: pagination.current, pageSize: pagination.pageSize, activeTab
     }))
-  }, [filters, pagination.current, pagination.pageSize])
+  }, [filters, pagination.current, pagination.pageSize, activeTab])
 
   useEffect(() => {
     donePaginationRef.current = { current: donePagination.current, pageSize: donePagination.pageSize }
@@ -1793,9 +1796,11 @@ export default function DashboardPage() {
   const handleHoSoHoanThien = async (id) => {
     try {
       await api.patch(`/production/${id}/ho-so-hoan-thien`)
-      message.success('Đã chuyển sang Tổng Kế Hồ Sơ')
+      message.success('Đã chuyển sang Tổng Kết Hồ Sơ')
       fetchData(pagination.current - 1)
+      fetchDoneData(donePaginationRef.current.current - 1, donePaginationRef.current.pageSize)
       fetchHoSoData(0)
+      setActiveTab('ho_so')
     } catch { message.error('Thao tác thất bại') }
   }
 
