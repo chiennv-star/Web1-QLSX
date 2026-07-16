@@ -234,7 +234,6 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   const [nonprodDirtyDays, setNonprodDirtyDays] = useState(new Set())  // ngayKey có thay đổi chưa lưu
   const [nonprodSavingDays, setNonprodSavingDays] = useState(new Set()) // ngayKey đang sync lên backend
   const [machineRuntimeMap, setMachineRuntimeMap] = useState({})  // ngayKey → [{_id, id, tuGio, denGio, trangThai, lyDo, ghiChu}]
-  const [machineRuntimeOpenDays, setMachineRuntimeOpenDays] = useState(new Set())
   const [machineRuntimeSaving, setMachineRuntimeSaving] = useState(new Set())
   const [pcplNangSuatMe, setPcplNangSuatMe] = useState([])  // [{soMe, nangSuat}] cho PCPL2
   const [pcplLoaiSanPham, setPcplLoaiSanPham] = useState(null) // loại SP mặc định từ product master cho PCPL2
@@ -281,6 +280,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   const sessionsRef = useRef([]) // luôn trỏ tới sessions mới nhất, tránh stale closure trong onBlur
   const pendingSlRef = useRef({}) // track giá trị đang gõ để tránh stale closure trong InputNumber onBlur
   const shiftPerfAutoLoadRef = useRef(new Set()) // guard: mỗi spKey chỉ auto-load 1 lần
+  const machineRuntimeAutoLoadRef = useRef(new Set()) // guard: mỗi ngày chỉ auto-load máy thực hiện 1 lần
   const VAI_TRO_KEY = 'vaitro_options'
   const DEFAULT_VAI_TRO = ['Trưởng ca', 'Phụ máy']
   const [vaiTroOptions, setVaiTroOptions] = useState(() => {
@@ -335,7 +335,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     setNonprodDirtyDays(new Set())
     setNonprodSavingDays(new Set())
     setMachineRuntimeMap({})
-    setMachineRuntimeOpenDays(new Set())
+    machineRuntimeAutoLoadRef.current = new Set()
     setPcplNangSuatMe([])
     setPcplLoaiSanPham(null)
     setProductMachineCfg({})
@@ -560,16 +560,6 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
               if (res.status === 'fulfilled') rtMap[days[i]] = res.value.data.map(r => ({ ...r, _id: r.id }))
             })
             setMachineRuntimeMap(rtMap)
-            // Auto-expand sections that already have runtime data
-            const autoOpen = new Set()
-            days.forEach(ngay => {
-              const entries = rtMap[ngay] || []
-              if (entries.length === 0) return
-              ;(machineMap[ngay] || []).forEach(machineName => {
-                if (entries.some(e => !e.tenMay || e.tenMay === machineName)) autoOpen.add(`${ngay}|${machineName}`)
-              })
-            })
-            if (autoOpen.size > 0) setMachineRuntimeOpenDays(autoOpen)
           })
         const spPairs = days.flatMap(ngay => (machineMap[ngay] || []).map(m => ({ ngay, m })))
         if (spPairs.length > 0) {
@@ -692,8 +682,25 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   }
   const updateMachineInDay = async (ngay, idx, newName) => {
     const current = dayMachinesMap[ngay] || []
+    const oldName = current[idx] || ''
     const newList = current.map((m, i) => i === idx ? (newName || '') : m)
     setDayMachinesMap(prev => ({ ...prev, [ngay]: newList }))
+    // Máy vừa được đặt tên lần đầu (từ ô trống) → chuyển dòng Sản lượng theo ca chưa lưu sang key mới,
+    // tránh mất dòng đã tự tạo sẵn khi thêm ngày
+    if (oldName === '' && newName) {
+      const oldSpKey = `${ngay}|`
+      const newSpKey = `${ngay}|${newName}`
+      const oldRows = (shiftPerfMap[oldSpKey] || []).filter(r => !r.id)
+      if (oldRows.length > 0) {
+        shiftPerfAutoLoadRef.current.add(newSpKey)
+        setShiftPerfMap(prev => {
+          const rest = { ...prev }
+          delete rest[oldSpKey]
+          return { ...rest, [newSpKey]: oldRows }
+        })
+        _spMarkDirty(newSpKey)
+      }
+    }
     // Save after brief debounce is handled via blur — save immediately
     const rows = sessionsRef.current.filter(s => (s.ngay || 'unknown') === ngay)
     const first = rows.find(r => r.id)
@@ -831,12 +838,21 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   const addNewDay = () => {
     const scrollEl = scrollDivRef.current
     const savedTop = scrollEl?.scrollTop ?? 0
-    setPendingDays(prev => {
-      const taken = new Set([...ngayKeys, ...prev.map(p => p.ngay)])
-      let d = dayjs()
-      while (taken.has(d.format('YYYY-MM-DD'))) d = d.add(1, 'day')
-      return [...prev, { tempId: Date.now(), ngay: d.format('YYYY-MM-DD') }]
-    })
+    const taken = new Set([...ngayKeys, ...pendingDays.map(p => p.ngay)])
+    let d = dayjs()
+    while (taken.has(d.format('YYYY-MM-DD'))) d = d.add(1, 'day')
+    const ngay = d.format('YYYY-MM-DD')
+    setPendingDays(prev => [...prev, { tempId: Date.now(), ngay }])
+    // Tự tạo sẵn 1 máy thực hiện + 1 dòng Sản lượng theo ca — không cần bấm "+ Thêm máy"/"+ Thêm dòng"
+    setDayMachinesMap(prev => ({ ...prev, [ngay]: [''] }))
+    const spKey = `${ngay}|`
+    const isPcpl2 = schedule?.congDoan?.toUpperCase() === 'PCPL2'
+    shiftPerfAutoLoadRef.current.add(spKey)
+    setShiftPerfMap(prev => ({
+      ...prev,
+      [spKey]: [{ _id: 'tmp_' + Date.now(), id: null, caLo: isPcpl2 ? (pcplLoaiSanPham || '') : 'Ca 1', slLyThuyet: null, slThucTe: null, nguyenNhan: '', ghiChu: '' }],
+    }))
+    _spMarkDirty(spKey)
     requestAnimationFrame(() => { if (scrollEl) scrollEl.scrollTop = savedTop })
   }
 
@@ -1890,6 +1906,10 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                 const PREDEFINED_REASONS_RT = ['Chờ nguyên liệu', 'Hỏng máy', 'Chuyển đổi mã', 'Vệ sinh / bảo trì']
                 const machines = dayMachinesMap[k] || []
                 const allRtEntries = machineRuntimeMap[k] || []
+                if (machines.length > 0 && !machineRuntimeMap[k] && !machineRuntimeAutoLoadRef.current.has(k)) {
+                  machineRuntimeAutoLoadRef.current.add(k)
+                  loadMachineRuntime(k)
+                }
                 const { runMin: totalRun, downMin: totalDown } = computeRtStats(allRtEntries)
                 return (
                   <div style={{ borderTop: '1px solid #e0f2fe', display: 'flex', alignItems: 'stretch' }}>
@@ -1916,7 +1936,6 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                         const total = runMin + downMin
                         const khMin = (machineGioKHMap[rtKey] || 0) * 60
                         const avail = khMin > 0 ? (runMin / khMin * 100).toFixed(1) : null
-                        const isOpen = machineRuntimeOpenDays.has(rtKey)
                         const isSaving = machineRuntimeSaving.has(rtKey)
                         const isDirty = machineRuntimeDirtyDays.has(rtKey)
                         return (
@@ -1946,33 +1965,13 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                               {downMin > 0 && <Tag color="error" style={{ margin: 0, fontSize: 11 }}>Nghỉ {downMin}p</Tag>}
                               {avail && <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>A={avail}%</Tag>}
                               {isDirty && <Tag color="warning" style={{ margin: 0, fontSize: 11 }}>Chưa lưu</Tag>}
-                              <button
-                                onClick={() => {
-                                  if (isOpen && isDirty) {
-                                    Modal.confirm({
-                                      title: 'Chưa lưu thay đổi',
-                                      content: 'Bảng thời gian chạy máy có thay đổi chưa được lưu. Thoát mà không lưu?',
-                                      okText: 'Thoát không lưu', cancelText: 'Ở lại', okType: 'danger',
-                                      onOk: () => {
-                                        loadMachineRuntime(k)
-                                        setMachineRuntimeOpenDays(prev => { const n = new Set(prev); n.delete(rtKey); return n })
-                                      },
-                                    })
-                                    return
-                                  }
-                                  setMachineRuntimeOpenDays(prev => { const n = new Set(prev); n.has(rtKey) ? n.delete(rtKey) : n.add(rtKey); return n })
-                                  if (!machineRuntimeOpenDays.has(rtKey) && !machineRuntimeMap[k]) loadMachineRuntime(k)
-                                }}
-                                style={{ border: '1px solid #bae6fd', borderRadius: 5, background: isOpen ? '#e0f2fe' : '#f8fafc', color: '#0369a1', fontSize: 11, padding: '2px 10px', cursor: 'pointer', fontWeight: 600 }}>
-                                {isOpen ? '▲ Thu gọn' : '▼ Nhập TG'}
-                              </button>
                               {canEditDetail && machines.length > 1 && (
                                 <button onClick={() => removeMachineFromDay(k, mIdx)}
                                   style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 16, lineHeight: 1, padding: '0 4px', marginLeft: 'auto' }}
                                   title="Xóa máy này">×</button>
                               )}
                             </div>
-                            {isOpen && (
+                            {(
                               <div style={{ padding: '10px 14px 14px', background: '#f8fbff' }}>
                                 <div style={{ overflowX: 'auto' }}>
                                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
