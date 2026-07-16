@@ -238,6 +238,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   const [machineRuntimeSaving, setMachineRuntimeSaving] = useState(new Set())
   const [pcplNangSuatMe, setPcplNangSuatMe] = useState([])  // [{soMe, nangSuat}] cho PCPL2
   const [pcplLoaiSanPham, setPcplLoaiSanPham] = useState(null) // loại SP mặc định từ product master cho PCPL2
+  const [productMachineCfg, setProductMachineCfg] = useState({}) // { mayMocPc, tocDoMayPc, mayMocPl, tocDoMayPl, mayMocBbc1, tocDoMayBbc1, mayMocDg, tocDoMayDg } — cho auto-fill Tốc độ LT các tổ không phải PCPL2
   const [loaiSpOptions, setLoaiSpOptions] = useState([])    // distinct loại SP cho PCPL2
   const [machineRuntimeDirtyDays, setMachineRuntimeDirtyDays] = useState(new Set())
   const [shiftPerfMap, setShiftPerfMap] = useState({})           // ngayKey → [{_id, id, caLo, slLyThuyet, slThucTe, nguyenNhan, ghiChu}]
@@ -337,6 +338,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     setMachineRuntimeOpenDays(new Set())
     setPcplNangSuatMe([])
     setPcplLoaiSanPham(null)
+    setProductMachineCfg({})
     api.get(`/non-productive-time/by-schedule/${schedule.id}`)
       .then(({ data }) => {
         const map = {}
@@ -373,6 +375,12 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
         setPcplFromProduct(r.data.toNhomPcpl || null)
         setPcplLoaiSanPham(r.data.loaiSanPham || null)
         try { setPcplNangSuatMe(JSON.parse(r.data.nangSuatPcMe || '[]')) } catch { setPcplNangSuatMe([]) }
+        setProductMachineCfg({
+          mayMocPc: r.data.mayMocPc || null, tocDoMayPc: r.data.tocDoMayPc ?? null,
+          mayMocPl: r.data.mayMocPl || null, tocDoMayPl: r.data.tocDoMayPl ?? null,
+          mayMocBbc1: r.data.mayMocBbc1 || null, tocDoMayBbc1: r.data.tocDoMayBbc1 ?? null,
+          mayMocDg: r.data.mayMocDg || null, tocDoMayDg: r.data.tocDoMayDg ?? null,
+        })
       })
       .catch(() => {})
     api.get('/product-master/loai-san-pham-distinct')
@@ -712,7 +720,18 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     const rows = shiftPerfMap[spKey] || []
     const isPcpl2 = schedule?.congDoan?.toUpperCase() === 'PCPL2'
     const nextCa = isPcpl2 ? (pcplLoaiSanPham || '') : (rows.length === 0 ? 'Ca 1' : rows.length === 1 ? 'Ca 2' : '')
-    setShiftPerfMap(prev => ({ ...prev, [spKey]: [...rows, { _id, id: null, caLo: nextCa, slLyThuyet: null, slThucTe: null, nguyenNhan: '', ghiChu: '' }] }))
+    // Auto-fill Tốc độ LT cho các tổ không phải PCPL2: khớp Máy thực hiện với máy đã cấu hình
+    // cho công đoạn này trong Quản lý danh mục → lấy tốc độ tương ứng.
+    let autoLt = null
+    if (!isPcpl2 && machineName) {
+      const mmField = STAGE_MACHINE_FIELD[schedule?.congDoan?.toUpperCase()]
+      const ltField = mmField ? mmField.replace('mayMoc', 'tocDoMay') : null
+      const cfgMachine = mmField ? productMachineCfg[mmField] : null
+      if (cfgMachine && cfgMachine.trim().toLowerCase() === machineName.trim().toLowerCase()) {
+        autoLt = productMachineCfg[ltField] ?? null
+      }
+    }
+    setShiftPerfMap(prev => ({ ...prev, [spKey]: [...rows, { _id, id: null, caLo: nextCa, slLyThuyet: autoLt, slThucTe: null, nguyenNhan: '', ghiChu: '' }] }))
     _spMarkDirty(spKey)
   }
   const updateShiftPerfRow = (spKey, _id, patch) => {
