@@ -358,9 +358,11 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
       .catch(() => {})
     pendingSlRef.current = {}
     fetchSessions()
-    // Tra theo maBravo (khóa chuẩn, ổn định) — fallback về maSp nếu bản ghi cũ chưa có maBravo
+    // Tra theo maBravo (khóa chuẩn, ổn định) — kèm maSp làm hint disambiguation vì
+    // maBravo không unique trong DB (nhiều sản phẩm có thể trùng mã Bravo).
+    // Fallback về maSp nếu bản ghi cũ chưa có maBravo.
     const lookupUrl = schedule.maBravo
-      ? `/product-master/lookup-by-bravo/${encodeURIComponent(schedule.maBravo)}`
+      ? `/product-master/lookup-by-bravo/${encodeURIComponent(schedule.maBravo)}${schedule.maSp ? `?maTp=${encodeURIComponent(schedule.maSp)}` : ''}`
       : `/product-master/lookup/${encodeURIComponent(schedule.maSp || '')}`
     api.get(lookupUrl)
       .then(r => {

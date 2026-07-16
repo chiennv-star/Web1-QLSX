@@ -21,6 +21,8 @@ public interface ProductMasterRepository extends JpaRepository<ProductMaster, Lo
 
     List<ProductMaster> findByMaBravoIgnoreCase(String maBravo);
 
+    Optional<ProductMaster> findByMaBravoIgnoreCaseAndMaTpIgnoreCase(String maBravo, String maTp);
+
     @Query("SELECT p FROM ProductMaster p WHERE UPPER(p.maBravo) IN :codes")
     List<ProductMaster> findByMaBravoIn(@Param("codes") java.util.Collection<String> codes);
 

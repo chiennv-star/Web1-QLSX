@@ -92,8 +92,9 @@ public class ProductMasterController {
     }
 
     @GetMapping("/lookup-by-bravo/{maBravo}")
-    public ResponseEntity<?> lookupByBravo(@PathVariable String maBravo) {
-        return service.findByMaBravo(maBravo)
+    public ResponseEntity<?> lookupByBravo(@PathVariable String maBravo,
+                                            @RequestParam(required = false) String maTp) {
+        return service.findByMaBravo(maBravo, maTp)
                 .map(p -> ResponseEntity.ok((Object) buildLookupBody(p)))
                 .orElse(ResponseEntity.notFound().build());
     }

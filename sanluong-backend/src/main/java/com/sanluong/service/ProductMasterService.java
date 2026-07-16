@@ -80,6 +80,19 @@ public class ProductMasterService {
         return repository.findByMaBravoIgnoreCase(maBravo).stream().findFirst();
     }
 
+    /**
+     * maBravo không có ràng buộc unique trong DB (chỉ maTp mới unique), nên nếu nhiều
+     * sản phẩm dùng chung 1 mã Bravo, cần maTpHint để chọn đúng bản ghi thay vì lấy
+     * đại bản ghi đầu tiên tìm thấy.
+     */
+    public Optional<ProductMaster> findByMaBravo(String maBravo, String maTpHint) {
+        if (maTpHint != null && !maTpHint.isBlank()) {
+            Optional<ProductMaster> exact = repository.findByMaBravoIgnoreCaseAndMaTpIgnoreCase(maBravo, maTpHint);
+            if (exact.isPresent()) return exact;
+        }
+        return findByMaBravo(maBravo);
+    }
+
     public ProductMaster create(ProductMasterDto dto) {
         if (repository.existsByMaTpIgnoreCase(dto.getMaTp())) {
             throw new RuntimeException("Mã TP đã tồn tại: " + dto.getMaTp());
