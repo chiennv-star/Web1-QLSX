@@ -1030,10 +1030,12 @@ function HieuSuatTab({ data = [], loading = false, pagination = {}, onPagination
 function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho }) {
   const fmtN = v => v ? Number(v).toLocaleString('vi-VN') : '0'
   const pct  = (a, b) => b > 0 ? Math.min(100, Math.round(a / b * 100)) : 0
+  const [warnDetail, setWarnDetail] = useState(null) // mục "Tình trạng dở dang" đang xem chi tiết
 
   // ── KPI ──────────────────────────────────────────────────────────────────
   const totalKH      = data.reduce((s, r) => s + (r.soLuong || 0), 0)
-  const hangLoiCount = data.filter(r => Number(r.hlSoLuongTraVe) > 0).length
+  const loHangLoi     = data.filter(r => Number(r.hlSoLuongTraVe) > 0)
+  const hangLoiCount = loHangLoi.length
   const totalSlPc    = data.reduce((s, r) => s + (parseInt(r.slPc)   || 0), 0)
   const totalSlPl    = data.reduce((s, r) => s + (parseInt(r.pcPl)   || 0), 0)
   const totalSlDg    = data.reduce((s, r) => s + (parseInt(r.dg2)    || 0), 0)
@@ -1111,29 +1113,29 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho }) {
   // về logic sản xuất tuần tự, ĐG không thể vượt PL, nên đây luôn là lỗi/thiếu dữ liệu, không phải tồn kho bình thường
   const loClBtpDuong = data.filter(r => ((parseInt(r.dg2)||0) - (parseInt(r.pcPl)||0)) > 0)
   if (loClBtpDuong.length > 0)
-    warnings.push({ icon: '🚨', label: 'CL BTP dương — ĐG vượt PL (thiếu SL công đoạn trước)', count: loClBtpDuong.length, sl: loClBtpDuong.reduce((s, r) => s + Math.max(0, (parseInt(r.dg2)||0) - (parseInt(r.pcPl)||0)), 0), ...ALERT })
+    warnings.push({ icon: '🚨', label: 'CL BTP dương — ĐG vượt PL (thiếu SL công đoạn trước)', count: loClBtpDuong.length, sl: loClBtpDuong.reduce((s, r) => s + Math.max(0, (parseInt(r.dg2)||0) - (parseInt(r.pcPl)||0)), 0), rows: loClBtpDuong, ...ALERT })
 
   const loChuaBatDauList = data.filter(r => !hasAnyStage(r))
   if (loChuaBatDauList.length > 0)
-    warnings.push({ icon: '⏸', label: 'Chưa bắt đầu bất kỳ công đoạn nào', count: loChuaBatDauList.length, ...NEUTRAL })
+    warnings.push({ icon: '⏸', label: 'Chưa bắt đầu bất kỳ công đoạn nào', count: loChuaBatDauList.length, rows: loChuaBatDauList, ...NEUTRAL })
 
   const loBtpChoNhieu = data.filter(r => (parseInt(r.slPc)||0) > 0 && (parseInt(r.pcPl)||0) === 0)
   if (loBtpChoNhieu.length > 0)
-    warnings.push({ icon: '📦', label: 'BTP sau PC chưa chuyển sang PL', count: loBtpChoNhieu.length, sl: loBtpChoNhieu.reduce((s, r) => s + Math.max(0, (parseInt(r.slPc)||0) - (parseInt(r.pcPl)||0)), 0), ...NEUTRAL })
+    warnings.push({ icon: '📦', label: 'BTP sau PC chưa chuyển sang PL', count: loBtpChoNhieu.length, sl: loBtpChoNhieu.reduce((s, r) => s + Math.max(0, (parseInt(r.slPc)||0) - (parseInt(r.pcPl)||0)), 0), rows: loBtpChoNhieu, ...NEUTRAL })
 
   const loBtpChoDg = data.filter(r => (parseInt(r.pcPl)||0) > 0 && (parseInt(r.dg2)||0) === 0)
   if (loBtpChoDg.length > 0)
-    warnings.push({ icon: '🔬', label: 'BTP sau PL chưa qua ĐG', count: loBtpChoDg.length, sl: loBtpChoDg.reduce((s, r) => s + Math.max(0, (parseInt(r.pcPl)||0) - (parseInt(r.dg2)||0)), 0), ...NEUTRAL })
+    warnings.push({ icon: '🔬', label: 'BTP sau PL chưa qua ĐG', count: loBtpChoDg.length, sl: loBtpChoDg.reduce((s, r) => s + Math.max(0, (parseInt(r.pcPl)||0) - (parseInt(r.dg2)||0)), 0), rows: loBtpChoDg, ...NEUTRAL })
 
   if (hangLoiCount > 0)
-    warnings.push({ icon: '⚠️', label: 'Có hàng lỗi cần xử lý', count: hangLoiCount, ...NEUTRAL })
+    warnings.push({ icon: '⚠️', label: 'Có hàng lỗi cần xử lý', count: hangLoiCount, rows: loHangLoi, ...NEUTRAL })
 
   const loSlLechCao = data.filter(r => {
     const pc = parseInt(r.slPc)||0; const pl = parseInt(r.pcPl)||0
     return pc > 0 && pl > 0 && Math.abs(pc - pl) > pc * 0.15
   })
   if (loSlLechCao.length > 0)
-    warnings.push({ icon: '📊', label: 'SL lệch >15% giữa PC và PL', count: loSlLechCao.length, ...NEUTRAL })
+    warnings.push({ icon: '📊', label: 'SL lệch >15% giữa PC và PL', count: loSlLechCao.length, rows: loSlLechCao, ...NEUTRAL })
 
   // ── Sub-components ────────────────────────────────────────────────────────
   const KpiCard = ({ label, value, sub, bg, badge, icon }) => (
@@ -1398,7 +1400,8 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho }) {
           <SectionLabel accent="#475569">Tình trạng dở dang ({warnings.length})</SectionLabel>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {warnings.map((w, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, background: w.bg, border: `1px solid ${w.border}`, borderRadius: 8, padding: '6px 12px', flexShrink: 0 }}>
+              <div key={i} onClick={() => setWarnDetail(w)}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, background: w.bg, border: `1px solid ${w.border}`, borderRadius: 8, padding: '6px 12px', flexShrink: 0, cursor: 'pointer' }}>
                 <span style={{ fontSize: 14 }}>{w.icon}</span>
                 <div>
                   <div style={{ fontSize: 11, color: w.color, fontWeight: 700 }}>{w.label}</div>
@@ -1419,6 +1422,39 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho }) {
           <span style={{ fontSize: 12, color: '#15803d', fontWeight: 600 }}>Không có bán thành phẩm dở dang trong {total} lô đang sản xuất</span>
         </div>
       )}
+
+      {/* ── Modal chi tiết sản phẩm theo mục Tình trạng dở dang ── */}
+      <Modal
+        open={!!warnDetail}
+        onCancel={() => setWarnDetail(null)}
+        footer={null}
+        width={900}
+        title={warnDetail ? (
+          <span>
+            <span style={{ marginRight: 6 }}>{warnDetail.icon}</span>
+            <span style={{ color: warnDetail.color }}>{warnDetail.label}</span>
+            <span style={{ color: '#94a3b8', fontWeight: 400, marginLeft: 8, fontSize: 13 }}>({warnDetail.count} lô)</span>
+          </span>
+        ) : null}
+      >
+        <Table
+          size="small"
+          rowKey={r => r.id}
+          dataSource={warnDetail?.rows || []}
+          pagination={{ pageSize: 10, size: 'small' }}
+          scroll={{ x: 700 }}
+          columns={[
+            { title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 100 },
+            { title: 'Mã TP', dataIndex: 'maTp', key: 'maTp', width: 80 },
+            { title: 'Tên sản phẩm', dataIndex: 'tienTrinh', key: 'tienTrinh', ellipsis: true },
+            { title: 'LSX', dataIndex: 'lsx', key: 'lsx', width: 90, align: 'center' },
+            { title: 'PC', dataIndex: 'slPc', key: 'slPc', width: 80, align: 'right', render: v => fmtN(v) },
+            { title: 'PL', dataIndex: 'pcPl', key: 'pcPl', width: 80, align: 'right', render: v => fmtN(v) },
+            { title: 'ĐG', dataIndex: 'dg2', key: 'dg2', width: 80, align: 'right', render: v => fmtN(v) },
+            { title: 'BBC1', dataIndex: 'bbc1_2', key: 'bbc1_2', width: 80, align: 'right', render: v => fmtN(v) },
+          ]}
+        />
+      </Modal>
     </div>
   )
 }
