@@ -4384,23 +4384,23 @@ function MachineUsageTab() {
 
       {/* Bảng P — giống hệt WorkSchedulePage */}
       <TableHeader
-        bg="linear-gradient(135deg, #1e1b4b 0%, #3730a3 100%)"
+        bg="#1e3a5f"
         title="BẢNG 2 — CHỈ SỐ P (HIỆU SUẤT THỰC HIỆN)"
         subtitle={`Performance = Σ(SL thực tế × T chuẩn SP) / Σ(Thời gian chạy) · Mục tiêu ≥ 95% · Tính từ chi tiết ca sản xuất · ${dayjs().year()}`}
       />
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px 0', background: '#fff', border: '1px solid #a78bfa', borderTop: 'none' }}>
-          <span style={{ color: '#7c3aed' }}>Đang tải...</span>
+        <div style={{ textAlign: 'center', padding: '40px 0', background: '#fff', border: '1px solid #4a6fa5', borderTop: 'none' }}>
+          <span style={{ color: '#1677ff' }}>Đang tải...</span>
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', border: '1px solid #a78bfa', borderTop: 'none', background: '#fff' }}>
+        <div style={{ overflowX: 'auto', border: '1px solid #4a6fa5', borderTop: 'none', background: '#fff' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr>
-                <th colSpan={5} style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11, letterSpacing: 0.5, color: '#fff', background: '#2e1065' }}>THÔNG TIN SẢN XUẤT</th>
-                <th colSpan={3} style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11, letterSpacing: 0.5, color: '#fff', background: '#1e3a5f' }}>THÔNG SỐ TỐC ĐỘ</th>
-                <th colSpan={2} style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11, letterSpacing: 0.5, color: '#fff', background: '#7c3aed' }}>P (%)</th>
-                <th colSpan={2} style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #5b21b6', fontWeight: 700, fontSize: 11, letterSpacing: 0.5, color: '#fff', background: '#5b21b6' }}>PHÂN TÍCH TỔN THẤT</th>
+                <th colSpan={5} style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 11, letterSpacing: 0.5, color: '#fff', background: '#1e3a5f' }}>THÔNG TIN SẢN XUẤT</th>
+                <th colSpan={3} style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 11, letterSpacing: 0.5, color: '#fff', background: '#166534' }}>THÔNG SỐ TỐC ĐỘ</th>
+                <th colSpan={2} style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 11, letterSpacing: 0.5, color: '#fff', background: '#b45309' }}>P (%)</th>
+                <th colSpan={2} style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #4a6fa5', fontWeight: 700, fontSize: 11, letterSpacing: 0.5, color: '#fff', background: '#991b1b' }}>PHÂN TÍCH TỔN THẤT</th>
               </tr>
               <tr>
                 {[
@@ -4410,7 +4410,7 @@ function MachineUsageTab() {
                   { label: 'P (%)', w: 70 }, { label: 'Tổn thất tốc độ (SP/ca)', w: 110 },
                   { label: 'Nguyên nhân giảm tốc', w: 200 }, { label: 'Ghi chú / Hành động', w: 180 },
                 ].map(h => (
-                  <th key={h.label} style={{ background: '#f5f3ff', color: '#1e293b', padding: '6px 6px', border: '1px solid #a78bfa', fontWeight: 700, fontSize: 11, textAlign: 'center', whiteSpace: 'nowrap', minWidth: h.w }}>
+                  <th key={h.label} style={{ background: '#f1f5f9', color: '#1e293b', padding: '6px 6px', border: '1px solid #94a3b8', fontWeight: 700, fontSize: 11, textAlign: 'center', whiteSpace: 'nowrap', minWidth: h.w }}>
                     {h.label}
                   </th>
                 ))}
@@ -4437,7 +4437,7 @@ function MachineUsageTab() {
                 })
                 return expandedRows.map(({ row, wsInfo, wsIdx, wsCount, parentIdx }) => {
                   const pval = row.pPct
-                  const rowBg = parentIdx % 2 === 0 ? '#fff' : '#faf5ff'
+                  const rowBg = parentIdx % 2 === 0 ? '#fff' : '#f8fafc'
                   const td = (extra = {}) => ({ padding: '6px 6px', border: '1px solid #e2e8f0', background: rowBg, overflow: 'hidden', textOverflow: 'ellipsis', ...extra })
                   return (
                     <tr key={`${parentIdx}-${wsIdx}`}>
