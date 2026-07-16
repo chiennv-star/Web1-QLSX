@@ -6,7 +6,7 @@ import {
 import {
   SaveOutlined, ArrowLeftOutlined, SyncOutlined, CheckCircleOutlined,
   LinkOutlined, WarningOutlined, EditOutlined,
-  PlusOutlined, DeleteOutlined, CalendarOutlined,
+  PlusOutlined, DeleteOutlined, CalendarOutlined, AccountBookOutlined,
 } from '@ant-design/icons'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import api from '../api/axios'
@@ -44,6 +44,8 @@ export default function RecordFormPage() {
   const [isEditing, setIsEditing] = useState(!isEdit) // true khi tạo mới, false khi xem/chỉnh sửa
   const [saving, setSaving] = useState(false)
   const [phatLenh, setPhatLenh] = useState(false)
+  const [daBanHanh, setDaBanHanh] = useState(false)
+  const [hoSoLoading, setHoSoLoading] = useState(false)
   const [lookupStatus, setLookupStatus] = useState(null)
   const lookupTimer = useRef(null)
   const [suggestions, setSuggestions] = useState([])
@@ -288,6 +290,7 @@ export default function RecordFormPage() {
             bbc1_2: data.bbc1_2 != null && data.bbc1_2 !== '' ? String(data.bbc1_2) : '0',
           })
           setPhatLenh(!!data.phatLenh)
+          setDaBanHanh(!!data.daBanHanh)
           setProductInfo({ maBravo: data.maBravo, maTp: data.maTp, tienTrinh: data.tienTrinh, lsx: data.lsx, soLuong: data.soLuong })
           // Lưu snapshot hl* đã sync từ HangLoi vào production record
           setHlData({
@@ -469,6 +472,16 @@ export default function RecordFormPage() {
     finally { setHangLoiLoading(false) }
   }
 
+  const handleHoSoHoanThien = async () => {
+    setHoSoLoading(true)
+    try {
+      await api.patch(`/production/${id}/ho-so-hoan-thien`)
+      message.success('Đã chuyển sang Tổng Kết Hồ Sơ')
+      setDaBanHanh(true)
+    } catch { message.error('Thao tác thất bại') }
+    finally { setHoSoLoading(false) }
+  }
+
   const onFinish = async (values) => {
     setSaving(true)
     try {
@@ -614,6 +627,23 @@ export default function RecordFormPage() {
           {!watchMaBravo && !watchMaTp && <span style={{ color: '#94a3b8', fontSize: 12 }}>{isEdit ? 'Chỉnh sửa bản ghi' : 'Thêm mới'}</span>}
         </div>
         <Space size={6}>
+          {isEdit && (isAdmin() || isAdminKH()) && (
+            daBanHanh
+              ? <span style={{ background: '#f3e8ff', color: '#7c3aed', fontWeight: 700, fontSize: 11, padding: '2px 10px', borderRadius: 6, border: '1px solid #d8b4fe' }}>
+                  ✓ Đã hoàn thiện hồ sơ
+                </span>
+              : <Popconfirm
+                  title="Chuyển bản ghi này sang Tổng Kết Hồ Sơ?"
+                  okText="Chuyển" cancelText="Hủy"
+                  onConfirm={handleHoSoHoanThien}
+                >
+                  <Button size="small" icon={<AccountBookOutlined />}
+                    loading={hoSoLoading}
+                    style={{ fontWeight: 700, fontSize: 11, background: '#7c3aed', borderColor: '#7c3aed', color: '#fff' }}>
+                    Hoàn thiện hồ sơ
+                  </Button>
+                </Popconfirm>
+          )}
           {ro && canEditProd && (
             <Button size="small" icon={<EditOutlined />}
               onClick={() => setIsEditing(true)}
