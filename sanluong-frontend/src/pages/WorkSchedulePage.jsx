@@ -358,7 +358,11 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
       .catch(() => {})
     pendingSlRef.current = {}
     fetchSessions()
-    api.get(`/product-master/lookup/${encodeURIComponent(schedule.maSp || '')}`)
+    // Tra theo maBravo (khóa chuẩn, ổn định) — fallback về maSp nếu bản ghi cũ chưa có maBravo
+    const lookupUrl = schedule.maBravo
+      ? `/product-master/lookup-by-bravo/${encodeURIComponent(schedule.maBravo)}`
+      : `/product-master/lookup/${encodeURIComponent(schedule.maSp || '')}`
+    api.get(lookupUrl)
       .then(r => {
         setMaBravo(r.data.maBravo || '')
         const field = NS_LOOKUP_FIELD[schedule.congDoan] || 'slTrungBinh'
