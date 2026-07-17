@@ -7817,12 +7817,10 @@ function DashboardGDTab() {
                         const ns = row.cong > 0 ? row.sl / row.cong : 0
                         return (
                           <tr key={row.may} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
-                            <td style={{ padding: '8px 7px', maxWidth: 0 }}>
+                            <td style={{ padding: '8px 7px', minWidth: 140 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <div style={{ width: 3, height: 16, borderRadius: 2, background: MAY_COLORS[i % MAY_COLORS.length], flexShrink: 0 }} />
-                                <Tooltip title={row.may} placement="topLeft">
-                                  <span style={{ fontWeight: 600, color: '#1e3a5f', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'default' }}>{row.may}</span>
-                                </Tooltip>
+                                <span style={{ fontWeight: 600, color: '#1e3a5f', fontSize: 12, wordBreak: 'break-word' }}>{row.may}</span>
                               </div>
                               <div style={{ height: 3, background: '#f1f5f9', borderRadius: 2, marginTop: 4, overflow: 'hidden' }}>
                                 <div style={{ width: `${totalMaySl > 0 ? row.sl / totalMaySl * 100 : 0}%`, height: '100%', background: MAY_COLORS[i % MAY_COLORS.length], borderRadius: 2 }} />
