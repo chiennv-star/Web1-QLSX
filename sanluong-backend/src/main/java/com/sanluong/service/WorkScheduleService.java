@@ -958,7 +958,8 @@ public class WorkScheduleService {
         return info;
     }
 
-    /** Khi gán toNhom cho PCPL1/PCPL2 → tự ẩn record PCPL đối diện cùng lô */
+    /** Khi gán toNhom cho PCPL1/PCPL2 → tự ẩn record PCPL đối diện cùng lô
+     *  (bỏ qua sibling đã có toNhom riêng, hoặc đã Doing/Done — không ẩn dữ liệu sản xuất thật) */
     private void autoHidePcplSibling(WorkSchedule w) {
         if (!("PCPL1".equals(w.getCongDoan()) || "PCPL2".equals(w.getCongDoan()))) return;
         String siblingCongDoan = "PCPL1".equals(w.getCongDoan()) ? "PCPL2" : "PCPL1";
@@ -971,6 +972,8 @@ public class WorkScheduleService {
                 null, null, siblingCongDoan, "SCHEDULE", null, null)
             .stream()
             .filter(sib -> w.getMaDonHang() == null || Objects.equals(sib.getMaDonHang(), w.getMaDonHang()))
+            .filter(sib -> isEmpty(sib.getToNhom()))
+            .filter(sib -> !"doing".equalsIgnoreCase(sib.getTinhTrang()) && !"done".equalsIgnoreCase(sib.getTinhTrang()))
             .forEach(sib -> {
                 sib.setHidden(shouldHide ? Boolean.TRUE : null);
                 repository.save(sib);
