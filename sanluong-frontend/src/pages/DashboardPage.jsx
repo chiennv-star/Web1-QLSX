@@ -1043,7 +1043,7 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho }) {
     if (nkRange?.[0]) params.fromDate = nkRange[0].format('YYYY-MM-DD')
     if (nkRange?.[1]) params.toDate   = nkRange[1].format('YYYY-MM-DD')
     api.get('/production/nhap-kho', { params })
-      .then(({ data: res }) => { if (!cancelled) setNkList(res || []) })
+      .then(({ data: res }) => { if (!cancelled) setNkList((res || []).filter(r => r.ngayXuatKho)) })
       .catch(() => { if (!cancelled) setNkList([]) })
       .finally(() => { if (!cancelled) setNkLoading(false) })
     return () => { cancelled = true }
