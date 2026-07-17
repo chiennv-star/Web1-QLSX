@@ -1749,7 +1749,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                   <table className="ws-session-table" style={{ width: '100%', minWidth: 680, borderCollapse: 'collapse', fontSize: 12 }}>
                     <thead>
                       <tr>
-                        {['Người thực hiện', 'Mã NV', 'Nhóm/tổ', 'Thời gian (giờ)', 'Công thực hiện',
+                        {['Người thực hiện', 'Mã NV', 'Nhóm/tổ', 'Ca', 'Thời gian (giờ)', 'Công thực hiện',
                           <span key="vt">Vai trò{canEditDetail && <SettingOutlined onClick={() => setVaiTroModalOpen(true)} style={{ marginLeft: 5, cursor: 'pointer', color: '#1677ff', fontSize: 10 }} />}</span>,
                           canEditDetail ? '' : null].filter(h => h !== null).map((h, i) => (
                           <th key={i} style={{ ...subHeadStyle, background: '#fdf6e3' }}>{h}</th>
@@ -1758,7 +1758,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                     </thead>
                     <tbody>
                       {rows.length === 0 && (
-                        <tr><td colSpan={7} style={{ ...cellStyle, textAlign: 'center', color: '#aaa', padding: 14 }}>
+                        <tr><td colSpan={8} style={{ ...cellStyle, textAlign: 'center', color: '#aaa', padding: 14 }}>
                           Chưa có người — nhấn "+ Thêm người"
                         </td></tr>
                       )}
@@ -1811,6 +1811,24 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                 onChange={e => { clearMaNvError(rowKey); updateLocals(rowKey, { nhomThucHien: e.target.value, nguoiThucHien: '', maNhanVien: '' }) }}>
                                 <option value="">-- Chọn nhóm --</option>
                                 {['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG', 'KT'].map(v => <option key={v} value={v}>{v}</option>)}
+                              </select>
+                            </td>
+                            <td style={{ ...cellStyle, width: 100 }}>
+                              <select
+                                style={{ ...inputStyle, cursor: 'pointer', fontWeight: 600, color: s.caSanXuat === 'HC' ? '#389e0d' : s.caSanXuat ? '#1677ff' : undefined }}
+                                value={s.caSanXuat}
+                                onChange={e => {
+                                  const ca = e.target.value
+                                  if (ca !== s.caSanXuat && ca && s.maNhanVien && s.ngay) {
+                                    caChangedRef.current[rowKey] = { ngay: s.ngay, maNhanVien: s.maNhanVien, newCa: ca }
+                                  }
+                                  updateLocals(rowKey, { caSanXuat: ca, congThucHien: calcCong(s.thoiGianBatDau, ca) })
+                                }}
+                              >
+                                <option value="">-- Chọn ca --</option>
+                                <option value="Ca 1">Ca 1</option>
+                                <option value="Ca 2">Ca 2</option>
+                                <option value="HC">Hành Chính</option>
                               </select>
                             </td>
                             <td style={{ ...cellStyle, width: 90 }}>
