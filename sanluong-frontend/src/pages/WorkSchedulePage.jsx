@@ -749,11 +749,11 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     setShiftPerfMap(prev => ({ ...prev, [spKey]: (prev[spKey] || []).filter(r => r._id !== _id) }))
     _spMarkDirty(spKey)
   }
-  const saveShiftPerf = async (ngay, machineName) => {
+  const saveShiftPerf = async (ngay, machineName, entriesOverride) => {
     const spKey = `${ngay}|${machineName}`
     setShiftPerfSaving(prev => new Set(prev).add(spKey))
     try {
-      const entries = shiftPerfMap[spKey] || []
+      const entries = entriesOverride || shiftPerfMap[spKey] || []
       const { data } = await api.post('/machine-shift-perf/bulk',
         entries.map(({ caLo, slLyThuyet, slThucTe, nguyenNhan, ghiChu }) => ({ caLo: caLo || null, slLyThuyet: slLyThuyet ?? null, slThucTe: slThucTe ?? null, nguyenNhan: nguyenNhan || null, ghiChu: ghiChu || null })),
         { params: { workScheduleId: schedule.id, ngay, tenMay: machineName } }
@@ -765,6 +765,36 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     } catch { message.error('Lưu sản lượng theo ca thất bại') }
     finally { setShiftPerfSaving(prev => { const n = new Set(prev); n.delete(spKey); return n }) }
   }
+  // Điền lại + tự lưu (POST/PUT) "Giờ kế hoạch" cho các dòng PCPL2 đã có Số mẻ TH từ trước
+  // nhưng chưa có Giờ kế hoạch — xảy ra khi dòng được lưu trước lúc sản phẩm có dữ liệu
+  // "Năng suất PC theo số mẻ", hoặc dữ liệu Sản lượng theo ca được tải về sau khi đã tra cứu sản phẩm.
+  useEffect(() => {
+    const isPcpl2 = schedule?.congDoan?.toUpperCase() === 'PCPL2'
+    if (!isPcpl2 || pcplNangSuatMe.length === 0) return
+    const next = {}
+    const dirtyEntries = [] // { spKey, ngay, machineName, rows }
+    let changed = false
+    Object.entries(shiftPerfMap).forEach(([spKey, rows]) => {
+      let rowChanged = false
+      const patchedRows = (rows || []).map(r => {
+        if (r.slThucTe != null && r.slLyThuyet == null) {
+          const found = pcplNangSuatMe.find(f => f.soMe === r.slThucTe)
+          if (found) { rowChanged = true; return { ...r, slLyThuyet: found.nangSuat } }
+        }
+        return r
+      })
+      next[spKey] = patchedRows
+      if (rowChanged) {
+        changed = true
+        const sep = spKey.indexOf('|')
+        dirtyEntries.push({ spKey, ngay: spKey.slice(0, sep), machineName: spKey.slice(sep + 1), rows: patchedRows })
+      }
+    })
+    if (!changed) return
+    setShiftPerfMap(next)
+    dirtyEntries.forEach(({ ngay, machineName, rows }) => saveShiftPerf(ngay, machineName, rows))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pcplNangSuatMe, shiftPerfMap])
   const computeShiftPerfStats = (entries) => {
     let sumLT = 0, sumTT = 0
     ;(entries || []).forEach(e => {
@@ -2123,18 +2153,22 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                   const ttLabel = isPcpl2 ? 'Số mẻ TH' : 'Tốc độ TT (sp/phút)'
                                   const ltPlaceholder = isPcpl2 ? 'giờ' : 'sp/phút'
                                   const ttPlaceholder = isPcpl2 ? 'mẻ TH' : 'sp/phút'
+                                  // Admin của chính tổ đó chỉ cần điền giá trị thực tế (Số mẻ TH / Tốc độ TT) —
+                                  // ẩn cột giá trị lý thuyết (Giờ kế hoạch / Tốc độ LT) vì đã tự động điền từ danh mục.
+                                  const hideAutoCol = isStageAdmin()
+                                  const headers = ['#', col1Label, ...(hideAutoCol ? [] : [ltLabel]), ttLabel, 'P ca (%)', '']
                                   return (
                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                                   <thead>
                                     <tr>
-                                      {['#', col1Label, ltLabel, ttLabel, 'P ca (%)', ''].map((h, i) => (
+                                      {headers.map((h, i) => (
                                         <th key={i} style={{ padding: '5px 7px', background: '#fef3c7', color: '#92400e', fontWeight: 600, fontSize: 11, textAlign: 'left', borderBottom: '1px solid #fde68a', whiteSpace: 'nowrap' }}>{h}</th>
                                       ))}
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {spEntries.length === 0 && (
-                                      <tr><td colSpan={6} style={{ textAlign: 'center', color: '#aaa', padding: '12px 0', fontSize: 12 }}>Chưa có dữ liệu — nhấn "+ Thêm dòng"</td></tr>
+                                      <tr><td colSpan={headers.length} style={{ textAlign: 'center', color: '#aaa', padding: '12px 0', fontSize: 12 }}>Chưa có dữ liệu — nhấn "+ Thêm dòng"</td></tr>
                                     )}
                                     {spEntries.map((row, idx) => {
                                       const pCa = row.slLyThuyet > 0 && row.slThucTe != null ? Math.round(row.slThucTe / row.slLyThuyet * 1000) / 10 : null
@@ -2161,10 +2195,12 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                               </select>
                                             )}
                                           </td>
-                                          <td style={{ padding: '3px 5px', width: 100 }}>
-                                            <input type="number" value={row.slLyThuyet ?? ''} placeholder={ltPlaceholder} style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 6px', fontSize: 12, textAlign: 'right' }}
-                                              onChange={e => updateShiftPerfRow(spKey, row._id, { slLyThuyet: e.target.value === '' ? null : Number(e.target.value) })} />
-                                          </td>
+                                          {!hideAutoCol && (
+                                            <td style={{ padding: '3px 5px', width: 100 }}>
+                                              <input type="number" value={row.slLyThuyet ?? ''} placeholder={ltPlaceholder} style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 6px', fontSize: 12, textAlign: 'right' }}
+                                                onChange={e => updateShiftPerfRow(spKey, row._id, { slLyThuyet: e.target.value === '' ? null : Number(e.target.value) })} />
+                                            </td>
+                                          )}
                                           <td style={{ padding: '3px 5px', width: 100 }}>
                                             <input type="number" value={row.slThucTe ?? ''} placeholder={ttPlaceholder} style={{ width: '100%', border: '1px solid #fde68a', borderRadius: 5, padding: '3px 6px', fontSize: 12, textAlign: 'right', color: '#1d4ed8', fontWeight: 700 }}
                                               onChange={e => {

@@ -4868,6 +4868,7 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
   const isSundayCell = (d, m) => d <= daysInMonth(m) && dayjs(`${year}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`).day() === 0
   const workingDaysInMonth = m => { let n = 0; for (let d = 1; d <= daysInMonth(m); d++) if (!isSundayCell(d, m)) n++; return Math.max(1, n) }
   const workingDaysLeft = () => { let n = 0; for (let d = now.date() + 1; d <= daysInMonth(curMonth); d++) if (!isSundayCell(d, curMonth)) n++; return Math.max(1, n) }
+  const actualDaysInMonth = m => { let n = 0; for (let d = 1; d <= 31; d++) if ((pivot[d]?.[m] || 0) > 0) n++; return n }
 
   const MONTHS = [1,2,3,4,5,6,7,8,9,10,11,12]
 
@@ -5000,6 +5001,35 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
                 </td>
               ))}
               <td style={{ ..._tfS, textAlign: 'right', background: '#003333', color: '#fff', fontSize: 13 }}>{fmt(grandTotal) || '0'}</td>
+            </tr>
+
+            {/* Trung bình nhập kho ngày — tổng SL nhập kho tháng / số ngày thực tế có phát sinh NK trong tháng */}
+            <tr style={{ background: '#ecfdf5' }}>
+              <td style={{ ..._tfS, color: '#047857', fontWeight: 700, textAlign: 'left', fontSize: 11 }}>
+                <Tooltip title="Tổng SL nhập kho trong tháng / số ngày thực tế có phát sinh nhập kho trong tháng">
+                  <span style={{ cursor: 'help', borderBottom: '1px dotted #047857' }}>TB nhập kho/ngày</span>
+                </Tooltip>
+              </td>
+              {MONTHS.map(m => {
+                if (isFuture(m)) return (
+                  <td key={m} style={{ ..._tfS, textAlign: 'right', color: '#cbd5e1', fontSize: 10 }}>#N/A</td>
+                )
+                const total = monthTotals[m] || 0
+                const days  = actualDaysInMonth(m)
+                const avg   = days > 0 ? total / days : 0
+                return (
+                  <td key={m} style={{ ..._tfS, textAlign: 'right', color: avg > 0 ? '#047857' : '#d1d5db', fontWeight: avg > 0 ? 600 : 400 }}>
+                    {avg > 0 ? Math.round(avg).toLocaleString('vi-VN') : '0'}
+                  </td>
+                )
+              })}
+              <td style={{ ..._tfS, textAlign: 'right', background: '#d1fae5', color: '#047857', fontWeight: 700 }}>
+                {(() => {
+                  const totalDays = MONTHS.reduce((s, m) => s + (isFuture(m) ? 0 : actualDaysInMonth(m)), 0)
+                  const avg = totalDays > 0 ? grandTotal / totalDays : 0
+                  return avg > 0 ? Math.round(avg).toLocaleString('vi-VN') : '0'
+                })()}
+              </td>
             </tr>
 
             {hasTarget ? (
