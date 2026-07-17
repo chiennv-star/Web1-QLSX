@@ -153,6 +153,15 @@ public class LenhSanXuatService {
 
     @Transactional
     public LenhSanXuatDto create(LenhSanXuatDto dto, String username) {
+        // Chặn trùng lặp cứng: cùng maBravo + maDonHang + soLo (bất kể ngày/tổ/cỡ lô có khớp hay không)
+        // → đây là khóa định danh thực sự của 1 lệnh (giống cách doiLo/update đang cascade)
+        if (dto.getMaBravo() != null && dto.getSoLo() != null) {
+            java.util.Optional<LenhSanXuat> hardDup = repo.findActiveByMaBravoAndMaDonHangAndSoLo(
+                    dto.getMaBravo(), dto.getMaDonHang(), dto.getSoLo());
+            if (hardDup.isPresent()) {
+                return toDto(hardDup.get());
+            }
+        }
         // Nếu đã tồn tại bản ghi với cùng key → trả về bản cũ, không tạo duplicate
         if (dto.getMaBravo() != null && dto.getNgayThucHien() != null) {
             java.util.Optional<LenhSanXuat> existing = repo.findExistingKey(
@@ -417,6 +426,161 @@ public class LenhSanXuatService {
         e.setDeletedBy(null);
         e.setUpdatedBy(username);
         return toDto(repo.save(e));
+    }
+
+    // ── Gộp bản ghi trùng lặp (maBravo + maDonHang + soLo) ──────────────────────
+
+    /** Quét toàn bộ lệnh đang hoạt động, nhóm theo (maBravo, maDonHang, soLo), trả về các nhóm có ≥ 2 bản ghi */
+    public List<Map<String, Object>> previewDuplicates() {
+        List<LenhSanXuat> active = repo.findAll().stream()
+                .filter(e -> e.getDeletedAt() == null && e.getMaBravo() != null && e.getSoLo() != null)
+                .collect(Collectors.toList());
+
+        java.util.LinkedHashMap<String, List<LenhSanXuat>> grouped = new java.util.LinkedHashMap<>();
+        for (LenhSanXuat e : active) {
+            String key = e.getMaBravo() + "|" + (e.getMaDonHang() != null ? e.getMaDonHang() : "") + "|" + e.getSoLo();
+            grouped.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(e);
+        }
+
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
+        for (List<LenhSanXuat> members : grouped.values()) {
+            if (members.size() < 2) continue;
+            LenhSanXuat first = members.get(0);
+
+            java.math.BigDecimal prodSoLuong = null;
+            List<ProductionRecord> pr = productionRepo.findByLenhKey(first.getMaBravo(), first.getSoLo(), first.getMaDonHang());
+            if (!pr.isEmpty() && pr.get(0).getSoLuong() != null) {
+                prodSoLuong = java.math.BigDecimal.valueOf(pr.get(0).getSoLuong());
+            }
+            long distinctSoLuong = members.stream().map(LenhSanXuat::getSoLuong)
+                    .filter(java.util.Objects::nonNull).distinct().count();
+
+            Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("maBravo", first.getMaBravo());
+            row.put("maDonHang", first.getMaDonHang());
+            row.put("soLo", first.getSoLo());
+            row.put("soLuongConflict", distinctSoLuong > 1);
+            row.put("productionSoLuong", prodSoLuong);
+            row.put("suggestedKeeperId", suggestKeeper(members).getId());
+            row.put("members", members.stream().map(this::toDto).collect(Collectors.toList()));
+            result.add(row);
+        }
+        return result;
+    }
+
+    /** Ưu tiên bản ghi đã ban hành; sau đó bản ghi cũ nhất (createdAt), rồi id nhỏ nhất */
+    private LenhSanXuat suggestKeeper(List<LenhSanXuat> members) {
+        List<LenhSanXuat> banHanh = members.stream()
+                .filter(e -> Boolean.TRUE.equals(e.getDaBanHanh()))
+                .collect(Collectors.toList());
+        List<LenhSanXuat> pool = banHanh.isEmpty() ? members : banHanh;
+        return pool.stream()
+                .min(java.util.Comparator
+                        .comparing((LenhSanXuat e) -> e.getCreatedAt() != null ? e.getCreatedAt() : LocalDateTime.MAX)
+                        .thenComparing(LenhSanXuat::getId))
+                .orElse(members.get(0));
+    }
+
+    /**
+     * Gộp các bản ghi trùng (mergeIds) vào bản ghi giữ lại (keeperId).
+     * Không cascade soft-delete sang ProductionRecord/WorkSchedule vì các bản ghi trùng
+     * dùng chung 1 ProductionRecord với bản ghi giữ lại (khớp theo maBravo+soLo+maDonHang).
+     */
+    @Transactional
+    public LenhSanXuatDto mergeDuplicates(Long keeperId, List<Long> mergeIds, String username) {
+        if (keeperId == null || mergeIds == null || mergeIds.isEmpty() || mergeIds.contains(keeperId)) {
+            throw new IllegalArgumentException("Danh sách bản ghi cần gộp không hợp lệ");
+        }
+        LenhSanXuat keeper = repo.findById(keeperId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi giữ lại: " + keeperId));
+        if (keeper.getDeletedAt() != null) {
+            throw new RuntimeException("Bản ghi giữ lại đã bị xóa, không thể gộp vào");
+        }
+        List<LenhSanXuat> toMerge = repo.findAllById(mergeIds);
+        if (toMerge.size() != mergeIds.size()) {
+            throw new RuntimeException("Một số bản ghi cần gộp không tồn tại");
+        }
+        for (LenhSanXuat dup : toMerge) {
+            if (dup.getDeletedAt() != null) continue;
+            if (!sameLenhKey(keeper, dup)) {
+                throw new IllegalArgumentException(
+                        "Bản ghi id=" + dup.getId() + " không cùng maBravo/maDonHang/soLo với bản ghi giữ lại");
+            }
+        }
+
+        // Đối chiếu soLuong (cỡ lô) với ProductionRecord — nguồn dữ liệu downstream đang thực sự được dùng
+        java.math.BigDecimal prodSoLuong = null;
+        if (keeper.getMaBravo() != null && keeper.getSoLo() != null) {
+            List<ProductionRecord> pr = productionRepo.findByLenhKey(keeper.getMaBravo(), keeper.getSoLo(), keeper.getMaDonHang());
+            if (!pr.isEmpty() && pr.get(0).getSoLuong() != null) {
+                prodSoLuong = java.math.BigDecimal.valueOf(pr.get(0).getSoLuong());
+            }
+        }
+        if (prodSoLuong != null) {
+            boolean keeperMatches = keeper.getSoLuong() != null && keeper.getSoLuong().compareTo(prodSoLuong) == 0;
+            if (!keeperMatches) {
+                final java.math.BigDecimal target = prodSoLuong;
+                toMerge.stream()
+                        .filter(d -> d.getSoLuong() != null && d.getSoLuong().compareTo(target) == 0)
+                        .findFirst()
+                        .ifPresent(d -> keeper.setSoLuong(d.getSoLuong()));
+            }
+        } else if (keeper.getSoLuong() == null) {
+            toMerge.stream().filter(d -> d.getSoLuong() != null).findFirst()
+                    .ifPresent(d -> keeper.setSoLuong(d.getSoLuong()));
+        }
+
+        // Bổ sung các field còn trống trên bản ghi giữ lại từ các bản ghi trùng
+        for (LenhSanXuat dup : toMerge) {
+            if (isBlank(keeper.getGhiChu()) && !isBlank(dup.getGhiChu())) keeper.setGhiChu(dup.getGhiChu());
+            if (isBlank(keeper.getChuY()) && !isBlank(dup.getChuY())) keeper.setChuY(dup.getChuY());
+            if (isBlank(keeper.getPhongThucHien()) && !isBlank(dup.getPhongThucHien())) keeper.setPhongThucHien(dup.getPhongThucHien());
+            if (isBlank(keeper.getToThucHien()) && !isBlank(dup.getToThucHien())) keeper.setToThucHien(dup.getToThucHien());
+            if (isBlank(keeper.getTinhTrang()) && !isBlank(dup.getTinhTrang())) keeper.setTinhTrang(dup.getTinhTrang());
+            if (keeper.getNgayThucHien() == null && dup.getNgayThucHien() != null) keeper.setNgayThucHien(dup.getNgayThucHien());
+            if (keeper.getNgayKetThuc() == null && dup.getNgayKetThuc() != null) keeper.setNgayKetThuc(dup.getNgayKetThuc());
+            if (keeper.getNgayPhatLenh() == null && dup.getNgayPhatLenh() != null) keeper.setNgayPhatLenh(dup.getNgayPhatLenh());
+            if (keeper.getSoNguoiThucHien() == null && dup.getSoNguoiThucHien() != null) keeper.setSoNguoiThucHien(dup.getSoNguoiThucHien());
+            if (!Boolean.TRUE.equals(keeper.getDaBanHanh()) && Boolean.TRUE.equals(dup.getDaBanHanh())) keeper.setDaBanHanh(true);
+            if (!Boolean.TRUE.equals(keeper.getDaLenLichLam()) && Boolean.TRUE.equals(dup.getDaLenLichLam())) keeper.setDaLenLichLam(true);
+            if (!Boolean.TRUE.equals(keeper.getDaDgVaXepLichDg()) && Boolean.TRUE.equals(dup.getDaDgVaXepLichDg())) keeper.setDaDgVaXepLichDg(true);
+        }
+        keeper.setUpdatedBy(username);
+        LenhSanXuat savedKeeper = repo.save(keeper);
+
+        // Re-point lịch sử đổi lô / đổi field sang bản ghi giữ lại trước khi xóa mềm
+        List<Long> activeMergeIds = toMerge.stream()
+                .filter(d -> d.getDeletedAt() == null)
+                .map(LenhSanXuat::getId)
+                .collect(Collectors.toList());
+        if (!activeMergeIds.isEmpty()) {
+            historyRepo.repointLenhId(activeMergeIds, keeperId);
+            fieldHistoryRepo.repointLenhId(activeMergeIds, keeperId);
+        }
+
+        // Xóa mềm các bản ghi trùng — KHÔNG cascade sang ProductionRecord/WorkSchedule
+        // (khác với delete()/bulkDelete() vì các bản ghi này dùng chung dữ liệu với bản ghi giữ lại)
+        LocalDateTime now = LocalDateTime.now();
+        for (LenhSanXuat dup : toMerge) {
+            if (dup.getDeletedAt() == null) {
+                dup.setDeletedAt(now);
+                dup.setDeletedBy(username);
+                dup.setUpdatedBy(username);
+            }
+        }
+        repo.saveAll(toMerge);
+
+        return toDto(savedKeeper);
+    }
+
+    private boolean sameLenhKey(LenhSanXuat a, LenhSanXuat b) {
+        return java.util.Objects.equals(a.getMaBravo(), b.getMaBravo())
+                && java.util.Objects.equals(a.getMaDonHang(), b.getMaDonHang())
+                && java.util.Objects.equals(a.getSoLo(), b.getSoLo());
+    }
+
+    private boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 
     public void deletePermanent(Long id) {

@@ -176,6 +176,20 @@ public class LenhSanXuatController {
         return ResponseEntity.ok(Map.of("updated", updated));
     }
 
+    @GetMapping("/duplicates")
+    public ResponseEntity<List<Map<String, Object>>> previewDuplicates() {
+        return ResponseEntity.ok(service.previewDuplicates());
+    }
+
+    @PostMapping("/duplicates/merge")
+    public ResponseEntity<LenhSanXuatDto> mergeDuplicates(@RequestBody Map<String, Object> body, Authentication auth) {
+        Long keeperId = Long.valueOf(body.get("keeperId").toString());
+        @SuppressWarnings("unchecked")
+        List<Object> rawIds = (List<Object>) body.get("mergeIds");
+        List<Long> mergeIds = rawIds.stream().map(o -> Long.valueOf(o.toString())).collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(service.mergeDuplicates(keeperId, mergeIds, auth.getName()));
+    }
+
     @PostMapping("/from-work-schedule/{workScheduleId}")
     public ResponseEntity<LenhSanXuatDto> createFromWorkSchedule(
             @PathVariable Long workScheduleId,

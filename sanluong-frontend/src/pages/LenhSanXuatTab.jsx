@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Table, Input, Select, Tag, Tooltip, message, Button, Badge, Progress,
-  Modal, Form, DatePicker, InputNumber, Divider, AutoComplete, Spin, Dropdown, Alert,
+  Modal, Form, DatePicker, InputNumber, Divider, AutoComplete, Spin, Dropdown, Alert, Radio,
 } from 'antd'
 import { Rnd } from 'react-rnd'
 import SkeletonTable from '../components/SkeletonTable'
@@ -10,7 +10,7 @@ import {
   ReloadOutlined, EditOutlined, CheckOutlined, FileAddOutlined,
   DeleteOutlined, ThunderboltOutlined, CloseOutlined,
   SaveOutlined, FileTextOutlined, SwapOutlined, HistoryOutlined,
-  DownloadOutlined, FileExcelOutlined, FileImageOutlined,
+  DownloadOutlined, FileExcelOutlined, FileImageOutlined, MergeCellsOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
@@ -214,6 +214,139 @@ function LichSuDoiLoModal({ open, record, onClose }) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </Modal>
+  )
+}
+
+// ── Gộp bản ghi trùng lặp Modal ───────────────────────────────────────────────
+const dupGroupKey = (g) => `${g.maBravo}|${g.maDonHang || ''}|${g.soLo}`
+
+function DuplicatesModal({ open, onClose, onMerged }) {
+  const [groups,         setGroups]         = useState([])
+  const [loading,        setLoading]        = useState(false)
+  const [selectedKeeper, setSelectedKeeper]  = useState({})
+  const [mergingKey,     setMergingKey]      = useState(null)
+
+  useEffect(() => {
+    if (!open) return
+    setLoading(true)
+    api.get('/lenh-san-xuat/duplicates')
+      .then(({ data }) => {
+        const list = Array.isArray(data) ? data : []
+        setGroups(list)
+        const sel = {}
+        list.forEach(g => { sel[dupGroupKey(g)] = g.suggestedKeeperId })
+        setSelectedKeeper(sel)
+      })
+      .catch(() => message.error('Không thể tải danh sách bản ghi trùng'))
+      .finally(() => setLoading(false))
+  }, [open])
+
+  const handleMerge = async (g) => {
+    const key = dupGroupKey(g)
+    const keeperId = selectedKeeper[key]
+    const mergeIds = g.members.filter(m => m.id !== keeperId).map(m => m.id)
+    if (!keeperId || mergeIds.length === 0) return
+    setMergingKey(key)
+    try {
+      await api.post('/lenh-san-xuat/duplicates/merge', { keeperId, mergeIds })
+      message.success(`Đã gộp ${mergeIds.length + 1} bản ghi thành 1 (giữ id ${keeperId})`)
+      setGroups(prev => prev.filter(x => dupGroupKey(x) !== key))
+      onMerged()
+    } catch (err) {
+      message.error(err?.response?.data?.message || 'Gộp thất bại')
+    } finally {
+      setMergingKey(null)
+    }
+  }
+
+  const memberColumns = (g) => [
+    {
+      title: '', width: 34,
+      render: (_, m) => (
+        <Radio
+          checked={selectedKeeper[dupGroupKey(g)] === m.id}
+          onChange={() => setSelectedKeeper(s => ({ ...s, [dupGroupKey(g)]: m.id }))}
+        />
+      ),
+    },
+    { title: 'ID', dataIndex: 'id', width: 56 },
+    {
+      title: 'Cỡ lô', dataIndex: 'soLuong', width: 90,
+      render: (v, m) => (
+        <span style={{
+          color: g.soLuongConflict && g.productionSoLuong != null && Number(v) !== Number(g.productionSoLuong) ? '#dc2626' : undefined,
+          fontWeight: g.soLuongConflict ? 700 : 400,
+        }}>
+          {fmtNum(v)}
+        </span>
+      ),
+    },
+    { title: 'Tổ TH', dataIndex: 'toThucHien', width: 80, render: v => v || '—' },
+    {
+      title: 'Tình trạng', dataIndex: 'tinhTrang', width: 90,
+      render: v => v === 'rat_gap' ? 'Rất gấp' : v === 'gap' ? 'Gấp' : '—',
+    },
+    { title: 'Đã BH', dataIndex: 'daBanHanh', width: 64, render: v => v ? '✓' : '—' },
+    { title: 'Ngày TH', dataIndex: 'ngayThucHien', width: 96, render: v => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
+    { title: 'Ghi chú', dataIndex: 'ghiChu', ellipsis: true, render: v => v || '—' },
+    { title: 'Tạo lúc', dataIndex: 'createdAt', width: 120, render: v => v ? dayjs(v).format('DD/MM HH:mm') : '—' },
+  ]
+
+  return (
+    <Modal
+      open={open} onCancel={onClose} title={null} footer={<Button onClick={onClose}>Đóng</Button>}
+      destroyOnHidden width={920}
+    >
+      <div style={{ background: 'linear-gradient(135deg,#0f172a,#334155)', padding: '12px 16px', margin: '-20px -24px 16px', borderRadius: '8px 8px 0 0' }}>
+        <div style={{ color: '#fff', fontWeight: 800, fontSize: 14 }}>Gộp bản ghi trùng lặp</div>
+        <div style={{ color: '#cbd5e1', fontSize: 11, marginTop: 2 }}>
+          Nhóm theo Mã Bravo + Mã ĐH + Số lô — chọn bản ghi giữ lại, các bản ghi còn lại sẽ được xóa mềm (khôi phục được trong Thùng rác)
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 24 }}><SyncOutlined spin /> Đang quét bản ghi trùng...</div>
+      ) : groups.length === 0 ? (
+        <div style={{ color: '#94a3b8', textAlign: 'center', padding: 24 }}>Không có bản ghi trùng lặp nào</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxHeight: '62vh', overflowY: 'auto', paddingRight: 4 }}>
+          {groups.map(g => {
+            const key = dupGroupKey(g)
+            return (
+              <div key={key} style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+                <div style={{ background: '#f8fafc', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0284c7' }}>{g.maBravo}</span>
+                  {g.maDonHang && <span style={{ fontSize: 12, color: '#64748b' }}>ĐH: <b style={{ fontFamily: 'monospace' }}>{g.maDonHang}</b></span>}
+                  <span style={{ fontSize: 12, color: '#64748b' }}>Lô: <b style={{ fontFamily: 'monospace', color: '#7c3aed' }}>{g.soLo}</b></span>
+                  <Tag color="blue">{g.members.length} bản ghi</Tag>
+                  {g.soLuongConflict && (
+                    <Tag color="red">
+                      ⚠ Cỡ lô không khớp{g.productionSoLuong != null ? ` — Sản lượng đang dùng: ${fmtNum(g.productionSoLuong)}` : ''}
+                    </Tag>
+                  )}
+                  <span style={{ flex: 1 }} />
+                  <Button
+                    size="small" type="primary" icon={<MergeCellsOutlined />}
+                    loading={mergingKey === key}
+                    onClick={() => handleMerge(g)}
+                    style={{ background: '#1e3a5f', borderColor: '#1e3a5f' }}
+                  >
+                    Gộp thành 1 bản ghi
+                  </Button>
+                </div>
+                <Table
+                  size="small"
+                  rowKey="id"
+                  columns={memberColumns(g)}
+                  dataSource={g.members}
+                  pagination={false}
+                />
+              </div>
+            )
+          })}
         </div>
       )}
     </Modal>
@@ -883,6 +1016,8 @@ export default function LenhSanXuatTab() {
   const [doiLoRecord,  setDoiLoRecord]  = useState(null)
   const [lichSuOpen,   setLichSuOpen]   = useState(false)
   const [lichSuRecord, setLichSuRecord] = useState(null)
+  const [duplicatesOpen,  setDuplicatesOpen]  = useState(false)
+  const [duplicatesCount, setDuplicatesCount] = useState(0)
   const [tableH, setTableH] = useState(500)
   const [loaiSpMap,        setLoaiSpMap]        = useState({}) // maSp → { loaiSanPham, khoiLuong, mayMocPc, ... }
   const [employeeCounts,   setEmployeeCounts]   = useState({})
@@ -912,6 +1047,13 @@ export default function LenhSanXuatTab() {
     try {
       const { data: res } = await api.get('/lenh-san-xuat/pending-sync-count')
       setMissingLichSxCount(res.count || 0)
+    } catch { /* non-blocking */ }
+  }, [])
+
+  const fetchDuplicatesCount = useCallback(async () => {
+    try {
+      const { data: res } = await api.get('/lenh-san-xuat/duplicates')
+      setDuplicatesCount(Array.isArray(res) ? res.length : 0)
     } catch { /* non-blocking */ }
   }, [])
 
@@ -945,7 +1087,8 @@ export default function LenhSanXuatTab() {
     fetchLenh()
     fetchPending()
     fetchMissingCount()
-  }, [fetchLenh, fetchPending, fetchMissingCount])
+    if (user?.role === 'ADMIN') fetchDuplicatesCount()
+  }, [fetchLenh, fetchPending, fetchMissingCount, fetchDuplicatesCount, user])
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
@@ -1637,6 +1780,17 @@ export default function LenhSanXuatTab() {
               </Button>
             </Badge>
           )}
+          {user?.role === 'ADMIN' && (
+            <Badge count={duplicatesCount} size="small" offset={[-4, 4]}>
+              <Button
+                icon={<MergeCellsOutlined />} size="small"
+                onClick={() => setDuplicatesOpen(true)}
+                style={{ fontSize: 11 }}
+              >
+                Bản ghi trùng
+              </Button>
+            </Badge>
+          )}
           <Button
             type="primary" icon={<PlusOutlined />} size="small"
             onClick={() => { setEditItem(null); setModalOpen(true) }}
@@ -2315,6 +2469,12 @@ export default function LenhSanXuatTab() {
         open={lichSuOpen}
         record={lichSuRecord}
         onClose={() => setLichSuOpen(false)}
+      />
+
+      <DuplicatesModal
+        open={duplicatesOpen}
+        onClose={() => setDuplicatesOpen(false)}
+        onMerged={() => { fetchAll() }}
       />
 
       <LenhDetailModal
