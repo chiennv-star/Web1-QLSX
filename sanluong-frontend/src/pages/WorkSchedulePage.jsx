@@ -926,10 +926,11 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
 
   const addRowToDay = (ngayKey) => {
     const tempId = Date.now()
+    const isPcpl1 = schedule?.congDoan?.toUpperCase() === 'PCPL1'
     setSessions(prev => [...prev, {
       _tempId: tempId, id: null, workScheduleId: schedule.id,
       ngay: ngayKey, maNhanVien: '', nguoiThucHien: '', nhomThucHien: '',
-      thoiGianBatDau: '', congThucHien: '', vaiTro: '', ghiChu: '', caSanXuat: '', isTangCa: false,
+      thoiGianBatDau: '', congThucHien: '', vaiTro: '', ghiChu: '', caSanXuat: isPcpl1 ? 'HC' : '', isTangCa: false,
     }])
     setBatchEditDays(prev => new Set([...prev, ngayKey]))
     setEditingKeys(prev => new Set([...prev, tempId]))
@@ -1686,7 +1687,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                       size="small" icon={<UsergroupAddOutlined />}
                       onClick={() => {
                         if (isPending) setPendingDays(prev => prev.filter(p => p.tempId !== tempId))
-                        setMultiAddModal({ open: true, ngayKey: k, nhom: '', subNhom: '', selectedEmps: [], caSX: '', thoiGian: '' })
+                        const isPcpl1 = schedule?.congDoan?.toUpperCase() === 'PCPL1'
+                        setMultiAddModal({ open: true, ngayKey: k, nhom: '', subNhom: '', selectedEmps: [], caSX: isPcpl1 ? 'HC' : '', thoiGian: '' })
                       }}
                       style={{ fontSize: 12 }}>
                       Nhiều người
@@ -2705,7 +2707,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                 Thêm dòng
               </Button>
               <Button icon={<UsergroupAddOutlined />} type="dashed"
-                onClick={() => setMultiAddModal({ open: true, ngayKey, nhom: '', selectedEmps: [], caSX: '', thoiGian: '' })}>
+                onClick={() => setMultiAddModal({ open: true, ngayKey, nhom: '', selectedEmps: [], caSX: schedule?.congDoan?.toUpperCase() === 'PCPL1' ? 'HC' : '', thoiGian: '' })}>
                 Nhiều người
               </Button>
               <Button icon={<CloseOutlined />} onClick={() => {
@@ -2731,7 +2733,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                 + Thêm dòng
               </Button>
               <Button icon={<UsergroupAddOutlined />} type="dashed"
-                onClick={() => setMultiAddModal({ open: true, ngayKey, nhom: '', selectedEmps: [], caSX: '', thoiGian: '' })}>
+                onClick={() => setMultiAddModal({ open: true, ngayKey, nhom: '', selectedEmps: [], caSX: schedule?.congDoan?.toUpperCase() === 'PCPL1' ? 'HC' : '', thoiGian: '' })}>
                 Nhiều người
               </Button>
             </div>
