@@ -727,15 +727,19 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     const rows = shiftPerfMap[spKey] || []
     const isPcpl2 = schedule?.congDoan?.toUpperCase() === 'PCPL2'
     const nextCa = isPcpl2 ? (pcplLoaiSanPham || '') : (rows.length === 0 ? 'Ca 1' : rows.length === 1 ? 'Ca 2' : '')
-    // Auto-fill Tốc độ LT cho các tổ không phải PCPL2: khớp Máy thực hiện với máy đã cấu hình
-    // cho công đoạn này trong Quản lý danh mục → lấy tốc độ tương ứng.
     let autoLt = null
-    if (!isPcpl2 && machineName) {
-      const mmField = STAGE_MACHINE_FIELD[schedule?.congDoan?.toUpperCase()]
-      const ltField = mmField ? mmField.replace('mayMoc', 'tocDoMay') : null
-      const cfgMachine = mmField ? productMachineCfg[mmField] : null
-      if (cfgMachine && cfgMachine.trim().toLowerCase() === machineName.trim().toLowerCase()) {
-        autoLt = productMachineCfg[ltField] ?? null
+    if (!isPcpl2) {
+      const isPl = schedule?.congDoan?.toUpperCase() === 'PL'
+      if (isPl && productMachineCfg.tocDoMayPl != null) {
+        // PL: dùng Tốc độ PL từ danh mục sản phẩm trực tiếp, không cần khớp tên máy
+        autoLt = productMachineCfg.tocDoMayPl
+      } else if (!isPl && machineName) {
+        const mmField = STAGE_MACHINE_FIELD[schedule?.congDoan?.toUpperCase()]
+        const ltField = mmField ? mmField.replace('mayMoc', 'tocDoMay') : null
+        const cfgMachine = mmField ? productMachineCfg[mmField] : null
+        if (cfgMachine && cfgMachine.trim().toLowerCase() === machineName.trim().toLowerCase()) {
+          autoLt = productMachineCfg[ltField] ?? null
+        }
       }
     }
     setShiftPerfMap(prev => ({ ...prev, [spKey]: [...rows, { _id, id: null, caLo: nextCa, slLyThuyet: autoLt, slThucTe: null, nguyenNhan: '', ghiChu: '' }] }))
@@ -795,6 +799,36 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     dirtyEntries.forEach(({ ngay, machineName, rows }) => saveShiftPerf(ngay, machineName, rows))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pcplNangSuatMe, shiftPerfMap])
+  // Điền lại "Tốc độ LT" cho các dòng PL đã có Tốc độ TT nhưng chưa có Tốc độ LT —
+  // dùng tocDoMayPl từ danh mục sản phẩm, không phụ thuộc vào máy thực hiện.
+  useEffect(() => {
+    const isPl = schedule?.congDoan?.toUpperCase() === 'PL'
+    if (!isPl || productMachineCfg.tocDoMayPl == null) return
+    const tocDo = productMachineCfg.tocDoMayPl
+    const next = {}
+    const dirtyEntries = []
+    let changed = false
+    Object.entries(shiftPerfMap).forEach(([spKey, rows]) => {
+      let rowChanged = false
+      const patchedRows = (rows || []).map(r => {
+        if (r.slThucTe != null && r.slLyThuyet == null) {
+          rowChanged = true
+          return { ...r, slLyThuyet: tocDo }
+        }
+        return r
+      })
+      next[spKey] = patchedRows
+      if (rowChanged) {
+        changed = true
+        const sep = spKey.indexOf('|')
+        dirtyEntries.push({ spKey, ngay: spKey.slice(0, sep), machineName: spKey.slice(sep + 1), rows: patchedRows })
+      }
+    })
+    if (!changed) return
+    setShiftPerfMap(next)
+    dirtyEntries.forEach(({ ngay, machineName, rows }) => saveShiftPerf(ngay, machineName, rows))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productMachineCfg.tocDoMayPl, shiftPerfMap])
   const computeShiftPerfStats = (entries) => {
     let sumLT = 0, sumTT = 0
     ;(entries || []).forEach(e => {
@@ -1987,10 +2021,23 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                   setMachineGioKHMap(prev => ({ ...prev, [rtKey]: v }))
                                   api.put('/machine-runtime/gio-kh', null, { params: { ngay: k, tenMay: machineName, gioKh: v } }).catch(() => {})
                                 }}
-                                placeholder="16" style={{ width: 100 }}
+                                placeholder="16" style={{ width: 110 }}
                                 addonBefore={<span style={{ fontSize: 10, color: '#64748b' }}>KH</span>}
                                 addonAfter={<span style={{ fontSize: 10, color: '#64748b' }}>h</span>}
                               />
+                              {schedule?.congDoan?.toUpperCase() === 'PL' && productMachineCfg.tocDoMayPl > 0 && schedule?.coLo > 0 && (() => {
+                                const sugKh = Math.round(Number(schedule.coLo) / (productMachineCfg.tocDoMayPl * 60) * 10) / 10
+                                return (
+                                  <button onClick={() => {
+                                    setMachineGioKHMap(prev => ({ ...prev, [rtKey]: sugKh }))
+                                    api.put('/machine-runtime/gio-kh', null, { params: { ngay: k, tenMay: machineName, gioKh: sugKh } }).catch(() => {})
+                                  }}
+                                    title={`Gợi ý Giờ KH = ${Number(schedule.coLo).toLocaleString('vi-VN')} ÷ (${productMachineCfg.tocDoMayPl} sp/phút × 60) = ${sugKh}h`}
+                                    style={{ border: '1px dashed #14b8a6', background: '#f0fdfa', color: '#0f766e', borderRadius: 5, padding: '2px 7px', fontSize: 11, cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                    ↙ {sugKh}h
+                                  </button>
+                                )
+                              })()}
                               {runMin > 0 && <Tag color="success" style={{ margin: 0, fontSize: 11 }}>Chạy {runMin}p</Tag>}
                               {downMin > 0 && <Tag color="error" style={{ margin: 0, fontSize: 11 }}>Nghỉ {downMin}p</Tag>}
                               {avail && <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>A={avail}%</Tag>}
