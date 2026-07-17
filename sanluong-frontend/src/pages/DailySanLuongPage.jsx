@@ -5399,7 +5399,7 @@ function NhapKhoTongHopTable({ data, loading, onRowClick }) {
 
 // ─── NhapKhoDetailPanel ───────────────────────────────────────────────────────
 
-function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
+function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved, canEdit = true }) {
   const [localRecord, setLocalRecord] = useState(initialRecord)
   const [slNK,       setSlNK]       = useState(null)
   const [ngayNK,     setNgayNK]     = useState(dayjs())
@@ -5611,9 +5611,9 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
                     </div>
                   ) : (
                     <span
-                      onClick={() => { setBravoVal(r.maBravo || ''); setBravoEditing(true) }}
-                      style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1d4ed8', cursor: 'pointer', textDecoration: 'underline dotted' }}>
-                      {r.maBravo || <span style={{ color: '#bbb', fontFamily: 'inherit', fontWeight: 400 }}>Nhấn để sửa...</span>}
+                      onClick={canEdit ? () => { setBravoVal(r.maBravo || ''); setBravoEditing(true) } : undefined}
+                      style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1d4ed8', cursor: canEdit ? 'pointer' : 'default', textDecoration: canEdit ? 'underline dotted' : 'none' }}>
+                      {r.maBravo || <span style={{ color: '#bbb', fontFamily: 'inherit', fontWeight: 400 }}>{canEdit ? 'Nhấn để sửa...' : '—'}</span>}
                     </span>
                   )}
                 </VCell>
@@ -5684,21 +5684,23 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
                             {e.ghiChuNhapKho || <span style={{ color: '#d1d5db' }}>—</span>}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Popconfirm
-                              title="Xóa lần nhập kho này?"
-                              onConfirm={() => handleDeleteEntry(e)}
-                              okText="Xóa"
-                              cancelText="Hủy"
-                              okButtonProps={{ danger: true }}
-                              placement="left"
-                            >
-                              <button
-                                disabled={deletingId === e.id}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '2px', display: 'flex', alignItems: 'center', opacity: deletingId === e.id ? 0.4 : 1 }}
+                            {canEdit && (
+                              <Popconfirm
+                                title="Xóa lần nhập kho này?"
+                                onConfirm={() => handleDeleteEntry(e)}
+                                okText="Xóa"
+                                cancelText="Hủy"
+                                okButtonProps={{ danger: true }}
+                                placement="left"
                               >
-                                <DeleteOutlined style={{ fontSize: 12 }} />
-                              </button>
-                            </Popconfirm>
+                                <button
+                                  disabled={deletingId === e.id}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '2px', display: 'flex', alignItems: 'center', opacity: deletingId === e.id ? 0.4 : 1 }}
+                                >
+                                  <DeleteOutlined style={{ fontSize: 12 }} />
+                                </button>
+                              </Popconfirm>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -5710,98 +5712,106 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
 
             {/* Cột phải: form nhập kho */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, borderLeft: '1px solid #e2e8f0', paddingLeft: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#1e4570', textTransform: 'uppercase', letterSpacing: 1, paddingBottom: 8, borderBottom: '2px solid #1e4570' }}>
-                {(r.soLanNhapKho || 0) > 0
-                  ? `Thêm lần nhập kho #${(r.soLanNhapKho || 0) + 1}`
-                  : 'Nhập kho lần đầu'}
-              </div>
+              {canEdit ? (
+                <>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#1e4570', textTransform: 'uppercase', letterSpacing: 1, paddingBottom: 8, borderBottom: '2px solid #1e4570' }}>
+                    {(r.soLanNhapKho || 0) > 0
+                      ? `Thêm lần nhập kho #${(r.soLanNhapKho || 0) + 1}`
+                      : 'Nhập kho lần đầu'}
+                  </div>
 
-              <div>
-                <div style={{ marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#374151' }}>
-                  SL Nhập Kho <span style={{ color: '#cf1322' }}>*</span>
-                </div>
-                <InputNumber
-                  style={{ width: '100%' }}
-                  size="large"
-                  min={0}
-                  value={slNK}
-                  onChange={setSlNK}
-                  formatter={val => val != null && val !== '' ? Number(val).toLocaleString('vi-VN') : ''}
-                  parser={val => val ? val.replace(/[^\d]/g, '') : ''}
-                  placeholder="Nhập số lượng nhập kho..."
-                />
-                {(dgSl != null || r.dg2) && (
-                  <div style={{ marginTop: 4, fontSize: 12, color: '#64748b' }}>
-                    SL Đóng Gói: <b>{dgSl != null ? dgSl.toLocaleString('vi-VN') : fmtN(r.dg2)}</b>
-                    {conLai != null && conLai > 0 && (
-                      <span style={{ marginLeft: 8, color: '#cf1322' }}>· Còn lại: <b>{conLai.toLocaleString('vi-VN')}</b></span>
+                  <div>
+                    <div style={{ marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#374151' }}>
+                      SL Nhập Kho <span style={{ color: '#cf1322' }}>*</span>
+                    </div>
+                    <InputNumber
+                      style={{ width: '100%' }}
+                      size="large"
+                      min={0}
+                      value={slNK}
+                      onChange={setSlNK}
+                      formatter={val => val != null && val !== '' ? Number(val).toLocaleString('vi-VN') : ''}
+                      parser={val => val ? val.replace(/[^\d]/g, '') : ''}
+                      placeholder="Nhập số lượng nhập kho..."
+                    />
+                    {(dgSl != null || r.dg2) && (
+                      <div style={{ marginTop: 4, fontSize: 12, color: '#64748b' }}>
+                        SL Đóng Gói: <b>{dgSl != null ? dgSl.toLocaleString('vi-VN') : fmtN(r.dg2)}</b>
+                        {conLai != null && conLai > 0 && (
+                          <span style={{ marginLeft: 8, color: '#cf1322' }}>· Còn lại: <b>{conLai.toLocaleString('vi-VN')}</b></span>
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
 
-              <div>
-                <div style={{ marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#374151' }}>Ngày Nhập Kho</div>
-                <DatePicker
-                  style={{ width: '100%' }}
-                  size="large"
-                  value={ngayNK}
-                  onChange={setNgayNK}
-                  format="DD/MM/YYYY"
-                  placeholder="Chọn ngày nhập kho"
-                />
-              </div>
+                  <div>
+                    <div style={{ marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#374151' }}>Ngày Nhập Kho</div>
+                    <DatePicker
+                      style={{ width: '100%' }}
+                      size="large"
+                      value={ngayNK}
+                      onChange={setNgayNK}
+                      format="DD/MM/YYYY"
+                      placeholder="Chọn ngày nhập kho"
+                    />
+                  </div>
 
-              <div>
-                <div style={{ marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#374151' }}>Tình trạng</div>
-                <Select
-                  style={{ width: '100%' }}
-                  size="large"
-                  allowClear
-                  value={tinhTrang || undefined}
-                  onChange={v => setTinhTrang(v || '')}
-                  placeholder="Chọn tình trạng..."
-                  options={[
-                    { value: 'Hoàn tất', label: 'Hoàn tất' },
-                    { value: 'Chốt', label: 'Chốt' },
-                    { value: 'Chờ xử lý', label: 'Chờ xử lý' },
-                  ]}
-                />
-              </div>
+                  <div>
+                    <div style={{ marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#374151' }}>Tình trạng</div>
+                    <Select
+                      style={{ width: '100%' }}
+                      size="large"
+                      allowClear
+                      value={tinhTrang || undefined}
+                      onChange={v => setTinhTrang(v || '')}
+                      placeholder="Chọn tình trạng..."
+                      options={[
+                        { value: 'Hoàn tất', label: 'Hoàn tất' },
+                        { value: 'Chốt', label: 'Chốt' },
+                        { value: 'Chờ xử lý', label: 'Chờ xử lý' },
+                      ]}
+                    />
+                  </div>
 
-              <div>
-                <div style={{ marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#374151' }}>Tên NTH</div>
-                <Input
-                  size="large"
-                  value={tenNth}
-                  onChange={e => setTenNth(e.target.value)}
-                  placeholder="Tên người thực hiện..."
-                />
-              </div>
+                  <div>
+                    <div style={{ marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#374151' }}>Tên NTH</div>
+                    <Input
+                      size="large"
+                      value={tenNth}
+                      onChange={e => setTenNth(e.target.value)}
+                      placeholder="Tên người thực hiện..."
+                    />
+                  </div>
 
-              <div>
-                <div style={{ marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#374151' }}>Ghi chú</div>
-                <Input.TextArea
-                  rows={2}
-                  value={ghiChu}
-                  onChange={e => setGhiChu(e.target.value)}
-                  placeholder="Ghi chú..."
-                />
-              </div>
+                  <div>
+                    <div style={{ marginBottom: 6, fontWeight: 600, fontSize: 13, color: '#374151' }}>Ghi chú</div>
+                    <Input.TextArea
+                      rows={2}
+                      value={ghiChu}
+                      onChange={e => setGhiChu(e.target.value)}
+                      placeholder="Ghi chú..."
+                    />
+                  </div>
 
-              <div style={{ marginTop: 'auto', paddingTop: 8 }}>
-                <Button
-                  type="primary"
-                  size="large"
-                  loading={saving}
-                  onClick={handleSave}
-                  icon={<PlusOutlined />}
-                  block
-                  style={{ background: '#1e4570', borderColor: '#1e4570', fontWeight: 700, height: 44 }}
-                >
-                  {(r.soLanNhapKho || 0) > 0 ? 'Thêm lần nhập kho' : 'Lưu nhập kho'}
-                </Button>
-              </div>
+                  <div style={{ marginTop: 'auto', paddingTop: 8 }}>
+                    <Button
+                      type="primary"
+                      size="large"
+                      loading={saving}
+                      onClick={handleSave}
+                      icon={<PlusOutlined />}
+                      block
+                      style={{ background: '#1e4570', borderColor: '#1e4570', fontWeight: 700, height: 44 }}
+                    >
+                      {(r.soLanNhapKho || 0) > 0 ? 'Thêm lần nhập kho' : 'Lưu nhập kho'}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div style={{ color: '#9ca3af', fontSize: 13, textAlign: 'center', margin: 'auto' }}>
+                  Bạn không có quyền chỉnh sửa nhập kho
+                </div>
+              )}
             </div>
 
           </div>
@@ -5814,7 +5824,8 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved }) {
 // ─── NhapKhoTab ───────────────────────────────────────────────────────────────
 
 function NhapKhoTab() {
-  const { canEditNhapKhoTarget } = useAuth()
+  const { canEditNhapKhoTarget, isQuanDoc } = useAuth()
+  const canEdit = !isQuanDoc()
   const [data,          setData]          = useState([])
   const [loading,       setLoading]       = useState(false)
   const [saving,        setSaving]        = useState({})
@@ -5963,6 +5974,7 @@ function NhapKhoTab() {
   }, [])
 
   const handleBravoEditStart = useCallback(async (r) => {
+    if (!canEdit) return
     setBravoEdit({ id: r.id, maBravo: r.maBravo || '', maTp: r.maTp || '', tienTrinh: r.tienTrinh || '' })
     // Luôn lookup từ danh mục khi có Mã Bravo để điền/xác nhận Tên SP và Mã SP
     if (r.maBravo) {
@@ -6065,7 +6077,7 @@ function NhapKhoTab() {
     {
       title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 130, fixed: 'left',
       render: (v, r) => {
-        const isEditing = bravoEdit?.id === r.id
+        const isEditing = canEdit && bravoEdit?.id === r.id
         if (isEditing) {
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 220 }} onClick={e => e.stopPropagation()}>
@@ -6100,10 +6112,10 @@ function NhapKhoTab() {
           )
         }
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}
-            onClick={e => { e.stopPropagation(); handleBravoEditStart(r) }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: canEdit ? 'pointer' : 'default' }}
+            onClick={canEdit ? e => { e.stopPropagation(); handleBravoEditStart(r) } : undefined}>
             <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{v || '—'}</span>
-            <span style={{ fontSize: 10, color: '#d1d5db' }}>✎</span>
+            {canEdit && <span style={{ fontSize: 10, color: '#d1d5db' }}>✎</span>}
           </div>
         )
       },
@@ -6123,7 +6135,7 @@ function NhapKhoTab() {
     {
       title: 'SL Nhập Kho', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 120, align: 'right',
       render: (v, r) => {
-        const isEditing = editCell?.id === r.id && editCell?.field === 'tpNhapKho'
+        const isEditing = canEdit && editCell?.id === r.id && editCell?.field === 'tpNhapKho'
         if (isEditing) {
           return (
             <InputNumber
@@ -6147,12 +6159,12 @@ function NhapKhoTab() {
         }
         return (
           <div
-            onClick={e => { e.stopPropagation(); setEditCell({ id: r.id, field: 'tpNhapKho' }) }}
-            style={{ cursor: 'pointer', textAlign: 'right' }}
+            onClick={canEdit ? e => { e.stopPropagation(); setEditCell({ id: r.id, field: 'tpNhapKho' }) } : undefined}
+            style={{ cursor: canEdit ? 'pointer' : 'default', textAlign: 'right' }}
           >
             {v != null
               ? <span style={{ fontWeight: 700, color: '#15803d' }}>{Number(v).toLocaleString('vi-VN')}</span>
-              : <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0, cursor: 'pointer' }}>Nhập</Tag>}
+              : canEdit ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0, cursor: 'pointer' }}>Nhập</Tag> : <span style={{ color: '#d1d5db' }}>—</span>}
           </div>
         )
       },
@@ -6160,7 +6172,7 @@ function NhapKhoTab() {
     {
       title: 'Ngày xuất', dataIndex: 'ngayXuatKho', key: 'ngayXuatKho', width: 120, align: 'center',
       render: (v, r) => {
-        const isEditing = editCell?.id === r.id && editCell?.field === 'ngayXuatKho'
+        const isEditing = canEdit && editCell?.id === r.id && editCell?.field === 'ngayXuatKho'
         const isSaving  = saving[`${r.id}_ngayXuatKho`]
         if (isEditing) {
           return (
@@ -6176,10 +6188,10 @@ function NhapKhoTab() {
         }
         return (
           <div
-            onClick={e => { e.stopPropagation(); setEditCell({ id: r.id, field: 'ngayXuatKho' }) }}
-            style={{ cursor: 'pointer', color: v ? '#374151' : '#d9d9d9', textAlign: 'center' }}
+            onClick={canEdit ? e => { e.stopPropagation(); setEditCell({ id: r.id, field: 'ngayXuatKho' }) } : undefined}
+            style={{ cursor: canEdit ? 'pointer' : 'default', color: v ? '#374151' : '#d9d9d9', textAlign: 'center' }}
           >
-            {v ? dayjs(v).format('DD/MM/YYYY') : <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0 }}>Chọn ngày</Tag>}
+            {v ? dayjs(v).format('DD/MM/YYYY') : (canEdit ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0 }}>Chọn ngày</Tag> : '—')}
           </div>
         )
       },
@@ -6187,7 +6199,7 @@ function NhapKhoTab() {
     {
       title: 'Tình trạng', dataIndex: 'tinhTrangNhapKho', key: 'tinhTrangNhapKho', width: 110, align: 'center',
       render: (v, r) => {
-        const isEditing = editCell?.id === r.id && editCell?.field === 'tinhTrangNhapKho'
+        const isEditing = canEdit && editCell?.id === r.id && editCell?.field === 'tinhTrangNhapKho'
         if (isEditing) {
           return (
             <Select
@@ -6206,8 +6218,8 @@ function NhapKhoTab() {
         }
         return (
           <div
-            onClick={e => { e.stopPropagation(); setEditCell({ id: r.id, field: 'tinhTrangNhapKho' }) }}
-            style={{ cursor: 'pointer' }}
+            onClick={canEdit ? e => { e.stopPropagation(); setEditCell({ id: r.id, field: 'tinhTrangNhapKho' }) } : undefined}
+            style={{ cursor: canEdit ? 'pointer' : 'default' }}
           >
             {v
               ? <Tag color={v === 'Done' ? 'success' : 'warning'} style={{ marginRight: 0, fontWeight: 700 }}>{v}</Tag>
@@ -6219,7 +6231,7 @@ function NhapKhoTab() {
     {
       title: 'Tên NTH', dataIndex: 'tenNthNhapKho', key: 'tenNthNhapKho', width: 160, align: 'center',
       render: (v, r) => {
-        const isEditing = editCell?.id === r.id && editCell?.field === 'tenNthNhapKho'
+        const isEditing = canEdit && editCell?.id === r.id && editCell?.field === 'tenNthNhapKho'
         if (isEditing) {
           return (
             <Input
@@ -6233,8 +6245,8 @@ function NhapKhoTab() {
         }
         return (
           <div
-            onClick={e => { e.stopPropagation(); setEditCell({ id: r.id, field: 'tenNthNhapKho' }) }}
-            style={{ cursor: 'pointer' }}
+            onClick={canEdit ? e => { e.stopPropagation(); setEditCell({ id: r.id, field: 'tenNthNhapKho' }) } : undefined}
+            style={{ cursor: canEdit ? 'pointer' : 'default' }}
           >
             {v
               ? <span style={{ color: '#374151' }}>{v}</span>
@@ -6246,7 +6258,7 @@ function NhapKhoTab() {
     {
       title: 'Ghi chú', dataIndex: 'ghiChuNhapKho', key: 'ghiChuNhapKho', width: 200,
       render: (v, r) => {
-        const isEditing = editCell?.id === r.id && editCell?.field === 'ghiChuNhapKho'
+        const isEditing = canEdit && editCell?.id === r.id && editCell?.field === 'ghiChuNhapKho'
         if (isEditing) {
           return (
             <Input
@@ -6261,8 +6273,8 @@ function NhapKhoTab() {
         return (
           <Tooltip title={v}>
             <div
-              onClick={e => { e.stopPropagation(); setEditCell({ id: r.id, field: 'ghiChuNhapKho' }) }}
-              style={{ cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              onClick={canEdit ? e => { e.stopPropagation(); setEditCell({ id: r.id, field: 'ghiChuNhapKho' }) } : undefined}
+              style={{ cursor: canEdit ? 'pointer' : 'default', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
               {v
                 ? <span style={{ color: '#6b7280', fontSize: 12 }}>{v}</span>
@@ -6336,9 +6348,11 @@ function NhapKhoTab() {
               ]}
             />
             <Button size="small" icon={<ReloadOutlined />} onClick={load} loading={loading}>Tải lại</Button>
-            <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
-              Thêm sản phẩm
-            </Button>
+            {canEdit && (
+              <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
+                Thêm sản phẩm
+              </Button>
+            )}
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center', fontSize: 13 }}>
               <span>Tổng: <strong style={{ color: '#15803d' }}>{fmtN(totalSl)}</strong></span>
               <Tag color="success">Done: {doneCount}</Tag>
@@ -6389,7 +6403,7 @@ function NhapKhoTab() {
           mucTieuThang={mucTieuThang}
           onMucTieuThangChange={handleMucTieuThang}
           loading={summaryLoading}
-          onSaveField={saveSummaryField}
+          onSaveField={canEdit ? saveSummaryField : undefined}
           canEdit={canEditNhapKhoTarget()}
         />
       ) : viewMode === 'tong-hop' ? (
@@ -6413,7 +6427,7 @@ function NhapKhoTab() {
           },
           onContextMenu: (e) => {
             e.preventDefault()
-            setCtxMenu({ x: e.clientX, y: e.clientY, record })
+            if (canEdit) setCtxMenu({ x: e.clientX, y: e.clientY, record })
           },
           style: { cursor: 'pointer' },
         })}
@@ -6478,6 +6492,7 @@ function NhapKhoTab() {
           record={tongHopDrawer}
           onClose={() => setTongHopDrawer(null)}
           onSaved={fetchTongHop}
+          canEdit={canEdit}
         />
       )}
 
@@ -6544,8 +6559,8 @@ function NhapKhoTab() {
                           style={{ width: '100%', fontSize: 12 }} placeholder="Tên sản phẩm..." />
                       ) : (
                         <span onClick={() => handleBravoEditStart(r)}
-                          style={{ fontSize: 12, lineHeight: 1.4, cursor: 'pointer', textDecoration: 'underline dotted' }}>
-                          {r.tienTrinh || <span style={{ color: '#bbb' }}>Nhấn để sửa...</span>}
+                          style={{ fontSize: 12, lineHeight: 1.4, cursor: canEdit ? 'pointer' : 'default', textDecoration: canEdit ? 'underline dotted' : 'none' }}>
+                          {r.tienTrinh || <span style={{ color: '#bbb' }}>{canEdit ? 'Nhấn để sửa...' : '—'}</span>}
                         </span>
                       )}
                     </VC>
@@ -6572,8 +6587,8 @@ function NhapKhoTab() {
                       ) : (
                         <span
                           onClick={() => handleBravoEditStart(r)}
-                          style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1d4ed8', cursor: 'pointer', textDecoration: 'underline dotted' }}>
-                          {r.maBravo || <span style={{ color: '#bbb', fontFamily: 'inherit', fontWeight: 400 }}>Nhấn để sửa...</span>}
+                          style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1d4ed8', cursor: canEdit ? 'pointer' : 'default', textDecoration: canEdit ? 'underline dotted' : 'none' }}>
+                          {r.maBravo || <span style={{ color: '#bbb', fontFamily: 'inherit', fontWeight: 400 }}>{canEdit ? 'Nhấn để sửa...' : '—'}</span>}
                         </span>
                       )}
                     </VC>
@@ -6585,8 +6600,8 @@ function NhapKhoTab() {
                           style={{ width: '100%', fontWeight: 600, color: '#1d4ed8' }} placeholder="Mã SP..." />
                       ) : (
                         <span onClick={() => handleBravoEditStart(r)}
-                          style={{ fontWeight: 600, color: '#1d4ed8', cursor: 'pointer', textDecoration: 'underline dotted' }}>
-                          {r.maTp || <span style={{ color: '#bbb', fontWeight: 400 }}>Nhấn để sửa...</span>}
+                          style={{ fontWeight: 600, color: '#1d4ed8', cursor: canEdit ? 'pointer' : 'default', textDecoration: canEdit ? 'underline dotted' : 'none' }}>
+                          {r.maTp || <span style={{ color: '#bbb', fontWeight: 400 }}>{canEdit ? 'Nhấn để sửa...' : '—'}</span>}
                         </span>
                       )}
                     </VC>
@@ -6611,7 +6626,7 @@ function NhapKhoTab() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div>
                     <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 12, color: '#374151' }}>SL Nhập Kho</div>
-                    {editCell?.id === r.id && editCell?.field === 'tpNhapKho_drawer' ? (
+                    {canEdit && editCell?.id === r.id && editCell?.field === 'tpNhapKho_drawer' ? (
                       <InputNumber autoFocus min={0} step={1} style={{ width: '100%' }}
                         defaultValue={r.tpNhapKho ?? undefined}
                         formatter={val => val != null && val !== '' ? Number(val).toLocaleString('vi-VN') : ''}
@@ -6620,29 +6635,29 @@ function NhapKhoTab() {
                         onBlur={e => { if (!saving[`${r.id}_tpNhapKho`]) { const n = parseInt(e.target.value.replace(/[^\d]/g, ''), 10); saveField(r.id, 'tpNhapKho', isNaN(n) ? null : n) } }}
                       />
                     ) : (
-                      <div onClick={() => setEditCell({ id: r.id, field: 'tpNhapKho_drawer' })}
-                        style={{ cursor: 'pointer', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 32, display: 'flex', alignItems: 'center' }}>
+                      <div onClick={canEdit ? () => setEditCell({ id: r.id, field: 'tpNhapKho_drawer' }) : undefined}
+                        style={{ cursor: canEdit ? 'pointer' : 'default', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 32, display: 'flex', alignItems: 'center' }}>
                         {r.tpNhapKho != null
                           ? <span style={{ fontWeight: 700, color: '#15803d', fontSize: 15 }}>{r.tpNhapKho.toLocaleString('vi-VN')}</span>
-                          : <span style={{ color: '#bbb' }}>Nhấn để nhập...</span>}
+                          : <span style={{ color: '#bbb' }}>{canEdit ? 'Nhấn để nhập...' : '—'}</span>}
                       </div>
                     )}
                   </div>
 
                   <div>
                     <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 12, color: '#374151' }}>Ngày nhập kho</div>
-                    {editCell?.id === r.id && editCell?.field === 'ngayXuatKho_drawer' ? (
+                    {canEdit && editCell?.id === r.id && editCell?.field === 'ngayXuatKho_drawer' ? (
                       <DatePicker autoFocus style={{ width: '100%' }} format="DD/MM/YYYY"
                         defaultValue={r.ngayXuatKho ? dayjs(r.ngayXuatKho) : undefined}
                         onChange={d => saveField(r.id, 'ngayXuatKho', d ? d.format('YYYY-MM-DD') : '')}
                         onBlur={() => !saving[`${r.id}_ngayXuatKho`] && setEditCell(null)}
                       />
                     ) : (
-                      <div onClick={() => setEditCell({ id: r.id, field: 'ngayXuatKho_drawer' })}
-                        style={{ cursor: 'pointer', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 32, display: 'flex', alignItems: 'center' }}>
+                      <div onClick={canEdit ? () => setEditCell({ id: r.id, field: 'ngayXuatKho_drawer' }) : undefined}
+                        style={{ cursor: canEdit ? 'pointer' : 'default', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 32, display: 'flex', alignItems: 'center' }}>
                         {r.ngayXuatKho
                           ? <span style={{ color: '#374151' }}>{dayjs(r.ngayXuatKho).format('DD/MM/YYYY')}</span>
-                          : <span style={{ color: '#bbb' }}>Nhấn để chọn ngày...</span>}
+                          : <span style={{ color: '#bbb' }}>{canEdit ? 'Nhấn để chọn ngày...' : '—'}</span>}
                       </div>
                     )}
                   </div>
@@ -6651,6 +6666,7 @@ function NhapKhoTab() {
                     <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 12, color: '#374151' }}>Tình trạng</div>
                     <Select style={{ width: '100%' }} value={r.tinhTrangNhapKho || undefined}
                       placeholder="— Chọn —" allowClear
+                      disabled={!canEdit}
                       onChange={val => saveField(r.id, 'tinhTrangNhapKho', val || '')}
                       options={TINH_TRANG_NK_OPTIONS.map(o => ({ value: o, label: o }))}
                     />
@@ -6658,30 +6674,30 @@ function NhapKhoTab() {
 
                   <div>
                     <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 12, color: '#374151' }}>Tên NTH</div>
-                    {editCell?.id === r.id && editCell?.field === 'tenNthNhapKho_drawer' ? (
+                    {canEdit && editCell?.id === r.id && editCell?.field === 'tenNthNhapKho_drawer' ? (
                       <Input autoFocus defaultValue={r.tenNthNhapKho || ''}
                         onPressEnter={e => saveField(r.id, 'tenNthNhapKho', e.target.value.trim())}
                         onBlur={e => { if (!saving[`${r.id}_tenNthNhapKho`]) saveField(r.id, 'tenNthNhapKho', e.target.value.trim()) }}
                       />
                     ) : (
-                      <div onClick={() => setEditCell({ id: r.id, field: 'tenNthNhapKho_drawer' })}
-                        style={{ cursor: 'pointer', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 32, display: 'flex', alignItems: 'center' }}>
-                        {r.tenNthNhapKho ? <span style={{ color: '#374151' }}>{r.tenNthNhapKho}</span> : <span style={{ color: '#bbb' }}>Nhấn để nhập...</span>}
+                      <div onClick={canEdit ? () => setEditCell({ id: r.id, field: 'tenNthNhapKho_drawer' }) : undefined}
+                        style={{ cursor: canEdit ? 'pointer' : 'default', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 32, display: 'flex', alignItems: 'center' }}>
+                        {r.tenNthNhapKho ? <span style={{ color: '#374151' }}>{r.tenNthNhapKho}</span> : <span style={{ color: '#bbb' }}>{canEdit ? 'Nhấn để nhập...' : '—'}</span>}
                       </div>
                     )}
                   </div>
 
                   <div>
                     <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 12, color: '#374151' }}>Ghi chú</div>
-                    {editCell?.id === r.id && editCell?.field === 'ghiChuNhapKho_drawer' ? (
+                    {canEdit && editCell?.id === r.id && editCell?.field === 'ghiChuNhapKho_drawer' ? (
                       <Input.TextArea autoFocus rows={3} defaultValue={r.ghiChuNhapKho || ''}
                         onPressEnter={e => { if (!e.shiftKey) { e.preventDefault(); saveField(r.id, 'ghiChuNhapKho', e.target.value.trim()) } }}
                         onBlur={e => { if (!saving[`${r.id}_ghiChuNhapKho`]) saveField(r.id, 'ghiChuNhapKho', e.target.value.trim()) }}
                       />
                     ) : (
-                      <div onClick={() => setEditCell({ id: r.id, field: 'ghiChuNhapKho_drawer' })}
-                        style={{ cursor: 'pointer', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 60, whiteSpace: 'pre-wrap', fontSize: 13 }}>
-                        {r.ghiChuNhapKho ? <span style={{ color: '#374151' }}>{r.ghiChuNhapKho}</span> : <span style={{ color: '#bbb' }}>Nhấn để nhập ghi chú...</span>}
+                      <div onClick={canEdit ? () => setEditCell({ id: r.id, field: 'ghiChuNhapKho_drawer' }) : undefined}
+                        style={{ cursor: canEdit ? 'pointer' : 'default', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 60, whiteSpace: 'pre-wrap', fontSize: 13 }}>
+                        {r.ghiChuNhapKho ? <span style={{ color: '#374151' }}>{r.ghiChuNhapKho}</span> : <span style={{ color: '#bbb' }}>{canEdit ? 'Nhấn để nhập ghi chú...' : '—'}</span>}
                       </div>
                     )}
                   </div>
@@ -6726,20 +6742,22 @@ function NhapKhoTab() {
                           {e.ghiChuNhapKho || <span style={{ color: '#d1d5db' }}>—</span>}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Popconfirm title="Xóa lần nhập kho này?" okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }} placement="left"
-                            onConfirm={() => api.delete(`/production/${e.id}/nhap-kho`).then(() => {
-                              message.success('Đã xóa')
-                              api.get(`/production/${r.id}/nhap-kho-entries`).then(res => {
-                                const fresh = res.data || []
-                                setDrawerEntries(fresh)
-                                const newTotal = fresh.reduce((s, x) => s + (x.tpNhapKho || 0), 0)
-                                setData(prev => prev.map(x => x.id === r.id ? { ...x, tpNhapKho: newTotal || null, soLanNhapKho: fresh.length } : x))
-                              }).catch(() => {})
-                            }).catch(() => message.error('Xóa thất bại'))}>
-                            <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 2, display: 'flex', alignItems: 'center' }}>
-                              <DeleteOutlined style={{ fontSize: 12 }} />
-                            </button>
-                          </Popconfirm>
+                          {canEdit && (
+                            <Popconfirm title="Xóa lần nhập kho này?" okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }} placement="left"
+                              onConfirm={() => api.delete(`/production/${e.id}/nhap-kho`).then(() => {
+                                message.success('Đã xóa')
+                                api.get(`/production/${r.id}/nhap-kho-entries`).then(res => {
+                                  const fresh = res.data || []
+                                  setDrawerEntries(fresh)
+                                  const newTotal = fresh.reduce((s, x) => s + (x.tpNhapKho || 0), 0)
+                                  setData(prev => prev.map(x => x.id === r.id ? { ...x, tpNhapKho: newTotal || null, soLanNhapKho: fresh.length } : x))
+                                }).catch(() => {})
+                              }).catch(() => message.error('Xóa thất bại'))}>
+                              <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 2, display: 'flex', alignItems: 'center' }}>
+                                <DeleteOutlined style={{ fontSize: 12 }} />
+                              </button>
+                            </Popconfirm>
+                          )}
                         </div>
                       </div>
                     ))}
