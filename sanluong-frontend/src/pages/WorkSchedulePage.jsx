@@ -2,7 +2,7 @@
 import {
   Table, Button, Space, Typography, Input, Select, DatePicker, TimePicker,
   Modal, Form, InputNumber, Tag, Popconfirm, message, notification,
-  Row, Col, Card, Tabs, Badge, Tooltip, Divider, Drawer, Spin, Dropdown, AutoComplete
+  Row, Col, Card, Tabs, Badge, Tooltip, Divider, Drawer, Spin, Dropdown, AutoComplete, Checkbox
 } from 'antd'
 import SkeletonTable from '../components/SkeletonTable'
 import {
@@ -5968,17 +5968,41 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                   </select>
                 </div>
                 {/* Người thực hiện — chọn nhiều từ danh sách nhân sự, mỗi người sẽ tạo 1 dòng riêng */}
-                <div style={{ minWidth: 220 }}>
-                  <div style={{ fontSize: 11, color: '#92400e', fontWeight: 600, marginBottom: 3 }}>Người thực hiện</div>
+                <div style={{ minWidth: 240 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                    <span style={{ fontSize: 11, color: '#92400e', fontWeight: 600 }}>Người thực hiện</span>
+                    {npFilteredEmps.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const all = npFilteredEmps.map(e => e.hoVaTen)
+                          const cur = npForm.persons || []
+                          const allSel = all.length > 0 && all.every(n => cur.includes(n))
+                          setNpForm(f => ({ ...f, persons: allSel ? [] : all }))
+                        }}
+                        style={{ fontSize: 10, padding: '1px 7px', border: '1px solid #d97706', borderRadius: 10, background: '#fef3c7', color: '#92400e', cursor: 'pointer', fontWeight: 600, lineHeight: 1.6 }}>
+                        {(() => { const all = npFilteredEmps.map(e => e.hoVaTen); const cur = npForm.persons || []; return all.length > 0 && all.every(n => cur.includes(n)) ? 'Bỏ tất cả' : 'Chọn tất cả' })()}
+                      </button>
+                    )}
+                    {(npForm.persons || []).length > 0 && (
+                      <span style={{ fontSize: 10, color: '#d97706', fontWeight: 700 }}>{(npForm.persons || []).length} người</span>
+                    )}
+                  </div>
                   <Select
                     mode="multiple"
                     allowClear
                     size="middle"
                     value={npForm.persons || []}
                     onChange={vals => setNpForm(f => ({ ...f, persons: vals }))}
-                    placeholder="-- Chọn người (có thể chọn nhiều) --"
+                    placeholder="-- Chọn người --"
                     style={{ width: '100%' }}
                     maxTagCount="responsive"
+                    optionRender={option => (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Checkbox checked={(npForm.persons || []).includes(option.value)} />
+                        <span>{option.label}</span>
+                      </div>
+                    )}
                     options={npFilteredEmps.map(emp => ({ value: emp.hoVaTen, label: emp.hoVaTen }))}
                   />
                 </div>
