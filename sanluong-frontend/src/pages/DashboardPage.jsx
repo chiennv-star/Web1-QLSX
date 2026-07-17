@@ -1032,6 +1032,24 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho }) {
   const pct  = (a, b) => b > 0 ? Math.min(100, Math.round(a / b * 100)) : 0
   const [warnDetail, setWarnDetail] = useState(null) // mục "Tình trạng dở dang" đang xem chi tiết
 
+  // ── Sản phẩm mới nhập kho — lọc theo ngày xuất kho thực tế ────────────────
+  const [nkRange, setNkRange] = useState([dayjs(), dayjs()])
+  const [nkList, setNkList] = useState([])
+  const [nkLoading, setNkLoading] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    setNkLoading(true)
+    const params = {}
+    if (nkRange?.[0]) params.fromDate = nkRange[0].format('YYYY-MM-DD')
+    if (nkRange?.[1]) params.toDate   = nkRange[1].format('YYYY-MM-DD')
+    api.get('/production/nhap-kho', { params })
+      .then(({ data: res }) => { if (!cancelled) setNkList(res || []) })
+      .catch(() => { if (!cancelled) setNkList([]) })
+      .finally(() => { if (!cancelled) setNkLoading(false) })
+    return () => { cancelled = true }
+  }, [nkRange])
+  const nkTotalSl = nkList.reduce((s, r) => s + (r.tpNhapKho || 0), 0)
+
   // ── KPI ──────────────────────────────────────────────────────────────────
   const totalKH      = data.reduce((s, r) => s + (r.soLuong || 0), 0)
   const loHangLoi     = data.filter(r => Number(r.hlSoLuongTraVe) > 0)
@@ -1050,7 +1068,6 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho }) {
     ? data.map(r => ({ ...r, _nk: getNhapKho(r) })).filter(r => r._nk > 0)
     : data.filter(r => (r.tpNhapKho ?? 0) > 0).map(r => ({ ...r, _nk: r.tpNhapKho }))
   const totalNhapKho   = nhapKhoRows.reduce((s, r) => s + r._nk, 0)
-  const nhapKhoRecent  = [...nhapKhoRows].sort((a, b) => b._nk - a._nk).slice(0, 8)
 
   // ── Delta (thay đổi) per stage ────────────────────────────────────────────
   const stageFields = [
@@ -1236,9 +1253,7 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho }) {
       <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
         <KpiCard label="ĐANG SẢN XUẤT"  value={data.length}        sub="lô"           bg="#006666"  icon="🏭" />
         <KpiCard label="TỔNG KẾ HOẠCH"  value={fmtN(totalKH)}      sub="sản phẩm"     bg="#1d4ed8"  badge={overallPct} icon="📋" />
-        <KpiCard label="ĐÃ HOÀN THÀNH"  value={doneTotal}           sub="lô done"      bg="#16a34a"  icon="✅" />
         <KpiCard label="ĐÃ NHẬP KHO"    value={nhapKhoRows.length}  sub={`${fmtN(totalNhapKho)} SP`} bg="#0891b2" icon="📦" />
-        <KpiCard label="CÓ HÀNG LỖI"    value={hangLoiCount}        sub="lô"           bg={hangLoiCount > 0 ? '#dc2626' : '#94a3b8'} icon="⚠️" />
       </div>
 
       {/* ── Row 2: Stage cards ── */}
@@ -1317,33 +1332,56 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho }) {
 
         {/* Nhập kho gần đây */}
         <div style={{ flex: 1.6, background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: '10px 12px', minWidth: 0 }}>
-          <SectionLabel accent="#0891b2">
-            Sản phẩm mới nhập kho
-            {nhapKhoRows.length > 0 && <span style={{ marginLeft: 6, background: '#e0f7fa', color: '#0891b2', borderRadius: 999, padding: '0 6px', fontSize: 10, fontWeight: 700 }}>{nhapKhoRows.length} lô · {fmtN(totalNhapKho)} SP</span>}
-          </SectionLabel>
-          {nhapKhoRecent.length === 0 ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+            <SectionLabel accent="#0891b2">
+              Sản phẩm mới nhập kho
+              {nkList.length > 0 && <span style={{ marginLeft: 6, background: '#e0f7fa', color: '#0891b2', borderRadius: 999, padding: '0 6px', fontSize: 10, fontWeight: 700 }}>{nkList.length} lô · {fmtN(nkTotalSl)} SP</span>}
+            </SectionLabel>
+            <RangePicker
+              size="small"
+              value={nkRange}
+              onChange={v => setNkRange(v || [null, null])}
+              format="DD/MM/YYYY"
+              allowClear={false}
+              style={{ maxWidth: 230 }}
+              presets={[
+                { label: 'Hôm nay',    value: [dayjs(), dayjs()] },
+                { label: 'Hôm qua',    value: [dayjs().subtract(1, 'day'), dayjs().subtract(1, 'day')] },
+                { label: 'Tuần này',   value: [dayjs().startOf('isoWeek'), dayjs().endOf('isoWeek')] },
+                { label: 'Tuần trước', value: [dayjs().subtract(1, 'week').startOf('isoWeek'), dayjs().subtract(1, 'week').endOf('isoWeek')] },
+                { label: 'Tháng này',  value: [dayjs().startOf('month'), dayjs()] },
+                { label: 'Tháng trước', value: [dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')] },
+              ]}
+            />
+          </div>
+          {nkLoading ? (
+            <div style={{ color: '#94a3b8', fontSize: 12, textAlign: 'center', padding: '16px 0' }}>Đang tải...</div>
+          ) : nkList.length === 0 ? (
             <div style={{ color: '#94a3b8', fontSize: 12, textAlign: 'center', padding: '16px 0' }}>Chưa có lô nào nhập kho</div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
-              <thead>
-                <tr style={{ background: '#f8fafc' }}>
-                  {['Mã Bravo', 'Mã TP', 'Tên sản phẩm', 'LSX', 'SL nhập kho'].map((h, i) => (
-                    <th key={h} style={{ padding: '4px 6px', textAlign: i === 4 ? 'right' : 'left', fontWeight: 700, color: '#64748b', fontSize: 10, borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {nhapKhoRecent.map((r, i) => (
-                  <tr key={r.id} style={{ borderBottom: '1px solid #f8fafc', background: i % 2 === 1 ? '#fafafa' : '#fff' }}>
-                    <td style={{ padding: '4px 6px', fontFamily: 'monospace', fontWeight: 700, color: '#0369a1', fontSize: 11 }}>{r.maBravo || '—'}</td>
-                    <td style={{ padding: '4px 6px', color: '#475569' }}>{r.maTp || '—'}</td>
-                    <td style={{ padding: '4px 6px', color: '#1e293b', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.tienTrinh || '—'}</td>
-                    <td style={{ padding: '4px 6px', fontFamily: 'monospace', color: '#64748b' }}>{r.lsx || '—'}</td>
-                    <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 800, color: '#0891b2' }}>{fmtN(r._nk)}</td>
+            <div style={{ maxHeight: 260, overflowY: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc' }}>
+                    {['Mã Bravo', 'Mã TP', 'Tên sản phẩm', 'LSX', 'Ngày NK', 'SL nhập kho'].map((h, i) => (
+                      <th key={h} style={{ padding: '4px 6px', textAlign: i === 5 ? 'right' : 'left', fontWeight: 700, color: '#64748b', fontSize: 10, borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap', position: 'sticky', top: 0, background: '#f8fafc' }}>{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {nkList.map((r, i) => (
+                    <tr key={r.id} style={{ borderBottom: '1px solid #f8fafc', background: i % 2 === 1 ? '#fafafa' : '#fff' }}>
+                      <td style={{ padding: '4px 6px', fontFamily: 'monospace', fontWeight: 700, color: '#0369a1', fontSize: 11 }}>{r.maBravo || '—'}</td>
+                      <td style={{ padding: '4px 6px', color: '#475569' }}>{r.maTp || '—'}</td>
+                      <td style={{ padding: '4px 6px', color: '#1e293b', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.tienTrinh || '—'}</td>
+                      <td style={{ padding: '4px 6px', fontFamily: 'monospace', color: '#64748b' }}>{r.lsx || '—'}</td>
+                      <td style={{ padding: '4px 6px', color: '#64748b', fontSize: 10, whiteSpace: 'nowrap' }}>{r.ngayXuatKho ? dayjs(r.ngayXuatKho).format('DD/MM/YYYY') : '—'}</td>
+                      <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 800, color: '#0891b2' }}>{fmtN(r.tpNhapKho)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
 
