@@ -4701,7 +4701,7 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
               <InputNumber
                 style={{ width: '100%' }} min={0} step={1}
                 value={slNK} onChange={setSlNK}
-                formatter={val => val != null ? Number(val).toLocaleString('vi-VN') : ''}
+                formatter={val => val != null && val !== '' ? Number(val).toLocaleString('vi-VN') : ''}
                 parser={val => val ? val.replace(/[^\d]/g, '') : ''}
                 placeholder="0"
                 autoFocus
@@ -6291,6 +6291,7 @@ function NhapKhoTab() {
         <span style={{ fontWeight: 700, color: '#006666', fontSize: 14 }}>📦 Nhập Kho Thành Phẩm</span>
         <Segmented
           size="small"
+          className="nhapkho-segmented"
           value={viewMode}
           onChange={setViewMode}
           options={[

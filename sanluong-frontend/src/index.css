@@ -117,6 +117,16 @@ body {
   .ant-tabs-nav-wrap { overflow: unset !important; }
 }
 
+/* ── Nhập Kho tab — segmented selected màu #00CC99 ───────────────────────── */
+.nhapkho-segmented .ant-segmented-item-selected {
+  background: #00CC99 !important;
+  color: #fff !important;
+  font-weight: 600;
+}
+.nhapkho-segmented .ant-segmented-thumb {
+  background: #00CC99 !important;
+}
+
 /* ── Hàng mới thêm vào danh mục — highlight xanh fade-out ───────────────── */
 @keyframes newRowPulse {
   0%   { background-color: #bfdbfe; }
