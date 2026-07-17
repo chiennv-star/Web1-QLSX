@@ -35,5 +35,26 @@ public class DataMigrationRunner implements ApplicationRunner {
         if (count3 > 0) {
             System.out.println("✅ Migration: đã cập nhật " + count3 + " sản phẩm PCPL2 Dung dịch — máy PL=Máy Chiết 4 vòi bơm từ, tốc độ=35");
         }
+
+        // Chuyển các giá trị gợi ý mặc định (trước đây chỉ hiện client-side khi mở modal sửa
+        // ở Quản lý danh mục, chưa từng lưu DB) thành dữ liệu thật — khớp đúng logic getDefaultNsRows
+        // ở DanhMucPage.jsx để tránh lệch số giữa "gợi ý hiển thị" và "dữ liệu đã lưu".
+        String gelMe = "[{\"soMe\":1,\"nangSuat\":2.5},{\"soMe\":2,\"nangSuat\":5},{\"soMe\":3,\"nangSuat\":7.5},{\"soMe\":4,\"nangSuat\":10},{\"soMe\":5,\"nangSuat\":12.5}]";
+        int count4 = repository.bulkUpdateGelMeIfNull(gelMe);
+        if (count4 > 0) {
+            System.out.println("✅ Migration: đã cập nhật " + count4 + " sản phẩm Gel — mẻ 5 cấp mặc định");
+        }
+
+        String nhuTuongMe = "[{\"soMe\":1,\"nangSuat\":3},{\"soMe\":2,\"nangSuat\":6},{\"soMe\":3,\"nangSuat\":9}]";
+        int count5 = repository.bulkUpdateNhuTuongMeIfNull(nhuTuongMe);
+        if (count5 > 0) {
+            System.out.println("✅ Migration: đã cập nhật " + count5 + " sản phẩm PCPL2 Nhũ Tương — mẻ 3 cấp mặc định");
+        }
+
+        String dungDichMe = "[{\"soMe\":1,\"nangSuat\":2.5},{\"soMe\":2,\"nangSuat\":5},{\"soMe\":3,\"nangSuat\":7.5},{\"soMe\":4,\"nangSuat\":10},{\"soMe\":5,\"nangSuat\":12.5},{\"soMe\":6,\"nangSuat\":15}]";
+        int count6 = repository.bulkUpdateDungDichMeIfNull(dungDichMe);
+        if (count6 > 0) {
+            System.out.println("✅ Migration: đã cập nhật " + count6 + " sản phẩm PCPL2 Dung dịch — mẻ 6 cấp mặc định");
+        }
     }
 }

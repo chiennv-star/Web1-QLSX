@@ -70,4 +70,19 @@ public interface ProductMasterRepository extends JpaRepository<ProductMaster, Lo
     @Transactional
     @Query("UPDATE ProductMaster p SET p.mayMocPl = :mayMocPl, p.tocDoMayPl = :tocDoMayPl, p.updatedAt = CURRENT_TIMESTAMP WHERE p.toNhomPcpl = 'PCPL2' AND LOWER(p.loaiSanPham) LIKE '%dung%' AND (p.mayMocPl IS NULL OR p.mayMocPl = '')")
     int bulkUpdatePcpl2DungDichMayPlIfNull(@Param("mayMocPl") String mayMocPl, @Param("tocDoMayPl") Integer tocDoMayPl);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE ProductMaster p SET p.nangSuatPcMe = :nangSuatPcMe, p.updatedAt = CURRENT_TIMESTAMP WHERE LOWER(p.loaiSanPham) LIKE '%gel%' AND (p.nangSuatPcMe IS NULL OR p.nangSuatPcMe = '' OR p.nangSuatPcMe = '[]')")
+    int bulkUpdateGelMeIfNull(@Param("nangSuatPcMe") String nangSuatPcMe);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE ProductMaster p SET p.nangSuatPcMe = :nangSuatPcMe, p.updatedAt = CURRENT_TIMESTAMP WHERE p.toNhomPcpl = 'PCPL2' AND LOWER(p.loaiSanPham) LIKE '%nhũ%' AND (p.nangSuatPcMe IS NULL OR p.nangSuatPcMe = '' OR p.nangSuatPcMe = '[]')")
+    int bulkUpdateNhuTuongMeIfNull(@Param("nangSuatPcMe") String nangSuatPcMe);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE ProductMaster p SET p.nangSuatPcMe = :nangSuatPcMe, p.updatedAt = CURRENT_TIMESTAMP WHERE p.toNhomPcpl = 'PCPL2' AND LOWER(p.loaiSanPham) LIKE '%dung%' AND (p.nangSuatPcMe IS NULL OR p.nangSuatPcMe = '' OR p.nangSuatPcMe = '[]')")
+    int bulkUpdateDungDichMeIfNull(@Param("nangSuatPcMe") String nangSuatPcMe);
 }
