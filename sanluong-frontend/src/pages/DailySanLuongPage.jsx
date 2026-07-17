@@ -7941,10 +7941,10 @@ function DashboardGDTab() {
 // ─── Page chính: wrapper Tabs ─────────────────────────────────────────────────
 
 export default function DailySanLuongPage() {
-  const { user, isAdmin, isAdminKH, isManHinh, isTKSX, isTPSX, isGiamDoc } = useAuth()
+  const { user, isAdmin, isAdminKH, isQuanDoc, isManHinh, isTKSX, isTPSX, isGiamDoc } = useAuth()
   const canApprove     = isAdmin() || isAdminKH()
   const canViewAnalytics = isAdmin() || isTKSX() || isTPSX()
-  const canViewNhapKho = isAdmin() || isAdminKH() || user?.role === 'ADMIN_DG'
+  const canViewNhapKho = isAdmin() || isAdminKH() || isQuanDoc() || user?.role === 'ADMIN_DG'
   const canViewDashboardGD = isAdmin() || isGiamDoc?.()
   const manHinh = isManHinh()
   const location = useLocation()
