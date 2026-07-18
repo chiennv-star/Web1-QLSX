@@ -114,6 +114,16 @@ const slExceedRender = (v, record) => {
   )
 }
 
+// Hiệu suất = SL đã phân liều ÷ Cỡ lô kế hoạch (%) — riêng cho tổ PL
+const hieuSuatRender = (_, record) => {
+  const sl = Number(record.slPl) || 0
+  const coLo = Number(record.coLo) || 0
+  if (!sl || !coLo) return <span style={{ color: '#d9d9d9' }}>—</span>
+  const pct = (sl / coLo) * 100
+  const color = pct >= 95 ? '#389e0d' : pct >= 80 ? '#d97706' : '#cf1322'
+  return <span style={{ fontWeight: 600, color }}>{pct.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%</span>
+}
+
 const STAGE_CONFIG = {
   PCPL1: {
     label: 'Lịch sản xuất PCPL1',
@@ -152,6 +162,7 @@ const STAGE_CONFIG = {
     label: 'Lịch sản xuất PL',
     extraTableCols: [
       { title: 'SL PL', dataIndex: 'slPl', key: 'slPl', width: 90, align: 'center', render: slExceedRender },
+      { title: 'Hiệu suất', key: 'hieuSuatPl', width: 90, align: 'center', render: hieuSuatRender },
       { title: 'Công PL', dataIndex: 'congPl', key: 'congPl', width: 82, align: 'center', render: fmtNum }
     ],
     extraFormFields: [
@@ -5814,7 +5825,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
             loading={loading}
             scroll={{ x: 1720 + config.extraTableCols.length * 87 }}
             size="small"
-            sticky={{ offsetHeader: headerOffset }}
+            sticky={{ offsetHeader: headerOffset, getContainer: () => document.querySelector('.ant-layout-content') }}
             rowHoverable={false}
             rowSelection={canEditStage(congDoan) && !allowedNhom && !['ADMIN_PCPL1','ADMIN_PCPL2','ADMIN_PCPL3','ADMIN_DG','ADMIN_BBC1'].includes(user?.role) ? {
               selectedRowKeys,
@@ -7779,6 +7790,19 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
       }
     },
     {
+      title: 'Hiệu suất', key: 'hieuSuatDone', width: 90, align: 'right',
+      hidden: congDoan !== 'PL',
+      render: (_, r) => {
+        const { sl } = getSlCong(r)
+        const slV = Number(sl) || 0
+        const coLoV = Number(r.coLo) || 0
+        if (!slV || !coLoV) return <span style={{ color: '#d9d9d9' }}>—</span>
+        const pct = (slV / coLoV) * 100
+        const color = pct >= 95 ? '#389e0d' : pct >= 80 ? '#d97706' : '#cf1322'
+        return <span style={{ fontWeight: 600, color }}>{pct.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%</span>
+      }
+    },
+    {
       title: 'Công', key: 'congDone', width: 95, align: 'right',
       render: (_, r) => {
         const { cong } = getSlCong(r)
@@ -7877,7 +7901,7 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
           loading={loading}
           size="small"
           scroll={{ x: 1950 }}
-          sticky={{ offsetHeader: headerOffset }}
+          sticky={{ offsetHeader: headerOffset, getContainer: () => document.querySelector('.ant-layout-content') }}
           rowHoverable={false}
           onRow={r => ({
             onClick: () => onRowClick?.(r),
@@ -8145,7 +8169,7 @@ function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange, headerOffset = 8
         loading={loading}
         size="small"
         scroll={{ x: 1150 }}
-        sticky={{ offsetHeader: headerOffset }}
+        sticky={{ offsetHeader: headerOffset, getContainer: () => document.querySelector('.ant-layout-content') }}
         rowHoverable={false}
         pagination={false}
       />
@@ -8458,7 +8482,7 @@ export default function WorkSchedulePage() {
             rowHoverable={false}
             scroll={{ x: 1000 }}
             size="small"
-            sticky={{ offsetHeader: 46 }}
+            sticky={{ offsetHeader: 46, getContainer: () => document.querySelector('.ant-layout-content') }}
             pagination={{
               ...devPagination,
               showSizeChanger: true,
