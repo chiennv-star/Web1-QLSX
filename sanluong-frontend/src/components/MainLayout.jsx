@@ -263,6 +263,9 @@ export default function MainLayout() {
           ],
         }] : []),
         { key: '/lenh-san-xuat', icon: <FileDoneOutlined />, label: 'Lệnh Sản Xuất' },
+        ...(isQuanDoc() ? [
+          { key: '/don-hang', icon: <AppstoreOutlined />, label: 'Đơn hàng' },
+        ] : []),
         ...(canEditHangLoi() ? [{
           key: '/hang-loi',
           icon: <WarningOutlined />,

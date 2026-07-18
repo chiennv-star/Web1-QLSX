@@ -3629,8 +3629,10 @@ function setTabInUrl(tabKey) {
 
 // ── Wrapper: gộp Kế hoạch + Lệnh SX + Đơn Hàng ──────────────────────────────
 export default function KhoachPage() {
-  const { isAdmin, isAdminKH, isStageAdmin } = useAuth()
+  const { isAdmin, isAdminKH, isStageAdmin, isQuanDoc } = useAuth()
   const canViewExtra = isAdmin() || isAdminKH() || isStageAdmin()
+  // Quản lý (đọc) chỉ xem được Lệnh Sản Xuất + Đơn Hàng (không có Phân Bổ NVL), không có quyền chỉnh sửa
+  const canViewLenhDonHang = canViewExtra || isQuanDoc()
   const location = useLocation()
 
   // Khởi tạo từ URL → auto-reload sẽ đọc lại đúng tab cũ
@@ -3642,7 +3644,7 @@ export default function KhoachPage() {
   const containerRef = useRef(null)
 
   useEffect(() => {
-    if (!canViewExtra) return
+    if (!canViewLenhDonHang) return
     api.get('/lenh-san-xuat/count-chua-phat-hanh')
       .then(({ data }) => setLenhChuaPhatHanh(data?.total || 0))
       .catch(() => {})
@@ -3703,7 +3705,7 @@ export default function KhoachPage() {
       label: <span><CalendarOutlined style={{ marginRight: 5 }} />Kế hoạch</span>,
       children: <KhoachContent filterSlot={filterSlot} />,
     },
-    ...(canViewExtra ? [
+    ...(canViewLenhDonHang ? [
       {
         key: 'lenh-sx',
         label: (
@@ -3722,13 +3724,15 @@ export default function KhoachPage() {
         label: <span><ShoppingOutlined style={{ marginRight: 5 }} />Đơn Hàng</span>,
         children: <DonHangPage />,
       },
+    ] : []),
+    ...(canViewExtra ? [
       {
         key: 'phan-bo-nvl',
         label: <span><DatabaseOutlined style={{ marginRight: 5 }} />Phân Bổ NVL</span>,
         children: <NvlPhanBoTab />,
       },
     ] : []),
-  ], [canViewExtra, filterSlot, lenhChuaPhatHanh]) // eslint-disable-line react-hooks/exhaustive-deps
+  ], [canViewLenhDonHang, canViewExtra, filterSlot, lenhChuaPhatHanh]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div ref={containerRef} style={{ background: '#fff', height: isFullscreen ? '100vh' : undefined, overflow: isFullscreen ? 'auto' : undefined }}>

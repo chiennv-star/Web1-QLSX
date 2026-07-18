@@ -153,11 +153,12 @@ public class LenhSanXuatService {
 
     @Transactional
     public LenhSanXuatDto create(LenhSanXuatDto dto, String username) {
-        // Chặn trùng lặp cứng: cùng maBravo + maDonHang + soLo (bất kể ngày/tổ/cỡ lô có khớp hay không)
-        // → đây là khóa định danh thực sự của 1 lệnh (giống cách doiLo/update đang cascade)
+        // Chặn trùng lặp cứng: cùng maBravo + maDonHang + soLo + toThucHien (bất kể ngày/cỡ lô có khớp hay không)
+        // → đây là khóa định danh thực sự của 1 lệnh (giống cách doiLo/update đang cascade). Có bao gồm
+        // toThucHien vì 1 lô hợp lệ có thể có nhiều bản ghi khác tổ thực hiện (PCPL1/PL/ĐG/BBC1...).
         if (dto.getMaBravo() != null && dto.getSoLo() != null) {
             java.util.Optional<LenhSanXuat> hardDup = repo.findActiveByMaBravoAndMaDonHangAndSoLo(
-                    dto.getMaBravo(), dto.getMaDonHang(), dto.getSoLo());
+                    dto.getMaBravo(), dto.getMaDonHang(), dto.getSoLo(), dto.getToThucHien());
             if (hardDup.isPresent()) {
                 return toDto(hardDup.get());
             }
@@ -438,7 +439,10 @@ public class LenhSanXuatService {
 
         java.util.LinkedHashMap<String, List<LenhSanXuat>> grouped = new java.util.LinkedHashMap<>();
         for (LenhSanXuat e : active) {
-            String key = e.getMaBravo() + "|" + (e.getMaDonHang() != null ? e.getMaDonHang() : "") + "|" + e.getSoLo();
+            // Bao gồm toThucHien trong key — 1 lô có thể hợp lệ có nhiều bản ghi khác tổ thực hiện
+            // (PCPL1/PL/ĐG/BBC1...), không phải trùng lặp. Chỉ coi là trùng khi cùng tổ.
+            String key = e.getMaBravo() + "|" + (e.getMaDonHang() != null ? e.getMaDonHang() : "") + "|" + e.getSoLo()
+                    + "|" + (e.getToThucHien() != null ? e.getToThucHien() : "");
             grouped.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(e);
         }
 
@@ -576,7 +580,8 @@ public class LenhSanXuatService {
     private boolean sameLenhKey(LenhSanXuat a, LenhSanXuat b) {
         return java.util.Objects.equals(a.getMaBravo(), b.getMaBravo())
                 && java.util.Objects.equals(a.getMaDonHang(), b.getMaDonHang())
-                && java.util.Objects.equals(a.getSoLo(), b.getSoLo());
+                && java.util.Objects.equals(a.getSoLo(), b.getSoLo())
+                && java.util.Objects.equals(a.getToThucHien(), b.getToThucHien());
     }
 
     private boolean isBlank(String s) {
@@ -593,32 +598,53 @@ public class LenhSanXuatService {
         boolean hasKey = e.getMaDonHang() != null && e.getSoLo() != null;
         long soKhoanLich     = hasKey ? workScheduleRepo.countByMaDonHangAndSoLoNative(e.getMaDonHang(), e.getSoLo()) : 0;
         long soKhoanSanLuong = hasKey ? productionRepo.countByMaDonHangAndLsxNative(e.getMaDonHang(), e.getSoLo())   : 0;
+        List<LenhSanXuat> siblings = (e.getMaBravo() != null && e.getSoLo() != null)
+                ? repo.findAllActiveByMaBravoAndMaDonHangAndSoLo(e.getMaBravo(), e.getMaDonHang(), e.getSoLo())
+                : List.of(e);
+        List<String> toThucHienList = siblings.stream()
+                .map(LenhSanXuat::getToThucHien).filter(java.util.Objects::nonNull).distinct().collect(Collectors.toList());
         return Map.of(
                 "soLoCu",         e.getSoLo()     != null ? e.getSoLo()     : "",
                 "maDonHang",      e.getMaDonHang() != null ? e.getMaDonHang() : "",
                 "soKhoanLich",     soKhoanLich,
-                "soKhoanSanLuong", soKhoanSanLuong
+                "soKhoanSanLuong", soKhoanSanLuong,
+                "soLuongLenh",     siblings.size(),
+                "toThucHienList",  toThucHienList
         );
     }
 
+    /**
+     * Đổi lô áp dụng cho toàn bộ nhóm (mọi tổ thực hiện của cùng maBravo+maDonHang+soLo cũ),
+     * không chỉ riêng bản ghi id được truyền vào — tránh lệch dữ liệu giữa các bản ghi cùng lô
+     * (WorkSchedule/ProductionRecord vốn đã cascade theo maDonHang+soLo, không phân biệt tổ).
+     */
     @Transactional
     public LenhSanXuatDto doiLo(Long id, String soLoMoi, String lyDo, String username) {
         LenhSanXuat e = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy lệnh: " + id));
         String soLoCu = e.getSoLo();
 
-        LenhLoHistory hist = new LenhLoHistory();
-        hist.setLenhId(id);
-        hist.setSoLoCu(soLoCu);
-        hist.setSoLoMoi(soLoMoi);
-        hist.setLyDo(lyDo);
-        hist.setChangedBy(username);
-        hist.setChangedAt(LocalDateTime.now());
-        historyRepo.save(hist);
+        List<LenhSanXuat> siblings = (e.getMaBravo() != null && soLoCu != null)
+                ? repo.findAllActiveByMaBravoAndMaDonHangAndSoLo(e.getMaBravo(), e.getMaDonHang(), soLoCu)
+                : List.of(e);
+        if (siblings.isEmpty()) siblings = List.of(e);
 
-        e.setSoLo(soLoMoi);
-        e.setUpdatedBy(username);
-        LenhSanXuat saved = repo.save(e);
+        LocalDateTime now = LocalDateTime.now();
+        for (LenhSanXuat sib : siblings) {
+            LenhLoHistory hist = new LenhLoHistory();
+            hist.setLenhId(sib.getId());
+            hist.setSoLoCu(soLoCu);
+            hist.setSoLoMoi(soLoMoi);
+            hist.setLyDo(lyDo);
+            hist.setChangedBy(username);
+            hist.setChangedAt(now);
+            historyRepo.save(hist);
+
+            sib.setSoLo(soLoMoi);
+            sib.setUpdatedBy(username);
+        }
+        List<LenhSanXuat> savedAll = repo.saveAll(siblings);
+        LenhSanXuat saved = savedAll.stream().filter(s -> s.getId().equals(id)).findFirst().orElse(savedAll.get(0));
 
         if (e.getMaDonHang() != null && soLoCu != null) {
             // Cascade → Kế hoạch/Lịch làm việc

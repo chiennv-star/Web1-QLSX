@@ -28,6 +28,11 @@ const fmtNum = (v) => v != null && v !== '' ? Number(v).toLocaleString('vi-VN') 
 const TO_LIST  = ['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG']
 const TO_COLOR = { PCPL1: 'cyan', PCPL2: 'geekblue', PCPL3: 'blue', BBC1: 'orange', 'ĐG': 'purple' }
 
+// ── Gộp hiển thị theo lô (maBravo + maDonHang + soLo) — 1 lô có thể có nhiều
+// bản ghi LenhSanXuat khác nhau về toThucHien (PCPL1/PL/ĐG/BBC1...) ──────────
+const GROUP_TO_ORDER = { PCPL1: 1, PCPL2: 2, PCPL3: 3, PL: 3, BBC1: 4, 'ĐG': 5 }
+const groupKeyOf = (r) => `${r.maBravo || ''}|${r.maDonHang || ''}|${r.soLo || ''}`
+
 // ── LenhModal layout helpers ──────────────────────────────────────────────────
 const LLCell = ({ children }) => (
   <div style={{
@@ -157,7 +162,10 @@ function DoiLoModal({ open, record, onClose, onSaved }) {
       ) : preview && (
         <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8, padding: '10px 14px', fontSize: 12 }}>
           <div style={{ fontWeight: 700, color: '#92400e', marginBottom: 6 }}>⚠ Sẽ cập nhật đồng thời:</div>
-          <div style={{ display: 'flex', gap: 16 }}>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            {preview.soLuongLenh > 1 && (
+              <span>📋 <b>{preview.soLuongLenh}</b> lệnh{preview.toThucHienList?.length > 0 ? ` (${preview.toThucHienList.join(', ')})` : ''}</span>
+            )}
             <span>📅 <b>{preview.soKhoanLich}</b> khoản Lịch SX</span>
             <span>📊 <b>{preview.soKhoanSanLuong}</b> khoản Sản Lượng</span>
           </div>
@@ -216,6 +224,104 @@ function LichSuDoiLoModal({ open, record, onClose }) {
           ))}
         </div>
       )}
+    </Modal>
+  )
+}
+
+// ── Chi tiết 1 lô — các lượt thực hiện theo tổ khác nhau gộp về đây ───────────
+function LenhGroupDetailModal({ open, groupKey, lenhData, onClose, onDoiLo, onCapNhat, onLichSu, onBanHanh, onThemTo, actionId, readOnly }) {
+  const children = useMemo(() => {
+    if (!groupKey) return []
+    return lenhData
+      .filter(r => groupKeyOf(r) === groupKey)
+      .sort((a, b) => (GROUP_TO_ORDER[a.toThucHien] || 99) - (GROUP_TO_ORDER[b.toThucHien] || 99))
+  }, [lenhData, groupKey])
+
+  if (!open || children.length === 0) return null
+  const first = children[0]
+  const distinctSoLuong = [...new Set(children.map(c => c.soLuong).filter(v => v != null))]
+  const soLuongConflict = distinctSoLuong.length > 1
+
+  return (
+    <Modal
+      open={open} onCancel={onClose} title={null} footer={<Button onClick={onClose}>Đóng</Button>}
+      destroyOnHidden width={900}
+    >
+      <div style={{ background: 'linear-gradient(135deg,#1e3a5f,#1d4ed8)', padding: '12px 16px', margin: '-20px -24px 16px', borderRadius: '8px 8px 0 0' }}>
+        <div style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>{first.tenSanPham || first.maBravo}</div>
+        <div style={{ color: '#bfdbfe', fontSize: 11, marginTop: 2, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <span>Bravo: <b style={{ color: '#fff' }}>{first.maBravo}</b></span>
+          <span>SP: <b style={{ color: '#fff' }}>{first.maSp}</b></span>
+          {first.maDonHang && <span>ĐH: <b style={{ color: '#fff' }}>{first.maDonHang}</b></span>}
+          <span>Lô: <b style={{ color: '#fde68a' }}>{first.soLo}</b></span>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+        <Tag color="blue">{children.length} lượt thực hiện</Tag>
+        {soLuongConflict && (
+          <Tag color="red">⚠ Cỡ lô không khớp giữa các lượt ({distinctSoLuong.map(fmtNum).join(' / ')})</Tag>
+        )}
+        <span style={{ flex: 1 }} />
+        {!readOnly && (
+          <>
+            <Button size="small" icon={<SwapOutlined />} onClick={() => onDoiLo(first)}
+              style={{ borderColor: '#7c3aed', color: '#7c3aed' }}>
+              Đổi lô (cả {children.length} lệnh)
+            </Button>
+            <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => onThemTo(first)}>
+              Thêm tổ thực hiện
+            </Button>
+          </>
+        )}
+      </div>
+
+      <Table
+        size="small" rowKey="id" pagination={false}
+        dataSource={children}
+        columns={[
+          {
+            title: 'Tổ TH', dataIndex: 'toThucHien', width: 80,
+            render: v => v ? <Tag color={TO_COLOR[v] || 'default'} style={{ fontWeight: 700 }}>{v}</Tag> : <span style={{ color: '#d1d5db' }}>Chưa gán</span>,
+          },
+          { title: 'Ngày TH', dataIndex: 'ngayThucHien', width: 100, render: v => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
+          { title: 'Ngày phát lệnh', dataIndex: 'ngayPhatLenh', width: 112, render: v => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
+          {
+            title: 'Cỡ lô', dataIndex: 'soLuong', width: 90, align: 'right',
+            render: v => <span style={{ fontWeight: 700, color: soLuongConflict ? '#dc2626' : '#1e4570' }}>{fmtNum(v)}</span>,
+          },
+          {
+            title: 'Trạng thái', key: 'st', width: 130,
+            render: (_, r) => r.daBanHanh
+              ? <Tag color="green">✓ Đã phát hành</Tag>
+              : <Tag color="orange">⌛ Chưa phát hành</Tag>,
+          },
+          { title: 'Ghi chú', dataIndex: 'ghiChu', ellipsis: true, render: v => v || '—' },
+          {
+            title: '', key: 'act', width: 170, align: 'center',
+            render: (_, r) => (
+              <div style={{ display: 'flex', gap: 4, justifyContent: 'center', flexWrap: 'wrap' }}>
+                {r.daBanHanh ? (
+                  <>
+                    {!readOnly && <Button size="small" icon={<EditOutlined />} onClick={() => onCapNhat(r)} style={{ fontSize: 10, padding: '0 6px' }}>Cập nhật</Button>}
+                    <Tooltip title={r.soLoCu ? 'Xem lịch sử đổi lô' : 'Chưa có lịch sử đổi lô'}>
+                      <Button size="small" type="text" icon={<HistoryOutlined />} onClick={() => onLichSu(r)}
+                        style={{ color: r.soLoCu ? '#7c3aed' : '#cbd5e1', padding: '0 4px' }} />
+                    </Tooltip>
+                  </>
+                ) : readOnly ? (
+                  <Tag color="orange" style={{ fontSize: 11 }}>⌛ Chưa phát hành</Tag>
+                ) : (
+                  <Button size="small" type="primary" icon={<CheckOutlined />} loading={actionId === r.id}
+                    onClick={() => onBanHanh(r)} style={{ background: '#1e4570', borderColor: '#1e4570', fontSize: 11 }}>
+                    Ban hành
+                  </Button>
+                )}
+              </div>
+            ),
+          },
+        ]}
+      />
     </Modal>
   )
 }
@@ -656,7 +762,7 @@ function LenhModal({ open, editItem, onClose, onSaved }) {
 }
 
 // ── Detail Modal (double-click row) ──────────────────────────────────────────
-function LenhDetailModal({ open, record, onClose, onSaved }) {
+function LenhDetailModal({ open, record, onClose, onSaved, readOnly }) {
   const [form] = Form.useForm()
   const [saving, setSaving] = useState(false)
   const [detailLookup, setDetailLookup] = useState(null) // null | 'loading' | 'found' | 'not_found'
@@ -842,7 +948,7 @@ function LenhDetailModal({ open, record, onClose, onSaved }) {
       </div>
 
       {/* Form body */}
-      <Form form={form} component="div" autoComplete="off" style={{ flex: 1, overflow: 'auto', padding: '14px 16px' }}>
+      <Form form={form} component="div" autoComplete="off" disabled={readOnly} style={{ flex: 1, overflow: 'auto', padding: '14px 16px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 130px 1fr', border: '1px solid #e2e8f0', borderRadius: 7, overflow: 'hidden', marginBottom: 12 }}>
           <LCell>
             Tên Sản Phẩm
@@ -976,11 +1082,13 @@ function LenhDetailModal({ open, record, onClose, onSaved }) {
         {/* Footer buttons */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
           <Button onClick={onClose} size="small">Đóng</Button>
-          <Button type="primary" icon={record.isFromKhoach ? <FileAddOutlined /> : <SaveOutlined />} size="small"
-            loading={saving} onClick={handleSave}
-            style={{ background: record.isFromKhoach ? '#0891b2' : '#1d4ed8', borderColor: record.isFromKhoach ? '#0891b2' : '#1d4ed8' }}>
-            {record.isFromKhoach ? 'Tạo Lệnh' : 'Lưu thay đổi'}
-          </Button>
+          {!readOnly && (
+            <Button type="primary" icon={record.isFromKhoach ? <FileAddOutlined /> : <SaveOutlined />} size="small"
+              loading={saving} onClick={handleSave}
+              style={{ background: record.isFromKhoach ? '#0891b2' : '#1d4ed8', borderColor: record.isFromKhoach ? '#0891b2' : '#1d4ed8' }}>
+              {record.isFromKhoach ? 'Tạo Lệnh' : 'Lưu thay đổi'}
+            </Button>
+          )}
         </div>
       </Form>
     </Modal>
@@ -989,7 +1097,8 @@ function LenhDetailModal({ open, record, onClose, onSaved }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function LenhSanXuatTab() {
-  const { user } = useAuth()
+  const { user, isQuanDoc } = useAuth()
+  const readOnly = isQuanDoc()
   // LenhSanXuat records (tabs PCPL1..ĐG + hoàn thiện)
   const [lenhData,     setLenhData]     = useState([])
   // WorkSchedule PLAN records chưa có LenhSanXuat (tab Chưa xếp)
@@ -1018,6 +1127,7 @@ export default function LenhSanXuatTab() {
   const [lichSuRecord, setLichSuRecord] = useState(null)
   const [duplicatesOpen,  setDuplicatesOpen]  = useState(false)
   const [duplicatesCount, setDuplicatesCount] = useState(0)
+  const [groupOpenKey,    setGroupOpenKey]    = useState(null) // key lô đang xem chi tiết (tab gộp)
   const [tableH, setTableH] = useState(500)
   const [loaiSpMap,        setLoaiSpMap]        = useState({}) // maSp → { loaiSanPham, khoiLuong, mayMocPc, ... }
   const [employeeCounts,   setEmployeeCounts]   = useState({})
@@ -1177,6 +1287,48 @@ export default function LenhSanXuatTab() {
     if (quickDaDG)    list = list.filter(r => r.daDgVaXepLichDg)
     return applySearch(list)
   }, [lenhData, pendingData, activeTab, filterFromPL, filterToPL, filterTT, quickDaLich, quickDaDG, filterSoLo, searchText])
+
+  // ── Gộp theo lô cho tab "Lệnh sản xuất" (tat_ca) và "Lệnh đã hoàn thiện" ──
+  // 1 lô có thể có nhiều bản ghi khác toThucHien (PCPL1/PL/ĐG/BBC1...) →
+  // hiển thị 1 dòng cha/lô, chi tiết từng lượt xem trong LenhGroupDetailModal.
+  const isGroupedTab = activeTab === 'tat_ca' || activeTab === 'hoan_thien'
+  const displayRows = useMemo(() => {
+    if (!isGroupedTab) return rows
+    const passthrough = rows.filter(r => r.isFromKhoach || !r.maBravo || !r.soLo)
+    const groupable   = rows.filter(r => !r.isFromKhoach && r.maBravo && r.soLo)
+    const map = new Map()
+    groupable.forEach(r => {
+      const k = groupKeyOf(r)
+      if (!map.has(k)) map.set(k, [])
+      map.get(k).push(r)
+    })
+    const tinhTrangRank = { rat_gap: 2, gap: 1 }
+    const groups = [...map.entries()].map(([k, children]) => {
+      children.sort((a, b) => (GROUP_TO_ORDER[a.toThucHien] || 99) - (GROUP_TO_ORDER[b.toThucHien] || 99))
+      const first = children[0]
+      const distinctSl = [...new Set(children.map(c => c.soLuong).filter(v => v != null))]
+      const doneCount = children.filter(c => c.daBanHanh).length
+      const worstTinhTrang = children.reduce(
+        (acc, c) => (tinhTrangRank[c.tinhTrang] || 0) > (tinhTrangRank[acc] || 0) ? c.tinhTrang : acc, null)
+      return {
+        ...first,
+        id: `grp-${k}`,
+        isGroup: true,
+        groupKey: k,
+        childCount: children.length,
+        doneCount,
+        soLuong: distinctSl[0] ?? first.soLuong,
+        soLuongConflict: distinctSl.length > 1,
+        tinhTrang: worstTinhTrang,
+        daBanHanh: doneCount === children.length,
+        hasKhoach: children.some(c => c.hasKhoach),
+        toThucHienList: [...new Set(children.map(c => c.toThucHien).filter(Boolean))],
+        chuY: children.find(c => c.chuY)?.chuY || null,
+        children,
+      }
+    })
+    return [...passthrough, ...groups]
+  }, [rows, isGroupedTab])
 
   // ── Quick-filter counts ────────────────────────────────────────────────────
   const baseList = useMemo(() => {
@@ -1399,6 +1551,15 @@ export default function LenhSanXuatTab() {
       render: (v, r) => {
         if (r.isFromKhoach)
           return <span style={{ background: '#dbeafe', color: '#1d4ed8', fontWeight: 700, fontSize: 11, padding: '2px 8px', borderRadius: 4, display: 'inline-block' }}>📋 Chờ tạo lệnh</span>
+        if (r.isGroup)
+          return (
+            <span style={{
+              background: v ? '#dcfce7' : '#fff3e0', color: v ? '#15803d' : '#e65100',
+              fontWeight: 700, fontSize: 11, padding: '2px 8px', borderRadius: 4, display: 'inline-block',
+            }}>
+              {v ? '✓' : '⌛'} {r.doneCount}/{r.childCount} đã phát hành
+            </span>
+          )
         return v
           ? <span style={{ background: '#dcfce7', color: '#15803d', fontWeight: 700, fontSize: 11, padding: '2px 8px', borderRadius: 4, display: 'inline-block' }}>✓ Đã phát hành</span>
           : <span style={{ background: '#fff3e0', color: '#e65100', fontWeight: 700, fontSize: 11, padding: '2px 8px', borderRadius: 4, display: 'inline-block' }}>⌛ Chưa phát hành</span>
@@ -1499,7 +1660,14 @@ export default function LenhSanXuatTab() {
     },
     {
       title: 'CỠ LÔ', dataIndex: 'soLuong', width: 88, align: 'right',
-      render: (v) => <span style={{ fontWeight: 700, color: '#1e4570', fontSize: 12 }}>{fmtNum(v)}</span>,
+      render: (v, r) => (
+        <span style={{ fontWeight: 700, color: r.isGroup && r.soLuongConflict ? '#dc2626' : '#1e4570', fontSize: 12 }}>
+          {fmtNum(v)}
+          {r.isGroup && r.soLuongConflict && (
+            <Tooltip title="Cỡ lô không khớp giữa các lượt thực hiện"><span style={{ marginLeft: 3 }}>⚠</span></Tooltip>
+          )}
+        </span>
+      ),
     },
     {
       title: 'TÌNH TRẠNG', dataIndex: 'tinhTrang', width: 100, align: 'center',
@@ -1516,14 +1684,38 @@ export default function LenhSanXuatTab() {
     },
     {
       title: 'TỔ TH', dataIndex: 'toThucHien', width: 76,
-      render: (v) => v
-        ? <Tag color={TO_COLOR[v] || 'default'} style={{ fontWeight: 700, fontSize: 11 }}>{v}</Tag>
-        : <span style={{ color: '#d1d5db' }}>—</span>,
+      render: (v, r) => {
+        if (r.isGroup) {
+          if (!r.toThucHienList?.length) return <span style={{ color: '#d1d5db' }}>—</span>
+          return (
+            <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+              {r.toThucHienList.map(t => (
+                <Tag key={t} color={TO_COLOR[t] || 'default'} style={{ fontWeight: 700, fontSize: 10, margin: 0 }}>{t}</Tag>
+              ))}
+            </div>
+          )
+        }
+        return v
+          ? <Tag color={TO_COLOR[v] || 'default'} style={{ fontWeight: 700, fontSize: 11 }}>{v}</Tag>
+          : <span style={{ color: '#d1d5db' }}>—</span>
+      },
     },
     {
       title: '', key: 'act', width: 152, align: 'center', fixed: 'right',
       render: (_, r) => {
+        if (r.isGroup) {
+          return (
+            <Button
+              size="small" type="primary" icon={<FileTextOutlined />}
+              onClick={() => setGroupOpenKey(r.groupKey)}
+              style={{ background: '#1e4570', borderColor: '#1e4570', fontSize: 11 }}
+            >
+              Chi tiết ({r.childCount})
+            </Button>
+          )
+        }
         if (r.isFromKhoach) {
+          if (readOnly) return <span style={{ color: '#d1d5db' }}>—</span>
           return (
             <Button
               size="small" type="primary" icon={<FileAddOutlined />}
@@ -1538,20 +1730,24 @@ export default function LenhSanXuatTab() {
         if (r.daBanHanh) {
           return (
             <div style={{ display: 'flex', gap: 4, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Button
-                size="small" icon={<SwapOutlined />}
-                onClick={() => { setDoiLoRecord(r); setDoiLoOpen(true) }}
-                style={{ fontSize: 10, borderColor: '#7c3aed', color: '#7c3aed', padding: '0 6px' }}
-              >
-                Đổi lô
-              </Button>
-              <Button
-                size="small" icon={<EditOutlined />}
-                onClick={() => { setEditItem(r); setModalOpen(true) }}
-                style={{ fontSize: 10, padding: '0 6px' }}
-              >
-                Cập nhật
-              </Button>
+              {!readOnly && (
+                <Button
+                  size="small" icon={<SwapOutlined />}
+                  onClick={() => { setDoiLoRecord(r); setDoiLoOpen(true) }}
+                  style={{ fontSize: 10, borderColor: '#7c3aed', color: '#7c3aed', padding: '0 6px' }}
+                >
+                  Đổi lô
+                </Button>
+              )}
+              {!readOnly && (
+                <Button
+                  size="small" icon={<EditOutlined />}
+                  onClick={() => { setEditItem(r); setModalOpen(true) }}
+                  style={{ fontSize: 10, padding: '0 6px' }}
+                >
+                  Cập nhật
+                </Button>
+              )}
               <Tooltip title={r.soLoCu ? 'Xem lịch sử đổi lô' : 'Chưa có lịch sử đổi lô'}>
                 <Button
                   size="small" type="text" icon={<HistoryOutlined />}
@@ -1562,6 +1758,7 @@ export default function LenhSanXuatTab() {
             </div>
           )
         }
+        if (readOnly) return <Tag color="orange" style={{ fontSize: 11 }}>⌛ Chưa phát hành</Tag>
         return (
           <Button
             size="small" type="primary" icon={<CheckOutlined />}
@@ -1791,13 +1988,15 @@ export default function LenhSanXuatTab() {
               </Button>
             </Badge>
           )}
-          <Button
-            type="primary" icon={<PlusOutlined />} size="small"
-            onClick={() => { setEditItem(null); setModalOpen(true) }}
-            style={{ background: '#1e4570', borderColor: '#1e4570', fontSize: 11 }}
-          >
-            Thêm lệnh
-          </Button>
+          {!readOnly && (
+            <Button
+              type="primary" icon={<PlusOutlined />} size="small"
+              onClick={() => { setEditItem(null); setModalOpen(true) }}
+              style={{ background: '#1e4570', borderColor: '#1e4570', fontSize: 11 }}
+            >
+              Thêm lệnh
+            </Button>
+          )}
           {activeTab !== 'phan_tich' && (
             <Dropdown
               menu={{
@@ -2423,18 +2622,21 @@ export default function LenhSanXuatTab() {
       <div ref={tableWrapRef} style={{ display: activeTab === 'phan_tich' ? 'none' : undefined }}>
       <SkeletonTable
         className="lsx-tab-table"
-        rowKey={r => r.isFromKhoach ? `ws-${r.workScheduleId}` : `l-${r.id}`}
-        dataSource={rows}
+        rowKey={r => r.isGroup ? `g-${r.groupKey}` : r.isFromKhoach ? `ws-${r.workScheduleId}` : `l-${r.id}`}
+        dataSource={displayRows}
         columns={activeTab === 'tat_ca' ? [...baseColumns, ...analyticsColumns] : baseColumns}
         loading={isLoading}
         size="small"
         scroll={{ x: activeTab === 'tat_ca' ? 2900 : 1620, y: tableH }}
         onRow={r => ({
-          onDoubleClick: () => { setDetailRecord(r); setDetailOpen(true) },
+          onDoubleClick: () => {
+            if (r.isGroup) { setGroupOpenKey(r.groupKey); return }
+            setDetailRecord(r); setDetailOpen(true)
+          },
           style: { cursor: 'pointer' },
         })}
-        rowClassName={r => (!r.isFromKhoach && r.daBanHanh === false && r.soLo) ? 'lsx-row-pending' : ''}
-        rowSelection={{
+        rowClassName={r => (!r.isFromKhoach && !r.isGroup && r.daBanHanh === false && r.soLo) ? 'lsx-row-pending' : ''}
+        rowSelection={isGroupedTab || readOnly ? undefined : {
           selectedRowKeys: selectedKeys,
           onChange: setSelectedKeys,
           selections: [
@@ -2482,6 +2684,7 @@ export default function LenhSanXuatTab() {
         record={detailRecord}
         onClose={() => setDetailOpen(false)}
         onSaved={fetchAll}
+        readOnly={readOnly}
       />
 
       <LenhModal
@@ -2489,6 +2692,26 @@ export default function LenhSanXuatTab() {
         editItem={editItem}
         onClose={() => { setModalOpen(false); setEditItem(null) }}
         onSaved={fetchAll}
+      />
+
+      <LenhGroupDetailModal
+        open={!!groupOpenKey}
+        groupKey={groupOpenKey}
+        lenhData={lenhData}
+        onClose={() => setGroupOpenKey(null)}
+        onDoiLo={(r) => { setDoiLoRecord(r); setDoiLoOpen(true) }}
+        onCapNhat={(r) => { setEditItem(r); setModalOpen(true) }}
+        onLichSu={(r) => { setLichSuRecord(r); setLichSuOpen(true) }}
+        onBanHanh={handleBanHanh}
+        onThemTo={(first) => {
+          setEditItem({
+            maBravo: first.maBravo, maSp: first.maSp, tenSanPham: first.tenSanPham,
+            maDonHang: first.maDonHang, soLo: first.soLo, soLuong: first.soLuong,
+          })
+          setModalOpen(true)
+        }}
+        actionId={actionId}
+        readOnly={readOnly}
       />
 
       {/* ── Bulk action bar ── */}
