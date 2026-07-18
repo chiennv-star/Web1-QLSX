@@ -132,6 +132,20 @@ body {
   background: #33CCCC !important;
   color: #ffffff !important;
 }
+/* Ô dữ liệu: con trỏ chọn-cả-ô (giống thanh tiêu đề), không phải con trỏ chọn văn bản */
+.nhapkho-table .ant-table-tbody > tr > td {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* ── Điều hướng ô bằng phím mũi tên (useCellNav) — ô đang chọn ───────────── */
+.ant-table-tbody > tr > td.cellnav-selected {
+  outline: 2px solid #1677ff !important;
+  outline-offset: -2px;
+  background: #e6f4ff !important;
+  position: relative;
+  z-index: 1;
+}
 
 /* ── Hàng mới thêm vào danh mục — highlight xanh fade-out ───────────────── */
 @keyframes newRowPulse {

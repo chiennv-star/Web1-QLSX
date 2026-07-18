@@ -11,11 +11,12 @@ import {
   SearchOutlined, ReloadOutlined, BarChartOutlined,
   CheckOutlined, CloseOutlined, ClockCircleOutlined,
   RiseOutlined, TeamOutlined, FundOutlined, DeleteOutlined, ExclamationCircleOutlined,
-  FullscreenOutlined, FullscreenExitOutlined, ArrowRightOutlined, PlusOutlined,
+  FullscreenOutlined, FullscreenExitOutlined, ArrowRightOutlined, PlusOutlined, EyeOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
+import useCellNav from '../hooks/useCellNav'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RcTooltip, Legend,
   LineChart, Line, ReferenceLine, ComposedChart, ReferenceArea,
@@ -953,9 +954,17 @@ function DailyDetailTab() {
   const columns = [
     {
       title: 'Ngày', dataIndex: 'ngay', key: 'ngay', width: 110, fixed: 'left',
-      render: v => v
-        ? <span style={{ fontWeight: 700, color: '#1677ff' }}>{dayjs(v).format('DD/MM/YYYY')}</span>
-        : '—',
+      render: (v, r) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ fontWeight: 700, color: '#1677ff' }}>{v ? dayjs(v).format('DD/MM/YYYY') : '—'}</span>
+          <Tooltip title="Xem chi tiết">
+            <EyeOutlined
+              style={{ color: '#94a3b8', cursor: 'pointer', fontSize: 13 }}
+              onClick={e => { e.stopPropagation(); setDetailRecord(r) }}
+            />
+          </Tooltip>
+        </div>
+      ),
     },
     {
       title: 'Trạng Thái', dataIndex: 'status', key: 'status', width: 120, align: 'center',
@@ -1171,6 +1180,13 @@ function DailyDetailTab() {
     ? data.filter(r => (r.tenTrinh || '').toLowerCase().includes(filterTienTrinh.trim().toLowerCase()))
     : data
 
+  const handleCellEdit = useCallback((row) => {
+    const record = filteredData[row]
+    if (record) setDetailRecord(record)
+  }, [filteredData])
+  const cellNav = useCellNav({ rowCount: filteredData.length, colCount: columns.length, onEdit: handleCellEdit })
+  const navColumns = cellNav.withNav(columns)
+
   return (
     <>
       {/* Bộ lọc + KPI (sticky wrapper) */}
@@ -1287,9 +1303,10 @@ function DailyDetailTab() {
         .daily-sl-table .ant-table-tbody > tr:hover > td { background: #DDE1E8 !important; }
       `}</style>
 
+      <div {...cellNav.wrapProps}>
       <SkeletonTable
         className="daily-sl-table"
-        columns={columns}
+        columns={navColumns}
         dataSource={filteredData}
         rowKey={r => r.status === 'PENDING' ? `req-${r.requestId}` : `s-${r.sessionId}`}
         rowSelection={{
@@ -1304,10 +1321,6 @@ function DailyDetailTab() {
         size="small"
         scroll={{ x: 1600 }}
         sticky={{ offsetHeader: TAB_BAR_H + filterH }}
-        onRow={record => ({
-          onClick: () => setDetailRecord(record),
-          style: { cursor: 'pointer' },
-        })}
         rowClassName={record => {
           if (record.status === 'PENDING') return 'row-pending'
           if (record.status === 'IN_PROGRESS') return 'row-in-progress'
@@ -1321,6 +1334,7 @@ function DailyDetailTab() {
           showTotal: total => `Tổng ${total} bản ghi`,
         }}
       />
+      </div>
 
       <Modal
         title="Từ chối yêu cầu sản lượng"
@@ -5291,37 +5305,64 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
 function NhapKhoTongHopTable({ data, loading, onRowClick, filterH = 0 }) {
   const fmtN = v => v != null ? Number(v).toLocaleString('vi-VN') : '—'
 
+  // Điều hướng ô bằng phím mũi tên — không có ô nào sửa tại chỗ, Enter/click đúp/icon 👁 đều mở panel Chi tiết
+  const handleCellEdit = useCallback((row) => {
+    const record = data[row]
+    if (record && onRowClick) onRowClick(record)
+  }, [data, onRowClick])
+  const cellNav = useCellNav({ rowCount: data.length, colCount: 12, onEdit: handleCellEdit })
+
   const columns = [
     {
-      title: '#', key: 'stt', width: 46, align: 'center', fixed: 'left',
-      render: (_, __, i) => <span style={{ color: '#bbb', fontSize: 11 }}>{i + 1}</span>,
+      title: '#', key: 'stt', width: 60, align: 'center', fixed: 'left',
+      onCell: (_, i) => cellNav.cellProps(i, 0),
+      render: (_, r, i) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'center' }}>
+          <span style={{ color: '#bbb', fontSize: 11 }}>{i + 1}</span>
+          {onRowClick && (
+            <Tooltip title="Xem chi tiết">
+              <EyeOutlined
+                style={{ color: '#94a3b8', cursor: 'pointer', fontSize: 13 }}
+                onClick={e => { e.stopPropagation(); onRowClick(r) }}
+              />
+            </Tooltip>
+          )}
+        </div>
+      ),
     },
     {
       title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 110, fixed: 'left',
+      onCell: (_, i) => cellNav.cellProps(i, 1),
       render: v => <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{v || '—'}</span>,
     },
     {
       title: 'Mã SP', dataIndex: 'maTp', key: 'maTp', width: 80, align: 'center',
+      onCell: (_, i) => cellNav.cellProps(i, 2),
       render: v => v ? <Tag style={{ marginRight: 0 }}>{v}</Tag> : '—',
     },
     {
       title: 'Tên sản phẩm', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 260,
+      onCell: (_, i) => cellNav.cellProps(i, 3),
       render: v => <span style={{ whiteSpace: 'normal', wordBreak: 'break-word', fontSize: 12 }}>{v || '—'}</span>,
     },
     {
       title: 'Số lô', dataIndex: 'lsx', key: 'lsx', width: 90, align: 'center',
+      onCell: (_, i) => cellNav.cellProps(i, 4),
       render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v || '—'}</span>,
     },
     {
       title: 'SL Lệnh', dataIndex: 'soLuong', key: 'soLuong', width: 95, align: 'right',
+      onCell: (_, i) => cellNav.cellProps(i, 5),
       render: v => <span style={{ color: '#374151' }}>{fmtN(v)}</span>,
     },
     {
       title: 'SL ĐG', dataIndex: 'dg2', key: 'dg2', width: 95, align: 'right',
+      onCell: (_, i) => cellNav.cellProps(i, 6),
       render: v => v ? <span style={{ color: '#6b7280' }}>{Number(v).toLocaleString('vi-VN')}</span> : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
     {
       title: 'Tổng NK', dataIndex: 'totalNhapKho', key: 'totalNhapKho', width: 110, align: 'right',
+      onCell: (_, i) => cellNav.cellProps(i, 7),
       render: (v, r) => {
         const total = v || 0
         if (total === 0) return <Tag style={{ borderStyle: 'dashed', color: '#d97706', marginRight: 0 }}>Chưa NK</Tag>
@@ -5336,18 +5377,21 @@ function NhapKhoTongHopTable({ data, loading, onRowClick, filterH = 0 }) {
     },
     {
       title: 'Số lần', dataIndex: 'soLanNhapKho', key: 'soLanNhapKho', width: 75, align: 'center',
+      onCell: (_, i) => cellNav.cellProps(i, 8),
       render: v => v > 0
         ? <Tag color="blue" style={{ marginRight: 0 }}>{v} lần</Tag>
         : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
     {
       title: 'Ngày NK mới nhất', dataIndex: 'ngayNhapKhoMoiNhat', key: 'ngayNhapKhoMoiNhat', width: 140, align: 'center',
+      onCell: (_, i) => cellNav.cellProps(i, 9),
       render: v => v
         ? <span style={{ color: '#374151', fontSize: 12 }}>{dayjs(v).format('DD/MM/YYYY')}</span>
         : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
     {
       title: 'Còn lại', key: 'conLai', width: 100, align: 'right',
+      onCell: (_, i) => cellNav.cellProps(i, 10),
       render: (_, r) => {
         const dg2V = parseInt(r.dg2) || 0
         const total = r.totalNhapKho || 0
@@ -5359,6 +5403,7 @@ function NhapKhoTongHopTable({ data, loading, onRowClick, filterH = 0 }) {
     },
     {
       title: 'Mã ĐH', dataIndex: 'maDonHang', key: 'maDonHang', width: 120,
+      onCell: (_, i) => cellNav.cellProps(i, 11),
       render: v => v ? <span style={{ fontSize: 12, color: '#6b7280' }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
   ]
@@ -5366,6 +5411,7 @@ function NhapKhoTongHopTable({ data, loading, onRowClick, filterH = 0 }) {
   const totalNK = data.reduce((s, r) => s + (r.totalNhapKho || 0), 0)
 
   return (
+    <div {...cellNav.wrapProps}>
     <Table
       size="small"
       rowKey="id"
@@ -5377,10 +5423,6 @@ function NhapKhoTongHopTable({ data, loading, onRowClick, filterH = 0 }) {
       sticky={{ offsetHeader: TAB_BAR_H + filterH }}
       pagination={{ pageSize: 200, showSizeChanger: true, pageSizeOptions: ['100', '200', '500'], showTotal: t => `Tổng ${t} lô`, size: 'small' }}
       rowClassName={r => (r.totalNhapKho || 0) === 0 ? 'nk-tonghop-chua' : ''}
-      onRow={record => ({
-        onClick: () => onRowClick && onRowClick(record),
-        style: { cursor: onRowClick ? 'pointer' : 'default' },
-      })}
       summary={() => (
         <Table.Summary fixed="bottom">
           <Table.Summary.Row style={{ background: '#f0fdf4' }}>
@@ -5395,6 +5437,7 @@ function NhapKhoTongHopTable({ data, loading, onRowClick, filterH = 0 }) {
         </Table.Summary>
       )}
     />
+    </div>
   )
 }
 
@@ -6079,13 +6122,38 @@ function NhapKhoTab() {
     )
   }, [tongHopData, searchLower])
 
+  // Điều hướng ô bằng phím mũi tên — cột theo đúng thứ tự khai báo trong `columns` bên dưới
+  const NK_COL_FIELDS = ['stt', 'maBravo', 'maTp', 'tienTrinh', 'lsx', 'tpNhapKho', 'ngayXuatKho', 'tinhTrangNhapKho', 'tenNthNhapKho', 'ghiChuNhapKho']
+  const NK_EDITABLE_FIELDS = ['tpNhapKho', 'ngayXuatKho', 'tinhTrangNhapKho', 'tenNthNhapKho', 'ghiChuNhapKho']
+  const handleCellEdit = useCallback((row, col) => {
+    if (!canEdit) return
+    const record = filteredListData[row]
+    if (!record) return
+    const field = NK_COL_FIELDS[col]
+    if (field === 'maBravo') { handleBravoEditStart(record); return }
+    if (NK_EDITABLE_FIELDS.includes(field)) setEditCell({ id: record.id, field })
+  }, [canEdit, filteredListData, handleBravoEditStart])
+  const cellNav = useCellNav({ rowCount: filteredListData.length, colCount: NK_COL_FIELDS.length, onEdit: handleCellEdit })
+
   const columns = [
     {
-      title: '#', key: 'stt', width: 46, align: 'center', fixed: 'left',
-      render: (_, __, i) => <span style={{ color: '#bbb', fontSize: 11 }}>{i + 1}</span>,
+      title: '#', key: 'stt', width: 60, align: 'center', fixed: 'left',
+      onCell: (_, i) => cellNav.cellProps(i, 0),
+      render: (_, r, i) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'center' }}>
+          <span style={{ color: '#bbb', fontSize: 11 }}>{i + 1}</span>
+          <Tooltip title="Xem chi tiết">
+            <EyeOutlined
+              style={{ color: '#94a3b8', cursor: 'pointer', fontSize: 13 }}
+              onClick={e => { e.stopPropagation(); setDrawerRecId(r.id) }}
+            />
+          </Tooltip>
+        </div>
+      ),
     },
     {
       title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 130, fixed: 'left',
+      onCell: (_, i) => cellNav.cellProps(i, 1),
       render: (v, r) => {
         const isEditing = canEdit && bravoEdit?.id === r.id
         if (isEditing) {
@@ -6122,8 +6190,7 @@ function NhapKhoTab() {
           )
         }
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: canEdit ? 'pointer' : 'default' }}
-            onClick={canEdit ? e => { e.stopPropagation(); handleBravoEditStart(r) } : undefined}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{v || '—'}</span>
             {canEdit && <span style={{ fontSize: 10, color: '#d1d5db' }}>✎</span>}
           </div>
@@ -6132,18 +6199,22 @@ function NhapKhoTab() {
     },
     {
       title: 'Mã SP', dataIndex: 'maTp', key: 'maTp', width: 80, align: 'center',
+      onCell: (_, i) => cellNav.cellProps(i, 2),
       render: v => v ? <Tag style={{ marginRight: 0 }}>{v}</Tag> : '—',
     },
     {
       title: 'Tên sản phẩm', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 260,
+      onCell: (_, i) => cellNav.cellProps(i, 3),
       render: v => <span style={{ whiteSpace: 'normal', wordBreak: 'break-word', fontSize: 12 }}>{v || '—'}</span>,
     },
     {
       title: 'Số lô', dataIndex: 'lsx', key: 'lsx', width: 90, align: 'center',
+      onCell: (_, i) => cellNav.cellProps(i, 4),
       render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v || '—'}</span>,
     },
     {
       title: 'SL Nhập Kho', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 120, align: 'right',
+      onCell: (_, i) => cellNav.cellProps(i, 5),
       render: (v, r) => {
         const isEditing = canEdit && editCell?.id === r.id && editCell?.field === 'tpNhapKho'
         if (isEditing) {
@@ -6168,19 +6239,17 @@ function NhapKhoTab() {
           )
         }
         return (
-          <div
-            onClick={canEdit ? e => { e.stopPropagation(); setEditCell({ id: r.id, field: 'tpNhapKho' }) } : undefined}
-            style={{ cursor: canEdit ? 'pointer' : 'default', textAlign: 'right' }}
-          >
+          <div style={{ textAlign: 'right' }}>
             {v != null
               ? <span style={{ fontWeight: 700, color: '#15803d' }}>{Number(v).toLocaleString('vi-VN')}</span>
-              : canEdit ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0, cursor: 'pointer' }}>Nhập</Tag> : <span style={{ color: '#d1d5db' }}>—</span>}
+              : canEdit ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0 }}>Nhập</Tag> : <span style={{ color: '#d1d5db' }}>—</span>}
           </div>
         )
       },
     },
     {
       title: 'Ngày xuất', dataIndex: 'ngayXuatKho', key: 'ngayXuatKho', width: 120, align: 'center',
+      onCell: (_, i) => cellNav.cellProps(i, 6),
       render: (v, r) => {
         const isEditing = canEdit && editCell?.id === r.id && editCell?.field === 'ngayXuatKho'
         const isSaving  = saving[`${r.id}_ngayXuatKho`]
@@ -6197,10 +6266,7 @@ function NhapKhoTab() {
           )
         }
         return (
-          <div
-            onClick={canEdit ? e => { e.stopPropagation(); setEditCell({ id: r.id, field: 'ngayXuatKho' }) } : undefined}
-            style={{ cursor: canEdit ? 'pointer' : 'default', color: v ? '#374151' : '#d9d9d9', textAlign: 'center' }}
-          >
+          <div style={{ color: v ? '#374151' : '#d9d9d9', textAlign: 'center' }}>
             {v ? dayjs(v).format('DD/MM/YYYY') : (canEdit ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0 }}>Chọn ngày</Tag> : '—')}
           </div>
         )
@@ -6208,6 +6274,7 @@ function NhapKhoTab() {
     },
     {
       title: 'Tình trạng', dataIndex: 'tinhTrangNhapKho', key: 'tinhTrangNhapKho', width: 110, align: 'center',
+      onCell: (_, i) => cellNav.cellProps(i, 7),
       render: (v, r) => {
         const isEditing = canEdit && editCell?.id === r.id && editCell?.field === 'tinhTrangNhapKho'
         if (isEditing) {
@@ -6227,10 +6294,7 @@ function NhapKhoTab() {
           )
         }
         return (
-          <div
-            onClick={canEdit ? e => { e.stopPropagation(); setEditCell({ id: r.id, field: 'tinhTrangNhapKho' }) } : undefined}
-            style={{ cursor: canEdit ? 'pointer' : 'default' }}
-          >
+          <div>
             {v
               ? <Tag color={v === 'Done' ? 'success' : 'warning'} style={{ marginRight: 0, fontWeight: 700 }}>{v}</Tag>
               : <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0 }}>—</Tag>}
@@ -6240,6 +6304,7 @@ function NhapKhoTab() {
     },
     {
       title: 'Tên NTH', dataIndex: 'tenNthNhapKho', key: 'tenNthNhapKho', width: 160, align: 'center',
+      onCell: (_, i) => cellNav.cellProps(i, 8),
       render: (v, r) => {
         const isEditing = canEdit && editCell?.id === r.id && editCell?.field === 'tenNthNhapKho'
         if (isEditing) {
@@ -6254,10 +6319,7 @@ function NhapKhoTab() {
           )
         }
         return (
-          <div
-            onClick={canEdit ? e => { e.stopPropagation(); setEditCell({ id: r.id, field: 'tenNthNhapKho' }) } : undefined}
-            style={{ cursor: canEdit ? 'pointer' : 'default' }}
-          >
+          <div>
             {v
               ? <span style={{ color: '#374151' }}>{v}</span>
               : <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0 }}>—</Tag>}
@@ -6267,6 +6329,7 @@ function NhapKhoTab() {
     },
     {
       title: 'Ghi chú', dataIndex: 'ghiChuNhapKho', key: 'ghiChuNhapKho', width: 200,
+      onCell: (_, i) => cellNav.cellProps(i, 9),
       render: (v, r) => {
         const isEditing = canEdit && editCell?.id === r.id && editCell?.field === 'ghiChuNhapKho'
         if (isEditing) {
@@ -6282,10 +6345,7 @@ function NhapKhoTab() {
         }
         return (
           <Tooltip title={v}>
-            <div
-              onClick={canEdit ? e => { e.stopPropagation(); setEditCell({ id: r.id, field: 'ghiChuNhapKho' }) } : undefined}
-              style={{ cursor: canEdit ? 'pointer' : 'default', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-            >
+            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {v
                 ? <span style={{ color: '#6b7280', fontSize: 12 }}>{v}</span>
                 : <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0 }}>—</Tag>}
@@ -6419,6 +6479,7 @@ function NhapKhoTab() {
       ) : viewMode === 'tong-hop' ? (
         <NhapKhoTongHopTable data={filteredTongHopData} loading={tongHopLoading} onRowClick={setTongHopDrawer} filterH={filterH} />
       ) : (
+      <div {...cellNav.wrapProps}>
       <Table
         size="small"
         rowKey="id"
@@ -6432,15 +6493,10 @@ function NhapKhoTab() {
         rowHoverable
         rowClassName={() => 'nhapkho-row'}
         onRow={record => ({
-          onClick: () => {
-            if (editCell?.id === record.id) return
-            setDrawerRecId(record.id)
-          },
           onContextMenu: (e) => {
             e.preventDefault()
             if (canEdit) setCtxMenu({ x: e.clientX, y: e.clientY, record })
           },
-          style: { cursor: 'pointer' },
         })}
         summary={() => (
           <Table.Summary fixed="bottom">
@@ -6456,6 +6512,7 @@ function NhapKhoTab() {
           </Table.Summary>
         )}
       />
+      </div>
       )}
 
       {/* Context menu chuột phải */}
