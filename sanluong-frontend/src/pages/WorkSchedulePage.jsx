@@ -230,6 +230,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   const [khToExists, setKhToExists] = useState(false)
   const [nonprodEntries, setNonprodEntries] = useState({})   // ngayKey → [{_id, id, act, cat, person, min, note}]
   const [nonprodOpenDays, setNonprodOpenDays] = useState(new Set())
+  const [machineSpClosedDays, setMachineSpClosedDays] = useState(new Set()) // ngayKey đã thu gọn khối Máy thực hiện + Sản lượng theo ca
   const [nonprodAddingAct, setNonprodAddingAct] = useState(null) // ngayKey đang mở dropdown chọn hoạt động
   const [nonprodDirtyDays, setNonprodDirtyDays] = useState(new Set())  // ngayKey có thay đổi chưa lưu
   const [nonprodSavingDays, setNonprodSavingDays] = useState(new Set()) // ngayKey đang sync lên backend
@@ -1999,8 +2000,27 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                   loadMachineRuntime(k)
                 }
                 const { runMin: totalRun, downMin: totalDown } = computeRtStats(allRtEntries)
+                const isMspClosed = machineSpClosedDays.has(k)
                 return (
-                  <div style={{ borderTop: '1px solid #e0f2fe', display: 'flex', alignItems: 'stretch' }}>
+                  <div style={{ borderTop: '1px solid #e0f2fe' }}>
+                    {/* Toggle header */}
+                    <div
+                      onClick={() => setMachineSpClosedDays(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n })}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px',
+                        cursor: 'pointer', fontSize: 12, userSelect: 'none',
+                        background: '#f0f9ff', color: '#0369a1',
+                      }}
+                    >
+                      <span>⚙️⚡</span>
+                      <span style={{ fontWeight: 600 }}>Máy thực hiện &amp; Sản lượng theo ca</span>
+                      {machines.length > 0 && <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>{machines.length} máy</Tag>}
+                      {totalRun > 0 && <Tag color="success" style={{ margin: 0, fontSize: 11 }}>Chạy {totalRun}p</Tag>}
+                      {totalDown > 0 && <Tag color="error" style={{ margin: 0, fontSize: 11 }}>Nghỉ {totalDown}p</Tag>}
+                      <span style={{ marginLeft: 'auto', fontSize: 11, color: '#9ca3af' }}>{isMspClosed ? '▼ Xem' : '▲ Thu gọn'}</span>
+                    </div>
+                    {!isMspClosed && (
+                  <div style={{ display: 'flex', alignItems: 'stretch' }}>
 
                     {/* ── LEFT: Máy thực hiện ── */}
                     <div style={{ flex: '0 0 50%', maxWidth: '50%', borderRight: '1px solid #e0f2fe' }}>
@@ -2346,6 +2366,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                       )}
                     </div>
 
+                  </div>
+                    )}
                   </div>
                 )
               })()}
