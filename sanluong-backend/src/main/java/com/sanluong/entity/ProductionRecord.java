@@ -108,6 +108,9 @@ public class ProductionRecord {
     @jakarta.persistence.Transient
     private String pcpl2TrangThai;
 
+    @jakarta.persistence.Transient
+    private String loaiSanPham;
+
     @Column(name = "mo_ta", length = 500)
     private String moTa;
 
@@ -334,6 +337,8 @@ public class ProductionRecord {
     public void setMayMoc(String mayMoc) { this.mayMoc = mayMoc; }
     public String getToNhom() { return toNhom; }
     public void setToNhom(String toNhom) { this.toNhom = toNhom; }
+    public String getLoaiSanPham() { return loaiSanPham; }
+    public void setLoaiSanPham(String loaiSanPham) { this.loaiSanPham = loaiSanPham; }
     public String getPcpl1TrangThai() { return pcpl1TrangThai; }
     public void setPcpl1TrangThai(String pcpl1TrangThai) { this.pcpl1TrangThai = pcpl1TrangThai; }
     public String getPcpl2TrangThai() { return pcpl2TrangThai; }

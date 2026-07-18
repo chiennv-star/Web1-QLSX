@@ -1169,8 +1169,10 @@ public class ProductionService {
         List<ProductionRecord> list = enrichWithSlTrungBinh(repository.findWipDg());
         list.forEach(r -> {
             if (r.getMaTp() != null) {
-                productMasterRepository.findByMaTpIgnoreCase(r.getMaTp()).ifPresent(pm ->
-                    r.setMayMoc(pm.getMayMocDg()));
+                productMasterRepository.findByMaTpIgnoreCase(r.getMaTp()).ifPresent(pm -> {
+                    r.setMayMoc(pm.getMayMocDg());
+                    r.setLoaiSanPham(pm.getLoaiSanPham());
+                });
             }
         });
         return list;
@@ -1184,6 +1186,7 @@ public class ProductionService {
                 productMasterRepository.findByMaTpIgnoreCase(r.getMaTp()).ifPresent(pm -> {
                     r.setSlTrungBinh(pm.getNangSuatPc());
                     r.setMayMoc(pm.getMayMocPc());
+                    r.setLoaiSanPham(pm.getLoaiSanPham());
                 });
                 String tenTrinh = isEmpty(r.getTienTrinh()) ? null : r.getTienTrinh();
                 String soLo = isEmpty(r.getLsx()) ? null : r.getLsx();
@@ -1201,6 +1204,7 @@ public class ProductionService {
                 productMasterRepository.findByMaTpIgnoreCase(r.getMaTp()).ifPresent(pm -> {
                     r.setSlTrungBinh(pm.getNangSuatPl());
                     r.setMayMoc(pm.getMayMocPl());
+                    r.setLoaiSanPham(pm.getLoaiSanPham());
                 });
             }
         });
@@ -1214,6 +1218,7 @@ public class ProductionService {
                 productMasterRepository.findByMaTpIgnoreCase(r.getMaTp()).ifPresent(pm -> {
                     r.setSlTrungBinh(pm.getNangSuatBbc1());
                     r.setMayMoc(pm.getMayMocBbc1());
+                    r.setLoaiSanPham(pm.getLoaiSanPham());
                 });
             }
         });

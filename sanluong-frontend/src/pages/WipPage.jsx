@@ -176,6 +176,17 @@ function MachinePieChart({ data, cfg, knownMachines = KNOWN_MACHINES_PC }) {
 const statusTag = (val) =>
   val ? <Tag color={STATUS_COLORS[val]}>{STATUS_LABELS[val] || val}</Tag> : <Tag>—</Tag>
 
+// Bỏ dấu + lowercase để so khớp "Loại sản phẩm" bất kể cách nhập (Mặt Nạ / mặt nạ / MAT NA...)
+// Dùng codePointAt thay vì regex chứa ký tự dấu literal (0x0300-0x036F = các dấu combining) để tránh lỗi encoding.
+const stripDiacritics = (s) => (s || '')
+  .normalize('NFD')
+  .split('')
+  .filter(ch => { const code = ch.codePointAt(0); return code < 0x0300 || code > 0x036f })
+  .join('')
+  .replace(/đ/gi, 'd')
+  .toLowerCase().trim()
+const isMatNa = (r) => stripDiacritics(r.loaiSanPham) === 'mat na'
+
 const STAGE_CFG = {
   dg: {
     label: 'Hàng dở dang đóng gói',
@@ -238,15 +249,18 @@ const STAGE_CFG = {
     summaryLabel: 'Tổng dở dang BBC1',
     slLabel: 'Năng suất BBC1',
     mayMocLabel: 'Máy Móc BBC1',
-    doDang: r => r.bbc1TrangThai === 'doing' ? (r.soLuong || 0) - (parseInt(r.bbc1_2) || 0) : 0,
-    renderDoDang: (_, r) => r.bbc1TrangThai === 'doing' ? (r.soLuong || 0) - (parseInt(r.bbc1_2) || 0) : 0,
+    // Mặt Nạ không có công đoạn vệ sinh bao bì (BBC1) → không tính là dở dang
+    doDang: r => (r.bbc1TrangThai === 'doing' && !isMatNa(r)) ? (r.soLuong || 0) - (parseInt(r.bbc1_2) || 0) : 0,
+    renderDoDang: (_, r) => (r.bbc1TrangThai === 'doing' && !isMatNa(r)) ? (r.soLuong || 0) - (parseInt(r.bbc1_2) || 0) : 0,
     calcCongDuKien: r => {
-      if (r.bbc1TrangThai !== 'doing') return '—'
+      if (r.bbc1TrangThai !== 'doing' || isMatNa(r)) return '—'
       const ns = parseFloat(r.slTrungBinh)
       const doDang = (r.soLuong || 0) - (parseInt(r.bbc1_2) || 0)
       if (!ns || doDang <= 0) return '—'
       return (doDang / ns).toFixed(4)
     },
+    isExcluded: r => isMatNa(r) && r.bbc1TrangThai === 'doing',
+    excludedLabel: 'Mặt nạ — không có BBC1',
   },
 }
 
@@ -263,6 +277,10 @@ function buildColumns(cfg) {
     {
       title: 'Mã SP', dataIndex: 'maTp', key: 'maTp', width: 90,
       render: v => v ? <span style={{ fontWeight: 600, color: '#595959', fontSize: 12 }}>{v}</span> : '—'
+    },
+    {
+      title: 'Loại SP', dataIndex: 'loaiSanPham', key: 'loaiSanPham', width: 110,
+      render: v => v ? <Tag color="purple" style={{ fontSize: 11 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span>
     },
     {
       title: 'Tiến Trình', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 220,
@@ -286,7 +304,9 @@ function buildColumns(cfg) {
       title: cfg.doDangLabel, key: 'doDang', width: 110, align: 'right',
       render: (_, r) => {
         const v = cfg.doDang(r)
-        return v > 0 ? <span style={{ fontWeight: 700, color: '#1677ff' }}>{v.toLocaleString('vi-VN')}</span> : <span style={{ color: '#d9d9d9' }}>0</span>
+        if (v > 0) return <span style={{ fontWeight: 700, color: '#1677ff' }}>{v.toLocaleString('vi-VN')}</span>
+        if (cfg.isExcluded?.(r)) return <Tag color="default" style={{ fontSize: 10, padding: '0 4px', margin: 0 }}>{cfg.excludedLabel}</Tag>
+        return <span style={{ color: '#d9d9d9' }}>0</span>
       }
     },
     {
@@ -294,6 +314,7 @@ function buildColumns(cfg) {
       render: (_, r) => {
         const v = cfg.calcCongDuKien(r)
         if (v !== '—') return <span style={{ fontWeight: 600, color: '#389e0d' }}>{v}</span>
+        if (cfg.isExcluded?.(r)) return <Tag color="default" style={{ fontSize: 10, padding: '0 4px', margin: 0 }}>{cfg.excludedLabel}</Tag>
         if (cfg.doDang(r) > 0 && !r.slTrungBinh) return <Tag color="warning" style={{ fontSize: 10, padding: '0 4px', margin: 0 }}>Chưa nhập NS</Tag>
         return <span style={{ color: '#d9d9d9' }}>—</span>
       }
@@ -394,6 +415,8 @@ function WipSummaryTab({ onNavigate, tabOffset = 0 }) {
       render: v => v ? <Tag color="blue" style={{ fontWeight: 700, marginRight: 0, fontFamily: 'monospace' }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span> },
     { title: 'Mã SP', dataIndex: 'maTp', key: 'maTp', width: 90,
       render: v => v ? <span style={{ fontWeight: 600, color: '#595959', fontSize: 12 }}>{v}</span> : '—' },
+    { title: 'Loại SP', dataIndex: 'loaiSanPham', key: 'loaiSanPham', width: 110,
+      render: v => v ? <Tag color="purple" style={{ fontSize: 11 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span> },
     { title: 'Tiến Trình', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 220,
       render: v => <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.4 }}>{v}</span> },
     { title: 'Số Lô', dataIndex: 'lsx', key: 'lsx', width: 100,
@@ -401,10 +424,15 @@ function WipSummaryTab({ onNavigate, tabOffset = 0 }) {
     { title: 'Cỡ Lô', dataIndex: 'soLuong', key: 'soLuong', width: 85, align: 'right',
       render: v => v != null ? <span style={{ fontWeight: 500 }}>{Number(v).toLocaleString('vi-VN')}</span> : '—' },
     { title: 'Dở dang', key: '_doDang', width: 105, align: 'right',
-      render: (_, r) => r._doDang > 0 ? <span style={{ fontWeight: 700, color: '#1677ff' }}>{r._doDang.toLocaleString('vi-VN')}</span> : <span style={{ color: '#d9d9d9' }}>0</span> },
+      render: (_, r) => {
+        if (r._doDang > 0) return <span style={{ fontWeight: 700, color: '#1677ff' }}>{r._doDang.toLocaleString('vi-VN')}</span>
+        if (r._stageKey === 'bbc1' && STAGE_CFG.bbc1.isExcluded(r)) return <Tag color="default" style={{ fontSize: 10, padding: '0 4px', margin: 0 }}>{STAGE_CFG.bbc1.excludedLabel}</Tag>
+        return <span style={{ color: '#d9d9d9' }}>0</span>
+      } },
     { title: 'Công dự kiến HT', key: '_cdk', width: 140, align: 'right',
       render: (_, r) => {
         if (r._cdk !== '—') return <span style={{ fontWeight: 600, color: '#389e0d' }}>{r._cdk}</span>
+        if (r._stageKey === 'bbc1' && STAGE_CFG.bbc1.isExcluded(r)) return <Tag color="default" style={{ fontSize: 10, padding: '0 4px', margin: 0 }}>{STAGE_CFG.bbc1.excludedLabel}</Tag>
         if (r._doDang > 0 && !r.slTrungBinh) return <Tag color="warning" style={{ fontSize: 10, padding: '0 4px', margin: 0 }}>Chưa nhập NS</Tag>
         return <span style={{ color: '#d9d9d9' }}>—</span>
       } },
