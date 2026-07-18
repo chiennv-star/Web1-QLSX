@@ -416,17 +416,20 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, schedule?.id, isInfoEditing])
 
-  const handleInfoMaBravoBlur = async (e) => {
+  const handleInfoMaBravoChange = (e) => {
     if (!isInfoEditing) return
     const val = e.target.value?.trim()
+    if (lookupTimer.current) clearTimeout(lookupTimer.current)
     if (!val) { setLookupStatus(null); return }
     setLookupStatus('loading')
-    try {
-      const { data } = await api.get(`/product-master/lookup-by-bravo/${encodeURIComponent(val)}`)
-      infoForm.setFieldsValue({ maSp: data.maTp, tenTrinh: data.tienTrinh })
-      setPcplFromProduct(data.toNhomPcpl || null)
-      setLookupStatus('found')
-    } catch { setLookupStatus('not_found') }
+    lookupTimer.current = setTimeout(async () => {
+      try {
+        const { data } = await api.get(`/product-master/lookup-by-bravo/${encodeURIComponent(val)}`)
+        infoForm.setFieldsValue({ maSp: data.maTp, tenTrinh: data.tienTrinh })
+        setPcplFromProduct(data.toNhomPcpl || null)
+        setLookupStatus('found')
+      } catch { setLookupStatus('not_found') }
+    }, 500)
   }
 
   const handleInfoMaSpBlur = async (e) => {
@@ -2999,7 +3002,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                   <LC accent="#1677ff">🔷 Mã Bravo{isInfoEditing && <span style={{ marginLeft: 2 }}>{infoLookupIcon()}</span>}</LC>
                   <VC>
                     <Form.Item name="maBravo" noStyle>
-                      <Input size="small" onBlur={handleInfoMaBravoBlur} allowClear disabled={!isInfoEditing}
+                      <Input size="small" onChange={handleInfoMaBravoChange} allowClear disabled={!isInfoEditing}
                         style={{ fontWeight: 700, color: '#1677ff', fontFamily: 'monospace', width: '100%' }} />
                     </Form.Item>
                   </VC>
