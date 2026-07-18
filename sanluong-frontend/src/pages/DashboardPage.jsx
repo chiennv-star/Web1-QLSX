@@ -11,6 +11,7 @@ import {
   WarningOutlined, BarChartOutlined, DownOutlined, CalendarOutlined,
   EyeInvisibleOutlined, EyeOutlined, BellOutlined, ExclamationCircleOutlined,
   AccountBookOutlined, UploadOutlined, DownloadOutlined, AppstoreOutlined,
+  LeftOutlined, RightOutlined,
 } from '@ant-design/icons'
 import { Upload } from 'antd'
 import InboxPanel from '../components/InboxPanel'
@@ -1033,9 +1034,17 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho }) {
   const [warnDetail, setWarnDetail] = useState(null) // mục "Tình trạng dở dang" đang xem chi tiết
 
   // ── Sản phẩm mới nhập kho — lọc theo ngày xuất kho thực tế ────────────────
-  const [nkRange, setNkRange] = useState([dayjs(), dayjs()])
+  // Mặc định hiển thị ngày hôm qua (dữ liệu nhập kho hôm nay thường chưa đầy đủ)
+  const [nkRange, setNkRange] = useState([dayjs().subtract(1, 'day'), dayjs().subtract(1, 'day')])
   const [nkList, setNkList] = useState([])
   const [nkLoading, setNkLoading] = useState(false)
+  const shiftNkDay = (dir) => {
+    setNkRange(prev => {
+      const from = prev?.[0] || dayjs()
+      const to   = prev?.[1] || dayjs()
+      return [dayjs(from).add(dir, 'day'), dayjs(to).add(dir, 'day')]
+    })
+  }
   useEffect(() => {
     let cancelled = false
     setNkLoading(true)
@@ -1337,22 +1346,30 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho }) {
               Sản phẩm mới nhập kho
               {nkList.length > 0 && <span style={{ marginLeft: 6, background: '#e0f7fa', color: '#0891b2', borderRadius: 999, padding: '0 6px', fontSize: 10, fontWeight: 700 }}>{nkList.length} lô · {fmtN(nkTotalSl)} SP</span>}
             </SectionLabel>
-            <RangePicker
-              size="small"
-              value={nkRange}
-              onChange={v => setNkRange(v || [null, null])}
-              format="DD/MM/YYYY"
-              allowClear={false}
-              style={{ maxWidth: 230 }}
-              presets={[
-                { label: 'Hôm nay',    value: [dayjs(), dayjs()] },
-                { label: 'Hôm qua',    value: [dayjs().subtract(1, 'day'), dayjs().subtract(1, 'day')] },
-                { label: 'Tuần này',   value: [dayjs().startOf('isoWeek'), dayjs().endOf('isoWeek')] },
-                { label: 'Tuần trước', value: [dayjs().subtract(1, 'week').startOf('isoWeek'), dayjs().subtract(1, 'week').endOf('isoWeek')] },
-                { label: 'Tháng này',  value: [dayjs().startOf('month'), dayjs()] },
-                { label: 'Tháng trước', value: [dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')] },
-              ]}
-            />
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              <Tooltip title="Ngày trước">
+                <Button size="small" icon={<LeftOutlined />} onClick={() => shiftNkDay(-1)} />
+              </Tooltip>
+              <RangePicker
+                size="small"
+                value={nkRange}
+                onChange={v => setNkRange(v || [null, null])}
+                format="DD/MM/YYYY"
+                allowClear={false}
+                style={{ maxWidth: 230 }}
+                presets={[
+                  { label: 'Hôm nay',    value: [dayjs(), dayjs()] },
+                  { label: 'Hôm qua',    value: [dayjs().subtract(1, 'day'), dayjs().subtract(1, 'day')] },
+                  { label: 'Tuần này',   value: [dayjs().startOf('isoWeek'), dayjs().endOf('isoWeek')] },
+                  { label: 'Tuần trước', value: [dayjs().subtract(1, 'week').startOf('isoWeek'), dayjs().subtract(1, 'week').endOf('isoWeek')] },
+                  { label: 'Tháng này',  value: [dayjs().startOf('month'), dayjs()] },
+                  { label: 'Tháng trước', value: [dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')] },
+                ]}
+              />
+              <Tooltip title="Ngày sau">
+                <Button size="small" icon={<RightOutlined />} onClick={() => shiftNkDay(1)} />
+              </Tooltip>
+            </div>
           </div>
           {nkLoading ? (
             <div style={{ color: '#94a3b8', fontSize: 12, textAlign: 'center', padding: '16px 0' }}>Đang tải...</div>
