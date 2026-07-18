@@ -12,6 +12,7 @@ import {
   CalendarOutlined, ShoppingOutlined, HistoryOutlined, SwapOutlined, BarChartOutlined,
   FormOutlined, UnorderedListOutlined, CheckSquareOutlined,
   FullscreenOutlined, FullscreenExitOutlined, DatabaseOutlined,
+  LeftOutlined, RightOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
@@ -2083,6 +2084,17 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
     fetchData(newRange)
   }
 
+  // Dịch chuyển toàn bộ khoảng ngày đang xem lùi/tiến 1 tuần — giữ nguyên độ dài khoảng
+  const shiftWeek = (dir) => {
+    const from = dateRange?.[0] || dayjs()
+    const to   = dateRange?.[1] || dayjs()
+    const newRange = [dayjs(from).add(dir * 7, 'day'), dayjs(to).add(dir * 7, 'day')]
+    setDateRange(newRange)
+    saveDateRange(newRange)
+    setCollapsedWeeks(new Set())
+    fetchData(newRange)
+  }
+
   const toggleWeek = (weekIdx) => {
     setCollapsedWeeks(prev => {
       const next = new Set(prev)
@@ -2244,6 +2256,9 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
         const filterControls = (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
             ...(filterSlot ? { padding: '0 8px' } : { marginBottom: hiddenWeeks.length > 0 ? 6 : 0 }) }}>
+            <Tooltip title="Tuần trước">
+              <Button icon={<LeftOutlined />} onClick={() => shiftWeek(-1)} />
+            </Tooltip>
             <Button
               icon={<CalendarOutlined />}
               onClick={() => setShowDatePicker(v => !v)}
@@ -2256,6 +2271,9 @@ function KhoachContent({ miniPickerMode = false, filterSlot = null }) {
             >
               {dateRange?.[0]?.format('DD/MM/YYYY') || '...'}&nbsp;→&nbsp;{dateRange?.[1]?.format('DD/MM/YYYY') || '...'}
             </Button>
+            <Tooltip title="Tuần sau">
+              <Button icon={<RightOutlined />} onClick={() => shiftWeek(1)} />
+            </Tooltip>
             {showDatePicker && (
               <RangePicker
                 value={dateRange}
