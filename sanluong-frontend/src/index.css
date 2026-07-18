@@ -127,6 +127,12 @@ body {
   background: #00CC99 !important;
 }
 
+/* ── Nhập Kho tab — bảng "Ngày Nhập Kho" — header màu #33CCCC ────────────── */
+.nhapkho-table .ant-table-thead > tr > th {
+  background: #33CCCC !important;
+  color: #ffffff !important;
+}
+
 /* ── Hàng mới thêm vào danh mục — highlight xanh fade-out ───────────────── */
 @keyframes newRowPulse {
   0%   { background-color: #bfdbfe; }

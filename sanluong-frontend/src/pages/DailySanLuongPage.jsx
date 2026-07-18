@@ -5855,6 +5855,15 @@ function NhapKhoTab() {
   const [drawerEntries, setDrawerEntries] = useState([])
   const [drawerDgSl, setDrawerDgSl] = useState(null)
 
+  const filterRef = useRef(null)
+  const [filterH, setFilterH] = useState(0)
+  useEffect(() => {
+    if (!filterRef.current) return
+    const obs = new ResizeObserver(() => setFilterH(filterRef.current?.offsetHeight || 0))
+    obs.observe(filterRef.current)
+    return () => obs.disconnect()
+  }, [])
+
   const drawerRecord = drawerRecId != null ? data.find(r => r.id === drawerRecId) ?? null : null
 
   useEffect(() => {
@@ -6293,7 +6302,7 @@ function NhapKhoTab() {
   return (
     <div style={{ padding: '0 16px 12px' }}>
       {/* Header - sticky */}
-      <div style={{
+      <div ref={filterRef} style={{
         position: 'sticky', top: TAB_BAR_H, zIndex: 9,
         background: '#fff', borderBottom: '2px solid #b2f5f5',
         boxShadow: '0 2px 8px rgba(0,102,102,0.10)',
@@ -6412,11 +6421,12 @@ function NhapKhoTab() {
       <Table
         size="small"
         rowKey="id"
+        className="nhapkho-table"
         columns={columns}
         dataSource={filteredListData}
         loading={loading}
         scroll={{ x: 1100 }}
-        sticky={{ offsetHeader: TAB_BAR_H }}
+        sticky={{ offsetHeader: TAB_BAR_H + filterH }}
         pagination={{ pageSize: 200, showSizeChanger: true, pageSizeOptions: ['100', '200', '500'], showTotal: t => `Tổng ${t} lô`, size: 'small' }}
         rowHoverable
         rowClassName={() => 'nhapkho-row'}
