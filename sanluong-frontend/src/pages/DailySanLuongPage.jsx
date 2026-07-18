@@ -7438,7 +7438,13 @@ function DashboardGDTab() {
     }
   }, [raw, loaiMap, machineMap])
 
-  const barData = GD_TO.map(t => ({ name: t.label, sl: byTo[t.key]?.sl || 0, cong: byTo[t.key]?.cong || 0 }))
+  // PL: chỉ SL/Công của riêng tổ PCPL3 (loại phần đã cộng dồn sang PCPL1 qua pcpl1PlCong)
+  // để nhất quán với bảng "Chi tiết Sản lượng & Công theo Tổ" và modal drill-down
+  const barData = GD_TO.map(t => ({
+    name: t.label,
+    sl:   t.key === 'PL' ? byPlOnly.sl   : (byTo[t.key]?.sl   || 0),
+    cong: t.key === 'PL' ? byPlOnly.cong : (byTo[t.key]?.cong || 0),
+  }))
 
   return (
     <div style={{ padding: '16px 20px', background: '#f0f4f8', minHeight: 'calc(100vh - 50px)' }}>
