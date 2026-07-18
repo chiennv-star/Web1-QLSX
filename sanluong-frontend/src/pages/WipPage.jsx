@@ -352,12 +352,15 @@ function WipSummaryTab({ onNavigate, tabOffset = 0 }) {
 
   const stageRows = STAGE_LIST.map(({ key, label, color, cfg }) => {
     const rows = dataMap[key]
-    const tongDoDang = rows.reduce((sum, r) => sum + cfg.doDang(r), 0)
-    const tongCDK = rows.reduce((sum, r) => {
+    // Chỉ cộng dồn các dòng có dở dang > 0 — khớp với giá trị đã hiển thị ở từng ô
+    // (tránh cộng số âm khi 1 bản ghi bị lệch dữ liệu giữa 2 công đoạn)
+    const positiveRows = rows.filter(r => cfg.doDang(r) > 0)
+    const tongDoDang = positiveRows.reduce((sum, r) => sum + cfg.doDang(r), 0)
+    const tongCDK = positiveRows.reduce((sum, r) => {
       const v = cfg.calcCongDuKien(r)
       return v === '—' ? sum : sum + parseFloat(v)
     }, 0)
-    const soLo = rows.filter(r => cfg.doDang(r) > 0).length
+    const soLo = positiveRows.length
     return { key, label, color, tongDoDang, tongCDK, soLo }
   })
 
