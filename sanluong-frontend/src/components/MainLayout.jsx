@@ -20,6 +20,7 @@ import {
   EyeInvisibleOutlined,
   EyeTwoTone,
   TeamOutlined,
+  ToolOutlined,
 } from '@ant-design/icons'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -295,6 +296,7 @@ export default function MainLayout() {
           ),
         }] : []),
         ...(isAdmin() ? [{ key: '/trash', icon: <DeleteOutlined style={{ color: '#f87171' }} />, label: <span style={{ color: '#f87171' }}>Thùng Rác</span> }] : []),
+        ...(isAdmin() ? [{ key: '/ky-thuat-cong-nghe', icon: <ToolOutlined />, label: 'Tổ Kỹ thuật - Công nghệ' }] : []),
       ]
 
   const userMenu = {

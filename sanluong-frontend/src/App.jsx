@@ -24,6 +24,7 @@ import KeHoachToPage from './pages/KeHoachToPage'
 import PhanTichKeHoachPage from './pages/PhanTichKeHoachPage'
 import ForceChangePasswordPage from './pages/ForceChangePasswordPage'
 import DirectorDashboardPage from './pages/DirectorDashboardPage'
+import KyThuatCongNghePage from './pages/KyThuatCongNghePage'
 import MainLayout from './components/MainLayout'
 
 function PrivateRoute({ children, adminOnly = false, allowedRoles = null }) {
@@ -97,6 +98,11 @@ export default function App() {
         <Route path="giam-doc" element={
           <PrivateRoute allowedRoles={['GD', 'ADMIN', 'TKSX', 'TPSX', 'QUAN_DOC']}>
             <DirectorDashboardPage />
+          </PrivateRoute>
+        } />
+        <Route path="ky-thuat-cong-nghe" element={
+          <PrivateRoute adminOnly>
+            <KyThuatCongNghePage />
           </PrivateRoute>
         } />
       </Route>

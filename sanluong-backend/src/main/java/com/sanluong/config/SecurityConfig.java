@@ -184,6 +184,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/app-settings/**").hasAnyRole(ALL_ROLES)
                 .requestMatchers(HttpMethod.PUT, "/api/app-settings/**").hasAnyRole("ADMIN", "ADMIN_KH", "TKSX", "QUAN_DOC")
 
+                // ── Tổ Kỹ thuật – Công nghệ: chỉ ADMIN ────────────────────────
+                .requestMatchers("/api/ky-thuat/**").hasRole("ADMIN")
+
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
