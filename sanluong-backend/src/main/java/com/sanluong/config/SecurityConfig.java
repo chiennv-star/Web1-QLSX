@@ -115,9 +115,9 @@ public class SecurityConfig {
                 // ── Ảnh lệnh sản xuất ─────────────────────────────────────────
                 .requestMatchers("/api/lsx/anh/**").hasAnyRole(ALL_ROLES)
 
-                // ── Đơn hàng: tất cả xem, ADMIN/TKSX/ADMIN_KH sửa ───────────────
+                // ── Đơn hàng: tất cả xem, ADMIN/TKSX/ADMIN_KH/QUAN_DOC sửa ──────
                 .requestMatchers(HttpMethod.GET, "/api/don-hang/**").hasAnyRole(ALL_ROLES)
-                .requestMatchers("/api/don-hang/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH")
+                .requestMatchers("/api/don-hang/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH", "QUAN_DOC")
 
                 // ── Kế hoạch sản xuất xưởng: ADMIN và TKSX tạo/sửa/xóa ──────
                 .requestMatchers(HttpMethod.GET, "/api/factory-plan/**").hasAnyRole(ALL_ROLES)

@@ -427,8 +427,8 @@ function DonHangModal({ open, editItem, onClose, onSaved, existingMaDonHangs = [
 
 // ── DonHang Detail Modal (edit + Kế Hoạch) ───────────────────────────────────
 function DonHangDetailModal({ open, record, onClose, onSaved }) {
-  const { isAdmin, isAdminKH } = useAuth()
-  const canEdit = isAdmin() || isAdminKH()
+  const { isAdmin, isAdminKH, isQuanDoc } = useAuth()
+  const canEdit = isAdmin() || isAdminKH() || isQuanDoc()
 
   const defaultRnd = useMemo(() => {
     const w = Math.min(window.innerWidth * 0.92, 1400)
@@ -2008,8 +2008,8 @@ function MachineDetailModal({ machine, planRecords, productMasterMap, onClose, o
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function DonHangPage() {
-  const { isAdmin, isAdminKH } = useAuth()
-  const canEdit = isAdmin() || isAdminKH()
+  const { isAdmin, isAdminKH, isQuanDoc } = useAuth()
+  const canEdit = isAdmin() || isAdminKH() || isQuanDoc()
 
   const [data,        setData]       = useState([])
   const [loading,     setLoading]    = useState(false)
