@@ -841,7 +841,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     dirtyEntries.forEach(({ ngay, machineName, rows }) => saveShiftPerf(ngay, machineName, rows))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productMachineCfg.tocDoMayPl, shiftPerfMap])
-  // PCPL2: P = Tổng giờ kế hoạch (sumLT) / Giờ KH máy trong ngày (opts.khGio)
+  // PCPL2: P = Tổng giờ kế hoạch (sumLT) / Tổng giờ máy chạy thực tế trong ngày (opts.runGio)
   // Các công đoạn khác: P = Tốc độ thực tế / Tốc độ lý thuyết (như trước)
   const computeShiftPerfStats = (entries, opts = {}) => {
     let sumLT = 0, sumTT = 0
@@ -850,7 +850,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
       sumTT += e.slThucTe || 0
     })
     const pPct = opts.isPcpl2
-      ? (opts.khGio > 0 && sumLT > 0 ? Math.round(sumLT / opts.khGio * 1000) / 10 : null)
+      ? (opts.runGio > 0 && sumLT > 0 ? Math.round(sumLT / opts.runGio * 1000) / 10 : null)
       : (sumLT > 0 && sumTT > 0 ? Math.round(sumTT / sumLT * 1000) / 10 : null)
     return { sumLT, sumTT, pPct, tonThat: sumLT > 0 ? sumLT - sumTT : 0 }
   }
@@ -2220,7 +2220,10 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                         const spEntries = shiftPerfMap[spKey] || []
                         const isPcpl2ForHint = schedule?.congDoan?.toUpperCase() === 'PCPL2'
                         const khGioMay = machineGioKHMap[spKey] || 0
-                        const { sumLT, sumTT, pPct, tonThat } = computeShiftPerfStats(spEntries, { isPcpl2: isPcpl2ForHint, khGio: khGioMay })
+                        const rtEntriesForSp = allRtEntries.filter(e => e.tenMay === machineName || (!e.tenMay && mIdx === 0))
+                        const { runMin: runMinForSp } = computeRtStats(rtEntriesForSp)
+                        const runGioMay = runMinForSp / 60
+                        const { sumLT, sumTT, pPct, tonThat } = computeShiftPerfStats(spEntries, { isPcpl2: isPcpl2ForHint, runGio: runGioMay })
                         const isSavingSP = shiftPerfSaving.has(spKey)
                         const isDirtySP = shiftPerfDirtyDays.has(spKey)
                         const pColor = pPct == null ? '#9ca3af' : pPct >= 95 ? '#16a34a' : pPct >= 80 ? '#d97706' : '#dc2626'
@@ -2275,7 +2278,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                     )}
                                     {spEntries.map((row, idx) => {
                                       const pCa = isPcpl2
-                                        ? (row.slLyThuyet != null && khGioMay > 0 ? Math.round(row.slLyThuyet / khGioMay * 1000) / 10 : null)
+                                        ? (row.slLyThuyet != null && runGioMay > 0 ? Math.round(row.slLyThuyet / runGioMay * 1000) / 10 : null)
                                         : (row.slLyThuyet > 0 && row.slThucTe != null ? Math.round(row.slThucTe / row.slLyThuyet * 1000) / 10 : null)
                                       return (
                                         <tr key={row._id} style={{ background: idx % 2 === 0 ? '#fff' : '#fffbeb' }}>
@@ -2339,7 +2342,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                   if (isPcpl2) return [
                                     { label: 'Tổng giờ KH', val: sumLT > 0 ? Number(sumLT).toLocaleString('vi-VN') + ' giờ' : '—', color: '#1e3a5f' },
                                     { label: 'Tổng số mẻ TH', val: sumTT > 0 ? Number(sumTT).toLocaleString('vi-VN') + ' mẻ' : '—', color: '#16a34a' },
-                                    { label: 'KH máy', val: khGioMay > 0 ? Number(khGioMay).toLocaleString('vi-VN') + ' giờ' : '—', color: '#0369a1' },
+                                    { label: 'Giờ chạy máy', val: runGioMay > 0 ? Number(runGioMay.toFixed(2)).toLocaleString('vi-VN') + ' giờ' : '—', color: '#0369a1' },
                                     { label: 'P ngày', val: pPct != null ? `${pPct}%` : '—', color: pColor },
                                   ]
                                   const unit = ' sp/phút'
