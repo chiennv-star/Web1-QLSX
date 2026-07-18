@@ -1028,7 +1028,7 @@ function HieuSuatTab({ data = [], loading = false, pagination = {}, onPagination
 }
 
 // ── ProductionOverview — tab Tổng quan ───────────────────────────────────────
-function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho }) {
+function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho, headerOffset = 90 }) {
   const fmtN = v => v ? Number(v).toLocaleString('vi-VN') : '0'
   const pct  = (a, b) => b > 0 ? Math.min(100, Math.round(a / b * 100)) : 0
   const [warnDetail, setWarnDetail] = useState(null) // mục "Tình trạng dở dang" đang xem chi tiết
@@ -1258,8 +1258,13 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho }) {
   return (
     <div style={{ background: 'linear-gradient(135deg, #f0f9ff 0%, #e8f5f0 100%)', padding: '12px 14px 14px' }}>
 
-      {/* ── Row 1: KPI ── */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+      {/* ── Row 1: KPI (cố định khi cuộn) ── */}
+      <div style={{
+        display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap',
+        position: 'sticky', top: headerOffset, zIndex: 8,
+        background: 'linear-gradient(135deg, #f0f9ff 0%, #e8f5f0 100%)',
+        paddingTop: 8, paddingBottom: 6, marginTop: -8,
+      }}>
         <KpiCard label="ĐANG SẢN XUẤT"  value={data.length}        sub="lô"           bg="#006666"  icon="🏭" />
         <KpiCard label="TỔNG KẾ HOẠCH"  value={fmtN(totalKH)}      sub="sản phẩm"     bg="#1d4ed8"  badge={overallPct} icon="📋" />
         <KpiCard label="ĐÃ NHẬP KHO"    value={nhapKhoRows.length}  sub={`${fmtN(totalNhapKho)} SP`} bg="#0891b2" icon="📦" />
@@ -2632,7 +2637,7 @@ export default function DashboardPage() {
           {
             key: 'tong_quan',
             label: <Space size={4}><AppstoreOutlined />Tổng quan</Space>,
-            children: <ProductionOverview data={data} doneTotal={donePagination.total} deltaMap={deltaMap} getNhapKho={getNhapKho} />,
+            children: <ProductionOverview data={data} doneTotal={donePagination.total} deltaMap={deltaMap} getNhapKho={getNhapKho} headerOffset={headerOffset} />,
           },
           {
             key: 'list',
