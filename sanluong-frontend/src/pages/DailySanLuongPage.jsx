@@ -5288,7 +5288,7 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
 
 // ─── NhapKhoTongHopTable ─────────────────────────────────────────────────────
 
-function NhapKhoTongHopTable({ data, loading, onRowClick }) {
+function NhapKhoTongHopTable({ data, loading, onRowClick, filterH = 0 }) {
   const fmtN = v => v != null ? Number(v).toLocaleString('vi-VN') : '—'
 
   const columns = [
@@ -5369,11 +5369,12 @@ function NhapKhoTongHopTable({ data, loading, onRowClick }) {
     <Table
       size="small"
       rowKey="id"
+      className="nhapkho-table"
       columns={columns}
       dataSource={data}
       loading={loading}
       scroll={{ x: 1150 }}
-      sticky={{ offsetHeader: TAB_BAR_H }}
+      sticky={{ offsetHeader: TAB_BAR_H + filterH }}
       pagination={{ pageSize: 200, showSizeChanger: true, pageSizeOptions: ['100', '200', '500'], showTotal: t => `Tổng ${t} lô`, size: 'small' }}
       rowClassName={r => (r.totalNhapKho || 0) === 0 ? 'nk-tonghop-chua' : ''}
       onRow={record => ({
@@ -6416,7 +6417,7 @@ function NhapKhoTab() {
           canEdit={canEditNhapKhoTarget()}
         />
       ) : viewMode === 'tong-hop' ? (
-        <NhapKhoTongHopTable data={filteredTongHopData} loading={tongHopLoading} onRowClick={setTongHopDrawer} />
+        <NhapKhoTongHopTable data={filteredTongHopData} loading={tongHopLoading} onRowClick={setTongHopDrawer} filterH={filterH} />
       ) : (
       <Table
         size="small"
