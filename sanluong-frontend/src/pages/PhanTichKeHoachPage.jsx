@@ -179,8 +179,8 @@ export default function PhanTichKeHoachPage() {
     })
   }, [filteredRaw])
 
-  const fetchData = useCallback(async (range = dateRange) => {
-    setLoading(true)
+  const fetchData = useCallback(async (range = dateRange, { silent = false } = {}) => {
+    if (!silent) setLoading(true)
     try {
       const params = { page: 0, size: 3000, source: 'PLAN' }
       if (range?.[0]) params.fromDate = range[0].format('YYYY-MM-DD')
@@ -194,11 +194,19 @@ export default function PhanTichKeHoachPage() {
           .then(({ data: pm }) => setProductMap(pm))
           .catch(() => {})
       }
-    } catch { message.error('Không thể tải dữ liệu phân tích kế hoạch') }
-    finally { setLoading(false) }
+    } catch { if (!silent) message.error('Không thể tải dữ liệu phân tích kế hoạch') }
+    finally { if (!silent) setLoading(false) }
   }, [dateRange])
 
   useEffect(() => { fetchData() }, []) // eslint-disable-line
+
+  // Tự cập nhật theo nhịp chung của app (giống bảng Kế hoạch) — khi Kế hoạch thay đổi,
+  // Phân tích kế hoạch (cùng nguồn /work-schedule?source=PLAN) sẽ đồng bộ trong vòng 2s, không chớp loading
+  useEffect(() => {
+    const handler = () => fetchData(undefined, { silent: true })
+    window.addEventListener('app:silent-refresh', handler)
+    return () => window.removeEventListener('app:silent-refresh', handler)
+  }, [fetchData])
 
   // ── Group by SP / lô across stages (dùng dedupedByLo) ──────────────────────
   const groupedData = useMemo(() => {
