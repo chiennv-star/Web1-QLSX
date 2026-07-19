@@ -1062,7 +1062,7 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho, header
 
   // ── Hàng dở dang — lấy trực tiếp từ nguồn dữ liệu WIP (giống trang "Hàng dở dang" / Sản lượng tổ) ──
   // để 2 nơi luôn khớp số, thay vì tự suy ra từ soLuong/slPc/pcPl/dg2/bbc1_2 của danh sách "đang sản xuất"
-  const [wipData, setWipData] = useState({ dg: [], pcpl1: [], pcpl2: [], pl: [], bbc1: [] })
+  const [wipData, setWipData] = useState({ dg: [], pcpl1: [], pcpl2: [], pcKhac: [], pl: [], bbc1: [] })
   useEffect(() => {
     let cancelled = false
     Promise.all([
@@ -1077,6 +1077,9 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho, header
         dg: dgRes.data,
         pcpl1: pcAll.filter(r => r.toNhom === 'PCPL1'),
         pcpl2: pcAll.filter(r => r.toNhom === 'PCPL2'),
+        // Pha chế: WIP-PC không gán tổ PCPL1/PCPL2 (toNhom rỗng hoặc giá trị khác) —
+        // trước đây bị bỏ sót hoàn toàn khỏi tổng PC, giờ gộp riêng để không mất số liệu
+        pcKhac: pcAll.filter(r => r.toNhom !== 'PCPL1' && r.toNhom !== 'PCPL2'),
         pl: plRes.data,
         bbc1: bbc1Res.data,
       })
@@ -1093,7 +1096,7 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho, header
   const totalSlPl    = data.reduce((s, r) => s + (parseInt(r.pcPl)   || 0), 0)
   const totalSlDg    = data.reduce((s, r) => s + (parseInt(r.dg2)    || 0), 0)
   const totalSlBbc1  = data.reduce((s, r) => s + (parseInt(r.bbc1_2) || 0), 0)
-  const ddPc   = sumDoDang(wipData.pcpl1, STAGE_CFG.pc) + sumDoDang(wipData.pcpl2, STAGE_CFG.pc)
+  const ddPc   = sumDoDang(wipData.pcpl1, STAGE_CFG.pc) + sumDoDang(wipData.pcpl2, STAGE_CFG.pc) + sumDoDang(wipData.pcKhac, STAGE_CFG.pc)
   const ddPl   = sumDoDang(wipData.pl, STAGE_CFG.pl)
   const ddDg   = sumDoDang(wipData.dg, STAGE_CFG.dg)
   const ddBbc1 = sumDoDang(wipData.bbc1, STAGE_CFG.bbc1)
