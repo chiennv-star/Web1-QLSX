@@ -27,6 +27,7 @@ const { RangePicker } = DatePicker
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/axios'
+import { STAGE_CFG } from './WipPage'
 
 const { Option } = Select
 
@@ -1059,6 +1060,31 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho, header
   }, [nkRange])
   const nkTotalSl = nkList.reduce((s, r) => s + (r.tpNhapKho || 0), 0)
 
+  // ── Hàng dở dang — lấy trực tiếp từ nguồn dữ liệu WIP (giống trang "Hàng dở dang" / Sản lượng tổ) ──
+  // để 2 nơi luôn khớp số, thay vì tự suy ra từ soLuong/slPc/pcPl/dg2/bbc1_2 của danh sách "đang sản xuất"
+  const [wipData, setWipData] = useState({ dg: [], pcpl1: [], pcpl2: [], pl: [], bbc1: [] })
+  useEffect(() => {
+    let cancelled = false
+    Promise.all([
+      api.get('/production/wip-dg'),
+      api.get('/production/wip-pc'),
+      api.get('/production/wip-pl'),
+      api.get('/production/wip-bbc1'),
+    ]).then(([dgRes, pcRes, plRes, bbc1Res]) => {
+      if (cancelled) return
+      const pcAll = pcRes.data
+      setWipData({
+        dg: dgRes.data,
+        pcpl1: pcAll.filter(r => r.toNhom === 'PCPL1'),
+        pcpl2: pcAll.filter(r => r.toNhom === 'PCPL2'),
+        pl: plRes.data,
+        bbc1: bbc1Res.data,
+      })
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [])
+  const sumDoDang = (rows, cfg) => rows.reduce((s, r) => { const v = cfg.doDang(r); return v > 0 ? s + v : s }, 0)
+
   // ── KPI ──────────────────────────────────────────────────────────────────
   const totalKH      = data.reduce((s, r) => s + (r.soLuong || 0), 0)
   const loHangLoi     = data.filter(r => Number(r.hlSoLuongTraVe) > 0)
@@ -1067,10 +1093,10 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho, header
   const totalSlPl    = data.reduce((s, r) => s + (parseInt(r.pcPl)   || 0), 0)
   const totalSlDg    = data.reduce((s, r) => s + (parseInt(r.dg2)    || 0), 0)
   const totalSlBbc1  = data.reduce((s, r) => s + (parseInt(r.bbc1_2) || 0), 0)
-  const ddPc   = data.reduce((s, r) => s + Math.max(0, (r.soLuong||0) - (parseInt(r.slPc)||0)), 0)
-  const ddPl   = data.reduce((s, r) => s + Math.max(0, (parseInt(r.slPc)||0) - (parseInt(r.pcPl)||0)), 0)
-  const ddDg   = data.reduce((s, r) => s + Math.max(0, (parseInt(r.pcPl)||0) - (parseInt(r.dg2)||0)), 0)
-  const ddBbc1 = data.reduce((s, r) => s + Math.max(0, (r.soLuong||0) - (parseInt(r.bbc1_2)||0)), 0)
+  const ddPc   = sumDoDang(wipData.pcpl1, STAGE_CFG.pc) + sumDoDang(wipData.pcpl2, STAGE_CFG.pc)
+  const ddPl   = sumDoDang(wipData.pl, STAGE_CFG.pl)
+  const ddDg   = sumDoDang(wipData.dg, STAGE_CFG.dg)
+  const ddBbc1 = sumDoDang(wipData.bbc1, STAGE_CFG.bbc1)
 
   // ── Nhập kho ─────────────────────────────────────────────────────────────
   const nhapKhoRows = getNhapKho

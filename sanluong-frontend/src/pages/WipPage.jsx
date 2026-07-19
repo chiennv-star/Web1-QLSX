@@ -187,7 +187,7 @@ const stripDiacritics = (s) => (s || '')
   .toLowerCase().trim()
 const isMatNa = (r) => stripDiacritics(r.loaiSanPham) === 'mat na'
 
-const STAGE_CFG = {
+export const STAGE_CFG = {
   dg: {
     label: 'Hàng dở dang đóng gói',
     endpoint: '/production/wip-dg',
