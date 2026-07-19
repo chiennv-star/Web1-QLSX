@@ -5364,7 +5364,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         return (
           <div
             onClick={canEdit ? e => { e.stopPropagation(); setInlineEdit({ id: record.id, field: 'tpNhapKho' }) } : undefined}
-            style={{ cursor: canEdit ? 'pointer' : 'default', textAlign: 'right' }}
+            style={{ cursor: canEdit ? 'pointer' : 'default', textAlign: 'center' }}
           >
             {v != null
               ? <span style={{ fontWeight: 700, color: '#15803d' }}>{Number(v).toLocaleString('vi-VN')}</span>
@@ -5376,7 +5376,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       },
     },
     {
-      title: 'Năng suất', key: 'ns', width: 165, align: 'right',
+      title: 'Năng suất', key: 'ns', width: 165, align: 'center',
       render: (_, record) => {
         const slField = SL_FIELD_MAP[congDoan]
         const congField = CONG_FIELD_MAP[congDoan]
@@ -7805,18 +7805,18 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
       render: v => <span style={{ fontFamily: 'monospace', color: '#595959' }}>{v || '—'}</span>
     },
     {
-      title: 'KL/ĐV (g)', key: 'khoiLuong', width: 90, align: 'right',
+      title: 'KL/ĐV (g)', key: 'khoiLuong', width: 90, align: 'center',
       render: (_, r) => {
         const v = klMap[r.maBravo]
         return v != null ? <span style={{ color: '#722ed1' }}>{Number(v).toLocaleString('vi-VN')}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
       }
     },
     {
-      title: 'Cỡ lô', dataIndex: 'coLo', key: 'coLo', width: 80, align: 'right',
+      title: 'Cỡ lô', dataIndex: 'coLo', key: 'coLo', width: 80, align: 'center',
       render: v => fmtNum(v)
     },
     {
-      title: 'Số Lượng', key: 'slDone', width: 105, align: 'right',
+      title: 'Số Lượng', key: 'slDone', width: 105, align: 'center',
       render: (_, r) => {
         const { sl } = getSlCong(r)
         return sl != null
@@ -7825,7 +7825,7 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
       }
     },
     {
-      title: 'Hiệu suất', key: 'hieuSuatDone', width: 90, align: 'right',
+      title: 'Hiệu suất', key: 'hieuSuatDone', width: 90, align: 'center',
       hidden: congDoan !== 'PL',
       render: (_, r) => {
         const { sl } = getSlCong(r)
@@ -7838,7 +7838,7 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
       }
     },
     {
-      title: 'Công', key: 'congDone', width: 95, align: 'right',
+      title: 'Công', key: 'congDone', width: 95, align: 'center',
       render: (_, r) => {
         const { cong } = getSlCong(r)
         return cong != null
@@ -7847,7 +7847,7 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
       }
     },
     {
-      title: 'Năng suất', key: 'nangSuat', width: 95, align: 'right',
+      title: 'Năng suất', key: 'nangSuat', width: 95, align: 'center',
       render: (_, r) => {
         const { sl, cong } = getSlCong(r)
         const slV = Number(sl), congV = Number(cong)
@@ -7860,7 +7860,7 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
       }
     },
     {
-      title: 'QA lấy mẫu', dataIndex: 'qaLayMau', key: 'qaLayMau', width: 95, align: 'right',
+      title: 'QA lấy mẫu', dataIndex: 'qaLayMau', key: 'qaLayMau', width: 95, align: 'center',
       render: v => v != null && v !== 0 && v !== ''
         ? <span style={{ color: '#0369a1', fontWeight: 600 }}>{Number(v).toLocaleString('vi-VN')}</span>
         : <span style={{ color: '#d9d9d9' }}>—</span>
@@ -8105,7 +8105,7 @@ function HiddenTab({ congDoan, toNhom, onUnhide, onCountChange, headerOffset = 8
       render: v => <span style={{ fontFamily: 'monospace', color: '#595959' }}>{v || '—'}</span>
     },
     {
-      title: 'Cỡ lô', dataIndex: 'coLo', key: 'coLo', width: 80, align: 'right',
+      title: 'Cỡ lô', dataIndex: 'coLo', key: 'coLo', width: 80, align: 'center',
       render: v => fmtNum(v)
     },
     {
@@ -8368,7 +8368,7 @@ export default function WorkSchedulePage() {
       ...colSearch('soLo'),
     },
     {
-      title: 'Cỡ lô', dataIndex: 'coLo', key: 'coLo', width: 80, align: 'right',
+      title: 'Cỡ lô', dataIndex: 'coLo', key: 'coLo', width: 80, align: 'center',
       sorter: (a, b) => (a.coLo ?? 0) - (b.coLo ?? 0),
     },
     {

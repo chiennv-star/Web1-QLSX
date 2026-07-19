@@ -4106,6 +4106,147 @@ const GRP_HDR = (label, bg) => ({
   onHeaderCell: () => ({ style: { background: bg, color: '#fff', fontWeight: 700, textAlign: 'center', whiteSpace: 'nowrap' } }),
 })
 
+const MU_TINH_TRANG_LABEL = { done: 'Done', doing: 'Doing' }
+
+// ─── MachineUsageDetailModal — chi tiết 1 dòng bảng Chỉ số A, lấy từ Sản lượng tổ / Chi tiết sản xuất ──
+function MachineUsageDetailModal({ open, row, onClose }) {
+  const wsList = row?.workScheduleInfos || []
+  const [activeId, setActiveId] = useState(null)
+  const [detail, setDetail] = useState(null)
+  const [runtimeLogs, setRuntimeLogs] = useState([])
+  const [shiftPerf, setShiftPerf] = useState([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (open) setActiveId(wsList[0]?.id ?? null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, row])
+
+  useEffect(() => {
+    if (!open || !activeId || !row) return
+    setLoading(true)
+    Promise.all([
+      api.get(`/work-schedule/${activeId}`),
+      api.get('/machine-runtime', { params: { workScheduleId: activeId, ngay: row.ngay } }),
+      api.get('/machine-shift-perf', { params: { workScheduleId: activeId, ngay: row.ngay, tenMay: row.may } }),
+    ])
+      .then(([wsRes, rtRes, spRes]) => {
+        setDetail(wsRes.data)
+        setRuntimeLogs(rtRes.data || [])
+        setShiftPerf(spRes.data || [])
+      })
+      .catch(() => message.error('Không thể tải chi tiết bản ghi'))
+      .finally(() => setLoading(false))
+  }, [open, activeId, row])
+
+  if (!row) return null
+
+  const LC = ({ children }) => (
+    <div style={{ padding: '7px 10px', background: '#f1f5f9', fontWeight: 600, fontSize: 12, color: '#64748b', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0', display: 'flex', alignItems: 'center' }}>{children}</div>
+  )
+  const VC = ({ children, last, span }) => (
+    <div style={{ padding: '5px 8px', borderBottom: '1px solid #e2e8f0', ...(last ? {} : { borderRight: '1px solid #e2e8f0' }), display: 'flex', alignItems: 'center', ...(span ? { gridColumn: `span ${span}` } : {}) }}>{children}</div>
+  )
+  const th = { padding: '6px 8px', border: '1px solid #94a3b8', fontWeight: 700, fontSize: 11, textAlign: 'center', background: '#f1f5f9', color: '#1e293b' }
+  const td = { padding: '6px 8px', border: '1px solid #e2e8f0', fontSize: 12 }
+
+  return (
+    <Modal open={open} onCancel={onClose} footer={null} title={null} width={880} destroyOnHidden styles={{ body: { padding: 0 } }}>
+      <div style={{ background: '#1e4570', padding: '11px 18px' }}>
+        <div style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>
+          ⚙ {detail?.tenTrinh || row.may}
+        </div>
+        <div style={{ color: '#93c5fd', fontSize: 11, marginTop: 3, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {detail?.maBravo && <span>Bravo: <b>{detail.maBravo}</b></span>}
+          {detail?.maSp && <span>SP: <b>{detail.maSp}</b></span>}
+          <span>Ngày: <b>{dayjs(row.ngay).format('DD/MM/YYYY')}</b></span>
+          <span>Máy: <b>{row.may}</b></span>
+        </div>
+      </div>
+
+      {wsList.length > 1 && (
+        <Tabs
+          size="small"
+          activeKey={activeId != null ? String(activeId) : undefined}
+          onChange={k => setActiveId(Number(k))}
+          items={wsList.map(w => ({ key: String(w.id), label: `Lô ${w.soLo || w.id}` }))}
+          style={{ padding: '4px 16px 0' }}
+        />
+      )}
+
+      <Spin spinning={loading}>
+        <div style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 110px 1fr', border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden', marginBottom: 18 }}>
+            <LC>Mã Bravo</LC><VC><span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{detail?.maBravo || '—'}</span></VC>
+            <LC>Mã SP</LC><VC last>{detail?.maSp || '—'}</VC>
+            <LC>Số Lô</LC><VC><span style={{ fontFamily: 'monospace' }}>{detail?.soLo || '—'}</span></VC>
+            <LC>Mã ĐH</LC><VC last><span style={{ fontFamily: 'monospace', color: '#7c3aed' }}>{detail?.maDonHang || '—'}</span></VC>
+            <LC>Cỡ Lô</LC><VC>{detail?.coLo != null ? Number(detail.coLo).toLocaleString('vi-VN') : '—'}</VC>
+            <LC>Tình Trạng</LC><VC last>{detail?.tinhTrang ? (MU_TINH_TRANG_LABEL[detail.tinhTrang] || detail.tinhTrang) : '—'}</VC>
+            <LC>Tổ/Nhóm</LC><VC><Tag color="blue" style={{ marginRight: 0 }}>{detail?.toNhom || row.toNhom || '—'}</Tag></VC>
+            <LC>Phòng SX</LC><VC last>{detail?.phongSanXuat || '—'}</VC>
+            <LC>Trưởng ca</LC><VC>{detail?.truongCa || '—'}</VC>
+            <LC>Hỗ trợ</LC><VC last>{detail?.nguoiHoTro || '—'}</VC>
+            {detail?.saiLech && <><LC>⚠ Sai lệch</LC><VC span={3} last>{detail.saiLech}</VC></>}
+            {detail?.chuY && <><LC>💬 Chú ý</LC><VC span={3} last>{detail.chuY}</VC></>}
+          </div>
+
+          <div style={{ fontWeight: 700, fontSize: 13, color: '#1e3a5f', marginBottom: 6 }}>⚙ Máy Thực Hiện</div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 18 }}>
+            <thead>
+              <tr>
+                {['Từ giờ', 'Đến giờ', 'Trạng thái', 'Lý do dừng', 'Ghi chú'].map(h => <th key={h} style={th}>{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {runtimeLogs.length === 0 ? (
+                <tr><td colSpan={5} style={{ ...td, textAlign: 'center', color: '#94a3b8' }}>Chưa có dữ liệu</td></tr>
+              ) : runtimeLogs.map(r => (
+                <tr key={r.id}>
+                  <td style={{ ...td, textAlign: 'center' }}>{r.tuGio || '—'}</td>
+                  <td style={{ ...td, textAlign: 'center' }}>{r.denGio || '—'}</td>
+                  <td style={{ ...td, textAlign: 'center' }}>
+                    <Tag color={r.trangThai === 'Chạy máy' ? 'success' : 'error'} style={{ marginRight: 0 }}>{r.trangThai || '—'}</Tag>
+                  </td>
+                  <td style={td}>{r.lyDo || '—'}</td>
+                  <td style={td}>{r.ghiChu || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div style={{ fontWeight: 700, fontSize: 13, color: '#1e3a5f', marginBottom: 6 }}>⚡ Sản lượng theo ca</div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['Ca / Lô', 'Tốc độ LT (sp/phút)', 'Tốc độ TT (sp/phút)', 'P ca (%)', 'Nguyên nhân', 'Ghi chú'].map(h => <th key={h} style={th}>{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {shiftPerf.length === 0 ? (
+                <tr><td colSpan={6} style={{ ...td, textAlign: 'center', color: '#94a3b8' }}>Chưa có dữ liệu</td></tr>
+              ) : shiftPerf.map(r => {
+                const lt = Number(r.slLyThuyet) || 0, tt = Number(r.slThucTe) || 0
+                const p = lt > 0 ? Math.round(tt / lt * 100) : null
+                return (
+                  <tr key={r.id}>
+                    <td style={{ ...td, textAlign: 'center' }}>{r.caLo || '—'}</td>
+                    <td style={{ ...td, textAlign: 'right' }}>{r.slLyThuyet != null ? Number(r.slLyThuyet).toLocaleString('vi-VN') : '—'}</td>
+                    <td style={{ ...td, textAlign: 'right', color: '#1d4ed8', fontWeight: 600 }}>{r.slThucTe != null ? Number(r.slThucTe).toLocaleString('vi-VN') : '—'}</td>
+                    <td style={{ ...td, textAlign: 'center', fontWeight: 700, color: p == null ? '#94a3b8' : p >= 95 ? '#16a34a' : p >= 80 ? '#d97706' : '#dc2626' }}>{p != null ? `${p}%` : '—'}</td>
+                    <td style={td}>{r.nguyenNhan || '—'}</td>
+                    <td style={td}>{r.ghiChu || '—'}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Spin>
+    </Modal>
+  )
+}
+
 function MachineUsageTab() {
   const [dateRange, setDateRange] = useState([dayjs().subtract(6, 'day'), dayjs()])
   const [loading, setLoading] = useState(false)
@@ -4114,6 +4255,7 @@ function MachineUsageTab() {
   const [mayFilter, setMayFilter] = useState([])
   const [toNhomFilter, setToNhomFilter] = useState([])
   const [activeQuickRange, setActiveQuickRange] = useState('Tuần này')
+  const [detailRow, setDetailRow] = useState(null)
 
   const fetchData = useCallback(async (range = dateRange) => {
     setLoading(true)
@@ -4370,9 +4512,15 @@ function MachineUsageTab() {
                 {filteredMachineA.map((row, idx) => {
                   const avail = row.availPct
                   const rowBg = idx % 2 === 0 ? '#fff' : '#f8fafc'
+                  const hasDetail = (row.workScheduleInfos?.length || 0) > 0
                   const td = (extra = {}) => ({ padding: '6px 6px', border: '1px solid #e2e8f0', background: rowBg, overflow: 'hidden', textOverflow: 'ellipsis', ...extra })
                   return (
-                    <tr key={row.key}>
+                    <tr
+                      key={row.key}
+                      onClick={hasDetail ? () => setDetailRow(row) : undefined}
+                      title={hasDetail ? 'Xem chi tiết sản xuất' : undefined}
+                      style={{ cursor: hasDetail ? 'pointer' : 'default' }}
+                    >
                       <td style={td({ textAlign: 'center', color: '#94a3b8', fontSize: 11 })}>{idx + 1}</td>
                       <td style={td({ whiteSpace: 'nowrap', fontWeight: 500 })}>{dayjs(row.ngay).isValid() ? dayjs(row.ngay).format('DD/MM/YYYY') : row.ngay}</td>
                       <td style={td({ fontWeight: 600, color: '#1e3a5f' })}>{row.may || '—'}</td>
@@ -4491,6 +4639,8 @@ function MachineUsageTab() {
           </table>
         </div>
       )}
+
+      <MachineUsageDetailModal open={!!detailRow} row={detailRow} onClose={() => setDetailRow(null)} />
     </div>
   )
 }
