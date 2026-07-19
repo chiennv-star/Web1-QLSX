@@ -249,6 +249,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
   const [machineRuntimeSaving, setMachineRuntimeSaving] = useState(new Set())
   const [pcplNangSuatMe, setPcplNangSuatMe] = useState([])  // [{soMe, nangSuat}] cho PCPL2
   const [pcplLoaiSanPham, setPcplLoaiSanPham] = useState(null) // loại SP mặc định từ product master cho PCPL2
+  const [khoiLuongDv, setKhoiLuongDv] = useState(null) // KL/ĐV (g) từ Quản lý danh mục, tra theo Mã Bravo
   const [productMachineCfg, setProductMachineCfg] = useState({}) // { mayMocPc, tocDoMayPc, mayMocPl, tocDoMayPl, mayMocBbc1, tocDoMayBbc1, mayMocDg, tocDoMayDg } — cho auto-fill Tốc độ LT các tổ không phải PCPL2
   const [loaiSpOptions, setLoaiSpOptions] = useState([])    // distinct loại SP cho PCPL2
   const [machineRuntimeDirtyDays, setMachineRuntimeDirtyDays] = useState(new Set())
@@ -386,6 +387,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
         setNsTrungBinh(val != null ? Number(val) : null)
         setPcplFromProduct(r.data.toNhomPcpl || null)
         setPcplLoaiSanPham(r.data.loaiSanPham || null)
+        setKhoiLuongDv(r.data.khoiLuong ?? null)
         try { setPcplNangSuatMe(JSON.parse(r.data.nangSuatPcMe || '[]')) } catch { setPcplNangSuatMe([]) }
         setProductMachineCfg({
           mayMocPc: r.data.mayMocPc || null, tocDoMayPc: r.data.tocDoMayPc ?? null,
@@ -427,6 +429,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
         const { data } = await api.get(`/product-master/lookup-by-bravo/${encodeURIComponent(val)}`)
         infoForm.setFieldsValue({ maSp: data.maTp, tenTrinh: data.tienTrinh })
         setPcplFromProduct(data.toNhomPcpl || null)
+        setKhoiLuongDv(data.khoiLuong ?? null)
         setLookupStatus('found')
       } catch { setLookupStatus('not_found') }
     }, 500)
@@ -3026,6 +3029,14 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                         parser={v => v ? v.replace(/[^\d]/g, '') : 0}
                         style={{ width: '100%', fontWeight: 700 }} />
                     </Form.Item>
+                  </VC>
+
+                  {/* Row 1b — KL/ĐV (tra tự động theo Mã Bravo từ Quản lý danh mục, chỉ hiển thị) */}
+                  <LC accent="#722ed1">⚖️ KL/ĐV (g)</LC>
+                  <VC span={7} style={{ borderRight: 'none' }}>
+                    <span style={{ fontWeight: 700, color: '#722ed1' }}>
+                      {khoiLuongDv != null ? Number(khoiLuongDv).toLocaleString('vi-VN') : '—'}
+                    </span>
                   </VC>
 
                   {/* Row 2 — Tiến trình + Mã ĐH */}
@@ -7680,6 +7691,7 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
   const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 1000, total: 0 })
   const [loaiSpMap, setLoaiSpMap] = useState({})
+  const [klMap, setKlMap] = useState({}) // maBravo → khoiLuong (KL/ĐV, g) từ Quản lý danh mục
   const filtersRef = useRef(filters)
   useEffect(() => { filtersRef.current = filters }, [filters])
 
@@ -7711,6 +7723,16 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
             const loaiMap = {}
             codes.forEach(maSp => { if (batchMap[maSp]?.loaiSanPham) loaiMap[maSp] = batchMap[maSp].loaiSanPham })
             setLoaiSpMap(loaiMap)
+          })
+          .catch(() => {})
+      }
+      const bravoCodes = [...new Set(rows.map(r => r.maBravo).filter(Boolean))]
+      if (bravoCodes.length > 0) {
+        api.get('/product-master/lookup-batch', { params: { codes: bravoCodes } })
+          .then(({ data: batchMap }) => {
+            const klM = {}
+            bravoCodes.forEach(mb => { if (batchMap[mb]?.khoiLuong != null) klM[mb] = batchMap[mb].khoiLuong })
+            setKlMap(klM)
           })
           .catch(() => {})
       }
@@ -7781,6 +7803,13 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
     {
       title: 'Số lô', dataIndex: 'soLo', key: 'soLo', width: 90,
       render: v => <span style={{ fontFamily: 'monospace', color: '#595959' }}>{v || '—'}</span>
+    },
+    {
+      title: 'KL/ĐV (g)', key: 'khoiLuong', width: 90, align: 'right',
+      render: (_, r) => {
+        const v = klMap[r.maBravo]
+        return v != null ? <span style={{ color: '#722ed1' }}>{Number(v).toLocaleString('vi-VN')}</span> : <span style={{ color: '#d9d9d9' }}>—</span>
+      }
     },
     {
       title: 'Cỡ lô', dataIndex: 'coLo', key: 'coLo', width: 80, align: 'right',
