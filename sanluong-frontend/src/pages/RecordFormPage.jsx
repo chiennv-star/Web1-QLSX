@@ -728,8 +728,8 @@ export default function RecordFormPage() {
               <div style={{ padding: '8px 12px', borderRight: '1px solid #f0f2f5', minWidth: 130 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#d46b08', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 }}>Số Lô (LSX)</div>
                 <Form.Item name="lsx" style={{ marginBottom: 0 }}>
-                  <Input disabled
-                    style={{ fontFamily: 'monospace', fontWeight: 700, color: '#d46b08', background: '#fffbf0', border: '1.5px solid #ffd591', borderRadius: 4, cursor: 'not-allowed' }} />
+                  <Input disabled={ro} placeholder="Tự động điền hoặc nhập tay"
+                    style={{ fontFamily: 'monospace', fontWeight: 700, color: '#d46b08', background: '#fffbf0', border: '1.5px solid #ffd591', borderRadius: 4 }} />
                 </Form.Item>
               </div>
               {/* Cỡ lô */}
