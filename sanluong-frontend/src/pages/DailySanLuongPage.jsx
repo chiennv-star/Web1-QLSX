@@ -113,14 +113,7 @@ function DailySummaryPanel({ data, refDate: refDateProp }) {
     }
   }
 
-  const getDeptKey = (r) => {
-    let cd = r.congDoan?.toUpperCase()
-    if (cd === 'PC') {
-      const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
-      cd = nhom === 'PCPL2' ? 'PCPL2' : 'PCPL1'
-    }
-    return cd
-  }
+  const getDeptKey = (r) => resolveGdCd(r)
 
   const stats = useMemo(() => {
     const todaySL = {}, monthSL = {}, ydSL = {}
@@ -913,15 +906,7 @@ function DailyDetailTab() {
     data.forEach(r => {
       if (r.status === 'PENDING') { totals.pending++; return }
       if (r.status === 'IN_PROGRESS') { totals.inProgress++; return }
-      let cd = r.congDoan?.toUpperCase()
-      if (cd === 'PC') {
-        const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
-        if (nhom === 'PCPL1') cd = 'PCPL1'
-        else if (nhom === 'PCPL2') cd = 'PCPL2'
-        else if (nhom === 'PCPL3' || nhom === 'PL') cd = 'PL'
-        else cd = 'PCPL1'
-      }
-      if (cd === 'PCPL3') cd = 'PL'
+      const cd = resolveGdCd(r)
       const sl = Number(r.sanLuong || 0)
       if (totals[cd] !== undefined) totals[cd] += sl
       totals.total += sl
@@ -3554,16 +3539,7 @@ const STAGE_COLORS = {
 }
 
 function resolveCongDoan(r) {
-  let cd = (r.congDoan || '').toUpperCase()
-  if (cd === 'PC') {
-    const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
-    if (nhom === 'PCPL1') return 'PCPL1'
-    if (nhom === 'PCPL2') return 'PCPL2'
-    if (nhom === 'PCPL3' || nhom === 'PL') return 'PL'
-    return 'PCPL1'
-  }
-  if (cd === 'PCPL3') return 'PL'
-  return cd
+  return resolveGdCd(r)
 }
 
 const QUICK_RANGES = [
@@ -7445,17 +7421,22 @@ function PhongSuDungPanel({ storageKey = 'phong_usage', autoFromSchedule = false
 }
 
 function resolveGdCd(r) {
-  let cd = r.congDoan?.toUpperCase()
-  if (cd === 'PC') {
-    const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
+  const rawCd = r.congDoan?.toUpperCase()
+  const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
+  let cd = rawCd
+  if (rawCd === 'PC') {
     if (nhom === 'PCPL1') cd = 'PCPL1'
     else if (nhom === 'PCPL2') cd = 'PCPL2'
     else if (nhom === 'PCPL3' || nhom === 'PL') cd = 'PL'
     else cd = 'PCPL1'
-  }
-  if (cd === 'PCPL3') cd = 'PL'
-  if (cd === 'CC') {
-    const nhom = (r.nhomThucHien || r.toNhom)?.toUpperCase()
+  } else if (rawCd === 'PCPL3') {
+    cd = 'PL'
+  } else if (rawCd === 'PL') {
+    // Công đoạn Phân liều (PL) do tổ PCPL1 hoặc PCPL3 thực hiện — bản ghi của PCPL1
+    // tính vào tổ PCPL1, nhóm 'PL' chỉ tính đúng bản ghi của tổ PCPL3
+    if (nhom === 'PCPL1') cd = 'PCPL1'
+    else if (nhom === 'PCPL3') cd = 'PL'
+  } else if (rawCd === 'CC') {
     cd = nhom === 'PCPL2' ? 'PCPL2' : 'PCPL1'
   }
   return cd
