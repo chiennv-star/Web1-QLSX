@@ -7530,9 +7530,9 @@ function DashboardGDTab() {
     setPeriod(key); setDateRange(r); fetchGD(r)
   }
 
-  const { byTo, kpi, dailyTrend, byLoai, byMay, teamProductMap, pcpl1PlCong } = useMemo(() => {
+  const { byTo, kpi, dailyTrend, byLoai, byMay, teamProductMap } = useMemo(() => {
     const byTo = {}
-    GD_TO.forEach(t => { byTo[t.key] = { sl: 0, cong: 0, congPc: 0, lo: 0 } })
+    GD_TO.forEach(t => { byTo[t.key] = { sl: 0, cong: 0, congPc: 0, congPl: 0, congCc: 0, lo: 0 } })
     const teamProductMap = {}
     GD_TO.forEach(t => { teamProductMap[t.key] = {} })
     const dayMap = {}, loaiAgg = {}, mayAgg = {}
@@ -7551,23 +7551,31 @@ function DashboardGDTab() {
     raw.forEach(r => {
       const cd = resolveGdCd(r)
       if (!byTo[cd]) return
-      const isCC = r.congDoan?.toUpperCase() === 'CC'
+      const rawCongDoan = r.congDoan?.toUpperCase()
+      const isCC = rawCongDoan === 'CC'
+      // Bản ghi công đoạn PL/PCPL3 được gom vào tổ PCPL1 khi toNhom=PCPL1 (tự làm phân liều
+      // cho SP của mình) — công của bản ghi này phải tính là "Công PL", không phải "Công PC"
+      const isPlStage = rawCongDoan === 'PL' || rawCongDoan === 'PCPL3'
       const sl   = isCC ? 0 : Number(r.sanLuong || 0)
       const cong = Number(r.congThucHien  || 0)
       byTo[cd].sl += sl; byTo[cd].cong += cong; byTo[cd].lo++
-      if (!isCC) byTo[cd].congPc += cong
+      if (isCC) byTo[cd].congCc += cong
+      else if (isPlStage) byTo[cd].congPl += cong
+      else byTo[cd].congPc += cong
       totalSl += sl; totalCong += cong
       // teamProductMap: gộp dữ liệu theo tổ + mã SP (cho drill-down)
       const maSp_dr = r.maSp || '?'
       if (!teamProductMap[cd][maSp_dr]) {
-        teamProductMap[cd][maSp_dr] = { maSp: maSp_dr, maBravo: r.maBravo || '', tenTrinh: r.tenTrinh || '', sl: 0, cong: 0, congPc: 0, congCc: 0, loCount: new Set() }
+        teamProductMap[cd][maSp_dr] = { maSp: maSp_dr, maBravo: r.maBravo || '', tenTrinh: r.tenTrinh || '', sl: 0, cong: 0, congPc: 0, congPl: 0, congCc: 0, loCount: new Set() }
       }
       const _tp = teamProductMap[cd][maSp_dr]
       _tp.sl += sl; _tp.cong += cong
       if (!_tp.maBravo && r.maBravo) _tp.maBravo = r.maBravo
       if (!_tp.tenTrinh && r.tenTrinh) _tp.tenTrinh = r.tenTrinh
       if (r.soLo) _tp.loCount.add(r.soLo)
-      if (isCC) _tp.congCc += cong; else _tp.congPc += cong
+      if (isCC) _tp.congCc += cong
+      else if (isPlStage) _tp.congPl += cong
+      else _tp.congPc += cong
       if (cd === 'DG') slDg += sl
       if (r.ngay) {
         days.add(r.ngay)
@@ -7597,15 +7605,9 @@ function DashboardGDTab() {
       })
     })
 
-    // PL công cross-ref cho PCPL1: chỉ SP có SL trong PCPL1 (khớp với cột Công PL trong modal)
-    const pcpl1PlCong = Object.entries(teamProductMap['PCPL1'] || {})
-      .filter(([, p]) => p.sl > 0)
-      .reduce((s, [maSp]) => s + (teamProductMap['PL']?.[maSp]?.cong || 0), 0)
-
     return {
       byTo,
       teamProductMap,
-      pcpl1PlCong,
       kpi: { tongSl: totalSl, slDg, tongCong: totalCong, nsTb: totalCong > 0 ? slDg / totalCong : 0, soNgay: days.size, soCa: cas.size },
       dailyTrend: Object.values(dayMap).sort((a, b) => a.ngay.localeCompare(b.ngay))
         .map(d => ({ ...d, label: dayjs(d.ngay).format('DD/MM') })),
@@ -7748,8 +7750,8 @@ function DashboardGDTab() {
               <tbody>
                 {GD_TO.map((t, i) => {
                   const d   = byTo[t.key] || { sl: 0, cong: 0 }
-                  // PCPL1: tổng công = congPc (PC only) + PL công cross-ref theo maSp của PCPL1
-                  const effectiveCong = t.key === 'PCPL1' ? ((byTo['PCPL1']?.congPc || 0) + pcpl1PlCong) : d.cong
+                  // PCPL1: tổng công = Công PC + Công PL (tự làm phân liều), không tính Công CC
+                  const effectiveCong = t.key === 'PCPL1' ? ((byTo['PCPL1']?.congPc || 0) + (byTo['PCPL1']?.congPl || 0)) : d.cong
                   const ns  = effectiveCong > 0 ? d.sl / effectiveCong : 0
                   const pSl   = kpi.tongSl   > 0 ? d.sl   / kpi.tongSl   * 100 : 0
                   const pCong = kpi.tongCong > 0 ? d.cong / kpi.tongCong * 100 : 0
@@ -8090,7 +8092,7 @@ function DashboardGDTab() {
               </thead>
               <tbody>
                 {products.map((p, i) => {
-                  const congPl = isPcpl1 ? (teamProductMap['PL']?.[p.maSp]?.cong || 0) : 0
+                  const congPl = isPcpl1 ? (p.congPl || 0) : 0
                   const totalCong = isPcpl1 ? (p.congPc + congPl) : p.cong
                   const fmtCong = n => n > 0 ? n.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
                   const lots = [...p.loCount]
@@ -8141,7 +8143,7 @@ function DashboardGDTab() {
                 const sumSl      = products.reduce((s, p) => s + p.sl, 0)
                 const sumCongPc  = products.reduce((s, p) => s + p.congPc, 0)
                 const sumCongCc  = products.reduce((s, p) => s + p.congCc, 0)
-                const sumCongPl  = isPcpl1 ? products.reduce((s, p) => s + (teamProductMap['PL']?.[p.maSp]?.cong || 0), 0) : 0
+                const sumCongPl  = isPcpl1 ? products.reduce((s, p) => s + (p.congPl || 0), 0) : 0
                 const sumCong    = products.reduce((s, p) => s + p.cong, 0)
                 const sumTotal   = isPcpl1 ? (sumCongPc + sumCongPl) : sumCong
                 const cellStyle  = { padding: '9px 10px', textAlign: 'right', fontWeight: 700, color: '#0f172a', fontSize: 12 }
