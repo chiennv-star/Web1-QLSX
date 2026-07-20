@@ -69,7 +69,7 @@ export default function KyThuatBaoTriTab() {
     {
       title: '', key: 'actions', width: 90, fixed: 'right',
       render: (_, record) => (
-        <Space size={4}>
+        <Space size={4} onClick={e => e.stopPropagation()}>
           <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
           <Popconfirm title="Xóa thiết bị này?" onConfirm={() => handleDelete(record.id)} okText="Xóa" cancelText="Hủy">
             <Button size="small" type="text" danger icon={<DeleteOutlined />} />
@@ -101,6 +101,7 @@ export default function KyThuatBaoTriTab() {
           sticky
           scroll={{ x: 800, y: 520 }}
           pagination={{ pageSize: 30, showTotal: t => `${t} thiết bị` }}
+          onRow={record => ({ onClick: () => openEdit(record), style: { cursor: 'pointer' } })}
         />
       </Spin>
 

@@ -90,7 +90,7 @@ export default function KyThuatCoDienTab() {
     {
       title: '', key: 'actions', width: 90, fixed: 'right',
       render: (_, record) => (
-        <Space size={4}>
+        <Space size={4} onClick={e => e.stopPropagation()}>
           <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
           <Popconfirm title="Xóa bản ghi này?" onConfirm={() => handleDelete(record.id)} okText="Xóa" cancelText="Hủy">
             <Button size="small" type="text" danger icon={<DeleteOutlined />} />
@@ -122,6 +122,7 @@ export default function KyThuatCoDienTab() {
           sticky
           scroll={{ x: 1200, y: 520 }}
           pagination={{ pageSize: 20, showTotal: t => `${t} bản ghi` }}
+          onRow={record => ({ onClick: () => openEdit(record), style: { cursor: 'pointer' } })}
         />
       </Spin>
 
