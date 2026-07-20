@@ -147,6 +147,17 @@ public class ProductionController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/hidden")
+    public ResponseEntity<List<ProductionRecord>> getHidden() {
+        return ResponseEntity.ok(productionService.findHidden());
+    }
+
+    @PatchMapping("/{id}/unhide")
+    public ResponseEntity<Void> unhide(@PathVariable Long id) {
+        productionService.unhide(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/{id}/ghi-chu-hieu-suat")
     public ResponseEntity<ProductionRecord> updateGhiChuHieuSuat(
             @PathVariable Long id,

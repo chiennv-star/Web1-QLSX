@@ -446,6 +446,17 @@ public class ProductionService {
         return repository.findAllDeleted();
     }
 
+    public java.util.List<ProductionRecord> findHidden() {
+        return repository.findAllHidden();
+    }
+
+    public void unhide(Long id) {
+        ProductionRecord r = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));
+        r.setHidden(false);
+        repository.save(r);
+    }
+
     public void restore(Long id) {
         ProductionRecord r = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));

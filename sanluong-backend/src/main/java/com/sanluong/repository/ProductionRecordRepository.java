@@ -17,6 +17,9 @@ public interface ProductionRecordRepository extends JpaRepository<ProductionReco
     @Query("SELECT r FROM ProductionRecord r WHERE r.deletedAt IS NOT NULL ORDER BY r.deletedAt DESC")
     List<ProductionRecord> findAllDeleted();
 
+    @Query("SELECT r FROM ProductionRecord r WHERE r.deletedAt IS NULL AND r.hidden = true ORDER BY r.id DESC")
+    List<ProductionRecord> findAllHidden();
+
     @Query("""
         SELECT r FROM ProductionRecord r
         WHERE r.deletedAt IS NULL

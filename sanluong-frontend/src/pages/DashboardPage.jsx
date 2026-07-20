@@ -1603,6 +1603,10 @@ export default function DashboardPage() {
   const [hoSoPagination, setHoSoPagination] = useState({ current: 1, pageSize: 1000, total: 0 })
   const hoSoPaginationRef = useRef({ current: 1, pageSize: 1000 })
 
+  // Tab "Đã ẩn"
+  const [hiddenData, setHiddenData] = useState([])
+  const [hiddenLoading, setHiddenLoading] = useState(false)
+
   // Tab "Hiệu suất" — trang độc lập, 1000 rows/page
   const [hsData, setHsData] = useState([])
   const [hsLoading, setHsLoading] = useState(false)
@@ -1799,6 +1803,27 @@ export default function DashboardPage() {
       if (!silent) setHoSoLoading(false)
     }
   }, [filters, fetchQaMap])
+
+  const fetchHiddenData = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setHiddenLoading(true)
+    try {
+      const { data: res } = await api.get('/production/hidden')
+      setHiddenData(res)
+    } catch {
+      message.error('Không thể tải danh sách bản ghi đã ẩn')
+    } finally {
+      if (!silent) setHiddenLoading(false)
+    }
+  }, [])
+
+  const handleUnhide = async (id) => {
+    try {
+      await api.patch(`/production/${id}/unhide`)
+      message.success('Đã bỏ ẩn bản ghi')
+      fetchHiddenData()
+      fetchData(pagination.current - 1)
+    } catch { message.error('Bỏ ẩn thất bại') }
+  }
 
   const fetchHsData = useCallback(async (page = 0, size = 1000, f = filters, { silent = false } = {}) => {
     if (!silent) setHsLoading(true)
@@ -2658,6 +2683,7 @@ export default function DashboardPage() {
           if (key === 'ho_so')     fetchHoSoData(hoSoPaginationRef.current.current - 1, hoSoPaginationRef.current.pageSize)
           if (key === 'hieu_suat') fetchHsData(hsPaginationRef.current.current - 1, hsPaginationRef.current.pageSize)
           if (key === 'tong_hop')  fetchThData(0, thPaginationRef.current.pageSize, thFilters)
+          if (key === 'hidden')    fetchHiddenData()
         }}
         size="small"
         style={{ marginTop: 0 }}
@@ -2991,6 +3017,53 @@ export default function DashboardPage() {
             key: 'phan_tich',
             label: <Space size={4}><BarChartOutlined style={{ color: '#b45309' }} /><span style={{ color: '#b45309', fontWeight: 600 }}>Phân Tích SL</span></Space>,
             children: <PhanTichSanLuongTab pmMap={pmMap} />,
+          }] : []),
+          ...((isAdmin() || isAdminKH()) ? [{
+            key: 'hidden',
+            label: (
+              <span>
+                <EyeInvisibleOutlined style={{ color: '#94a3b8', marginRight: 4 }} />
+                <span style={{ color: '#64748b' }}>Đã ẩn</span>
+                {hiddenData.length > 0 && (
+                  <span style={{
+                    marginLeft: 6, fontSize: 11, fontWeight: 700,
+                    background: '#94a3b8', color: '#fff',
+                    borderRadius: 10, padding: '0px 6px',
+                    display: 'inline-block', lineHeight: '18px',
+                  }}>
+                    {hiddenData.length}
+                  </span>
+                )}
+              </span>
+            ),
+            children: (
+              <Table
+                size="small"
+                loading={hiddenLoading}
+                dataSource={hiddenData}
+                rowKey="id"
+                pagination={{ pageSize: 50, showTotal: total => `Tổng ${total} bản ghi` }}
+                columns={[
+                  { title: 'Mã Bravo', dataIndex: 'maBravo', width: 110 },
+                  { title: 'Mã TP', dataIndex: 'maTp', width: 90 },
+                  { title: 'Tiến trình', dataIndex: 'tienTrinh', ellipsis: true },
+                  { title: 'LSX', dataIndex: 'lsx', width: 100 },
+                  { title: 'Mã ĐH', dataIndex: 'maDonHang', width: 110 },
+                  {
+                    title: '', key: 'action', width: 110, align: 'center',
+                    render: (_, record) => (
+                      <Popconfirm
+                        title="Bỏ ẩn bản ghi này?"
+                        okText="Bỏ ẩn" cancelText="Hủy"
+                        onConfirm={() => handleUnhide(record.id)}
+                      >
+                        <Button size="small" icon={<EyeOutlined />}>Bỏ ẩn</Button>
+                      </Popconfirm>
+                    ),
+                  },
+                ]}
+              />
+            ),
           }] : []),
         ]}
       />
