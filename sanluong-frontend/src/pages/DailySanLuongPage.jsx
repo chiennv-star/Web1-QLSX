@@ -7549,7 +7549,7 @@ function DashboardGDTab() {
     setPeriod(key); setDateRange(r); fetchGD(r)
   }
 
-  const { byTo, kpi, dailyTrend, byLoai, byMay, teamProductMap, plOnlyMap, byPlOnly, pcpl1PlCong } = useMemo(() => {
+  const { byTo, kpi, dailyTrend, byLoai, byMay, teamProductMap, pcpl1PlCong } = useMemo(() => {
     const byTo = {}
     GD_TO.forEach(t => { byTo[t.key] = { sl: 0, cong: 0, congPc: 0, lo: 0 } })
     const teamProductMap = {}
@@ -7621,21 +7621,9 @@ function DashboardGDTab() {
       .filter(([, p]) => p.sl > 0)
       .reduce((s, [maSp]) => s + (teamProductMap['PL']?.[maSp]?.cong || 0), 0)
 
-    // PL display: chỉ SP không có trong PCPL1 (SP của PCPL1 đã được tính vào effectiveCong PCPL1)
-    const plOnlyMap = Object.fromEntries(
-      Object.entries(teamProductMap['PL'] || {})
-        .filter(([maSp, p]) => p.sl > 0 && !(teamProductMap['PCPL1']?.[maSp]?.sl > 0))
-    )
-    const byPlOnly = Object.values(plOnlyMap).reduce(
-      (a, p) => ({ sl: a.sl + p.sl, cong: a.cong + p.cong }),
-      { sl: 0, cong: 0 }
-    )
-
     return {
       byTo,
       teamProductMap,
-      plOnlyMap,
-      byPlOnly,
       pcpl1PlCong,
       kpi: { tongSl: totalSl, slDg, tongCong: totalCong, nsTb: totalCong > 0 ? slDg / totalCong : 0, soNgay: days.size, soCa: cas.size },
       dailyTrend: Object.values(dayMap).sort((a, b) => a.ngay.localeCompare(b.ngay))
@@ -7645,12 +7633,12 @@ function DashboardGDTab() {
     }
   }, [raw, loaiMap, machineMap])
 
-  // PL: chỉ SL/Công của riêng tổ PCPL3 (loại phần đã cộng dồn sang PCPL1 qua pcpl1PlCong)
-  // để nhất quán với bảng "Chi tiết Sản lượng & Công theo Tổ" và modal drill-down
+  // PL: SL/Công thực tế của tổ PCPL3 (byTo['PL'] đã được gom đúng theo resolveGdCd,
+  // không loại trừ SP trùng mã với PCPL1 — mỗi tổ hiển thị đúng phần việc của mình)
   const barData = GD_TO.map(t => ({
     name: t.label,
-    sl:   t.key === 'PL' ? byPlOnly.sl   : (byTo[t.key]?.sl   || 0),
-    cong: t.key === 'PL' ? byPlOnly.cong : (byTo[t.key]?.cong || 0),
+    sl:   byTo[t.key]?.sl   || 0,
+    cong: byTo[t.key]?.cong || 0,
   }))
 
   return (
@@ -7778,10 +7766,7 @@ function DashboardGDTab() {
               </thead>
               <tbody>
                 {GD_TO.map((t, i) => {
-                  // PL row: chỉ SP không thuộc PCPL1 (SP PCPL1 đã gộp vào effectiveCong PCPL1)
-                  const d   = t.key === 'PL'
-                    ? { ...byTo['PL'], sl: byPlOnly.sl, cong: byPlOnly.cong }
-                    : (byTo[t.key] || { sl: 0, cong: 0 })
+                  const d   = byTo[t.key] || { sl: 0, cong: 0 }
                   // PCPL1: tổng công = congPc (PC only) + PL công cross-ref theo maSp của PCPL1
                   const effectiveCong = t.key === 'PCPL1' ? ((byTo['PCPL1']?.congPc || 0) + pcpl1PlCong) : d.cong
                   const ns  = effectiveCong > 0 ? d.sl / effectiveCong : 0
@@ -8087,8 +8072,7 @@ function DashboardGDTab() {
         const isPcpl1 = drillTeam === 'PCPL1'
         const isPcpl2 = drillTeam === 'PCPL2'
         const showBreakdown = isPcpl1 || isPcpl2
-        // Chi tiết PL: lấy toàn bộ SP thuộc tổ PCPL3 (resolveGdCd đã map PCPL3/PL → 'PL'),
-        // không loại trừ SP trùng với PCPL1 như plOnlyMap (dùng riêng cho tổng SL/Công tránh đếm 2 lần)
+        // Chi tiết PL: lấy toàn bộ SP thuộc tổ PCPL3 (resolveGdCd đã map PCPL3/PL → 'PL')
         const products = Object.values(teamProductMap[drillTeam] || {}).filter(p => p.sl > 0)
           .sort((a, b) => b.sl - a.sl)
         const colCount = showBreakdown ? 6 : 5
