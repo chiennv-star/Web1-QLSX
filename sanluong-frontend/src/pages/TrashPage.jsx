@@ -80,7 +80,7 @@ function DonHangTrashTab({ canEdit }) {
       await api.post(`/don-hang/${id}/restore`)
       message.success('Đã khôi phục đơn hàng')
       setData(prev => prev.filter(r => r.id !== id))
-    } catch { message.error('Khôi phục thất bại') }
+    } catch (err) { message.error(err?.response?.data?.message || 'Khôi phục thất bại') }
   }
 
   const handleDelete = async (id) => {
@@ -230,7 +230,7 @@ function SanLuongTrashTab({ canEdit }) {
       await api.post(`/production/${id}/restore`)
       message.success('Đã khôi phục bản ghi sản lượng')
       setData(prev => prev.filter(r => r.id !== id))
-    } catch { message.error('Khôi phục thất bại') }
+    } catch (err) { message.error(err?.response?.data?.message || 'Khôi phục thất bại') }
   }
 
   const handleDelete = async (id) => {
@@ -354,7 +354,7 @@ function LichLamViecTrashTab({ canEdit }) {
       await api.post(`/work-schedule/${id}/restore`)
       message.success('Đã khôi phục bản ghi lịch làm việc')
       setData(prev => prev.filter(r => r.id !== id))
-    } catch { message.error('Khôi phục thất bại') }
+    } catch (err) { message.error(err?.response?.data?.message || 'Khôi phục thất bại') }
   }
 
   const handleDelete = async (id) => {
