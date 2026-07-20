@@ -7712,10 +7712,13 @@ function DoneTab({ congDoan, toNhom, filters, searchTick, headerOffset = 84, onU
           maBravo: f.maBravo || undefined,
         }
       })
-      const rows = res.content || []
+      // Lịch sản xuất PL gồm cả tổ PCPL1 và PCPL3 cùng thực hiện (toNhom phân biệt) —
+      // "Lịch đã hoàn thiện" chỉ hiển thị phần của PCPL3 (khớp với sub-tab PCPL3 ở tab Danh sách)
+      const rows = congDoan === 'PL' ? (res.content || []).filter(r => r.toNhom !== 'PCPL1') : (res.content || [])
       setData(rows)
-      setPagination(p => ({ ...p, total: res.totalElements, current: page + 1, pageSize: size }))
-      onCountChange?.(res.totalElements)
+      const total = congDoan === 'PL' ? rows.length : res.totalElements
+      setPagination(p => ({ ...p, total, current: page + 1, pageSize: size }))
+      onCountChange?.(total)
       const codes = [...new Set(rows.map(r => r.maSp).filter(Boolean))]
       if (codes.length > 0) {
         api.get('/product-master/lookup-batch', { params: { codes } })
