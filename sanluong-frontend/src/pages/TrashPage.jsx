@@ -10,6 +10,7 @@ import {
 import dayjs from 'dayjs'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
+import { StatusTag } from './DashboardPage'
 
 const fmtDate = v => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—'
 const fmtNum  = v => (v != null && v !== '') ? Number(v).toLocaleString('vi-VN') : '—'
@@ -284,8 +285,29 @@ function SanLuongTrashTab({ canEdit }) {
       render: v => <span style={{ fontSize: 12 }}>{v || '—'}</span> },
     { title: 'LSX', dataIndex: 'lsx', key: 'lsx', width: 90,
       render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v || '—'}</span> },
-    { title: 'Số Lượng', dataIndex: 'soLuong', key: 'sl', width: 90, align: 'right',
+    { title: 'KH', dataIndex: 'soLuong', key: 'sl', width: 90, align: 'right',
       render: v => <span style={{ fontWeight: 600 }}>{fmtNum(v)}</span> },
+    { title: 'Mã ĐH', dataIndex: 'maDonHang', key: 'maDonHang', width: 90, align: 'center',
+      render: v => v ? <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#7c3aed' }}>{v}</span> : <span style={{ color: '#d9d9d9' }}>—</span> },
+    {
+      title: <span style={{ fontSize: 11 }}>TRẠNG THÁI CÔNG ĐOẠN</span>,
+      children: [
+        { title: 'PCPL1', dataIndex: 'pcpl1TrangThai', key: 'pcpl1TrangThai', width: 72, align: 'center', render: v => <StatusTag value={v} /> },
+        { title: 'PCPL2', dataIndex: 'pcpl2TrangThai', key: 'pcpl2TrangThai', width: 72, align: 'center', render: v => <StatusTag value={v} /> },
+        { title: 'PL',    dataIndex: 'plTrangThai',    key: 'plTrangThai',    width: 68, align: 'center', render: v => <StatusTag value={v} /> },
+        { title: 'ĐG',    dataIndex: 'dgTrangThai',    key: 'dgTrangThai',    width: 68, align: 'center', render: v => <StatusTag value={v} /> },
+        { title: 'BBC1',  dataIndex: 'bbc1TrangThai',  key: 'bbc1TrangThai',  width: 72, align: 'center', render: v => <StatusTag value={v} /> },
+      ],
+    },
+    {
+      title: <span style={{ fontSize: 11 }}>SẢN LƯỢNG</span>,
+      children: [
+        { title: 'PC',   dataIndex: 'slPc',   key: 'slPc',   width: 88, align: 'center', render: v => <span style={{ fontWeight: 500 }}>{v || '—'}</span> },
+        { title: 'PL',   dataIndex: 'pcPl',   key: 'pcPl',   width: 88, align: 'center', render: v => <span style={{ fontWeight: 500 }}>{v || '—'}</span> },
+        { title: 'ĐG',   dataIndex: 'dg2',    key: 'dg2',    width: 88, align: 'center', render: v => <span style={{ fontWeight: 500 }}>{v || '—'}</span> },
+        { title: 'BBC1', dataIndex: 'bbc1_2', key: 'bbc1_2', width: 88, align: 'center', render: v => <span style={{ fontWeight: 500 }}>{v || '—'}</span> },
+      ],
+    },
     ...(canEdit ? [{
       title: '', key: 'action', width: 90, fixed: 'right', align: 'center',
       render: (_, r) => (
@@ -319,7 +341,7 @@ function SanLuongTrashTab({ canEdit }) {
       )}
       <Table
         className="trash-table" columns={columns} dataSource={data} rowKey="id"
-        loading={loading} size="small" scroll={{ x: 1000 }}
+        loading={loading} size="small" scroll={{ x: 1700 }}
         rowSelection={canEdit ? {
           type: 'checkbox', selectedRowKeys,
           onChange: keys => setSelectedRowKeys(keys), columnWidth: 40,

@@ -80,7 +80,7 @@ const getDashboardSaved = () => {
   try { return JSON.parse(sessionStorage.getItem(DASHBOARD_STATE_KEY) || 'null') } catch { return null }
 }
 
-const StatusTag = ({ value, onClick }) => {
+export const StatusTag = ({ value, onClick }) => {
   const handleClick = onClick ? (e) => { e.stopPropagation(); onClick() } : undefined
   if (!value) return (
     <span
@@ -3038,19 +3038,65 @@ export default function DashboardPage() {
             ),
             children: (
               <Table
+                className="prod-table"
                 size="small"
                 loading={hiddenLoading}
                 dataSource={hiddenData}
                 rowKey="id"
+                scroll={{ x: 1500 }}
                 pagination={{ pageSize: 50, showTotal: total => `Tổng ${total} bản ghi` }}
                 columns={[
-                  { title: 'Mã Bravo', dataIndex: 'maBravo', width: 110 },
-                  { title: 'Mã TP', dataIndex: 'maTp', width: 90 },
-                  { title: 'Tiến trình', dataIndex: 'tienTrinh', ellipsis: true },
-                  { title: 'LSX', dataIndex: 'lsx', width: 100 },
-                  { title: 'Mã ĐH', dataIndex: 'maDonHang', width: 110 },
                   {
-                    title: '', key: 'action', width: 110, align: 'center',
+                    title: '#', key: 'stt', width: 46, fixed: 'left', align: 'center',
+                    render: (_, __, idx) => <span style={{ color: '#aaa', fontSize: 11 }}>{idx + 1}</span>,
+                  },
+                  {
+                    title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 100, fixed: 'left',
+                    render: v => <strong style={{ fontFamily: 'monospace', fontSize: 12, color: '#000011' }}>{v || '—'}</strong>,
+                  },
+                  {
+                    title: 'Mã TP', dataIndex: 'maTp', key: 'maTp', width: 82, fixed: 'left',
+                    render: v => <span style={{ color: '#000011', fontSize: 12 }}>{v}</span>,
+                  },
+                  {
+                    title: 'Tiến Trình', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 220,
+                    render: v => <span style={{ fontSize: 12 }}>{v}</span>,
+                  },
+                  {
+                    title: 'LSX', dataIndex: 'lsx', key: 'lsx', width: 80, align: 'center',
+                    render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v}</span>,
+                  },
+                  {
+                    title: 'KH', dataIndex: 'soLuong', key: 'soLuong', width: 80, align: 'center',
+                    render: v => <span style={{ color: '#000011' }}>{v != null ? Number(v).toLocaleString('vi-VN') : '—'}</span>,
+                  },
+                  {
+                    title: 'Mã ĐH', dataIndex: 'maDonHang', key: 'maDonHang', width: 90, align: 'center',
+                    render: v => v
+                      ? <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#7c3aed' }}>{v}</span>
+                      : <span style={{ color: '#d9d9d9' }}>—</span>,
+                  },
+                  {
+                    title: <span style={{ color: '#ffffff', fontSize: 11 }}>TRẠNG THÁI CÔNG ĐOẠN</span>,
+                    children: [
+                      { title: 'PCPL1', dataIndex: 'pcpl1TrangThai', key: 'pcpl1TrangThai', width: 72, align: 'center', render: v => <StatusTag value={v} /> },
+                      { title: 'PCPL2', dataIndex: 'pcpl2TrangThai', key: 'pcpl2TrangThai', width: 72, align: 'center', render: v => <StatusTag value={v} /> },
+                      { title: 'PL',    dataIndex: 'plTrangThai',    key: 'plTrangThai',    width: 68, align: 'center', render: v => <StatusTag value={v} /> },
+                      { title: 'ĐG',    dataIndex: 'dgTrangThai',    key: 'dgTrangThai',    width: 68, align: 'center', render: v => <StatusTag value={v} /> },
+                      { title: 'BBC1',  dataIndex: 'bbc1TrangThai',  key: 'bbc1TrangThai',  width: 72, align: 'center', render: v => <StatusTag value={v} /> },
+                    ],
+                  },
+                  {
+                    title: <span style={{ color: '#ffffff', fontSize: 11 }}>SẢN LƯỢNG</span>,
+                    children: [
+                      { title: 'PC',   dataIndex: 'slPc',   key: 'slPc',   width: 88, align: 'center', render: v => <span style={{ color: '#000011', fontWeight: 500 }}>{v || '—'}</span> },
+                      { title: 'PL',   dataIndex: 'pcPl',   key: 'pcPl',   width: 88, align: 'center', render: v => <span style={{ color: '#000011', fontWeight: 500 }}>{v || '—'}</span> },
+                      { title: 'ĐG',   dataIndex: 'dg2',    key: 'dg2',    width: 88, align: 'center', render: v => <span style={{ color: '#000011', fontWeight: 500 }}>{v || '—'}</span> },
+                      { title: 'BBC1', dataIndex: 'bbc1_2', key: 'bbc1_2', width: 88, align: 'center', render: v => <span style={{ color: '#000011', fontWeight: 500 }}>{v || '—'}</span> },
+                    ],
+                  },
+                  {
+                    title: '', key: 'action', width: 100, fixed: 'right', align: 'center',
                     render: (_, record) => (
                       <Popconfirm
                         title="Bỏ ẩn bản ghi này?"
