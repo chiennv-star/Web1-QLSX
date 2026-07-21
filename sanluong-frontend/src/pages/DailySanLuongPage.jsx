@@ -12,11 +12,13 @@ import {
   CheckOutlined, CloseOutlined, ClockCircleOutlined,
   RiseOutlined, TeamOutlined, FundOutlined, DeleteOutlined, ExclamationCircleOutlined,
   FullscreenOutlined, FullscreenExitOutlined, ArrowRightOutlined, PlusOutlined, EyeOutlined,
+  SettingOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
 import useCellNav from '../hooks/useCellNav'
+import { StageTab, STAGE_CONFIG } from './WorkSchedulePage'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RcTooltip, Legend,
   LineChart, Line, ReferenceLine, ComposedChart, ReferenceArea,
@@ -4317,6 +4319,47 @@ function MachineUsageDetailModal({ open, row, onClose }) {
   )
 }
 
+const MACHINE_USAGE_TO_LIST = [
+  { key: 'PCPL1', label: 'PCPL1' },
+  { key: 'PCPL2', label: 'PCPL2' },
+  { key: 'BBC1',  label: 'BBC1'  },
+  { key: 'PL',    label: 'PL'    },
+  { key: 'DG',    label: 'ĐG'    },
+  { key: 'CC',    label: 'Cân Chia' },
+]
+
+function MachineUsageTimeTab() {
+  const [selectedTo, setSelectedTo] = useState('PCPL1')
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 6, padding: '10px 14px 0', flexWrap: 'wrap' }}>
+        {MACHINE_USAGE_TO_LIST.map(t => (
+          <div key={t.key}
+            onClick={() => setSelectedTo(t.key)}
+            style={{
+              padding: '6px 16px', cursor: 'pointer', fontSize: 13, borderRadius: '6px 6px 0 0',
+              fontWeight: selectedTo === t.key ? 700 : 400,
+              color: selectedTo === t.key ? '#0e7490' : '#595959',
+              background: selectedTo === t.key ? '#fff' : '#f0f4ff',
+              border: '1px solid #e2e8f0', borderBottom: selectedTo === t.key ? '1px solid #fff' : '1px solid #e2e8f0',
+              marginBottom: -1, userSelect: 'none',
+            }}>
+            {t.label}
+          </div>
+        ))}
+      </div>
+      <div style={{ border: '1px solid #e2e8f0', borderRadius: '0 0 6px 6px' }}>
+        <StageTab
+          key={selectedTo}
+          congDoan={selectedTo}
+          config={STAGE_CONFIG[selectedTo]}
+          restrictToMachineTabs
+        />
+      </div>
+    </div>
+  )
+}
+
 function MachineUsageTab() {
   const [dateRange, setDateRange] = useState([dayjs().subtract(6, 'day'), dayjs()])
   const [loading, setLoading] = useState(false)
@@ -8517,6 +8560,16 @@ export default function DailySanLuongPage() {
         </span>
       ),
       children: <MachineUsageTab />,
+    }] : []),
+    ...(canViewAnalytics ? [{
+      key: 'thoiGianSuDungMay',
+      label: (
+        <span>
+          <SettingOutlined style={{ marginRight: 5 }} />
+          Thời gian sử dụng máy
+        </span>
+      ),
+      children: <MachineUsageTimeTab />,
     }] : []),
     ...(canViewNhapKho ? [{
       key: 'nhapkho',

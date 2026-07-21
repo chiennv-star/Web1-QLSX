@@ -124,7 +124,7 @@ const hieuSuatRender = (_, record) => {
   return <span style={{ fontWeight: 600, color }}>{pct.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%</span>
 }
 
-const STAGE_CONFIG = {
+export const STAGE_CONFIG = {
   PCPL1: {
     label: 'Lịch sản xuất PCPL1',
     extraTableCols: [
@@ -4543,7 +4543,7 @@ function StageSummaryBar({ congDoan, liveData }) {
 }
 
 // ── StageTab ──────────────────────────────────────────────────────────────────
-function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved, jumpTarget }) {
+export function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved, jumpTarget, restrictToMachineTabs = false }) {
   const navigate = useNavigate()
   const { canEditStage, getAllowedNhom, isNhanVien, canDeleteSchedule, user, isAdmin, isAdminKH, isStageAdmin } = useAuth()
   const isAnyAdmin = () => isAdmin() || isAdminKH() || isStageAdmin()
@@ -4583,6 +4583,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const [loaiSpMap, setLoaiSpMap] = useState({})
   const [updatingTT, setUpdatingTT] = useState({})
   const [innerTab, setInnerTab] = useState(() => {
+    if (restrictToMachineTabs) return 'machine_a'
     try { return localStorage.getItem(LS_INNER_TAB) || 'list' } catch { return 'list' }
   })
   // PL có 3 sub-tabs hiển thị danh sách: list (chưa gán tổ), pl_pcpl1, pl_pcpl3
@@ -5179,8 +5180,9 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   }, [filters])
 
   useEffect(() => {
+    if (restrictToMachineTabs) return
     try { localStorage.setItem(LS_INNER_TAB, innerTab) } catch {}
-  }, [innerTab])
+  }, [innerTab, restrictToMachineTabs])
 
   const onSaved = () => { fetchData(0); parentOnSaved?.() }
 
@@ -5775,7 +5777,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
               color: '#7c3aed',
               label: <span>⚡ Chỉ số P</span>,
             },
-          ].map(tab => (
+          ].filter(tab => !restrictToMachineTabs || tab.key === 'machine_a' || tab.key === 'machine_p').map(tab => (
             <div
               key={tab.key}
               onClick={() => setInnerTab(tab.key)}
