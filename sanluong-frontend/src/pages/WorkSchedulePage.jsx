@@ -632,6 +632,16 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     })
     return { runMin, downMin }
   }
+  const computeRtRange = (entries) => {
+    let startTime = null, endTime = null
+    ;(entries || []).forEach(e => {
+      if (!e.tuGio || !e.denGio) return
+      if (_timeToMin(e.denGio) <= _timeToMin(e.tuGio)) return
+      if (startTime == null || _timeToMin(e.tuGio) < _timeToMin(startTime)) startTime = e.tuGio
+      if (endTime == null || _timeToMin(e.denGio) > _timeToMin(endTime)) endTime = e.denGio
+    })
+    return { startTime, endTime }
+  }
   // rtKey = "${ngay}|${machineName}"
   const _rtMarkClean = (rtKey) => setMachineRuntimeDirtyDays(prev => { const n = new Set(prev); n.delete(rtKey); return n })
   const _rtMarkDirty = (rtKey) => setMachineRuntimeDirtyDays(prev => new Set(prev).add(rtKey))
@@ -2058,6 +2068,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                         const rtKey = `${k}|${machineName}`
                         const rtEntries = allRtEntries.filter(e => e.tenMay === machineName || (!e.tenMay && mIdx === 0))
                         const { runMin, downMin } = computeRtStats(rtEntries)
+                        const { startTime, endTime } = computeRtRange(rtEntries)
                         const total = runMin + downMin
                         const khMin = (machineGioKHMap[rtKey] || 0) * 60
                         const avail = khMin > 0 ? (runMin / khMin * 100).toFixed(1) : null
@@ -2099,6 +2110,7 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                   </button>
                                 )
                               })()}
+                              {startTime && endTime && <Tag color="cyan" style={{ margin: 0, fontSize: 11 }}>{startTime} - {endTime}</Tag>}
                               {runMin > 0 && <Tag color="success" style={{ margin: 0, fontSize: 11 }}>Chạy {runMin}p</Tag>}
                               {downMin > 0 && <Tag color="error" style={{ margin: 0, fontSize: 11 }}>Nghỉ {downMin}p</Tag>}
                               {avail && <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>A={avail}%</Tag>}
