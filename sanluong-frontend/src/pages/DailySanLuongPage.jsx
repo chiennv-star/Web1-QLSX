@@ -2199,22 +2199,30 @@ function TongHopChiTietTab() {
   const grandSL   = displayData.reduce((s, r) => s + STAGES.reduce((ss, st) => ss + (r[st.key]?.sl || 0), 0), 0)
   const grandCong = displayData.reduce((s, r) => s + STAGES.reduce((ss, st) => ss + (r[st.key]?.cong || 0), 0), 0)
 
+  // Điều hướng ô bằng phím mũi tên — bảng chỉ đọc, không có onEdit
+  const cellNav = useCellNav({ rowCount: displayData.length, colCount: 5 + STAGES.length * 3 + 2 })
+
   const columns = [
     { title: 'STT', key: 'stt', width: 46, align: 'center', fixed: 'left',
       onHeaderCell: () => ({ style: { background: '#006666', color: '#fff', fontSize: 11 } }),
+      onCell: (_, i) => cellNav.cellProps(i, 0),
       render: (_, __, idx) => <span style={{ color: '#64748b', fontSize: 11 }}>{idx + 1}</span> },
     { title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 100, fixed: 'left',
       onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
+      onCell: (_, i) => cellNav.cellProps(i, 1),
       render: v => <b style={{ color: '#1d4ed8' }}>{v || '—'}</b> },
     { title: 'Tên SP', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 200, fixed: 'left', ellipsis: true,
-      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }) },
+      onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
+      onCell: (_, i) => cellNav.cellProps(i, 2) },
     { title: 'Số Lô', dataIndex: 'soLo', key: 'soLo', width: 90, align: 'center',
       onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
+      onCell: (_, i) => cellNav.cellProps(i, 3),
       render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v || '—'}</span> },
     { title: 'Cỡ Lô', dataIndex: 'coLo', key: 'coLo', width: 80, align: 'right',
       onHeaderCell: () => ({ style: { background: '#006666', color: '#fff' } }),
+      onCell: (_, i) => cellNav.cellProps(i, 4),
       render: v => v != null ? Number(v).toLocaleString('vi-VN') : '—' },
-    ...STAGES.map(s => ({
+    ...STAGES.map((s, si) => ({
       title: <span style={{ fontWeight: 800, fontSize: 12 }}>{s.label}</span>,
       key: s.key,
       align: 'center',
@@ -2223,6 +2231,7 @@ function TongHopChiTietTab() {
         {
           title: 'SL', key: `${s.key}_sl`, width: 90, align: 'right',
           onHeaderCell: () => ({ style: { background: '#29a3a3', color: '#fff', fontSize: 10 } }),
+          onCell: (_, i) => cellNav.cellProps(i, 5 + si * 3),
           render: (_, r) => {
             const val = r[s.key]?.sl
             if (!val) return <span style={{ color: '#d1d5db' }}>—</span>
@@ -2236,6 +2245,7 @@ function TongHopChiTietTab() {
         {
           title: 'Công', key: `${s.key}_cong`, width: 80, align: 'right',
           onHeaderCell: () => ({ style: { background: '#29a3a3', color: '#fff', fontSize: 10 } }),
+          onCell: (_, i) => cellNav.cellProps(i, 5 + si * 3 + 1),
           render: (_, r) => {
             const val = r[s.key]?.cong
             if (!val) return <span style={{ color: '#d1d5db' }}>—</span>
@@ -2245,6 +2255,7 @@ function TongHopChiTietTab() {
         {
           title: 'Máy', key: `${s.key}_may`, width: 110, align: 'left',
           onHeaderCell: () => ({ style: { background: '#1e7a7a', color: '#fff', fontSize: 10 } }),
+          onCell: (_, i) => cellNav.cellProps(i, 5 + si * 3 + 2),
           render: (_, r) => {
             const mm = r[s.key]?.mayMoc
             if (!mm) return <span style={{ color: '#d1d5db' }}>—</span>
@@ -2259,6 +2270,7 @@ function TongHopChiTietTab() {
     })),
     { title: 'TỔNG SL', key: 'grandSl', width: 100, align: 'right', fixed: 'right',
       onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff', fontSize: 11 } }),
+      onCell: (_, i) => cellNav.cellProps(i, 5 + STAGES.length * 3),
       render: (_, r) => {
         const total = STAGES.reduce((s, st) => s + (r[st.key]?.sl || 0), 0)
         return total ? <span style={{ color: '#1d4ed8', fontWeight: 700, fontSize: 13 }}>{fmtSL(total)}</span>
@@ -2267,6 +2279,7 @@ function TongHopChiTietTab() {
     },
     { title: 'TỔNG CÔNG', key: 'grandCong', width: 110, align: 'right', fixed: 'right',
       onHeaderCell: () => ({ style: { background: '#33CCCC', color: '#fff', fontSize: 11 } }),
+      onCell: (_, i) => cellNav.cellProps(i, 5 + STAGES.length * 3 + 1),
       render: (_, r) => {
         const total = STAGES.reduce((s, st) => s + (r[st.key]?.cong || 0), 0)
         return total ? <span style={{ color: '#6d28d9', fontWeight: 600 }}>{fmtCong(total, 2)}</span>
@@ -2312,6 +2325,7 @@ function TongHopChiTietTab() {
         </div>
       </div>
 
+      <div {...cellNav.wrapProps}>
       <Table
         className="chitet-table"
         columns={columns}
@@ -2347,6 +2361,7 @@ function TongHopChiTietTab() {
           </Table.Summary.Row>
         )}
       />
+      </div>
     </>
   )
 }
@@ -2517,6 +2532,13 @@ function PhanTichChiTietTab() {
   const colorOf = loai => TYPE_COLORS[loaiSpData.findIndex(r => r.loai === loai) % TYPE_COLORS.length] || '#888'
   const fmtC1 = v => (v || 0).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 
+  // Điều hướng ô bằng phím mũi tên — các bảng chỉ đọc trong từng sub-tab
+  const cellNavStage    = useCellNav({ rowCount: stageStats.length,  colCount: 7 })
+  const cellNavTime     = useCellNav({ rowCount: timeData.length,    colCount: 1 + STAGES.length + 1 })
+  const cellNavLoaiSp   = useCellNav({ rowCount: loaiSpData.length,  colCount: 4 + STAGES.length })
+  const cellNavCong     = useCellNav({ rowCount: congByLoai.length,  colCount: 8 })
+  const cellNavMachine  = useCellNav({ rowCount: machineData.length, colCount: 7 })
+
   const subTabItems = [
     {
       key: 'tonghop',
@@ -2555,23 +2577,31 @@ function PhanTichChiTietTab() {
               </ResponsiveContainer>
             </div>
           </div>
+          <div {...cellNavStage.wrapProps}>
           <Table size="small" dataSource={stageStats} pagination={false}
             columns={[
               { title: 'Công đoạn', dataIndex: 'label', width: 100,
+                onCell: (_, i) => cellNavStage.cellProps(i, 0),
                 render: (v, r) => <Tag color={CONG_DOAN_COLOR[r.key] || 'default'} style={{ fontWeight: 700 }}>{v}</Tag> },
               { title: 'Số SP/lô', dataIndex: 'soSp', align: 'right', width: 90,
+                onCell: (_, i) => cellNavStage.cellProps(i, 1),
                 render: v => <span style={{ color: '#374151' }}>{v}</span> },
               { title: 'Tổng SL', dataIndex: 'sl', align: 'right',
+                onCell: (_, i) => cellNavStage.cellProps(i, 2),
                 render: (v, r) => <span style={{ fontWeight: 700, color: r.slColor }}>{fmtSL(v)}</span> },
               { title: '% SL', dataIndex: 'sl', key: 'pct', align: 'right', width: 80,
+                onCell: (_, i) => cellNavStage.cellProps(i, 3),
                 render: v => `${grandSL > 0 ? ((v / grandSL) * 100).toFixed(1) : 0}%` },
               { title: 'Tổng Công', dataIndex: 'cong', align: 'right', width: 110,
+                onCell: (_, i) => cellNavStage.cellProps(i, 4),
                 render: (v, r) => <span style={{ color: r.congColor, fontWeight: 600 }}>{fmtCong(v, 2)}</span> },
               { title: 'SL/Công', align: 'right', width: 90,
+                onCell: (_, i) => cellNavStage.cellProps(i, 5),
                 render: (_, r) => r.cong > 0
                   ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{(r.sl / r.cong).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</span>
                   : <span style={{ color: '#bbb' }}>—</span> },
               { title: 'Máy Móc', dataIndex: 'mayMoc', ellipsis: true,
+                onCell: (_, i) => cellNavStage.cellProps(i, 6),
                 render: v => v ? <Tooltip title={v}><span style={{ fontSize: 12, color: '#555' }}>{v}</span></Tooltip>
                   : <span style={{ color: '#bbb' }}>—</span> },
             ]}
@@ -2589,6 +2619,7 @@ function PhanTichChiTietTab() {
               </Table.Summary.Row>
             )}
           />
+          </div>
         </div>
       ),
     },
@@ -2611,23 +2642,28 @@ function PhanTichChiTietTab() {
               </BarChart>
             </ResponsiveContainer>
           </div>
+          <div {...cellNavTime.wrapProps}>
           <Table size="small" dataSource={timeData} rowKey="date"
             pagination={{ pageSize: 14, showSizeChanger: false, showTotal: t => `${t} ngày` }}
             columns={[
               { title: 'Ngày', dataIndex: 'date', width: 110, fixed: 'left',
+                onCell: (_, i) => cellNavTime.cellProps(i, 0),
                 render: v => <span style={{ fontWeight: 700, color: '#1677ff' }}>{dayjs(v).format('DD/MM/YYYY')}</span> },
-              ...STAGES.map(s => ({
+              ...STAGES.map((s, si) => ({
                 title: s.label, dataIndex: s.key, align: 'right', width: 90,
+                onCell: (_, i) => cellNavTime.cellProps(i, 1 + si),
                 render: v => v > 0 ? <span style={{ color: s.slColor, fontWeight: 600 }}>{fmtSL(v)}</span>
                   : <span style={{ color: '#d9d9d9' }}>—</span>,
               })),
               { title: 'Tổng SL', align: 'right', width: 110,
+                onCell: (_, i) => cellNavTime.cellProps(i, 1 + STAGES.length),
                 render: (_, r) => {
                   const t = STAGES.reduce((s, st) => s + (r[st.key] || 0), 0)
                   return <strong style={{ color: '#389e0d' }}>{fmtSL(t)}</strong>
                 }},
             ]}
           />
+          </div>
         </div>
       ),
     },
@@ -2668,19 +2704,25 @@ function PhanTichChiTietTab() {
               </div>
             </div>
           </div>
+          <div {...cellNavLoaiSp.wrapProps}>
           <Table size="small" dataSource={loaiSpData} rowKey="loai" pagination={false}
             columns={[
               { title: 'Loại Sản Phẩm', dataIndex: 'loai', width: 160,
+                onCell: (_, i) => cellNavLoaiSp.cellProps(i, 0),
                 render: v => <Tag color={colorOf(v)} style={{ fontWeight: 600, fontSize: 12 }}>{v}</Tag> },
               { title: 'Số TP', dataIndex: 'soTp', align: 'center', width: 70,
+                onCell: (_, i) => cellNavLoaiSp.cellProps(i, 1),
                 render: v => <span style={{ fontWeight: 700, color: '#374151' }}>{v}</span> },
               { title: 'Tổng SL', dataIndex: 'sl', align: 'right', width: 110,
                 sorter: (a, b) => a.sl - b.sl,
+                onCell: (_, i) => cellNavLoaiSp.cellProps(i, 2),
                 render: (v, r) => <span style={{ fontWeight: 700, color: colorOf(r.loai) }}>{fmtSL(v)}</span> },
               { title: 'Tỷ Lệ', dataIndex: 'tyLe', align: 'right', width: 75,
+                onCell: (_, i) => cellNavLoaiSp.cellProps(i, 3),
                 render: v => `${v.toFixed(1)}%` },
-              ...STAGES.map(s => ({
+              ...STAGES.map((s, si) => ({
                 title: s.label, dataIndex: s.key, align: 'right', width: 85,
+                onCell: (_, i) => cellNavLoaiSp.cellProps(i, 4 + si),
                 render: v => v > 0 ? <span style={{ color: s.slColor }}>{fmtSL(v)}</span>
                   : <span style={{ color: '#d9d9d9' }}>—</span>,
               })),
@@ -2702,6 +2744,7 @@ function PhanTichChiTietTab() {
               )
             }}
           />
+          </div>
         </div>
       ),
     },
@@ -2713,34 +2756,43 @@ function PhanTichChiTietTab() {
           <div style={{ marginBottom: 10, padding: '8px 12px', background: '#eff6ff', borderRadius: 6, border: '1px solid #bfdbfe', fontSize: 12, color: '#1e40af' }}>
             Công thực tế được tổng hợp từ dữ liệu đã nhập trong kỳ — không phải ước tính từ năng suất.
           </div>
+          <div {...cellNavCong.wrapProps}>
           <Table size="small" dataSource={congByLoai} rowKey="loai" pagination={false}
             columns={[
               { title: 'LOẠI SẢN PHẨM', dataIndex: 'loai', width: 160,
+                onCell: (_, i) => cellNavCong.cellProps(i, 0),
                 render: v => <Tag color={colorOf(v)} style={{ fontWeight: 600, fontSize: 12 }}>{v}</Tag> },
               { title: 'SỐ TP', dataIndex: 'soTp', align: 'center', width: 70,
+                onCell: (_, i) => cellNavCong.cellProps(i, 1),
                 render: v => <span style={{ fontWeight: 700, color: '#374151' }}>{v}</span> },
               { title: 'CÔNG PC (PCPL1)', dataIndex: 'congPcpl1', align: 'right', width: 135,
                 sorter: (a, b) => a.congPcpl1 - b.congPcpl1,
+                onCell: (_, i) => cellNavCong.cellProps(i, 2),
                 render: v => v > 0 ? <span style={{ color: '#1d4ed8', fontWeight: 700 }}>{fmtC1(v)}</span>
                   : <span style={{ color: '#d9d9d9' }}>0</span> },
               { title: 'CÔNG PC (PCPL2)', dataIndex: 'congPcpl2', align: 'right', width: 135,
                 sorter: (a, b) => a.congPcpl2 - b.congPcpl2,
+                onCell: (_, i) => cellNavCong.cellProps(i, 3),
                 render: v => v > 0 ? <span style={{ color: '#0369a1', fontWeight: 700 }}>{fmtC1(v)}</span>
                   : <span style={{ color: '#d9d9d9' }}>0</span> },
               { title: 'CÔNG PL', dataIndex: 'congPl', align: 'right', width: 100,
                 sorter: (a, b) => a.congPl - b.congPl,
+                onCell: (_, i) => cellNavCong.cellProps(i, 4),
                 render: v => v > 0 ? <span style={{ color: '#0e7490', fontWeight: 700 }}>{fmtC1(v)}</span>
                   : <span style={{ color: '#d9d9d9' }}>0</span> },
               { title: 'CÔNG ĐG', dataIndex: 'congDg', align: 'right', width: 100,
                 sorter: (a, b) => a.congDg - b.congDg,
+                onCell: (_, i) => cellNavCong.cellProps(i, 5),
                 render: v => v > 0 ? <span style={{ color: '#7c3aed', fontWeight: 700 }}>{fmtC1(v)}</span>
                   : <span style={{ color: '#d9d9d9' }}>0</span> },
               { title: 'CÔNG BBC1', dataIndex: 'congBbc1', align: 'right', width: 105,
                 sorter: (a, b) => a.congBbc1 - b.congBbc1,
+                onCell: (_, i) => cellNavCong.cellProps(i, 6),
                 render: v => v > 0 ? <span style={{ color: '#991b1b', fontWeight: 700 }}>{fmtC1(v)}</span>
                   : <span style={{ color: '#d9d9d9' }}>0</span> },
               { title: 'TỔNG CÔNG', dataIndex: 'tongCong', align: 'right', width: 115,
                 sorter: (a, b) => a.tongCong - b.tongCong,
+                onCell: (_, i) => cellNavCong.cellProps(i, 7),
                 render: v => <span style={{ fontWeight: 800, color: '#111827' }}>{fmtC1(v)}</span> },
             ]}
             summary={() => (
@@ -2755,6 +2807,7 @@ function PhanTichChiTietTab() {
               </Table.Summary.Row>
             )}
           />
+          </div>
         </div>
       ),
     },
@@ -2783,29 +2836,38 @@ function PhanTichChiTietTab() {
       label: 'Theo Máy Móc',
       children: (
         <div style={{ padding: '12px 0' }}>
+          <div {...cellNavMachine.wrapProps}>
           <Table size="small" dataSource={machineData} rowKey={r => `${r.stage}__${r.machine}`}
             pagination={{ pageSize: 20, showSizeChanger: false, showTotal: t => `${t} máy` }}
             columns={[
               { title: 'Máy Móc', dataIndex: 'machine', width: 200,
+                onCell: (_, i) => cellNavMachine.cellProps(i, 0),
                 render: v => <span style={{ fontWeight: 600, color: '#1e40af' }}>{v}</span> },
               { title: 'Công đoạn', dataIndex: 'stage', width: 100, align: 'center',
+                onCell: (_, i) => cellNavMachine.cellProps(i, 1),
                 render: v => <Tag color={CONG_DOAN_COLOR[v] || 'default'} style={{ fontWeight: 700, marginRight: 0 }}>{v}</Tag> },
               { title: 'Số SP', dataIndex: 'soTp', align: 'center', width: 70,
+                onCell: (_, i) => cellNavMachine.cellProps(i, 2),
                 render: v => <span style={{ fontWeight: 700 }}>{v}</span> },
               { title: 'Số Phiên', dataIndex: 'soPhien', align: 'center', width: 80,
+                onCell: (_, i) => cellNavMachine.cellProps(i, 3),
                 render: v => <span style={{ color: '#0369a1' }}>{v}</span> },
               { title: 'Tổng SL', dataIndex: 'totalSl', align: 'right', width: 110,
                 sorter: (a, b) => a.totalSl - b.totalSl,
+                onCell: (_, i) => cellNavMachine.cellProps(i, 4),
                 render: v => <span style={{ fontWeight: 700, color: '#1e5fa3' }}>{fmtSL(v)}</span> },
               { title: 'Tổng Công', dataIndex: 'totalCong', align: 'right', width: 110,
                 sorter: (a, b) => a.totalCong - b.totalCong,
+                onCell: (_, i) => cellNavMachine.cellProps(i, 5),
                 render: v => <span style={{ fontWeight: 600, color: '#6d28d9' }}>{fmtC1(v)}</span> },
               { title: 'SL/Công', align: 'right', width: 90,
+                onCell: (_, i) => cellNavMachine.cellProps(i, 6),
                 render: (_, r) => r.totalCong > 0
                   ? <span style={{ color: '#0e7490', fontWeight: 600 }}>{(r.totalSl / r.totalCong).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</span>
                   : <span style={{ color: '#bbb' }}>—</span> },
             ]}
           />
+          </div>
         </div>
       ),
     },
@@ -3668,6 +3730,11 @@ function PhanTichSanLuongTab() {
     { label: 'Tổng công', value: fmtCong(stageData.reduce((s, r) => s + r.cong, 0), 2) },
   ]
 
+  // Điều hướng ô bằng phím mũi tên — 3 bảng chỉ đọc theo sub-tab (stage/loaisp/product)
+  const cellNavStage2 = useCellNav({ rowCount: stageData.length,   colCount: 5 })
+  const cellNavLoai2   = useCellNav({ rowCount: loaiData.length,   colCount: 4 + ANALYSIS_STAGES.length * 2 + 1 })
+  const cellNavProduct = useCellNav({ rowCount: productRows.length, colCount: 8 })
+
   return (
     <div style={{ padding: '12px 16px' }}>
       {/* Toolbar */}
@@ -3790,6 +3857,7 @@ function PhanTichSanLuongTab() {
               </div>
 
               {/* Table by stage */}
+              <div {...cellNavStage2.wrapProps}>
               <Table
                 size="small"
                 dataSource={stageData}
@@ -3799,22 +3867,27 @@ function PhanTichSanLuongTab() {
                 columns={[
                   {
                     title: 'Công đoạn', dataIndex: 'key', width: 100,
+                    onCell: (_, i) => cellNavStage2.cellProps(i, 0),
                     render: v => <Tag color={CONG_DOAN_COLOR[v] || 'default'} style={{ fontWeight: 700 }}>{v}</Tag>
                   },
                   {
                     title: 'Số sản phẩm', dataIndex: 'products', align: 'right', width: 110,
+                    onCell: (_, i) => cellNavStage2.cellProps(i, 1),
                     render: v => v.length
                   },
                   {
                     title: 'Tổng sản lượng', dataIndex: 'sl', align: 'right',
+                    onCell: (_, i) => cellNavStage2.cellProps(i, 2),
                     render: v => <span style={{ fontWeight: 700, color: '#0f766e' }}>{fmtSL(v)}</span>
                   },
                   {
                     title: '% Sản lượng', dataIndex: 'sl', key: 'pct', align: 'right', width: 110,
+                    onCell: (_, i) => cellNavStage2.cellProps(i, 3),
                     render: v => <span>{totalSl > 0 ? ((v / totalSl) * 100).toFixed(1) : 0}%</span>
                   },
                   {
                     title: 'Tổng công', dataIndex: 'cong', align: 'right', width: 110,
+                    onCell: (_, i) => cellNavStage2.cellProps(i, 4),
                     render: v => <span style={{ color: '#722ed1' }}>{fmtCong(v, 2)}</span>
                   },
                 ]}
@@ -3832,6 +3905,7 @@ function PhanTichSanLuongTab() {
                   </Table.Summary.Row>
                 )}
               />
+              </div>
             </>
           )}
         </div>
@@ -3866,6 +3940,7 @@ function PhanTichSanLuongTab() {
               </div>
 
               <div style={{ color: '#0000CC' }}>
+              <div {...cellNavLoai2.wrapProps}>
               <Table
                 size="small"
                 dataSource={loaiData}
@@ -3878,6 +3953,7 @@ function PhanTichSanLuongTab() {
                 columns={[
                   {
                     title: 'Loại SP', dataIndex: 'key', width: 155, fixed: 'left',
+                    onCell: (_, i) => cellNavLoai2.cellProps(i, 0),
                     render: (v, _, idx) => (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ width: 12, height: 12, borderRadius: 2, background: LOAI_COLORS[idx % LOAI_COLORS.length], display: 'inline-block', flexShrink: 0 }} />
@@ -3885,14 +3961,17 @@ function PhanTichSanLuongTab() {
                       </span>
                     )
                   },
-                  { title: 'Số SP', dataIndex: 'products', align: 'right', width: 65, render: v => v.length },
+                  { title: 'Số SP', dataIndex: 'products', align: 'right', width: 65,
+                    onCell: (_, i) => cellNavLoai2.cellProps(i, 1),
+                    render: v => v.length },
                   {
                     title: 'Sản lượng theo công đoạn',
-                    children: ANALYSIS_STAGES.map(s => ({
+                    children: ANALYSIS_STAGES.map((s, si) => ({
                       title: <span style={{ color: s.color, fontWeight: 700 }}>{s.label}</span>,
                       key: `sl_${s.key}`,
                       align: 'right',
                       width: 90,
+                      onCell: (_, i) => cellNavLoai2.cellProps(i, 2 + si),
                       render: (_, r) => {
                         const v = r.byStage[s.key]?.sl || 0
                         return v > 0
@@ -3903,19 +3982,22 @@ function PhanTichSanLuongTab() {
                   },
                   {
                     title: 'Tổng SL', dataIndex: 'sl', align: 'right', width: 105,
+                    onCell: (_, i) => cellNavLoai2.cellProps(i, 2 + ANALYSIS_STAGES.length),
                     render: v => <span style={{ fontWeight: 700, color: '#0f766e' }}>{fmtSL(v)}</span>
                   },
                   {
                     title: '% SL', dataIndex: 'sl', key: 'pct', align: 'right', width: 75,
+                    onCell: (_, i) => cellNavLoai2.cellProps(i, 3 + ANALYSIS_STAGES.length),
                     render: v => <span>{totalSl > 0 ? ((v / totalSl) * 100).toFixed(1) : 0}%</span>
                   },
                   {
                     title: 'Công theo công đoạn',
-                    children: ANALYSIS_STAGES.map(s => ({
+                    children: ANALYSIS_STAGES.map((s, si) => ({
                       title: <span style={{ color: s.color, fontWeight: 700 }}>{s.label}</span>,
                       key: `cong_${s.key}`,
                       align: 'right',
                       width: 90,
+                      onCell: (_, i) => cellNavLoai2.cellProps(i, 4 + ANALYSIS_STAGES.length + si),
                       render: (_, r) => {
                         const v = r.byStage[s.key]?.cong || 0
                         return v > 0
@@ -3926,6 +4008,7 @@ function PhanTichSanLuongTab() {
                   },
                   {
                     title: 'Tổng công', dataIndex: 'cong', align: 'right', width: 100,
+                    onCell: (_, i) => cellNavLoai2.cellProps(i, 4 + ANALYSIS_STAGES.length * 2),
                     render: v => <span style={{ color: '#722ed1', fontWeight: 600 }}>{fmtCong(v, 2)}</span>
                   },
                 ]}
@@ -3963,6 +4046,7 @@ function PhanTichSanLuongTab() {
                 }}
               />
               </div>
+              </div>
             </>
           )}
         </div>
@@ -3993,6 +4077,7 @@ function PhanTichSanLuongTab() {
               <div>Không có dữ liệu</div>
             </div>
           ) : (
+            <div {...cellNavProduct.wrapProps}>
             <Table
               size="small"
               dataSource={productRows}
@@ -4002,38 +4087,47 @@ function PhanTichSanLuongTab() {
               columns={[
                 {
                   title: '#', key: 'idx', width: 45, align: 'center',
+                  onCell: (_, i) => cellNavProduct.cellProps(i, 0),
                   render: (_, __, i) => <span style={{ color: '#999', fontSize: 11 }}>{i + 1}</span>
                 },
                 {
                   title: 'CĐ', dataIndex: 'cd', width: 75,
+                  onCell: (_, i) => cellNavProduct.cellProps(i, 1),
                   render: v => <Tag color={CONG_DOAN_COLOR[v] || 'default'} style={{ marginRight: 0, fontWeight: 700, fontSize: 11 }}>{v}</Tag>
                 },
                 {
                   title: 'Mã SP', dataIndex: 'maSp', width: 75,
+                  onCell: (_, i) => cellNavProduct.cellProps(i, 2),
                   render: v => v ? <span style={{ fontWeight: 600, color: '#595959', fontSize: 12 }}>{v}</span> : '—'
                 },
                 {
                   title: 'Tên sản phẩm / Tiến trình', dataIndex: 'tenTrinh',
+                  onCell: (_, i) => cellNavProduct.cellProps(i, 3),
                   render: v => <span style={{ wordBreak: 'break-word' }}>{v || '—'}</span>
                 },
                 {
                   title: 'Số lô', dataIndex: 'soLo', width: 90,
+                  onCell: (_, i) => cellNavProduct.cellProps(i, 4),
                   render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v || '—'}</span>
                 },
                 {
                   title: 'Sản lượng', dataIndex: 'sl', width: 110, align: 'right',
+                  onCell: (_, i) => cellNavProduct.cellProps(i, 5),
                   render: v => <span style={{ fontWeight: 700, color: '#0f766e' }}>{fmtSL(v)}</span>
                 },
                 {
                   title: '% Tổng', key: 'pct', width: 80, align: 'right',
+                  onCell: (_, i) => cellNavProduct.cellProps(i, 6),
                   render: (_, r) => <span style={{ fontSize: 12 }}>{totalSl > 0 ? ((r.sl / totalSl) * 100).toFixed(1) : 0}%</span>
                 },
                 {
                   title: 'Công', dataIndex: 'cong', width: 90, align: 'right',
+                  onCell: (_, i) => cellNavProduct.cellProps(i, 7),
                   render: v => <span style={{ color: '#722ed1', fontSize: 12 }}>{fmtCong(v, 2)}</span>
                 },
               ]}
             />
+            </div>
           )}
         </div>
       )}
@@ -5752,9 +5846,9 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved, canEdit =
       <Rnd
         key={r.id}
         default={{
-          x: Math.max(20, (window.innerWidth - 860) / 2),
+          x: Math.max(20, (window.innerWidth - 1020) / 2),
           y: Math.max(20, (window.innerHeight - 600) / 2),
-          width: 860,
+          width: 1020,
           height: 600,
         }}
         minWidth={500} minHeight={400}
@@ -6021,13 +6115,68 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved, canEdit =
   )
 }
 
+// ─── NhapKhoAuditLogView ─────────────────────────────────────────────────────
+// Bản sao lịch sử thêm mới/sửa/xóa của tab "Ngày Nhập Kho" và "Nhập Kho" — append-only,
+// độc lập với bản chính (xóa bản chính không làm mất log). Chỉ ADMIN xem được.
+function NhapKhoAuditLogView({ data, loading, onReload }) {
+  const HANH_DONG_TAG = {
+    THEM_MOI: <Tag color="green">Thêm mới</Tag>,
+    SUA:      <Tag color="blue">Sửa</Tag>,
+    XOA:      <Tag color="red">Xóa</Tag>,
+  }
+  const columns = [
+    { title: '#', key: 'stt', width: 46, align: 'center', render: (_, __, i) => i + 1 },
+    {
+      title: 'Thời gian', dataIndex: 'changedAt', key: 'changedAt', width: 140,
+      render: v => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—',
+      sorter: (a, b) => (a.changedAt || '').localeCompare(b.changedAt || ''),
+      defaultSortOrder: 'descend',
+    },
+    { title: 'Hành động', dataIndex: 'hanhDong', key: 'hanhDong', width: 100, align: 'center',
+      render: v => HANH_DONG_TAG[v] || v },
+    { title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 100,
+      render: v => v ? <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{v}</span> : '—' },
+    { title: 'Mã SP', dataIndex: 'maTp', key: 'maTp', width: 90 },
+    { title: 'Tiến trình', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 220, ellipsis: true },
+    { title: 'Số lô', dataIndex: 'lsx', key: 'lsx', width: 90,
+      render: v => <span style={{ fontFamily: 'monospace' }}>{v || '—'}</span> },
+    { title: 'SL NK', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 90, align: 'right',
+      render: v => v != null ? Number(v).toLocaleString('vi-VN') : '—' },
+    { title: 'Ngày xuất', dataIndex: 'ngayXuatKho', key: 'ngayXuatKho', width: 100,
+      render: v => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
+    { title: 'Tình trạng', dataIndex: 'tinhTrangNhapKho', key: 'tinhTrangNhapKho', width: 100 },
+    { title: 'Tên NTH', dataIndex: 'tenNthNhapKho', key: 'tenNthNhapKho', width: 110 },
+    { title: 'Ghi chú', dataIndex: 'ghiChuNhapKho', key: 'ghiChuNhapKho', width: 150, ellipsis: true },
+    { title: 'Thay đổi', dataIndex: 'thayDoi', key: 'thayDoi', width: 260, ellipsis: true,
+      render: v => v || <span style={{ color: '#d1d5db' }}>—</span> },
+    { title: 'Người thực hiện', dataIndex: 'changedBy', key: 'changedBy', width: 130 },
+  ]
+  return (
+    <div>
+      <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 12, color: '#64748b' }}>
+          Lịch sử thêm mới/sửa/xóa — bản sao độc lập, không đổi khi bản chính bị xóa. Chỉ ADMIN xem được.
+        </span>
+        <Button size="small" icon={<ReloadOutlined />} onClick={onReload}>Tải lại</Button>
+      </div>
+      <Table
+        size="small" rowKey="id" columns={columns} dataSource={data}
+        loading={loading} scroll={{ x: 1500 }}
+        pagination={{ pageSize: 50, showSizeChanger: true, showTotal: t => `${t} bản ghi` }}
+      />
+    </div>
+  )
+}
+
 // ─── NhapKhoTab ───────────────────────────────────────────────────────────────
 
 function NhapKhoTab() {
-  const { canEditNhapKhoTarget, isQuanDoc, user } = useAuth()
+  const { canEditNhapKhoTarget, isQuanDoc, isAdmin, user } = useAuth()
   const canEdit = !isQuanDoc()
   // ADMIN_DG được thêm/sửa Nhập Kho như bình thường nhưng không được xóa
   const canDelete = canEdit && user?.role !== 'ADMIN_DG'
+  const [auditData, setAuditData] = useState([])
+  const [auditLoading, setAuditLoading] = useState(false)
   const [data,          setData]          = useState([])
   const [loading,       setLoading]       = useState(false)
   const [saving,        setSaving]        = useState({})
@@ -6128,6 +6277,17 @@ function NhapKhoTab() {
   }, [])
 
   useEffect(() => { if (viewMode === 'summary') fetchSummary() }, [viewMode, fetchSummary])
+
+  const fetchAuditLog = useCallback(async () => {
+    setAuditLoading(true)
+    try {
+      const { data: res } = await api.get('/production/nhap-kho-audit-log')
+      setAuditData(res || [])
+    } catch { message.error('Không tải được lịch sử Nhập Kho') }
+    finally { setAuditLoading(false) }
+  }, [])
+
+  useEffect(() => { if (viewMode === 'audit' && isAdmin()) fetchAuditLog() }, [viewMode, isAdmin, fetchAuditLog])
 
   const saveSummaryField = useCallback(async (id, field, value) => {
     const body = { [field]: value != null ? String(value) : '' }
@@ -6546,6 +6706,7 @@ function NhapKhoTab() {
             { label: 'Ngày Nhập Kho', value: 'list' },
             { label: 'Nhập Kho', value: 'tong-hop' },
             { label: 'Tổng hợp theo ngày', value: 'summary' },
+            ...(isAdmin() ? [{ label: '📜 Lịch sử NK', value: 'audit' }] : []),
           ]}
         />
         {viewMode === 'list' ? (
@@ -6645,6 +6806,8 @@ function NhapKhoTab() {
         />
       ) : viewMode === 'tong-hop' ? (
         <NhapKhoTongHopTable data={filteredTongHopData} loading={tongHopLoading} onRowClick={setTongHopDrawer} filterH={filterH} />
+      ) : viewMode === 'audit' ? (
+        <NhapKhoAuditLogView data={auditData} loading={auditLoading} onReload={fetchAuditLog} />
       ) : (
       <div {...cellNav.wrapProps}>
       <Table

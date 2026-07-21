@@ -4987,6 +4987,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   // QA Lấy mẫu: gộp 3 trường KN/Lưu mẫu/Khác vào 1 popup sửa chung thay vì 3 popup riêng lẻ
   const [qaEdit, setQaEdit] = useState(null) // { id, field } — field chỉ để neo vị trí popup
   const [qaValues, setQaValues] = useState({ qaKiemNghiem: null, qaLuuMau: null, qaKhac: null })
+  const [qaOriginalKN, setQaOriginalKN] = useState(null) // giá trị Kiểm nghiệm đã lưu trước đó (null = chưa từng nhập) — quyết định nhãn nút Lưu/Chỉnh sửa
   const [qaSaving, setQaSaving] = useState(false)
   const [qaHistoryOpen, setQaHistoryOpen] = useState(false)
   const [qaHistoryList, setQaHistoryList] = useState([])
@@ -5472,6 +5473,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                 qaLuuMau: record.qaLuuMau ?? null,
                 qaKhac: record.qaKhac ?? null,
               })
+              setQaOriginalKN(record.qaKiemNghiem ?? null)
               setQaEdit({ id: record.id, field: fieldKey })
             } : undefined}
             style={{ cursor: canEdit ? 'pointer' : 'default', textAlign: 'right' }}
@@ -5520,7 +5522,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                     <Button size="small" onClick={() => setQaEdit(null)}>Hủy</Button>
                     <Button size="small" type="primary" loading={qaSaving}
                       onClick={() => saveQaFields(record.id)}>
-                      Lưu
+                      {qaOriginalKN != null ? 'Chỉnh sửa' : 'Lưu'}
                     </Button>
                   </Space>
                 </Space>

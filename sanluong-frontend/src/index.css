@@ -139,12 +139,13 @@ body {
 }
 
 /* ── Điều hướng ô bằng phím mũi tên (useCellNav) — ô đang chọn ───────────── */
+/* z-index cao hơn thanh tiêu đề sticky (.ant-table-sticky-holder) để không bị che khi cuộn qua */
 .ant-table-tbody > tr > td.cellnav-selected {
   outline: 2px solid #1677ff !important;
   outline-offset: -2px;
   background: #e6f4ff !important;
   position: relative;
-  z-index: 1;
+  z-index: 20;
 }
 
 /* ── Hàng mới thêm vào danh mục — highlight xanh fade-out ───────────────── */
