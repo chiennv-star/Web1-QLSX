@@ -6118,38 +6118,46 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved, canEdit =
 // ─── NhapKhoAuditLogView ─────────────────────────────────────────────────────
 // Bản sao lịch sử thêm mới/sửa/xóa của tab "Ngày Nhập Kho" và "Nhập Kho" — append-only,
 // độc lập với bản chính (xóa bản chính không làm mất log). Chỉ ADMIN xem được.
-function NhapKhoAuditLogView({ data, loading, onReload }) {
+function NhapKhoAuditLogView({ data, loading, onReload, filterH = 0 }) {
   const HANH_DONG_TAG = {
     THEM_MOI: <Tag color="green">Thêm mới</Tag>,
     SUA:      <Tag color="blue">Sửa</Tag>,
     XOA:      <Tag color="red">Xóa</Tag>,
   }
+  const cellNav = useCellNav({ rowCount: data.length, colCount: 14 })
   const columns = [
-    { title: '#', key: 'stt', width: 46, align: 'center', render: (_, __, i) => i + 1 },
+    { title: '#', key: 'stt', width: 46, align: 'center', onCell: (_, i) => cellNav.cellProps(i, 0), render: (_, __, i) => i + 1 },
     {
       title: 'Thời gian', dataIndex: 'changedAt', key: 'changedAt', width: 140,
+      onCell: (_, i) => cellNav.cellProps(i, 1),
       render: v => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—',
       sorter: (a, b) => (a.changedAt || '').localeCompare(b.changedAt || ''),
       defaultSortOrder: 'descend',
     },
     { title: 'Hành động', dataIndex: 'hanhDong', key: 'hanhDong', width: 100, align: 'center',
+      onCell: (_, i) => cellNav.cellProps(i, 2),
       render: v => HANH_DONG_TAG[v] || v },
     { title: 'Mã Bravo', dataIndex: 'maBravo', key: 'maBravo', width: 100,
+      onCell: (_, i) => cellNav.cellProps(i, 3),
       render: v => v ? <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1677ff' }}>{v}</span> : '—' },
-    { title: 'Mã SP', dataIndex: 'maTp', key: 'maTp', width: 90 },
-    { title: 'Tiến trình', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 220, ellipsis: true },
+    { title: 'Mã SP', dataIndex: 'maTp', key: 'maTp', width: 90, onCell: (_, i) => cellNav.cellProps(i, 4) },
+    { title: 'Tiến trình', dataIndex: 'tienTrinh', key: 'tienTrinh', width: 220, ellipsis: true, onCell: (_, i) => cellNav.cellProps(i, 5) },
     { title: 'Số lô', dataIndex: 'lsx', key: 'lsx', width: 90,
+      onCell: (_, i) => cellNav.cellProps(i, 6),
       render: v => <span style={{ fontFamily: 'monospace' }}>{v || '—'}</span> },
     { title: 'SL NK', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 90, align: 'right',
+      onCell: (_, i) => cellNav.cellProps(i, 7),
       render: v => v != null ? Number(v).toLocaleString('vi-VN') : '—' },
     { title: 'Ngày xuất', dataIndex: 'ngayXuatKho', key: 'ngayXuatKho', width: 100,
+      onCell: (_, i) => cellNav.cellProps(i, 8),
       render: v => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
-    { title: 'Tình trạng', dataIndex: 'tinhTrangNhapKho', key: 'tinhTrangNhapKho', width: 100 },
-    { title: 'Tên NTH', dataIndex: 'tenNthNhapKho', key: 'tenNthNhapKho', width: 110 },
-    { title: 'Ghi chú', dataIndex: 'ghiChuNhapKho', key: 'ghiChuNhapKho', width: 150, ellipsis: true },
+    { title: 'Tình trạng', dataIndex: 'tinhTrangNhapKho', key: 'tinhTrangNhapKho', width: 100, onCell: (_, i) => cellNav.cellProps(i, 9) },
+    { title: 'Tên NTH', dataIndex: 'tenNthNhapKho', key: 'tenNthNhapKho', width: 110, onCell: (_, i) => cellNav.cellProps(i, 10) },
+    { title: 'Ghi chú', dataIndex: 'ghiChuNhapKho', key: 'ghiChuNhapKho', width: 150, ellipsis: true, onCell: (_, i) => cellNav.cellProps(i, 11) },
     { title: 'Thay đổi', dataIndex: 'thayDoi', key: 'thayDoi', width: 260, ellipsis: true,
+      onCell: (_, i) => cellNav.cellProps(i, 12),
       render: v => v || <span style={{ color: '#d1d5db' }}>—</span> },
-    { title: 'Người thực hiện', dataIndex: 'changedBy', key: 'changedBy', width: 130 },
+    { title: 'Người thực hiện', dataIndex: 'changedBy', key: 'changedBy', width: 130, onCell: (_, i) => cellNav.cellProps(i, 13) },
   ]
   return (
     <div>
@@ -6159,11 +6167,14 @@ function NhapKhoAuditLogView({ data, loading, onReload }) {
         </span>
         <Button size="small" icon={<ReloadOutlined />} onClick={onReload}>Tải lại</Button>
       </div>
+      <div {...cellNav.wrapProps}>
       <Table
-        size="small" rowKey="id" columns={columns} dataSource={data}
+        size="small" rowKey="id" className="nhapkho-table" columns={columns} dataSource={data}
         loading={loading} scroll={{ x: 1500 }}
+        sticky={{ offsetHeader: TAB_BAR_H + filterH }}
         pagination={{ pageSize: 50, showSizeChanger: true, showTotal: t => `${t} bản ghi` }}
       />
+      </div>
     </div>
   )
 }
@@ -6807,7 +6818,7 @@ function NhapKhoTab() {
       ) : viewMode === 'tong-hop' ? (
         <NhapKhoTongHopTable data={filteredTongHopData} loading={tongHopLoading} onRowClick={setTongHopDrawer} filterH={filterH} />
       ) : viewMode === 'audit' ? (
-        <NhapKhoAuditLogView data={auditData} loading={auditLoading} onReload={fetchAuditLog} />
+        <NhapKhoAuditLogView data={auditData} loading={auditLoading} onReload={fetchAuditLog} filterH={filterH} />
       ) : (
       <div {...cellNav.wrapProps}>
       <Table
