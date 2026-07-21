@@ -237,6 +237,26 @@ public class ProductionController {
         return ResponseEntity.ok(productionService.getNhapKhoTongHop());
     }
 
+    /**
+     * "Tổng hợp theo ngày" — bản sao độc lập, đồng bộ 1 chiều từ "Ngày Nhập Kho"/"Nhập Kho".
+     * Xóa ở đây (DELETE bên dưới) không ảnh hưởng bản ghi nguồn; xóa ở nguồn cũng không
+     * ảnh hưởng dữ liệu đã đồng bộ sang đây.
+     */
+    @GetMapping("/nhap-kho-tong-hop-ngay")
+    public ResponseEntity<List<com.sanluong.entity.NhapKhoTongHopNgay>> getNhapKhoTongHopNgay(
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate) {
+        java.time.LocalDate from = fromDate != null && !fromDate.isBlank() ? java.time.LocalDate.parse(fromDate) : null;
+        java.time.LocalDate to   = toDate   != null && !toDate.isBlank()   ? java.time.LocalDate.parse(toDate)   : null;
+        return ResponseEntity.ok(productionService.getNhapKhoTongHopNgay(from, to));
+    }
+
+    @DeleteMapping("/nhap-kho-tong-hop-ngay/{id}")
+    public ResponseEntity<Void> deleteNhapKhoTongHopNgay(@PathVariable Long id) {
+        productionService.deleteNhapKhoTongHopNgay(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/nhap-kho")
     public ResponseEntity<List<ProductionRecord>> getNhapKho(
             @RequestParam(required = false) String fromDate,

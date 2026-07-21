@@ -1,11 +1,13 @@
 package com.sanluong.service;
 
 import com.sanluong.dto.ProductionRecordDto;
+import com.sanluong.entity.NhapKhoTongHopNgay;
 import com.sanluong.entity.ProductionEditHistory;
 import com.sanluong.entity.ProductionRecord;
 import com.sanluong.entity.WorkSchedule;
 import com.sanluong.entity.WorkScheduleSession;
 import com.sanluong.repository.LenhSanXuatRepository;
+import com.sanluong.repository.NhapKhoTongHopNgayRepository;
 import com.sanluong.repository.ProductionEditHistoryRepository;
 import com.sanluong.repository.ProductionRecordRepository;
 import com.sanluong.repository.ProductMasterRepository;
@@ -42,6 +44,7 @@ public class ProductionService {
     private final NotificationService notificationService;
     private final KhoachEventPublisher khoachEventPublisher;
     private final SanLuongTongHopService sanLuongTongHopService;
+    private final NhapKhoTongHopNgayRepository nhapKhoTongHopNgayRepository;
 
     public ProductionService(ProductionRecordRepository repository,
                              ProductMasterRepository productMasterRepository,
@@ -52,7 +55,8 @@ public class ProductionService {
                              ProductionEditHistoryRepository historyRepository,
                              NotificationService notificationService,
                              KhoachEventPublisher khoachEventPublisher,
-                             SanLuongTongHopService sanLuongTongHopService) {
+                             SanLuongTongHopService sanLuongTongHopService,
+                             NhapKhoTongHopNgayRepository nhapKhoTongHopNgayRepository) {
         this.repository = repository;
         this.productMasterRepository = productMasterRepository;
         this.lenhSanXuatRepository = lenhSanXuatRepository;
@@ -63,6 +67,7 @@ public class ProductionService {
         this.notificationService = notificationService;
         this.khoachEventPublisher = khoachEventPublisher;
         this.sanLuongTongHopService = sanLuongTongHopService;
+        this.nhapKhoTongHopNgayRepository = nhapKhoTongHopNgayRepository;
     }
 
     // Tên hiển thị tiếng Việt của từng trường
@@ -573,7 +578,8 @@ public class ProductionService {
             firstClone.setGhiChuNhapKho(src.getGhiChuNhapKho());
             firstClone.setCreatedAt(java.time.LocalDateTime.now());
             firstClone.setCreatedBy(username);
-            repository.save(firstClone);
+            ProductionRecord savedFirstClone = repository.save(firstClone);
+            syncNhapKhoTongHopNgay(savedFirstClone);
         }
 
         ProductionRecord clone = new ProductionRecord();
@@ -587,6 +593,7 @@ public class ProductionService {
         clone.setCreatedBy(username);
         applyNhapKhoFields(clone, body);
         ProductionRecord saved = repository.save(clone);
+        syncNhapKhoTongHopNgay(saved);
         recalcSourceTpNhapKho(src.getMaBravo(), src.getLsx(), username);
         return saved;
     }
@@ -666,6 +673,7 @@ public class ProductionService {
             clone.setCreatedBy(username);
             applyNhapKhoFields(clone, body);
             ProductionRecord saved = repository.save(clone);
+            syncNhapKhoTongHopNgay(saved);
             recalcSourceTpNhapKho(r.getMaBravo(), r.getLsx(), username);
             return saved;
         }
@@ -674,10 +682,52 @@ public class ProductionService {
         applyNhapKhoFields(r, body);
         r.setUpdatedBy(username);
         ProductionRecord saved = repository.save(r);
+        syncNhapKhoTongHopNgay(saved);
         if (body.containsKey("tpNhapKho")) {
             recalcSourceTpNhapKho(r.getMaBravo(), r.getLsx(), username);
         }
         return saved;
+    }
+
+    /**
+     * Đồng bộ 1 chiều sang bảng "Tổng hợp theo ngày": tạo/cập nhật bản ghi snapshot
+     * ứng với ProductionRecord (clone nhập kho) này. Chỉ đồng bộ khi đây thực sự là
+     * một lần nhập kho hợp lệ (không phải bản gốc, có tpNhapKho, chưa bị xóa/ẩn).
+     * KHÔNG có chiều ngược lại: xóa ở "Ngày Nhập Kho"/"Nhập Kho" không gọi hàm này
+     * nên không ảnh hưởng tới snapshot đã lưu.
+     */
+    private void syncNhapKhoTongHopNgay(ProductionRecord entry) {
+        boolean isClone = entry.getPhatLenh() == null || !entry.getPhatLenh();
+        boolean valid = isClone && entry.getTpNhapKho() != null
+                && entry.getDeletedAt() == null
+                && (entry.getHidden() == null || !entry.getHidden());
+        if (!valid) return;
+        NhapKhoTongHopNgay snap = nhapKhoTongHopNgayRepository.findBySourceId(entry.getId())
+                .orElseGet(NhapKhoTongHopNgay::new);
+        snap.setSourceId(entry.getId());
+        snap.setMaBravo(entry.getMaBravo());
+        snap.setMaTp(entry.getMaTp());
+        snap.setTienTrinh(entry.getTienTrinh());
+        snap.setLsx(entry.getLsx());
+        snap.setTpNhapKho(entry.getTpNhapKho());
+        snap.setNgayXuatKho(entry.getNgayXuatKho());
+        nhapKhoTongHopNgayRepository.save(snap);
+    }
+
+    public List<NhapKhoTongHopNgay> getNhapKhoTongHopNgay(java.time.LocalDate fromDate, java.time.LocalDate toDate) {
+        return nhapKhoTongHopNgayRepository.search(fromDate, toDate);
+    }
+
+    public void deleteNhapKhoTongHopNgay(Long id) {
+        nhapKhoTongHopNgayRepository.deleteById(id);
+    }
+
+    /** Nạp dữ liệu "Tổng hợp theo ngày" lần đầu từ toàn bộ lần nhập kho đã có sẵn (chỉ chạy khi bảng snapshot còn trống) */
+    public void backfillNhapKhoTongHopNgay() {
+        if (nhapKhoTongHopNgayRepository.count() > 0) return;
+        for (ProductionRecord entry : repository.findAllNhapKhoEntries()) {
+            syncNhapKhoTongHopNgay(entry);
+        }
     }
 
     /** Tính lại tổng tpNhapKho từ tất cả clone entries rồi cập nhật lên bản ghi gốc */

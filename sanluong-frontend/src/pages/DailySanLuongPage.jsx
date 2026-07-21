@@ -4953,7 +4953,7 @@ function CellPopoverContent({ records, day, month, year, onSave, onClose }) {
   )
 }
 
-function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang = {}, onMucTieuThangChange, loading, onSaveField, canEdit = false }) {
+function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang = {}, onMucTieuThangChange, loading, onSaveField, canEdit = false, onDeleteRow }) {
   const [editMT, setEditMT] = useState(false)
   const [editMTMonth, setEditMTMonth] = useState(null)
   const [selectedDay, setSelectedDay] = useState(null)
@@ -5395,6 +5395,7 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
                     {['#','Mã Bravo','Mã SP','Tên sản phẩm','Số lô','SL NK'].map((h, i) => (
                       <th key={i} style={{ padding: '6px 8px', textAlign: i >= 5 ? 'right' : 'left', fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
+                    {onDeleteRow && <th style={{ padding: '6px 8px', width: 36 }} />}
                   </tr>
                 </thead>
                 <tbody>
@@ -5408,6 +5409,17 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
                       <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 700, color: '#15803d' }}>
                         {r.tpNhapKho != null ? Number(r.tpNhapKho).toLocaleString('vi-VN') : '—'}
                       </td>
+                      {onDeleteRow && (
+                        <td style={{ padding: '5px 8px', textAlign: 'center' }}>
+                          <Popconfirm
+                            title="Xóa dòng này khỏi Tổng hợp theo ngày?"
+                            okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }}
+                            onConfirm={() => onDeleteRow(r.id)}
+                          >
+                            <DeleteOutlined style={{ color: '#ef4444', cursor: 'pointer', fontSize: 13 }} />
+                          </Popconfirm>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -5415,6 +5427,7 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
                   <tr style={{ background: '#f0fdf4', fontWeight: 700 }}>
                     <td colSpan={5} style={{ padding: '6px 8px', color: '#374151' }}>Tổng ({records.length} sản phẩm)</td>
                     <td style={{ padding: '6px 8px', textAlign: 'right', color: '#15803d', fontSize: 14 }}>{total.toLocaleString('vi-VN')}</td>
+                    {onDeleteRow && <td />}
                   </tr>
                 </tfoot>
               </table>
@@ -6096,13 +6109,21 @@ function NhapKhoTab() {
   const fetchSummary = useCallback(async () => {
     setSummaryLoading(true)
     try {
-      const { data: res } = await api.get('/production/nhap-kho', {
+      const { data: res } = await api.get('/production/nhap-kho-tong-hop-ngay', {
         params: { fromDate: `${summaryYear}-01-01`, toDate: `${summaryYear}-12-31` }
       })
       setSummaryData(res)
     } catch { message.error('Không tải được dữ liệu tổng hợp') }
     finally { setSummaryLoading(false) }
   }, [summaryYear])
+
+  const deleteSummaryRow = useCallback(async (id) => {
+    try {
+      await api.delete(`/production/nhap-kho-tong-hop-ngay/${id}`)
+      setSummaryData(prev => prev.filter(r => r.id !== id))
+      message.success('Đã xóa khỏi Tổng hợp theo ngày')
+    } catch { message.error('Xóa thất bại') }
+  }, [])
 
   useEffect(() => { if (viewMode === 'summary') fetchSummary() }, [viewMode, fetchSummary])
 
@@ -6618,6 +6639,7 @@ function NhapKhoTab() {
           loading={summaryLoading}
           onSaveField={canEdit ? saveSummaryField : undefined}
           canEdit={canEditNhapKhoTarget()}
+          onDeleteRow={canEdit ? deleteSummaryRow : undefined}
         />
       ) : viewMode === 'tong-hop' ? (
         <NhapKhoTongHopTable data={filteredTongHopData} loading={tongHopLoading} onRowClick={setTongHopDrawer} filterH={filterH} />
