@@ -5582,7 +5582,7 @@ function NhapKhoTongHopTable({ data, loading, onRowClick, filterH = 0 }) {
 
 // ─── NhapKhoDetailPanel ───────────────────────────────────────────────────────
 
-function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved, canEdit = true }) {
+function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved, canEdit = true, canDelete = true }) {
   const [localRecord, setLocalRecord] = useState(initialRecord)
   const [slNK,       setSlNK]       = useState(null)
   const [ngayNK,     setNgayNK]     = useState(dayjs())
@@ -5666,7 +5666,7 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved, canEdit =
     try {
       await api.delete(`/production/${entry.id}/nhap-kho`)
       message.success('Đã xóa lần nhập kho')
-      const res = await api.get(`/production/${r.id}/nhap-kho-entries`)
+      const res = await api.get(`/production/${localRecord.id}/nhap-kho-entries`)
       const fresh = res.data || []
       setEntries(fresh)
       const newTotal = fresh.reduce((s, e) => s + (e.tpNhapKho || 0), 0)
@@ -5884,7 +5884,7 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved, canEdit =
                             {e.ghiChuNhapKho || <span style={{ color: '#d1d5db' }}>—</span>}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {canEdit && (
+                            {canDelete && (
                               <Popconfirm
                                 title="Xóa lần nhập kho này?"
                                 onConfirm={() => handleDeleteEntry(e)}
@@ -6024,8 +6024,10 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved, canEdit =
 // ─── NhapKhoTab ───────────────────────────────────────────────────────────────
 
 function NhapKhoTab() {
-  const { canEditNhapKhoTarget, isQuanDoc } = useAuth()
+  const { canEditNhapKhoTarget, isQuanDoc, user } = useAuth()
   const canEdit = !isQuanDoc()
+  // ADMIN_DG được thêm/sửa Nhập Kho như bình thường nhưng không được xóa
+  const canDelete = canEdit && user?.role !== 'ADMIN_DG'
   const [data,          setData]          = useState([])
   const [loading,       setLoading]       = useState(false)
   const [saving,        setSaving]        = useState({})
@@ -6639,7 +6641,7 @@ function NhapKhoTab() {
           loading={summaryLoading}
           onSaveField={canEdit ? saveSummaryField : undefined}
           canEdit={canEditNhapKhoTarget()}
-          onDeleteRow={canEdit ? deleteSummaryRow : undefined}
+          onDeleteRow={canDelete ? deleteSummaryRow : undefined}
         />
       ) : viewMode === 'tong-hop' ? (
         <NhapKhoTongHopTable data={filteredTongHopData} loading={tongHopLoading} onRowClick={setTongHopDrawer} filterH={filterH} />
@@ -6660,7 +6662,7 @@ function NhapKhoTab() {
         onRow={record => ({
           onContextMenu: (e) => {
             e.preventDefault()
-            if (canEdit) setCtxMenu({ x: e.clientX, y: e.clientY, record })
+            if (canDelete) setCtxMenu({ x: e.clientX, y: e.clientY, record })
           },
         })}
         summary={() => (
@@ -6726,6 +6728,7 @@ function NhapKhoTab() {
           onClose={() => setTongHopDrawer(null)}
           onSaved={fetchTongHop}
           canEdit={canEdit}
+          canDelete={canDelete}
         />
       )}
 
@@ -6975,7 +6978,7 @@ function NhapKhoTab() {
                           {e.ghiChuNhapKho || <span style={{ color: '#d1d5db' }}>—</span>}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {canEdit && (
+                          {canDelete && (
                             <Popconfirm title="Xóa lần nhập kho này?" okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }} placement="left"
                               onConfirm={() => api.delete(`/production/${e.id}/nhap-kho`).then(() => {
                                 message.success('Đã xóa')

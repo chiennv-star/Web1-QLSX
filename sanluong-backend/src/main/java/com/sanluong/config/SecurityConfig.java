@@ -67,9 +67,9 @@ public class SecurityConfig {
                 // ── Sản lượng: ADMIN_KH có toàn quyền như ADMIN ───────────────
                 // ADMIN_KH đánh dấu Hồ Sơ Hoàn Thiện
                 .requestMatchers(HttpMethod.PATCH, "/api/production/*/ho-so-hoan-thien").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH")
-                // ADMIN_DG được phép thêm/xóa mục trong Nhập kho Thành phẩm
+                // ADMIN_DG được phép thêm mục trong Nhập kho Thành phẩm nhưng KHÔNG được xóa
                 .requestMatchers(HttpMethod.POST, "/api/production/*/nhap-kho-entry").hasAnyRole("ADMIN", "TKSX", "NHAN_VIEN", "ADMIN_KH", "ADMIN_DG")
-                .requestMatchers(HttpMethod.DELETE, "/api/production/*/nhap-kho").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH", "ADMIN_DG")
+                .requestMatchers(HttpMethod.DELETE, "/api/production/*/nhap-kho").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH")
                 .requestMatchers(HttpMethod.DELETE, "/api/production/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH")
                 .requestMatchers(HttpMethod.PUT, "/api/production/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH")
                 .requestMatchers(HttpMethod.POST, "/api/production/**").hasAnyRole("ADMIN", "TKSX", "NHAN_VIEN", "ADMIN_KH")
