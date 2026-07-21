@@ -73,6 +73,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/production/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH")
                 .requestMatchers(HttpMethod.PUT, "/api/production/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH")
                 .requestMatchers(HttpMethod.POST, "/api/production/**").hasAnyRole("ADMIN", "TKSX", "NHAN_VIEN", "ADMIN_KH")
+                // Lịch sử thêm mới/sửa/xóa Nhập Kho: chỉ ADMIN xem được
+                .requestMatchers(HttpMethod.GET, "/api/production/nhap-kho-audit-log").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/production/**").hasAnyRole(ALL_ROLES)
 
                 // ── Lịch làm việc: stage admins chỉnh sửa đúng công đoạn ──────

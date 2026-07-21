@@ -257,6 +257,22 @@ public class ProductionController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Lịch sử thêm mới/sửa/xóa của tab "Ngày Nhập Kho" và "Nhập Kho" — bản sao độc lập,
+     * append-only, không đổi theo khi bản ghi nguồn bị xóa/sửa sau đó. Chỉ ADMIN xem được
+     * (xem SecurityConfig).
+     */
+    @GetMapping("/nhap-kho-audit-log")
+    public ResponseEntity<List<com.sanluong.entity.NhapKhoAuditLog>> getNhapKhoAuditLog(
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate) {
+        java.time.LocalDateTime from = fromDate != null && !fromDate.isBlank()
+                ? java.time.LocalDate.parse(fromDate).atStartOfDay() : null;
+        java.time.LocalDateTime to = toDate != null && !toDate.isBlank()
+                ? java.time.LocalDate.parse(toDate).atTime(23, 59, 59) : null;
+        return ResponseEntity.ok(productionService.getNhapKhoAuditLog(from, to));
+    }
+
     @GetMapping("/nhap-kho")
     public ResponseEntity<List<ProductionRecord>> getNhapKho(
             @RequestParam(required = false) String fromDate,
