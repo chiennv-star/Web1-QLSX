@@ -548,6 +548,7 @@ public class ProductionService {
             row.put("totalNhapKho",        firstAssign ? sumMap.getOrDefault(key, 0) : 0);
             row.put("soLanNhapKho",        firstAssign ? cntMap.getOrDefault(key, 0) : 0);
             row.put("ngayNhapKhoMoiNhat",  firstAssign ? maxDateMap.get(key) : null);
+            row.put("hoSoHoanThien",       Boolean.TRUE.equals(r.getHoSoHoanThien()));
             result.add(row);
         }
         return result;

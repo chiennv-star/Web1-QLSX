@@ -4740,6 +4740,7 @@ export function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentO
   const [machineParetoLoading, setMachineParetoLoading] = useState(false)
   const [summaryCustomRange, setSummaryCustomRange] = useState([dayjs().subtract(29, 'day'), dayjs()])
   const [editingGioKh, setEditingGioKh] = useState(null) // { ngay, tenMay, value }
+  const [summaryDetailMachine, setSummaryDetailMachine] = useState(null) // tenMay đang xem chi tiết từ bảng Tổng hợp
   const PREDEFINED_REASONS_A = ['Chờ nguyên liệu', 'Hỏng máy', 'Chuyển đổi mã', 'Vệ sinh / bảo trì']
 
   // ── Chi số P (Performance) ──
@@ -6559,8 +6560,17 @@ export function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentO
                             Không có dữ liệu trong 6 tháng gần nhất. Hãy nhập dữ liệu thời gian chạy máy.
                           </td></tr>
                         ) : sumMachines.map((m, i) => (
-                          <tr key={m.tenMay} style={{ background: i % 2 === 0 ? '#fff' : '#fcfdfd' }}>
-                            <td style={{ padding: '11px 12px', borderBottom: '1px solid #e3e8e8', borderRight: '1px solid #eef0f0', fontWeight: 600, color: '#1f2937' }}>{m.tenMay}</td>
+                          <tr key={m.tenMay} style={{ background: i % 2 === 0 ? '#fff' : '#fcfdfd', cursor: 'pointer' }}
+                            onClick={() => setSummaryDetailMachine(m.tenMay)}
+                            onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
+                            onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#fcfdfd'}
+                          >
+                            <td style={{ padding: '11px 12px', borderBottom: '1px solid #e3e8e8', borderRight: '1px solid #eef0f0', fontWeight: 600, color: '#1f2937' }}>
+                              <span style={{ textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}>{m.tenMay}</span>
+                              <Tooltip title="Xem chi tiết sản phẩm đã sử dụng máy này">
+                                <EyeOutlined style={{ marginLeft: 8, color: '#94a3b8', fontSize: 13 }} />
+                              </Tooltip>
+                            </td>
                             <td style={{ padding: '11px 10px', borderBottom: '1px solid #e3e8e8', borderRight: '1px solid #eef0f0', textAlign: 'center', color: '#4f46e5', fontWeight: 600, fontSize: 12.5 }}>{m.maMay || '—'}</td>
                             {periods.map(p => {
                               const s = computeAStats(m.tenMay, p.from, p.to || null)
@@ -6705,6 +6715,24 @@ export function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentO
                 </div>
               )
             )}
+
+            {/* Modal: chi tiết sản phẩm đã sử dụng 1 máy (click từ hàng trong bảng Tổng hợp) */}
+            <Modal
+              open={summaryDetailMachine != null}
+              onCancel={() => setSummaryDetailMachine(null)}
+              footer={null} width={1100} destroyOnClose
+              title={summaryDetailMachine ? `Chi tiết sử dụng máy — ${summaryDetailMachine}` : null}
+            >
+              <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 10 }}>
+                Danh sách sản phẩm/lô đã sử dụng máy này trong 6 tháng gần nhất, cùng thời gian chạy/dừng chi tiết. Nhấn vào một dòng để xem/chỉnh sửa giờ chạy.
+              </div>
+              <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '65vh' }}>
+                {renderMachineTable(
+                  summaryDetailMachine,
+                  machineSummaryData.filter(r => r.tenMay === summaryDetailMachine)
+                )}
+              </div>
+            </Modal>
 
             {/* Modal chi tiết / chỉnh sửa runtime logs */}
             <Modal

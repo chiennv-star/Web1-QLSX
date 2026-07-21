@@ -6502,6 +6502,16 @@ function NhapKhoTab() {
     )
   }, [tongHopData, searchLower])
 
+  // Sản phẩm đã "Tổng kết hồ sơ" bên trang Sản lượng → chuyển từ tab "Nhập Kho" sang tab "Sản phẩm đã hoàn thành"
+  const filteredTongHopActive = useMemo(
+    () => filteredTongHopData.filter(r => !r.hoSoHoanThien),
+    [filteredTongHopData]
+  )
+  const filteredTongHopDone = useMemo(
+    () => filteredTongHopData.filter(r => r.hoSoHoanThien),
+    [filteredTongHopData]
+  )
+
   // Điều hướng ô bằng phím mũi tên — cột theo đúng thứ tự khai báo trong `columns` bên dưới
   const NK_COL_FIELDS = ['stt', 'maBravo', 'maTp', 'tienTrinh', 'lsx', 'tpNhapKho', 'ngayXuatKho', 'tinhTrangNhapKho', 'tenNthNhapKho', 'ghiChuNhapKho']
   const NK_EDITABLE_FIELDS = ['tpNhapKho', 'ngayXuatKho', 'tinhTrangNhapKho', 'tenNthNhapKho', 'ghiChuNhapKho']
@@ -6759,6 +6769,7 @@ function NhapKhoTab() {
           options={[
             { label: 'Ngày Nhập Kho', value: 'list' },
             { label: 'Nhập Kho', value: 'tong-hop' },
+            { label: '✅ Sản phẩm đã hoàn thành', value: 'hoan-thanh' },
             { label: 'Tổng hợp theo ngày', value: 'summary' },
             ...(isAdmin() ? [{ label: '📜 Lịch sử NK', value: 'audit' }] : []),
           ]}
@@ -6820,9 +6831,23 @@ function NhapKhoTab() {
             />
             <Button size="small" icon={<ReloadOutlined />} onClick={fetchTongHop} loading={tongHopLoading}>Tải lại</Button>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center', fontSize: 13 }}>
-              <span>Tổng lệnh: <strong style={{ color: '#1d4ed8' }}>{filteredTongHopData.length}</strong></span>
-              <span>Đã NK: <strong style={{ color: '#15803d' }}>{filteredTongHopData.filter(r => (r.totalNhapKho || 0) > 0).length}</strong></span>
-              <span>Chưa NK: <strong style={{ color: '#d97706' }}>{filteredTongHopData.filter(r => (r.totalNhapKho || 0) === 0).length}</strong></span>
+              <span>Tổng lệnh: <strong style={{ color: '#1d4ed8' }}>{filteredTongHopActive.length}</strong></span>
+              <span>Đã NK: <strong style={{ color: '#15803d' }}>{filteredTongHopActive.filter(r => (r.totalNhapKho || 0) > 0).length}</strong></span>
+              <span>Chưa NK: <strong style={{ color: '#d97706' }}>{filteredTongHopActive.filter(r => (r.totalNhapKho || 0) === 0).length}</strong></span>
+            </div>
+          </>
+        ) : viewMode === 'hoan-thanh' ? (
+          <>
+            <Input.Search
+              size="small" allowClear placeholder="Tên SP / Số lô..."
+              value={searchText} onChange={e => setSearchText(e.target.value)}
+              style={{ width: 200 }}
+            />
+            <Button size="small" icon={<ReloadOutlined />} onClick={fetchTongHop} loading={tongHopLoading}>Tải lại</Button>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center', fontSize: 13 }}>
+              <span>✅ Đã hoàn thành: <strong style={{ color: '#15803d' }}>{filteredTongHopDone.length}</strong></span>
+              <span>Đã NK: <strong style={{ color: '#15803d' }}>{filteredTongHopDone.filter(r => (r.totalNhapKho || 0) > 0).length}</strong></span>
+              <span>Chưa NK: <strong style={{ color: '#d97706' }}>{filteredTongHopDone.filter(r => (r.totalNhapKho || 0) === 0).length}</strong></span>
             </div>
           </>
         ) : (
@@ -6859,7 +6884,9 @@ function NhapKhoTab() {
           onDeleteRow={canDelete ? deleteSummaryRow : undefined}
         />
       ) : viewMode === 'tong-hop' ? (
-        <NhapKhoTongHopTable data={filteredTongHopData} loading={tongHopLoading} onRowClick={setTongHopDrawer} filterH={filterH} />
+        <NhapKhoTongHopTable data={filteredTongHopActive} loading={tongHopLoading} onRowClick={setTongHopDrawer} filterH={filterH} />
+      ) : viewMode === 'hoan-thanh' ? (
+        <NhapKhoTongHopTable data={filteredTongHopDone} loading={tongHopLoading} onRowClick={setTongHopDrawer} filterH={filterH} />
       ) : viewMode === 'audit' ? (
         <NhapKhoAuditLogView data={auditData} loading={auditLoading} onReload={fetchAuditLog} filterH={filterH} />
       ) : (
