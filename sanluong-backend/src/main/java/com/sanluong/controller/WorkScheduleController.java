@@ -3,6 +3,7 @@ package com.sanluong.controller;
 import com.sanluong.dto.StageTimelineDto;
 import com.sanluong.dto.WorkScheduleCoLoHistoryDto;
 import com.sanluong.dto.WorkScheduleDto;
+import com.sanluong.dto.WorkScheduleFieldHistoryDto;
 import com.sanluong.entity.WorkSchedule;
 import com.sanluong.service.WorkScheduleService;
 import jakarta.validation.Valid;
@@ -250,6 +251,25 @@ public class WorkScheduleController {
                 : new java.math.BigDecimal(rawValue.toString());
         service.patchField(id, field, value);
         return ResponseEntity.noContent().build();
+    }
+
+    // Sửa gộp cả 3 trường QA (Kiểm nghiệm/Lưu mẫu/Khác) trong 1 lần thay vì 3 popup riêng lẻ
+    @PatchMapping("/{id}/qa-fields")
+    public ResponseEntity<Void> patchQaFields(@PathVariable Long id,
+                                                @RequestBody Map<String, Object> body,
+                                                Authentication auth) {
+        WorkSchedule w = service.getById(id);
+        checkStagePermission(auth, w.getCongDoan(), w.getSource());
+        Integer kiemNghiem = body.get("qaKiemNghiem") != null ? Integer.valueOf(body.get("qaKiemNghiem").toString()) : null;
+        Integer luuMau     = body.get("qaLuuMau")     != null ? Integer.valueOf(body.get("qaLuuMau").toString())     : null;
+        Integer khac       = body.get("qaKhac")       != null ? Integer.valueOf(body.get("qaKhac").toString())       : null;
+        service.patchQaFields(id, kiemNghiem, luuMau, khac, auth.getName());
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/qa-history")
+    public ResponseEntity<List<WorkScheduleFieldHistoryDto>> getQaHistory(@PathVariable Long id) {
+        return ResponseEntity.ok(service.getQaFieldHistory(id));
     }
 
     @PatchMapping("/{id}/ngay-thuc-hien")

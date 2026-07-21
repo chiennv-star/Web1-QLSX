@@ -11,7 +11,7 @@ import {
   SyncOutlined, CheckCircleOutlined, EyeOutlined, LinkOutlined,
   CheckOutlined, CloseOutlined, EyeInvisibleOutlined,
   EyeTwoTone, SettingOutlined, DownOutlined, FilterOutlined, UsergroupAddOutlined,
-  PrinterOutlined, ClockCircleOutlined, BarChartOutlined
+  PrinterOutlined, ClockCircleOutlined, BarChartOutlined, HistoryOutlined
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import api from '../api/axios'
@@ -4984,7 +4984,13 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const [bulkNhomSaving, setBulkNhomSaving] = useState(false)
   const [inlineEdit, setInlineEdit] = useState(null) // { id, field }
   const [inlineSaving, setInlineSaving] = useState(false)
-  const [qaPopoverValue, setQaPopoverValue] = useState(null) // giá trị tạm khi sửa KN/Lưu mẫu/Khác qua popup xác nhận
+  // QA Lấy mẫu: gộp 3 trường KN/Lưu mẫu/Khác vào 1 popup sửa chung thay vì 3 popup riêng lẻ
+  const [qaEdit, setQaEdit] = useState(null) // { id, field } — field chỉ để neo vị trí popup
+  const [qaValues, setQaValues] = useState({ qaKiemNghiem: null, qaLuuMau: null, qaKhac: null })
+  const [qaSaving, setQaSaving] = useState(false)
+  const [qaHistoryOpen, setQaHistoryOpen] = useState(false)
+  const [qaHistoryList, setQaHistoryList] = useState([])
+  const [qaHistoryLoading, setQaHistoryLoading] = useState(false)
 
   const handleDeleteAll = async () => {
     const ids = data.map(r => r.id)
@@ -5092,6 +5098,45 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       message.error('Cập nhật thất bại')
     } finally {
       setInlineSaving(false)
+    }
+  }
+
+  // Lưu gộp cả 3 trường QA (Kiểm nghiệm/Lưu mẫu/Khác) trong 1 lần
+  const saveQaFields = async (id) => {
+    setQaSaving(true)
+    try {
+      await api.patch(`/work-schedule/${id}/qa-fields`, qaValues)
+      setData(prev => prev.map(r => {
+        if (r.id !== id) return r
+        const updated = { ...r, ...qaValues }
+        updated.qaLayMau = (updated.qaKiemNghiem || 0) + (updated.qaLuuMau || 0) + (updated.qaKhac || 0)
+        return updated
+      }))
+      setDetailSchedule(prev => {
+        if (prev?.id !== id) return prev
+        const updated = { ...prev, ...qaValues }
+        updated.qaLayMau = (updated.qaKiemNghiem || 0) + (updated.qaLuuMau || 0) + (updated.qaKhac || 0)
+        return updated
+      })
+      setQaEdit(null)
+      parentOnSaved?.()
+    } catch {
+      message.error('Cập nhật thất bại')
+    } finally {
+      setQaSaving(false)
+    }
+  }
+
+  const openQaHistory = async (id) => {
+    setQaHistoryOpen(true)
+    setQaHistoryLoading(true)
+    try {
+      const { data: res } = await api.get(`/work-schedule/${id}/qa-history`)
+      setQaHistoryList(res || [])
+    } catch {
+      setQaHistoryList([])
+    } finally {
+      setQaHistoryLoading(false)
     }
   }
 
@@ -5417,13 +5462,17 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       align: 'center',
       render: (v, record) => {
         const canEdit = canEditStage(congDoan)
-        const isEditing = inlineEdit?.id === record.id && inlineEdit?.field === fieldKey
+        const isEditing = qaEdit?.id === record.id && qaEdit?.field === fieldKey
         const cellContent = (
           <div
             onClick={canEdit ? e => {
               e.stopPropagation()
-              setQaPopoverValue(v ?? null)
-              setInlineEdit({ id: record.id, field: fieldKey })
+              setQaValues({
+                qaKiemNghiem: record.qaKiemNghiem ?? null,
+                qaLuuMau: record.qaLuuMau ?? null,
+                qaKhac: record.qaKhac ?? null,
+              })
+              setQaEdit({ id: record.id, field: fieldKey })
             } : undefined}
             style={{ cursor: canEdit ? 'pointer' : 'default', textAlign: 'right' }}
           >
@@ -5439,25 +5488,41 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
           <Popover
             trigger="click"
             open={isEditing}
-            onOpenChange={open => { if (!open) setInlineEdit(null) }}
-            title={`Sửa "${title}"`}
+            onOpenChange={open => { if (!open) setQaEdit(null) }}
+            title="Sửa QA Lấy mẫu"
             content={
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 160 }} onClick={e => e.stopPropagation()}>
-                <InputNumber
-                  size="small" autoFocus min={0} step={1}
-                  value={qaPopoverValue}
-                  onChange={val => setQaPopoverValue(val)}
-                  style={{ width: '100%' }}
-                  formatter={val => (val != null && val !== '') ? Number(val).toLocaleString('vi-VN') : ''}
-                  parser={val => val ? val.replace(/[^\d]/g, '') : ''}
-                  onPressEnter={() => saveInlineEdit(record.id, fieldKey, qaPopoverValue)}
-                />
-                <Space style={{ justifyContent: 'flex-end' }}>
-                  <Button size="small" onClick={() => setInlineEdit(null)}>Hủy</Button>
-                  <Button size="small" type="primary" loading={inlineSaving}
-                    onClick={() => saveInlineEdit(record.id, fieldKey, qaPopoverValue)}>
-                    Lưu
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 220 }} onClick={e => e.stopPropagation()}>
+                {[
+                  { key: 'qaKiemNghiem', label: 'Kiểm nghiệm' },
+                  { key: 'qaLuuMau', label: 'Lưu mẫu' },
+                  { key: 'qaKhac', label: 'Khác' },
+                ].map(f => (
+                  <div key={f.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 78, fontSize: 12, color: '#64748b', flexShrink: 0 }}>{f.label}</span>
+                    <InputNumber
+                      size="small" min={0} step={1}
+                      autoFocus={f.key === fieldKey}
+                      value={qaValues[f.key]}
+                      onChange={val => setQaValues(prev => ({ ...prev, [f.key]: val }))}
+                      style={{ flex: 1 }}
+                      formatter={val => (val != null && val !== '') ? Number(val).toLocaleString('vi-VN') : ''}
+                      parser={val => val ? val.replace(/[^\d]/g, '') : ''}
+                      onPressEnter={() => saveQaFields(record.id)}
+                    />
+                  </div>
+                ))}
+                <Space style={{ justifyContent: 'space-between', marginTop: 4 }}>
+                  <Button size="small" type="link" icon={<HistoryOutlined />} style={{ padding: 0 }}
+                    onClick={() => openQaHistory(record.id)}>
+                    Lịch sử
                   </Button>
+                  <Space>
+                    <Button size="small" onClick={() => setQaEdit(null)}>Hủy</Button>
+                    <Button size="small" type="primary" loading={qaSaving}
+                      onClick={() => saveQaFields(record.id)}>
+                      Lưu
+                    </Button>
+                  </Space>
                 </Space>
               </div>
             }
@@ -7689,9 +7754,39 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
         onSaved={onSaved}
       />
 
+      {/* Lịch sử nhập/chỉnh sửa QA Lấy mẫu (KN/Lưu mẫu/Khác) */}
+      <Modal
+        open={qaHistoryOpen}
+        onCancel={() => setQaHistoryOpen(false)}
+        footer={null}
+        title="Lịch sử nhập/chỉnh sửa QA Lấy mẫu"
+        width={480}
+      >
+        <Spin spinning={qaHistoryLoading}>
+          {qaHistoryList.length === 0 ? (
+            <div style={{ textAlign: 'center', color: '#94a3b8', padding: 24 }}>Chưa có lịch sử</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 420, overflowY: 'auto' }}>
+              {qaHistoryList.map(h => (
+                <div key={h.id} style={{ padding: '8px 10px', background: '#f8fafc', borderRadius: 6, fontSize: 12 }}>
+                  <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                    {QA_FIELD_LABEL[h.fieldName] || h.fieldName}: {h.oldValue ?? '—'} → {h.newValue ?? '—'}
+                  </div>
+                  <div style={{ color: '#64748b', marginTop: 2 }}>
+                    {h.changedBy || 'system'} · {dayjs(h.changedAt).format('DD/MM/YYYY HH:mm')}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Spin>
+      </Modal>
+
     </>
   )
 }
+
+const QA_FIELD_LABEL = { qaKiemNghiem: 'Kiểm nghiệm', qaLuuMau: 'Lưu mẫu', qaKhac: 'Khác' }
 
 const parseSoLoNum = (soLo) => {
   if (!soLo || soLo.length !== 6) return 0

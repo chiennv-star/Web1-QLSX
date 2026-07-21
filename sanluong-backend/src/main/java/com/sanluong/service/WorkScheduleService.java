@@ -6,11 +6,14 @@ import com.sanluong.dto.WorkScheduleCoLoHistoryDto;
 import com.sanluong.dto.WorkScheduleDto;
 import com.sanluong.entity.ProductionRecord;
 import com.sanluong.entity.WorkSchedule;
+import com.sanluong.dto.WorkScheduleFieldHistoryDto;
 import com.sanluong.entity.WorkScheduleCoLoHistory;
+import com.sanluong.entity.WorkScheduleFieldHistory;
 import com.sanluong.entity.WorkScheduleSession;
 import com.sanluong.repository.ProductionRecordRepository;
 import com.sanluong.repository.ProductMasterRepository;
 import com.sanluong.repository.WorkScheduleCoLoHistoryRepository;
+import com.sanluong.repository.WorkScheduleFieldHistoryRepository;
 import com.sanluong.repository.WorkScheduleRepository;
 import com.sanluong.repository.WorkScheduleSessionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +36,7 @@ public class WorkScheduleService {
     private final ProductionRecordRepository productionRepo;
     private final ProductMasterRepository productMasterRepository;
     private final WorkScheduleCoLoHistoryRepository coLoHistoryRepo;
+    private final WorkScheduleFieldHistoryRepository fieldHistoryRepo;
     private final KhoachEventPublisher eventPublisher;
     private final WorkScheduleSessionRepository sessionRepository;
     private final NotificationService notificationService;
@@ -42,6 +46,7 @@ public class WorkScheduleService {
                                 ProductionRecordRepository productionRepo,
                                 ProductMasterRepository productMasterRepository,
                                 WorkScheduleCoLoHistoryRepository coLoHistoryRepo,
+                                WorkScheduleFieldHistoryRepository fieldHistoryRepo,
                                 KhoachEventPublisher eventPublisher,
                                 WorkScheduleSessionRepository sessionRepository,
                                 NotificationService notificationService,
@@ -50,6 +55,7 @@ public class WorkScheduleService {
         this.productionRepo = productionRepo;
         this.productMasterRepository = productMasterRepository;
         this.coLoHistoryRepo = coLoHistoryRepo;
+        this.fieldHistoryRepo = fieldHistoryRepo;
         this.eventPublisher = eventPublisher;
         this.sessionRepository = sessionRepository;
         this.notificationService = notificationService;
@@ -660,6 +666,52 @@ public class WorkScheduleService {
         WorkSchedule saved = repository.save(w);
         syncToProduction(saved);
         eventPublisher.publishKhoachUpdated();
+    }
+
+    /** Sửa gộp cả 3 trường QA (Kiểm nghiệm/Lưu mẫu/Khác) trong 1 lần thay vì 3 popup riêng lẻ */
+    @org.springframework.transaction.annotation.Transactional
+    public void patchQaFields(Long id, Integer kiemNghiem, Integer luuMau, Integer khac, String username) {
+        WorkSchedule w = getById(id);
+        recordQaFieldChange(id, "qaKiemNghiem", w.getQaKiemNghiem(), kiemNghiem, username);
+        recordQaFieldChange(id, "qaLuuMau", w.getQaLuuMau(), luuMau, username);
+        recordQaFieldChange(id, "qaKhac", w.getQaKhac(), khac, username);
+        w.setQaKiemNghiem(kiemNghiem);
+        w.setQaLuuMau(luuMau);
+        w.setQaKhac(khac);
+        int kn = kiemNghiem != null ? kiemNghiem : 0;
+        int lm = luuMau != null ? luuMau : 0;
+        int kh = khac != null ? khac : 0;
+        w.setQaLayMau(kn + lm + kh);
+        autoApplyDone(w);
+        WorkSchedule saved = repository.save(w);
+        syncToProduction(saved);
+        eventPublisher.publishKhoachUpdated();
+    }
+
+    private void recordQaFieldChange(Long workScheduleId, String fieldName, Integer oldVal, Integer newVal, String username) {
+        if (Objects.equals(oldVal, newVal)) return;
+        WorkScheduleFieldHistory h = new WorkScheduleFieldHistory();
+        h.setWorkScheduleId(workScheduleId);
+        h.setFieldName(fieldName);
+        h.setOldValue(oldVal != null ? oldVal.toString() : null);
+        h.setNewValue(newVal != null ? newVal.toString() : null);
+        h.setChangedBy(username);
+        h.setChangedAt(LocalDateTime.now());
+        fieldHistoryRepo.save(h);
+    }
+
+    public List<WorkScheduleFieldHistoryDto> getQaFieldHistory(Long id) {
+        return fieldHistoryRepo.findByWorkScheduleIdOrderByChangedAtDesc(id).stream().map(h -> {
+            WorkScheduleFieldHistoryDto d = new WorkScheduleFieldHistoryDto();
+            d.setId(h.getId());
+            d.setWorkScheduleId(h.getWorkScheduleId());
+            d.setFieldName(h.getFieldName());
+            d.setOldValue(h.getOldValue());
+            d.setNewValue(h.getNewValue());
+            d.setChangedBy(h.getChangedBy());
+            d.setChangedAt(h.getChangedAt());
+            return d;
+        }).collect(Collectors.toList());
     }
 
     @org.springframework.transaction.annotation.Transactional
