@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   Table, Button, Space, Typography, Input, Select, DatePicker, TimePicker,
-  Modal, Form, InputNumber, Tag, Popconfirm, message, notification,
+  Modal, Form, InputNumber, Tag, Popconfirm, Popover, message, notification,
   Row, Col, Card, Tabs, Badge, Tooltip, Divider, Drawer, Spin, Dropdown, AutoComplete, Checkbox
 } from 'antd'
 import SkeletonTable from '../components/SkeletonTable'
@@ -4984,6 +4984,7 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
   const [bulkNhomSaving, setBulkNhomSaving] = useState(false)
   const [inlineEdit, setInlineEdit] = useState(null) // { id, field }
   const [inlineSaving, setInlineSaving] = useState(false)
+  const [qaPopoverValue, setQaPopoverValue] = useState(null) // giá trị tạm khi sửa KN/Lưu mẫu/Khác qua popup xác nhận
 
   const handleDeleteAll = async () => {
     const ids = data.map(r => r.id)
@@ -5417,31 +5418,13 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
       render: (v, record) => {
         const canEdit = canEditStage(congDoan)
         const isEditing = inlineEdit?.id === record.id && inlineEdit?.field === fieldKey
-        if (isEditing) {
-          return (
-            <InputNumber
-              size="small" autoFocus min={0} step={1}
-              defaultValue={v ?? undefined}
-              style={{ width: 72 }}
-              formatter={val => (val != null && val !== '') ? Number(val).toLocaleString('vi-VN') : ''}
-              parser={val => val ? val.replace(/[^\d]/g, '') : ''}
-              onClick={e => e.stopPropagation()}
-              onPressEnter={e => {
-                const num = e.target.value ? parseInt(e.target.value.replace(/[^\d]/g, ''), 10) : null
-                saveInlineEdit(record.id, fieldKey, isNaN(num) ? null : num)
-              }}
-              onBlur={e => {
-                if (!inlineSaving) {
-                  const num = e.target.value ? parseInt(e.target.value.replace(/[^\d]/g, ''), 10) : null
-                  saveInlineEdit(record.id, fieldKey, isNaN(num) ? null : num)
-                }
-              }}
-            />
-          )
-        }
-        return (
+        const cellContent = (
           <div
-            onClick={canEdit ? e => { e.stopPropagation(); setInlineEdit({ id: record.id, field: fieldKey }) } : undefined}
+            onClick={canEdit ? e => {
+              e.stopPropagation()
+              setQaPopoverValue(v ?? null)
+              setInlineEdit({ id: record.id, field: fieldKey })
+            } : undefined}
             style={{ cursor: canEdit ? 'pointer' : 'default', textAlign: 'right' }}
           >
             {v != null
@@ -5450,6 +5433,37 @@ function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved,
                 ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0, cursor: 'pointer' }}>{label}</Tag>
                 : <span style={{ color: '#d9d9d9' }}>—</span>}
           </div>
+        )
+        if (!canEdit) return cellContent
+        return (
+          <Popover
+            trigger="click"
+            open={isEditing}
+            onOpenChange={open => { if (!open) setInlineEdit(null) }}
+            title={`Sửa "${title}"`}
+            content={
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 160 }} onClick={e => e.stopPropagation()}>
+                <InputNumber
+                  size="small" autoFocus min={0} step={1}
+                  value={qaPopoverValue}
+                  onChange={val => setQaPopoverValue(val)}
+                  style={{ width: '100%' }}
+                  formatter={val => (val != null && val !== '') ? Number(val).toLocaleString('vi-VN') : ''}
+                  parser={val => val ? val.replace(/[^\d]/g, '') : ''}
+                  onPressEnter={() => saveInlineEdit(record.id, fieldKey, qaPopoverValue)}
+                />
+                <Space style={{ justifyContent: 'flex-end' }}>
+                  <Button size="small" onClick={() => setInlineEdit(null)}>Hủy</Button>
+                  <Button size="small" type="primary" loading={inlineSaving}
+                    onClick={() => saveInlineEdit(record.id, fieldKey, qaPopoverValue)}>
+                    Lưu
+                  </Button>
+                </Space>
+              </div>
+            }
+          >
+            {cellContent}
+          </Popover>
         )
       },
     })),
