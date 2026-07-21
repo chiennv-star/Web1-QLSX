@@ -5667,6 +5667,23 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved, canEdit =
     finally { setDeletingId(null) }
   }
 
+  const hasUnsavedNhapKho = () => slNK != null || !!tinhTrang || tenNth.trim() !== '' || ghiChu.trim() !== ''
+
+  const handleCloseAttempt = () => {
+    if (hasUnsavedNhapKho()) {
+      Modal.confirm({
+        title: 'Dữ liệu nhập kho chưa được lưu',
+        content: 'Bạn đã nhập thông tin ở form "Nhập kho" nhưng chưa bấm "Lưu nhập kho". Thoát ra sẽ mất dữ liệu vừa nhập. Bạn có chắc muốn thoát?',
+        okText: 'Thoát, không lưu',
+        cancelText: 'Ở lại',
+        okButtonProps: { danger: true },
+        onOk: onClose,
+      })
+    } else {
+      onClose()
+    }
+  }
+
   const r      = localRecord
   const fmtN   = v => v != null ? Number(v).toLocaleString('vi-VN') : '—'
   const slDgRef = dgSl != null ? dgSl : (parseInt(r.dg2) || 0)
@@ -5747,7 +5764,7 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved, canEdit =
                 {r.maDonHang && <span>ĐH: <b style={{ color: '#c4b5fd' }}>{r.maDonHang}</b></span>}
               </div>
             </div>
-            <button onClick={onClose}
+            <button onClick={handleCloseAttempt}
               style={{ background: 'none', border: 'none', color: '#93c5fd', cursor: 'pointer', fontSize: 18, padding: 0, lineHeight: 1, flexShrink: 0 }}>✕</button>
           </div>
 
