@@ -642,6 +642,14 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     })
     return { startTime, endTime }
   }
+  // Thời gian chạy hiệu dụng = tổng thời gian (giờ sớm nhất → giờ muộn nhất) trừ thời gian dừng máy
+  const computeRtRunEffective = (entries) => {
+    const { downMin } = computeRtStats(entries)
+    const { startTime, endTime } = computeRtRange(entries)
+    if (startTime == null || endTime == null) return 0
+    const span = _timeToMin(endTime) - _timeToMin(startTime)
+    return Math.max(0, span - downMin)
+  }
   // rtKey = "${ngay}|${machineName}"
   const _rtMarkClean = (rtKey) => setMachineRuntimeDirtyDays(prev => { const n = new Set(prev); n.delete(rtKey); return n })
   const _rtMarkDirty = (rtKey) => setMachineRuntimeDirtyDays(prev => new Set(prev).add(rtKey))
@@ -2026,7 +2034,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                   machineRuntimeAutoLoadRef.current.add(k)
                   loadMachineRuntime(k)
                 }
-                const { runMin: totalRun, downMin: totalDown } = computeRtStats(allRtEntries)
+                const { downMin: totalDown } = computeRtStats(allRtEntries)
+                const totalRun = computeRtRunEffective(allRtEntries)
                 const isMspClosed = machineSpClosedDays.has(k)
                 return (
                   <div style={{ borderTop: '1px solid #e0f2fe' }}>
@@ -2067,7 +2076,8 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                       {machines.map((machineName, mIdx) => {
                         const rtKey = `${k}|${machineName}`
                         const rtEntries = allRtEntries.filter(e => e.tenMay === machineName || (!e.tenMay && mIdx === 0))
-                        const { runMin, downMin } = computeRtStats(rtEntries)
+                        const { downMin } = computeRtStats(rtEntries)
+                        const runMin = computeRtRunEffective(rtEntries)
                         const { startTime, endTime } = computeRtRange(rtEntries)
                         const total = runMin + downMin
                         const khMin = (machineGioKHMap[rtKey] || 0) * 60
