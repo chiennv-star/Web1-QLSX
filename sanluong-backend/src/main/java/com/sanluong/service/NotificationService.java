@@ -177,6 +177,27 @@ public class NotificationService {
         repo.save(n);
     }
 
+    public void createNhapKhoNewNotification(Long recordId, String tienTrinh, String maBravo,
+                                              String lsx, Integer slNhapKho, String createdBy) {
+        Notification n = new Notification();
+        n.setType("NHAP_KHO_NEW");
+        n.setTitle("Nhập kho mới");
+        String spLabel = (tienTrinh != null && !tienTrinh.isBlank()) ? tienTrinh : (maBravo != null ? maBravo : "—");
+        n.setMessage(String.format("%s đã nhập kho mới: %s (Mã: %s, Lô: %s, SL NK: %s)",
+                createdBy,
+                spLabel,
+                maBravo   != null ? maBravo             : "—",
+                lsx       != null ? lsx                 : "—",
+                slNhapKho != null ? slNhapKho.toString() : "—"));
+        n.setRefId(recordId);
+        n.setRefInfo(String.format("{\"maBravo\":\"%s\",\"lsx\":\"%s\"}",
+                maBravo != null ? maBravo : "",
+                lsx     != null ? lsx     : ""));
+        n.setCreatedBy(createdBy);
+        n.setCreatedAt(LocalDateTime.now());
+        repo.save(n);
+    }
+
     public void createLichSanXuatNotification(Long scheduleId, String congDoan,
                                                String maSp, String tenTrinh, String soLo,
                                                java.math.BigDecimal coLo,

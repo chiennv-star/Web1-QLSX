@@ -91,6 +91,18 @@ const TYPE_CONFIG = {
     tabColor: '#cc7700',
     tabBg: '#fff8e1',
   },
+  NHAP_KHO_NEW: {
+    Icon: InboxOutlined,
+    iconColor: '#059669',
+    iconBg: 'linear-gradient(135deg,#d1fae5,#a7f3d0)',
+    accent: '#059669',
+    tagColor: '#047857',
+    tagBg: '#ecfdf5',
+    tagBorder: '#6ee7b7',
+    label: 'Nhập Kho',
+    tabColor: '#059669',
+    tabBg: '#ecfdf5',
+  },
 }
 
 const TYPE_KEYS = Object.keys(TYPE_CONFIG)
@@ -128,6 +140,7 @@ function getNavPath(type, refId) {
     case 'HANG_LOI_NEW':          return '/hang-loi'
     case 'KE_HOACH':              return '/work-schedule'
     case 'LENH_CHUA_PHAT_HANH':  return '/lenh-san-xuat'
+    case 'NHAP_KHO_NEW':          return '/daily-sl'
     default:                      return null
   }
 }

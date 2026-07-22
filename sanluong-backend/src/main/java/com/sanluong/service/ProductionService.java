@@ -603,6 +603,9 @@ public class ProductionService {
         syncNhapKhoTongHopNgay(saved);
         logNhapKhoAudit(saved, "THEM_MOI", null, username);
         recalcSourceTpNhapKho(src.getMaBravo(), src.getLsx(), username);
+        notificationService.createNhapKhoNewNotification(
+                saved.getId(), saved.getTienTrinh(), saved.getMaBravo(),
+                saved.getLsx(), saved.getTpNhapKho(), username);
         return saved;
     }
 
