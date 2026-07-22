@@ -6305,11 +6305,12 @@ function NhapKhoAuditLogView({ data, loading, onReload, filterH = 0 }) {
 // ─── NhapKhoTab ───────────────────────────────────────────────────────────────
 
 function NhapKhoTab() {
-  const { canEditNhapKhoTarget, isQuanDoc, isAdmin, user } = useAuth()
-  // ADMIN_DG không được sửa dữ liệu đã có, nhưng vẫn được thêm sản phẩm mới
-  const canEdit = !isQuanDoc() && user?.role !== 'ADMIN_DG'
-  const canAdd = !isQuanDoc()
-  const canDelete = canEdit && user?.role !== 'ADMIN_DG'
+  const { canEditNhapKhoTarget, isAdmin, user } = useAuth()
+  // Chỉ ADMIN được sửa/xóa dữ liệu đã có; ADMIN_DG được thêm sản phẩm mới;
+  // TKSX/ADMIN_KH/NHAN_VIEN/Quản đốc chỉ xem
+  const canEdit = isAdmin()
+  const canAdd = isAdmin() || user?.role === 'ADMIN_DG'
+  const canDelete = isAdmin()
   const [auditData, setAuditData] = useState([])
   const [auditLoading, setAuditLoading] = useState(false)
   const [data,          setData]          = useState([])
