@@ -650,6 +650,13 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
     const span = _timeToMin(endTime) - _timeToMin(startTime)
     return Math.max(0, span - downMin)
   }
+  // Giờ KH tự động = thời gian chạy − thời gian nghỉ (1,5h = 1h ăn + 0,5h vệ sinh;
+  // nếu thời gian chạy > 720p/12h thì trừ 2,5h = 2 lần nghỉ ăn + 0,5h vệ sinh)
+  const computeAutoKhHours = (runMin) => {
+    if (!runMin || runMin <= 0) return null
+    const breakMin = runMin > 720 ? 150 : 90
+    return Math.round(Math.max(0, runMin - breakMin) / 60 * 10) / 10
+  }
   // rtKey = "${ngay}|${machineName}"
   const _rtMarkClean = (rtKey) => setMachineRuntimeDirtyDays(prev => { const n = new Set(prev); n.delete(rtKey); return n })
   const _rtMarkDirty = (rtKey) => setMachineRuntimeDirtyDays(prev => new Set(prev).add(rtKey))
@@ -691,6 +698,12 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
         return { ...prev, [ngay]: [...others, ...data.map(r => ({ ...r, _id: r.id }))] }
       })
       _rtMarkClean(rtKey)
+      // Tự động tính lại Giờ KH theo thời gian chạy vừa lưu
+      const autoKh = computeAutoKhHours(computeRtRunEffective(data))
+      if (autoKh != null) {
+        setMachineGioKHMap(prev => ({ ...prev, [rtKey]: autoKh }))
+        api.put('/machine-runtime/gio-kh', null, { params: { ngay, tenMay: machineName, gioKh: autoKh } }).catch(() => {})
+      }
       onMachineRuntimeSaved?.()
       message.success('Đã lưu thời gian chạy máy')
     } catch { message.error('Lưu thời gian chạy máy thất bại') }
@@ -2095,18 +2108,20 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                                 style={{ width: 195, fontSize: 11 }}
                                 placeholder="Chọn máy thực hiện..."
                               />
-                              <InputNumber
-                                size="small" min={0} max={24} step={0.5}
-                                value={machineGioKHMap[rtKey] ?? null}
-                                onChange={v => {
-                                  if (v == null) return
-                                  setMachineGioKHMap(prev => ({ ...prev, [rtKey]: v }))
-                                  api.put('/machine-runtime/gio-kh', null, { params: { ngay: k, tenMay: machineName, gioKh: v } }).catch(() => {})
-                                }}
-                                placeholder="16" style={{ width: 110 }}
-                                addonBefore={<span style={{ fontSize: 10, color: '#64748b' }}>KH</span>}
-                                addonAfter={<span style={{ fontSize: 10, color: '#64748b' }}>h</span>}
-                              />
+                              <Tooltip title="Tự động = Thời gian chạy − nghỉ (1,5h nếu chạy ≤ 12h; 2,5h nếu chạy > 12h) mỗi khi lưu giờ chạy máy — có thể sửa tay nếu cần">
+                                <InputNumber
+                                  size="small" min={0} max={24} step={0.5}
+                                  value={machineGioKHMap[rtKey] ?? null}
+                                  onChange={v => {
+                                    if (v == null) return
+                                    setMachineGioKHMap(prev => ({ ...prev, [rtKey]: v }))
+                                    api.put('/machine-runtime/gio-kh', null, { params: { ngay: k, tenMay: machineName, gioKh: v } }).catch(() => {})
+                                  }}
+                                  placeholder="Tự động" style={{ width: 110 }}
+                                  addonBefore={<span style={{ fontSize: 10, color: '#64748b' }}>KH</span>}
+                                  addonAfter={<span style={{ fontSize: 10, color: '#64748b' }}>h</span>}
+                                />
+                              </Tooltip>
                               {schedule?.congDoan?.toUpperCase() === 'PL' && productMachineCfg.tocDoMayPl > 0 && schedule?.coLo > 0 && (() => {
                                 const sugKh = Math.round(Number(schedule.coLo) / (productMachineCfg.tocDoMayPl * 60) * 10) / 10
                                 return (
