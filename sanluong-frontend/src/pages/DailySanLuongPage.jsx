@@ -4877,11 +4877,33 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
     onClose()
   }
 
+  const isDirty = () =>
+    searchVal.trim() !== '' ||
+    selProduct != null ||
+    selected != null ||
+    slNK != null ||
+    ngayXuat != null ||
+    !!tinhTrang ||
+    tenNth.trim() !== '' ||
+    ghiChu.trim() !== ''
+
+  const handleCancel = () => {
+    if (!isDirty()) { doClose(); return }
+    Modal.confirm({
+      title: 'Hủy thêm sản phẩm nhập kho?',
+      content: 'Dữ liệu bạn vừa nhập chưa được lưu. Bạn có chắc muốn đóng?',
+      okText: 'Đóng, không lưu',
+      okButtonProps: { danger: true },
+      cancelText: 'Tiếp tục nhập',
+      onOk: doClose,
+    })
+  }
+
   return (
     <Modal
       title="Thêm sản phẩm nhập kho"
       open={open}
-      onCancel={doClose}
+      onCancel={handleCancel}
       onOk={handleSave}
       okText="Lưu"
       okButtonProps={{ loading: saving, disabled: !selected || slNK == null }}
