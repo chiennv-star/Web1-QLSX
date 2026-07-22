@@ -6305,8 +6305,9 @@ function NhapKhoAuditLogView({ data, loading, onReload, filterH = 0 }) {
 
 function NhapKhoTab() {
   const { canEditNhapKhoTarget, isQuanDoc, isAdmin, user } = useAuth()
-  // ADMIN_DG chỉ được xem, không được thêm/sửa/xóa ở Ngày Nhập Kho và Nhập Kho
+  // ADMIN_DG không được sửa dữ liệu đã có, nhưng vẫn được thêm sản phẩm mới
   const canEdit = !isQuanDoc() && user?.role !== 'ADMIN_DG'
+  const canAdd = !isQuanDoc()
   const canDelete = canEdit && user?.role !== 'ADMIN_DG'
   const [auditData, setAuditData] = useState([])
   const [auditLoading, setAuditLoading] = useState(false)
@@ -6889,7 +6890,7 @@ function NhapKhoTab() {
               ]}
             />
             <Button size="small" icon={<ReloadOutlined />} onClick={load} loading={loading}>Tải lại</Button>
-            {canEdit && (
+            {canAdd && (
               <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
                 Thêm sản phẩm
               </Button>
