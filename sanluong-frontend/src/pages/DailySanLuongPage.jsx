@@ -18,6 +18,8 @@ import dayjs from 'dayjs'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
 import useCellNav from '../hooks/useCellNav'
+import useIsMobile from '../hooks/useIsMobile'
+import NhapKhoQuickEntryMobile from './NhapKhoQuickEntryMobile'
 import { StageTab, STAGE_CONFIG } from './WorkSchedulePage'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RcTooltip, Legend,
@@ -4765,6 +4767,7 @@ const TINH_TRANG_NK_OPTIONS = ['Done', 'Chốt']
 // ─── Modal thêm sản phẩm nhập kho ────────────────────────────────────────────
 
 function AddNhapKhoModal({ open, onClose, onAdded }) {
+  const isMobile = useIsMobile()
   const [searchVal,   setSearchVal]   = useState('')
   const [searching,   setSearching]   = useState(false)
   const [options,     setOptions]     = useState([])
@@ -4778,6 +4781,9 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
   const [tenNth,      setTenNth]      = useState('')
   const [ghiChu,      setGhiChu]      = useState('')
   const [saving,      setSaving]      = useState(false)
+  // Chỉ dùng cho luồng "Nhập kho nhanh" trên di động (3 màn hình)
+  const [step,            setStep]            = useState('search') // 'search' | 'lot' | 'qty'
+  const [recentProducts,  setRecentProducts]  = useState([]) // { maBravo, maTp, tienTrinh }[]
   const debounceRef = useRef(null)
 
   // Bước 1: tìm sản phẩm — deduplicate theo maBravo
@@ -4813,9 +4819,8 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
     }, 300)
   }, [])
 
-  // Bước 1 → chọn sản phẩm → tải danh sách lô
-  const handleSelectProduct = (_val, option) => {
-    const rec = option.record
+  // Bước 1 → chọn sản phẩm → tải danh sách lô (dùng chung cho desktop lẫn wizard di động)
+  const selectProduct = (rec) => {
     setSelProduct({ maBravo: rec.maBravo, maTp: rec.maTp, tienTrinh: rec.tienTrinh })
     setSearchVal(`${rec.maBravo} — ${rec.tienTrinh}`)
     setSelected(null)
@@ -4827,18 +4832,34 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
       .then(({ data: res }) => setLots(res.content || []))
       .catch(() => {})
       .finally(() => setLotsLoading(false))
+    if (isMobile) setStep('lot')
   }
+  const handleSelectProduct = (_val, option) => selectProduct(option.record)
 
-  // Bước 2 → chọn lô → điền form
-  const handleSelectLot = (lotId) => {
-    const rec = lots.find(r => String(r.id) === String(lotId))
-    if (!rec) return
+  // Bước 2 → chọn lô → điền form (dùng chung)
+  const selectLot = (rec) => {
     setSelected(rec)
     if (rec.tpNhapKho   != null) setSlNK(rec.tpNhapKho)
     if (rec.ngayXuatKho != null) setNgayXuat(dayjs(rec.ngayXuatKho))
     if (rec.tinhTrangNhapKho)    setTinhTrang(rec.tinhTrangNhapKho)
     if (rec.tenNthNhapKho)       setTenNth(rec.tenNthNhapKho)
     if (rec.ghiChuNhapKho)       setGhiChu(rec.ghiChuNhapKho)
+    if (isMobile) setStep('qty')
+  }
+  const handleSelectLot = (lotId) => {
+    const rec = lots.find(r => String(r.id) === String(lotId))
+    if (rec) selectLot(rec)
+  }
+
+  // "Gần đây" (chỉ di động) → chọn lại 1 sản phẩm vừa nhập, tra cứu lại để lấy id + tải lô
+  const pickRecentProduct = (p) => {
+    setSearching(true)
+    api.get('/production', { params: { maBravo: p.maBravo, size: 1 } })
+      .then(({ data: res }) => {
+        const rec = res.content?.[0]
+        if (rec) selectProduct(rec)
+      })
+      .finally(() => setSearching(false))
   }
 
   const handleSave = async () => {
@@ -4866,7 +4887,19 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
 
       message.success(isNewEntry ? 'Đã thêm lần nhập kho mới' : 'Đã lưu nhập kho')
       onAdded(updated)
-      doClose()
+
+      if (isMobile) {
+        // Nhập kho nhanh: quay lại bước tìm sản phẩm để nhập tiếp lô/SP khác, không đóng modal
+        if (selProduct) {
+          setRecentProducts(prev => [selProduct, ...prev.filter(p => p.maBravo !== selProduct.maBravo)].slice(0, 5))
+        }
+        setSelProduct(null); setLots([]); setSelected(null)
+        setSlNK(null); setNgayXuat(null); setTinhTrang(undefined); setTenNth(''); setGhiChu('')
+        setSearchVal(''); setOptions([])
+        setStep('search')
+      } else {
+        doClose()
+      }
     } catch { message.error('Lưu thất bại') }
     finally { setSaving(false) }
   }
@@ -4874,7 +4907,13 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
   const doClose = () => {
     setSearchVal(''); setOptions([]); setSelProduct(null); setLots([]); setSelected(null)
     setSlNK(null); setNgayXuat(null); setTinhTrang(undefined); setTenNth(''); setGhiChu('')
+    setStep('search'); setRecentProducts([])
     onClose()
+  }
+
+  const handleBackStep = () => {
+    if (step === 'qty') setStep('lot')
+    else if (step === 'lot') setStep('search')
   }
 
   const isDirty = () =>
@@ -4897,6 +4936,37 @@ function AddNhapKhoModal({ open, onClose, onAdded }) {
       cancelText: 'Tiếp tục nhập',
       onOk: doClose,
     })
+  }
+
+  if (isMobile) {
+    return (
+      <Modal
+        open={open}
+        onCancel={handleCancel}
+        title={null}
+        footer={null}
+        closable={false}
+        width={540}
+        destroyOnClose
+      >
+        <NhapKhoQuickEntryMobile
+          step={step} onBack={handleBackStep} onCancel={handleCancel}
+          searchVal={searchVal} setSearchVal={setSearchVal} options={options} searching={searching}
+          onSearch={doSearch} onSelectProduct={selectProduct}
+          recentProducts={recentProducts} onPickRecent={pickRecentProduct}
+          selProduct={selProduct}
+          lots={lots} lotsLoading={lotsLoading} onSelectLot={selectLot}
+          selected={selected}
+          slNK={slNK} setSlNK={setSlNK}
+          ngayXuat={ngayXuat} setNgayXuat={setNgayXuat}
+          tinhTrang={tinhTrang} setTinhTrang={setTinhTrang}
+          tenNth={tenNth} setTenNth={setTenNth}
+          ghiChu={ghiChu} setGhiChu={setGhiChu}
+          saving={saving} onSave={handleSave}
+          TINH_TRANG_NK_OPTIONS={TINH_TRANG_NK_OPTIONS}
+        />
+      </Modal>
+    )
   }
 
   return (
