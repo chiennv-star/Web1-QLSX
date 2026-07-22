@@ -5756,6 +5756,25 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved, canEdit =
   const [bravoVal, setBravoVal] = useState('')
   const [bravoOpts, setBravoOpts] = useState([])
   const [bravoSaving, setBravoSaving] = useState(false)
+  const [editingField, setEditingField] = useState(null) // 'lsx' | 'maDonHang' | null
+  const [fieldVal, setFieldVal] = useState('')
+  const [fieldSaving, setFieldSaving] = useState(false)
+
+  const startEditField = (field) => {
+    setEditingField(field)
+    setFieldVal(localRecord[field] || '')
+  }
+
+  const saveField = async (field) => {
+    setFieldSaving(true)
+    try {
+      const { data: updated } = await api.patch(`/production/${localRecord.id}/nhap-kho`, { [field]: fieldVal.trim() })
+      setLocalRecord(prev => ({ ...prev, ...updated, [field]: fieldVal.trim() }))
+      setEditingField(null)
+      onSaved()
+    } catch { message.error('Cập nhật thất bại') }
+    finally { setFieldSaving(false) }
+  }
 
   const fetchEntries = async (id) => {
     try {
@@ -5947,9 +5966,47 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved, canEdit =
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
                 <LCell>Số lô</LCell>
-                <VCell last><span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#6d28d9' }}>{r.lsx || '—'}</span></VCell>
+                <VCell last>
+                  {editingField === 'lsx' ? (
+                    <div style={{ display: 'flex', gap: 4, width: '100%', alignItems: 'center' }}>
+                      <Input
+                        autoFocus size="small" value={fieldVal}
+                        onChange={e => setFieldVal(e.target.value)}
+                        onPressEnter={() => saveField('lsx')}
+                        style={{ flex: 1, fontFamily: 'monospace' }}
+                      />
+                      <Button size="small" type="primary" loading={fieldSaving} onClick={() => saveField('lsx')}>Lưu</Button>
+                      <Button size="small" onClick={() => setEditingField(null)}>Hủy</Button>
+                    </div>
+                  ) : (
+                    <span
+                      onClick={canEdit ? () => startEditField('lsx') : undefined}
+                      style={{ fontFamily: 'monospace', fontWeight: 700, color: '#6d28d9', cursor: canEdit ? 'pointer' : 'default', textDecoration: canEdit ? 'underline dotted' : 'none' }}>
+                      {r.lsx || <span style={{ color: '#bbb', fontFamily: 'inherit', fontWeight: 400 }}>{canEdit ? 'Nhấn để sửa...' : '—'}</span>}
+                    </span>
+                  )}
+                </VCell>
                 <LCell>Mã đơn hàng</LCell>
-                <VCell last><span style={{ fontFamily: 'monospace', color: '#7c3aed' }}>{r.maDonHang || '—'}</span></VCell>
+                <VCell last>
+                  {editingField === 'maDonHang' ? (
+                    <div style={{ display: 'flex', gap: 4, width: '100%', alignItems: 'center' }}>
+                      <Input
+                        autoFocus size="small" value={fieldVal}
+                        onChange={e => setFieldVal(e.target.value)}
+                        onPressEnter={() => saveField('maDonHang')}
+                        style={{ flex: 1, fontFamily: 'monospace' }}
+                      />
+                      <Button size="small" type="primary" loading={fieldSaving} onClick={() => saveField('maDonHang')}>Lưu</Button>
+                      <Button size="small" onClick={() => setEditingField(null)}>Hủy</Button>
+                    </div>
+                  ) : (
+                    <span
+                      onClick={canEdit ? () => startEditField('maDonHang') : undefined}
+                      style={{ fontFamily: 'monospace', color: '#7c3aed', cursor: canEdit ? 'pointer' : 'default', textDecoration: canEdit ? 'underline dotted' : 'none' }}>
+                      {r.maDonHang || <span style={{ color: '#bbb', fontFamily: 'inherit', fontWeight: 400 }}>{canEdit ? 'Nhấn để sửa...' : '—'}</span>}
+                    </span>
+                  )}
+                </VCell>
                 <LCell>Mã Bravo</LCell>
                 <VCell last>
                   {bravoEditing ? (
