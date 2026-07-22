@@ -6305,8 +6305,8 @@ function NhapKhoAuditLogView({ data, loading, onReload, filterH = 0 }) {
 
 function NhapKhoTab() {
   const { canEditNhapKhoTarget, isQuanDoc, isAdmin, user } = useAuth()
-  const canEdit = !isQuanDoc()
-  // ADMIN_DG được thêm/sửa Nhập Kho như bình thường nhưng không được xóa
+  // ADMIN_DG chỉ được xem, không được thêm/sửa/xóa ở Ngày Nhập Kho và Nhập Kho
+  const canEdit = !isQuanDoc() && user?.role !== 'ADMIN_DG'
   const canDelete = canEdit && user?.role !== 'ADMIN_DG'
   const [auditData, setAuditData] = useState([])
   const [auditLoading, setAuditLoading] = useState(false)
