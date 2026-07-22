@@ -581,6 +581,7 @@ public class ProductionService {
         ProductionRecord saved = repository.save(clone);
         syncNhapKhoTongHopNgay(saved);
         logNhapKhoAudit(saved, "THEM_MOI", null, username);
+        syncTpNhapKhoToSource(saved.getMaBravo(), saved.getLsx(), saved.getMaDonHang(), username);
         notificationService.createNhapKhoNewNotification(
                 saved.getId(), saved.getTienTrinh(), saved.getMaBravo(),
                 saved.getLsx(), saved.getTpNhapKho(), username);
@@ -605,6 +606,41 @@ public class ProductionService {
             r.setUpdatedBy(username);
         }
         repository.save(r);
+        syncTpNhapKhoToSource(r.getMaBravo(), r.getLsx(), r.getMaDonHang(), username);
+    }
+
+    /**
+     * Đồng bộ MỘT CHIỀU: Nhập Kho → Sản lượng tổ/Sản lượng.
+     * Sau mỗi lần thêm/sửa/xóa 1 lần nhập kho, tính lại tổng đúng theo Mã Bravo + Số Lô + Mã ĐH
+     * (không gộp nhầm giữa các lệnh dùng chung số lô) rồi ghi vào bản ghi gốc (phatLenh=true)
+     * tương ứng, đồng thời ghi lịch sử (ai, lúc nào, giá trị cũ → mới) vào Lịch sử NK.
+     */
+    private void syncTpNhapKhoToSource(String maBravo, String lsx, String maDonHang, String username) {
+        if (maBravo == null || lsx == null) return;
+        List<ProductionRecord> masters = repository.findMasterByKey3(maBravo, lsx, maDonHang);
+        if (masters.isEmpty()) return;
+        ProductionRecord master = masters.get(0);
+        List<ProductionRecord> clones = repository.findNhapKhoClonesByKey3(maBravo, lsx, maDonHang);
+        int total = clones.stream().mapToInt(c -> c.getTpNhapKho() != null ? c.getTpNhapKho() : 0).sum();
+        Integer oldVal = master.getTpNhapKho();
+        Integer newVal = total > 0 ? total : null;
+        if (Objects.equals(oldVal, newVal)) return;
+        master.setTpNhapKho(newVal);
+        master.setUpdatedBy(username);
+        repository.save(master);
+
+        NhapKhoAuditLog log = new NhapKhoAuditLog();
+        log.setProductionRecordId(master.getId());
+        log.setMaBravo(master.getMaBravo());
+        log.setMaTp(master.getMaTp());
+        log.setTienTrinh(master.getTienTrinh());
+        log.setLsx(master.getLsx());
+        log.setHanhDong("DONG_BO_SLT");
+        log.setTpNhapKho(newVal);
+        log.setThayDoi("SL Nhập Kho (Sản lượng tổ): " + fmtOrDash(oldVal) + " → " + fmtOrDash(newVal));
+        log.setChangedBy(username);
+        log.setChangedAt(LocalDateTime.now());
+        nhapKhoAuditLogRepository.save(log);
     }
 
     /** Ghi log lịch sử Nhập Kho — độc lập, không xóa/sửa theo khi bản ghi nguồn thay đổi sau này */
@@ -690,6 +726,7 @@ public class ProductionService {
             ProductionRecord saved = repository.save(clone);
             syncNhapKhoTongHopNgay(saved);
             logNhapKhoAudit(saved, "THEM_MOI", null, username);
+            syncTpNhapKhoToSource(saved.getMaBravo(), saved.getLsx(), saved.getMaDonHang(), username);
             return saved;
         }
 
@@ -699,6 +736,7 @@ public class ProductionService {
         String oldTinhTrang = r.getTinhTrangNhapKho();
         String oldTenNth = r.getTenNthNhapKho();
         String oldGhiChu = r.getGhiChuNhapKho();
+        String oldMaBravo = r.getMaBravo();
         String oldLsx = r.getLsx();
         String oldMaDonHang = r.getMaDonHang();
         applyNhapKhoFields(r, body);
@@ -708,6 +746,13 @@ public class ProductionService {
         String thayDoi = buildNhapKhoDiff(oldTpNhapKho, oldNgayXuatKho, oldTinhTrang, oldTenNth, oldGhiChu,
                 oldLsx, oldMaDonHang, saved);
         if (thayDoi != null) logNhapKhoAudit(saved, "SUA", thayDoi, username);
+        boolean keyChanged = !Objects.equals(oldMaBravo, saved.getMaBravo())
+                || !Objects.equals(oldLsx, saved.getLsx())
+                || !Objects.equals(oldMaDonHang, saved.getMaDonHang());
+        if (keyChanged) {
+            syncTpNhapKhoToSource(oldMaBravo, oldLsx, oldMaDonHang, username);
+        }
+        syncTpNhapKhoToSource(saved.getMaBravo(), saved.getLsx(), saved.getMaDonHang(), username);
         return saved;
     }
 

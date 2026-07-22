@@ -908,10 +908,11 @@ export default function RecordFormPage() {
                               <td style={{ padding: '7px 14px', background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap', width: '22%' }}>TP Nhập kho</td>
                               <td style={{ padding: '4px 10px', width: '28%' }}>
                                 <Form.Item name="tpNhapKho" style={{ marginBottom: 0 }}>
-                                  <InputNumber size="small" style={{ width: '100%', fontWeight: 600 }} min={0} disabled={ro}
+                                  <InputNumber size="small" style={{ width: '100%', fontWeight: 600 }} min={0} disabled
                                     formatter={v => v ? Number(v).toLocaleString('vi-VN') : '0'}
                                     parser={v => v ? v.replace(/[^\d]/g, '') : 0} />
                                 </Form.Item>
+                                <span style={{ fontSize: 10, color: '#9ca3af' }}>Tự động đồng bộ từ Nhập Kho</span>
                               </td>
                             </tr>
                             <tr>

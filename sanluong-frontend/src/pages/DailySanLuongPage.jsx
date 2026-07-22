@@ -6242,9 +6242,10 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved, canEdit =
 // độc lập với bản chính (xóa bản chính không làm mất log). Chỉ ADMIN xem được.
 function NhapKhoAuditLogView({ data, loading, onReload, filterH = 0 }) {
   const HANH_DONG_TAG = {
-    THEM_MOI: <Tag color="green">Thêm mới</Tag>,
-    SUA:      <Tag color="blue">Sửa</Tag>,
-    XOA:      <Tag color="red">Xóa</Tag>,
+    THEM_MOI:    <Tag color="green">Thêm mới</Tag>,
+    SUA:         <Tag color="blue">Sửa</Tag>,
+    XOA:         <Tag color="red">Xóa</Tag>,
+    DONG_BO_SLT: <Tag color="purple">Đồng bộ SLT</Tag>,
   }
   const cellNav = useCellNav({ rowCount: data.length, colCount: 14 })
   const columns = [

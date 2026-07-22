@@ -621,20 +621,11 @@ public class WorkScheduleService {
     public void patchField(Long id, String field, java.math.BigDecimal value) {
         WorkSchedule w = getById(id);
         if ("tpNhapKho".equals(field)) {
-            // Chỉ cập nhật đúng bản ghi gốc (phatLenh=true) — không đụng tới các bản ghi "clone"
-            // của module Nhập Kho (độc lập hoàn toàn, xem ProductionService#createNhapKhoEntry).
-            if (w.getMaSp() != null && !w.getMaSp().isBlank()) {
-                String tt  = (w.getTenTrinh() == null || w.getTenTrinh().isBlank()) ? null : w.getTenTrinh();
-                String lsx = (w.getSoLo()     == null || w.getSoLo().isBlank())     ? null : w.getSoLo();
-                List<com.sanluong.entity.ProductionRecord> records = productionRepo.findByTriplet(w.getMaSp(), tt, lsx);
-                Integer intVal = value == null ? null : value.intValue();
-                records.stream()
-                        .filter(r -> Boolean.TRUE.equals(r.getPhatLenh()))
-                        .findFirst()
-                        .ifPresent(r -> { r.setTpNhapKho(intVal); productionRepo.save(r); });
-            }
-            eventPublisher.publishKhoachUpdated();
-            return;
+            // SL Nhập Kho giờ được tự động đồng bộ 1 chiều từ module Nhập Kho
+            // (xem ProductionService#syncTpNhapKhoToSource) — không cho sửa tay ở đây nữa.
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "SL Nhập Kho hiện được tự động đồng bộ từ module Nhập Kho, không thể sửa tay ở đây.");
         }
         switch (field) {
             case "congPc"   -> w.setCongPc(value);

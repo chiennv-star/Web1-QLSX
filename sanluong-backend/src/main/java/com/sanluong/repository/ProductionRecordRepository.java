@@ -284,4 +284,36 @@ public interface ProductionRecordRepository extends JpaRepository<ProductionReco
           AND r.tpNhapKho IS NOT NULL
         """)
     List<ProductionRecord> findAllNhapKhoEntries();
+
+    /** Bản ghi gốc (phatLenh=true) khớp đúng Mã Bravo + Số Lô + Mã ĐH — dùng để đồng bộ tpNhapKho
+     *  từ module Nhập Kho sang Sản lượng tổ/Sản lượng, tránh đè nhầm khi nhiều lệnh dùng chung số lô */
+    @Query("""
+        SELECT r FROM ProductionRecord r
+        WHERE r.deletedAt IS NULL
+          AND (r.hidden IS NULL OR r.hidden = false)
+          AND r.phatLenh = true
+          AND r.maBravo = :maBravo
+          AND r.lsx = :lsx
+          AND ((:maDonHang IS NULL AND r.maDonHang IS NULL) OR r.maDonHang = :maDonHang)
+        """)
+    List<ProductionRecord> findMasterByKey3(
+            @Param("maBravo") String maBravo,
+            @Param("lsx") String lsx,
+            @Param("maDonHang") String maDonHang);
+
+    /** Clone nhập kho khớp đúng Mã Bravo + Số Lô + Mã ĐH — dùng để tính tổng đồng bộ đúng theo từng lệnh */
+    @Query("""
+        SELECT r FROM ProductionRecord r
+        WHERE r.deletedAt IS NULL
+          AND (r.hidden IS NULL OR r.hidden = false)
+          AND (r.phatLenh IS NULL OR r.phatLenh = false)
+          AND r.tpNhapKho IS NOT NULL
+          AND r.maBravo = :maBravo
+          AND r.lsx = :lsx
+          AND ((:maDonHang IS NULL AND r.maDonHang IS NULL) OR r.maDonHang = :maDonHang)
+        """)
+    List<ProductionRecord> findNhapKhoClonesByKey3(
+            @Param("maBravo") String maBravo,
+            @Param("lsx") String lsx,
+            @Param("maDonHang") String maDonHang);
 }

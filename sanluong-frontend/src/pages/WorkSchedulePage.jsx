@@ -474,13 +474,6 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
         congDoan: schedule.congDoan,
         source: 'SCHEDULE',
       })
-      // Riêng tpNhapKho: cập nhật ProductionRecord qua patch-field (transient field, không lưu trong PUT)
-      if (schedule.congDoan === 'DG') {
-        const newTpNk = values.tpNhapKho ?? null
-        if (newTpNk !== (schedule.tpNhapKho ?? null)) {
-          await api.patch(`/work-schedule/${schedule.id}/patch-field`, { field: 'tpNhapKho', value: newTpNk })
-        }
-      }
       notification.success({
         message: 'Lưu thành công',
         description: 'Thông tin lệnh sản xuất đã được cập nhật.',
@@ -3262,13 +3255,10 @@ function WorkDetailDrawer({ open, schedule, onClose, onSaved, onRefresh, onMachi
                     <>
                       <LC accent="#15803d">📦 TP NKHO</LC>
                       <VC span={7} style={{ borderRight: 'none' }}>
-                        <Form.Item name="tpNhapKho" noStyle>
-                          <InputNumber size="small" min={0} step={1} disabled={!isInfoEditing}
-                            formatter={v => v ? Number(v).toLocaleString('vi-VN') : ''}
-                            parser={v => v ? v.replace(/[^\d]/g, '') : 0}
-                            style={{ width: 200, fontWeight: 700, color: '#15803d' }} placeholder="0" />
-                        </Form.Item>
-                        <span style={{ marginLeft: 8, fontSize: 11, color: '#6b7280' }}>thành phẩm nhập kho</span>
+                        <span style={{ fontWeight: 700, color: '#15803d' }}>
+                          {schedule?.tpNhapKho != null ? Number(schedule.tpNhapKho).toLocaleString('vi-VN') : '—'}
+                        </span>
+                        <span style={{ marginLeft: 8, fontSize: 11, color: '#9ca3af' }}>(tự động đồng bộ từ Nhập Kho)</span>
                       </VC>
                     </>
                   )}
@@ -5127,8 +5117,6 @@ export function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentO
         setInlineEdit(null)
         parentOnSaved?.()
         return
-      } else if (field === 'tpNhapKho') {
-        await api.patch(`/work-schedule/${id}/patch-field`, { field: 'tpNhapKho', value: val ?? null })
       }
       setData(prev => prev.map(r => r.id === id ? { ...r, [field]: val ?? null } : r))
       setDetailSchedule(prev => prev?.id === id ? { ...prev, [field]: val ?? null } : prev)
@@ -5423,44 +5411,13 @@ export function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentO
     {
       title: 'SL Nhập Kho', dataIndex: 'tpNhapKho', key: 'tpNhapKho_top', width: 100, align: 'center',
       hidden: congDoan !== 'DG',
-      render: (v, record) => {
-        const canEdit = canEditStage(congDoan)
-        const isEditing = inlineEdit?.id === record.id && inlineEdit?.field === 'tpNhapKho'
-        if (isEditing) {
-          return (
-            <InputNumber
-              size="small" autoFocus min={0} step={1}
-              defaultValue={v ?? undefined}
-              style={{ width: 80 }}
-              formatter={val => (val != null && val !== '') ? Number(val).toLocaleString('vi-VN') : ''}
-              parser={val => val ? val.replace(/[^\d]/g, '') : ''}
-              onClick={e => e.stopPropagation()}
-              onPressEnter={e => {
-                const num = e.target.value ? parseInt(e.target.value.replace(/[^\d]/g, ''), 10) : null
-                saveInlineEdit(record.id, 'tpNhapKho', isNaN(num) ? null : num)
-              }}
-              onBlur={e => {
-                if (!inlineSaving) {
-                  const num = e.target.value ? parseInt(e.target.value.replace(/[^\d]/g, ''), 10) : null
-                  saveInlineEdit(record.id, 'tpNhapKho', isNaN(num) ? null : num)
-                }
-              }}
-            />
-          )
-        }
-        return (
-          <div
-            onClick={canEdit ? e => { e.stopPropagation(); setInlineEdit({ id: record.id, field: 'tpNhapKho' }) } : undefined}
-            style={{ cursor: canEdit ? 'pointer' : 'default', textAlign: 'center' }}
-          >
-            {v != null
-              ? <span style={{ fontWeight: 700, color: '#15803d' }}>{Number(v).toLocaleString('vi-VN')}</span>
-              : canEdit
-                ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0, cursor: 'pointer' }}>Nhập NK</Tag>
-                : <span style={{ color: '#d9d9d9' }}>—</span>}
-          </div>
-        )
-      },
+      render: (v) => (
+        <Tooltip title="Tự động đồng bộ từ module Nhập Kho, không sửa tay được ở đây">
+          <span style={{ fontWeight: 700, color: v != null ? '#15803d' : '#d9d9d9' }}>
+            {v != null ? Number(v).toLocaleString('vi-VN') : '—'}
+          </span>
+        </Tooltip>
+      ),
     },
     {
       title: 'Năng suất', key: 'ns', width: 165, align: 'center',
