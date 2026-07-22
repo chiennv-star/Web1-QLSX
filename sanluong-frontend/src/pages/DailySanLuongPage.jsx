@@ -7124,7 +7124,35 @@ function NhapKhoTab() {
                       )}
                     </VC>
                     <LC>Số lô</LC>
-                    <VC><span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#6d28d9' }}>{r.lsx || '—'}</span></VC>
+                    <VC>
+                      {canEdit && editCell?.id === r.id && editCell?.field === 'lsx_drawer' ? (
+                        <Input autoFocus size="small" defaultValue={r.lsx || ''}
+                          style={{ fontFamily: 'monospace' }}
+                          onPressEnter={e => saveField(r.id, 'lsx', e.target.value.trim())}
+                          onBlur={e => { if (!saving[`${r.id}_lsx`]) saveField(r.id, 'lsx', e.target.value.trim()) }}
+                        />
+                      ) : (
+                        <span onClick={canEdit ? () => setEditCell({ id: r.id, field: 'lsx_drawer' }) : undefined}
+                          style={{ fontFamily: 'monospace', fontWeight: 700, color: '#6d28d9', cursor: canEdit ? 'pointer' : 'default', textDecoration: canEdit ? 'underline dotted' : 'none' }}>
+                          {r.lsx || <span style={{ color: '#bbb', fontFamily: 'inherit', fontWeight: 400 }}>{canEdit ? 'Nhấn để sửa...' : '—'}</span>}
+                        </span>
+                      )}
+                    </VC>
+                    <LC>Mã đơn hàng</LC>
+                    <VC>
+                      {canEdit && editCell?.id === r.id && editCell?.field === 'maDonHang_drawer' ? (
+                        <Input autoFocus size="small" defaultValue={r.maDonHang || ''}
+                          style={{ fontFamily: 'monospace' }}
+                          onPressEnter={e => saveField(r.id, 'maDonHang', e.target.value.trim())}
+                          onBlur={e => { if (!saving[`${r.id}_maDonHang`]) saveField(r.id, 'maDonHang', e.target.value.trim()) }}
+                        />
+                      ) : (
+                        <span onClick={canEdit ? () => setEditCell({ id: r.id, field: 'maDonHang_drawer' }) : undefined}
+                          style={{ fontFamily: 'monospace', color: '#7c3aed', cursor: canEdit ? 'pointer' : 'default', textDecoration: canEdit ? 'underline dotted' : 'none' }}>
+                          {r.maDonHang || <span style={{ color: '#bbb', fontFamily: 'inherit', fontWeight: 400 }}>{canEdit ? 'Nhấn để sửa...' : '—'}</span>}
+                        </span>
+                      )}
+                    </VC>
                     <LC>Mã Bravo</LC>
                     <VC>
                       {bravoEdit?.id === r.id ? (
