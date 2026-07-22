@@ -566,29 +566,8 @@ public class ProductionService {
         ProductionRecord src = repository.findById(sourceId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + sourceId));
 
-        // Nếu source đã có tpNhapKho trực tiếp (lần nhập đầu tiên qua PATCH) nhưng chưa có clone →
-        // migrate sang clone để recalc tổng đúng khi có nhiều ngày nhập kho
-        List<ProductionRecord> existingClones = repository.findNhapKhoClonesByKey(src.getMaBravo(), src.getLsx());
-        if (src.getTpNhapKho() != null && existingClones.isEmpty()) {
-            ProductionRecord firstClone = new ProductionRecord();
-            firstClone.setMaBravo(src.getMaBravo());
-            firstClone.setMaTp(src.getMaTp());
-            firstClone.setTienTrinh(src.getTienTrinh());
-            firstClone.setLsx(src.getLsx());
-            firstClone.setSoLuong(src.getSoLuong());
-            firstClone.setMaDonHang(src.getMaDonHang());
-            firstClone.setTpNhapKho(src.getTpNhapKho());
-            firstClone.setNgayXuatKho(src.getNgayXuatKho());
-            firstClone.setTinhTrangNhapKho(src.getTinhTrangNhapKho());
-            firstClone.setTenNthNhapKho(src.getTenNthNhapKho());
-            firstClone.setGhiChuNhapKho(src.getGhiChuNhapKho());
-            firstClone.setCreatedAt(java.time.LocalDateTime.now());
-            firstClone.setCreatedBy(username);
-            ProductionRecord savedFirstClone = repository.save(firstClone);
-            syncNhapKhoTongHopNgay(savedFirstClone);
-            logNhapKhoAudit(savedFirstClone, "THEM_MOI", null, username);
-        }
-
+        // Lưu ý: module Nhập Kho hoạt động độc lập với trường tpNhapKho trên bản ghi gốc
+        // (bản ghi gốc dùng cho Sản lượng tổ / Sản lượng) — không đọc/ghi qua lại giữa 2 bên.
         ProductionRecord clone = new ProductionRecord();
         clone.setMaBravo(src.getMaBravo());
         clone.setMaTp(src.getMaTp());
@@ -602,7 +581,6 @@ public class ProductionService {
         ProductionRecord saved = repository.save(clone);
         syncNhapKhoTongHopNgay(saved);
         logNhapKhoAudit(saved, "THEM_MOI", null, username);
-        recalcSourceTpNhapKho(src.getMaBravo(), src.getLsx(), username);
         notificationService.createNhapKhoNewNotification(
                 saved.getId(), saved.getTienTrinh(), saved.getMaBravo(),
                 saved.getLsx(), saved.getTpNhapKho(), username);
@@ -612,8 +590,6 @@ public class ProductionService {
     public void removeFromNhapKho(Long id, String username) {
         ProductionRecord r = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));
-        String maBravo = r.getMaBravo();
-        String lsx     = r.getLsx();
         logNhapKhoAudit(r, "XOA", null, username);
         boolean isNhapKhoOnly = r.getPhatLenh() == null || !r.getPhatLenh();
         boolean hasNoSlData = r.getSlPc() == null && r.getDgTrangThai() == null && r.getPcTrangThai() == null;
@@ -629,7 +605,6 @@ public class ProductionService {
             r.setUpdatedBy(username);
         }
         repository.save(r);
-        recalcSourceTpNhapKho(maBravo, lsx, username);
     }
 
     /** Ghi log lịch sử Nhập Kho — độc lập, không xóa/sửa theo khi bản ghi nguồn thay đổi sau này */
@@ -664,6 +639,14 @@ public class ProductionService {
         if (body.containsKey("tienTrinh")) {
             String v = body.get("tienTrinh");
             r.setTienTrinh(v != null && !v.isBlank() ? v.trim() : null);
+        }
+        if (body.containsKey("lsx")) {
+            String v = body.get("lsx");
+            r.setLsx(v != null && !v.isBlank() ? v.trim() : null);
+        }
+        if (body.containsKey("maDonHang")) {
+            String v = body.get("maDonHang");
+            r.setMaDonHang(v != null && !v.isBlank() ? v.trim() : null);
         }
         if (body.containsKey("tpNhapKho")) {
             String v = body.get("tpNhapKho");
@@ -707,7 +690,6 @@ public class ProductionService {
             ProductionRecord saved = repository.save(clone);
             syncNhapKhoTongHopNgay(saved);
             logNhapKhoAudit(saved, "THEM_MOI", null, username);
-            recalcSourceTpNhapKho(r.getMaBravo(), r.getLsx(), username);
             return saved;
         }
 
@@ -717,21 +699,22 @@ public class ProductionService {
         String oldTinhTrang = r.getTinhTrangNhapKho();
         String oldTenNth = r.getTenNthNhapKho();
         String oldGhiChu = r.getGhiChuNhapKho();
+        String oldLsx = r.getLsx();
+        String oldMaDonHang = r.getMaDonHang();
         applyNhapKhoFields(r, body);
         r.setUpdatedBy(username);
         ProductionRecord saved = repository.save(r);
         syncNhapKhoTongHopNgay(saved);
-        String thayDoi = buildNhapKhoDiff(oldTpNhapKho, oldNgayXuatKho, oldTinhTrang, oldTenNth, oldGhiChu, saved);
+        String thayDoi = buildNhapKhoDiff(oldTpNhapKho, oldNgayXuatKho, oldTinhTrang, oldTenNth, oldGhiChu,
+                oldLsx, oldMaDonHang, saved);
         if (thayDoi != null) logNhapKhoAudit(saved, "SUA", thayDoi, username);
-        if (body.containsKey("tpNhapKho")) {
-            recalcSourceTpNhapKho(r.getMaBravo(), r.getLsx(), username);
-        }
         return saved;
     }
 
     /** So sánh giá trị cũ/mới của các trường nhập kho, trả về chuỗi tóm tắt (null nếu không đổi gì) */
     private String buildNhapKhoDiff(Integer oldTpNhapKho, java.time.LocalDate oldNgayXuatKho,
                                      String oldTinhTrang, String oldTenNth, String oldGhiChu,
+                                     String oldLsx, String oldMaDonHang,
                                      ProductionRecord after) {
         List<String> parts = new ArrayList<>();
         if (!Objects.equals(oldTpNhapKho, after.getTpNhapKho()))
@@ -744,6 +727,10 @@ public class ProductionService {
             parts.add("Tên NTH: " + fmtOrDash(oldTenNth) + " → " + fmtOrDash(after.getTenNthNhapKho()));
         if (!Objects.equals(oldGhiChu, after.getGhiChuNhapKho()))
             parts.add("Ghi chú: " + fmtOrDash(oldGhiChu) + " → " + fmtOrDash(after.getGhiChuNhapKho()));
+        if (!Objects.equals(oldLsx, after.getLsx()))
+            parts.add("Số lô: " + fmtOrDash(oldLsx) + " → " + fmtOrDash(after.getLsx()));
+        if (!Objects.equals(oldMaDonHang, after.getMaDonHang()))
+            parts.add("Mã ĐH: " + fmtOrDash(oldMaDonHang) + " → " + fmtOrDash(after.getMaDonHang()));
         return parts.isEmpty() ? null : String.join("; ", parts);
     }
 
@@ -794,55 +781,24 @@ public class ProductionService {
         }
     }
 
-    /** Tính lại tổng tpNhapKho từ tất cả clone entries rồi cập nhật lên bản ghi gốc */
-    private void recalcSourceTpNhapKho(String maBravo, String lsx, String username) {
-        if (maBravo == null || lsx == null) return;
-        List<ProductionRecord> clones = repository.findNhapKhoClonesByKey(maBravo, lsx);
-        int total = clones.stream()
-                .mapToInt(c -> c.getTpNhapKho() != null ? c.getTpNhapKho() : 0)
-                .sum();
-        List<ProductionRecord> sources = repository.findByMaBravoAndTienTrinhAndLsx(maBravo, null, lsx);
-        for (ProductionRecord src : sources) {
-            if (Boolean.TRUE.equals(src.getPhatLenh())) {
-                src.setTpNhapKho(total > 0 ? total : null);
-                src.setUpdatedBy(username);
-                repository.save(src);
-                break;
-            }
-        }
-    }
-
-    /** Trả về danh sách từng lần nhập kho của bản ghi nguồn (theo maBravo + lsx) */
+    /** Trả về danh sách từng lần nhập kho của bản ghi nguồn (theo maBravo + lsx) — chỉ dựa trên clone,
+     *  không đọc tpNhapKho của bản ghi gốc (trường đó thuộc về Sản lượng tổ / Sản lượng, độc lập với Nhập Kho) */
     public List<java.util.Map<String, Object>> getNhapKhoEntries(Long sourceId) {
         ProductionRecord src = repository.findById(sourceId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + sourceId));
         List<ProductionRecord> clones = repository.findNhapKhoClonesByKey(src.getMaBravo(), src.getLsx());
 
-        if (!clones.isEmpty()) {
-            return clones.stream()
-                    .sorted(java.util.Comparator.comparing(
-                            c -> c.getNgayXuatKho() != null ? c.getNgayXuatKho() : java.time.LocalDate.MIN))
-                    .map(c -> {
-                        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
-                        m.put("id", c.getId());
-                        m.put("tpNhapKho", c.getTpNhapKho());
-                        m.put("ngayXuatKho", c.getNgayXuatKho());
-                        m.put("ghiChu", c.getGhiChuNhapKho());
-                        return m;
-                    }).collect(java.util.stream.Collectors.toList());
-        }
-
-        // Chưa có clone (chỉ mới nhập lần đầu trực tiếp trên source)
-        if (src.getTpNhapKho() != null) {
-            java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
-            m.put("id", src.getId());
-            m.put("tpNhapKho", src.getTpNhapKho());
-            m.put("ngayXuatKho", src.getNgayXuatKho());
-            m.put("ghiChu", src.getGhiChuNhapKho());
-            return java.util.List.of(m);
-        }
-
-        return java.util.List.of();
+        return clones.stream()
+                .sorted(java.util.Comparator.comparing(
+                        c -> c.getNgayXuatKho() != null ? c.getNgayXuatKho() : java.time.LocalDate.MIN))
+                .map(c -> {
+                    java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("id", c.getId());
+                    m.put("tpNhapKho", c.getTpNhapKho());
+                    m.put("ngayXuatKho", c.getNgayXuatKho());
+                    m.put("ghiChu", c.getGhiChuNhapKho());
+                    return m;
+                }).collect(java.util.stream.Collectors.toList());
     }
 
     /** Tính tổng SL Đóng Gói từ các sessions của WorkSchedule ĐG (theo maBravo + lsx) */

@@ -62,7 +62,11 @@ public class WorkScheduleService {
         this.donHangService = donHangService;
     }
 
-    /** Enrich tpNhapKho từ ProductionRecord cho các bản ghi DG */
+    /**
+     * Enrich tpNhapKho từ ProductionRecord cho các bản ghi DG.
+     * Chỉ đọc từ bản ghi gốc (phatLenh=true) — đây là trường riêng của Sản lượng tổ/Sản lượng,
+     * độc lập hoàn toàn với các bản ghi "clone" của module Nhập Kho.
+     */
     private void enrichTpNhapKho(List<WorkSchedule> list) {
         for (WorkSchedule w : list) {
             if (!"DG".equalsIgnoreCase(w.getCongDoan())) continue;
@@ -70,9 +74,10 @@ public class WorkScheduleService {
             String tt  = (w.getTenTrinh() == null || w.getTenTrinh().isBlank()) ? null : w.getTenTrinh();
             String lsx = (w.getSoLo()     == null || w.getSoLo().isBlank())     ? null : w.getSoLo();
             List<com.sanluong.entity.ProductionRecord> records = productionRepo.findByTriplet(w.getMaSp(), tt, lsx);
-            if (!records.isEmpty()) {
-                w.setTpNhapKho(records.get(0).getTpNhapKho());
-            }
+            records.stream()
+                    .filter(r -> Boolean.TRUE.equals(r.getPhatLenh()))
+                    .findFirst()
+                    .ifPresent(r -> w.setTpNhapKho(r.getTpNhapKho()));
         }
     }
 
@@ -616,13 +621,17 @@ public class WorkScheduleService {
     public void patchField(Long id, String field, java.math.BigDecimal value) {
         WorkSchedule w = getById(id);
         if ("tpNhapKho".equals(field)) {
+            // Chỉ cập nhật đúng bản ghi gốc (phatLenh=true) — không đụng tới các bản ghi "clone"
+            // của module Nhập Kho (độc lập hoàn toàn, xem ProductionService#createNhapKhoEntry).
             if (w.getMaSp() != null && !w.getMaSp().isBlank()) {
                 String tt  = (w.getTenTrinh() == null || w.getTenTrinh().isBlank()) ? null : w.getTenTrinh();
                 String lsx = (w.getSoLo()     == null || w.getSoLo().isBlank())     ? null : w.getSoLo();
                 List<com.sanluong.entity.ProductionRecord> records = productionRepo.findByTriplet(w.getMaSp(), tt, lsx);
                 Integer intVal = value == null ? null : value.intValue();
-                records.forEach(r -> r.setTpNhapKho(intVal));
-                productionRepo.saveAll(records);
+                records.stream()
+                        .filter(r -> Boolean.TRUE.equals(r.getPhatLenh()))
+                        .findFirst()
+                        .ifPresent(r -> { r.setTpNhapKho(intVal); productionRepo.save(r); });
             }
             eventPublisher.publishKhoachUpdated();
             return;
