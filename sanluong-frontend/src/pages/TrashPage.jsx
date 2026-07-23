@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import {
   Table, Button, Space, Tag, Popconfirm, message,
-  Tabs, Badge, Tooltip, Typography, Empty, Row, Col
+  Tabs, Badge, Tooltip, Typography, Empty, Row, Col, Input
 } from 'antd'
 import {
   DeleteOutlined, UndoOutlined, WarningOutlined,
@@ -20,6 +20,14 @@ const cellTxt  = (v, style) => v ? <span style={{ fontSize: 12, ...style }}>{v}<
 const boolTag  = v => v
   ? <Tag color="green" style={{ marginRight: 0, fontWeight: 600 }}>Có</Tag>
   : <Tag style={{ marginRight: 0, color: '#94a3b8' }}>Không</Tag>
+
+// Lọc theo từ khóa trên nhiều cột — dùng chung cho cả 3 bảng thùng rác
+const matchSearch = (r, fields, keyword) => {
+  if (!keyword) return true
+  const k = keyword.trim().toLowerCase()
+  if (!k) return true
+  return fields.some(f => (r[f] ?? '').toString().toLowerCase().includes(k))
+}
 
 const TINH_TRANG_DH = {
   rat_gap: { label: 'Rất Gấp', color: '#cf1322', bg: '#fff1f0', border: '#ffa39e' },
@@ -92,9 +100,12 @@ function BulkToolbar({ selected, total, onSelectAll, onDeselectAll, onBulkRestor
 function DonHangTrashTab({ canEdit }) {
   const [data, setData]                     = useState([])
   const [loading, setLoading]               = useState(false)
+  const [search, setSearch]                 = useState('')
   const [selectedRowKeys, setSelectedRowKeys] = useState([])
   const [bulkRestoring, setBulkRestoring]   = useState(false)
   const [bulkDeleting, setBulkDeleting]     = useState(false)
+
+  const filteredData = data.filter(r => matchSearch(r, ['maBravo', 'maDonHang', 'maSp', 'tenSanPham'], search))
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -282,10 +293,17 @@ function DonHangTrashTab({ canEdit }) {
 
   return (
     <div style={{ padding: '8px 0' }}>
+      <Input.Search
+        allowClear
+        placeholder="Tìm theo Mã Bravo, Mã ĐH, Mã SP, Tên sản phẩm..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        style={{ maxWidth: 380, marginBottom: 8 }}
+      />
       {canEdit && (
         <BulkToolbar
-          selected={selectedRowKeys} total={data.length}
-          onSelectAll={() => setSelectedRowKeys(data.map(r => r.id))}
+          selected={selectedRowKeys} total={filteredData.length}
+          onSelectAll={() => setSelectedRowKeys(filteredData.map(r => r.id))}
           onDeselectAll={() => setSelectedRowKeys([])}
           onBulkRestore={handleBulkRestore} onBulkDelete={handleBulkDelete}
           restoring={bulkRestoring} deleting={bulkDeleting}
@@ -293,13 +311,13 @@ function DonHangTrashTab({ canEdit }) {
       )}
       <Table
         className="trash-table"
-        columns={columns} dataSource={data} rowKey="id"
+        columns={columns} dataSource={filteredData} rowKey="id"
         loading={loading} size="small" scroll={{ x: 2450 }}
         rowSelection={canEdit ? {
           type: 'checkbox', selectedRowKeys,
           onChange: keys => setSelectedRowKeys(keys), columnWidth: 40,
         } : undefined}
-        locale={{ emptyText: <Empty description="Thùng rác trống" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
+        locale={{ emptyText: <Empty description={search ? 'Không tìm thấy bản ghi phù hợp' : 'Thùng rác trống'} image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
         pagination={{ defaultPageSize: 50, showSizeChanger: true, showTotal: t => `${t} bản ghi` }}
       />
     </div>
@@ -310,9 +328,12 @@ function DonHangTrashTab({ canEdit }) {
 function SanLuongTrashTab({ canEdit }) {
   const [data, setData]                     = useState([])
   const [loading, setLoading]               = useState(false)
+  const [search, setSearch]                 = useState('')
   const [selectedRowKeys, setSelectedRowKeys] = useState([])
   const [bulkRestoring, setBulkRestoring]   = useState(false)
   const [bulkDeleting, setBulkDeleting]     = useState(false)
+
+  const filteredData = data.filter(r => matchSearch(r, ['maBravo', 'maTp', 'tienTrinh', 'lsx', 'maDonHang'], search))
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -505,23 +526,30 @@ function SanLuongTrashTab({ canEdit }) {
 
   return (
     <div style={{ padding: '8px 0' }}>
+      <Input.Search
+        allowClear
+        placeholder="Tìm theo Mã Bravo, Mã TP, Tiến trình, LSX, Mã ĐH..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        style={{ maxWidth: 380, marginBottom: 8 }}
+      />
       {canEdit && (
         <BulkToolbar
-          selected={selectedRowKeys} total={data.length}
-          onSelectAll={() => setSelectedRowKeys(data.map(r => r.id))}
+          selected={selectedRowKeys} total={filteredData.length}
+          onSelectAll={() => setSelectedRowKeys(filteredData.map(r => r.id))}
           onDeselectAll={() => setSelectedRowKeys([])}
           onBulkRestore={handleBulkRestore} onBulkDelete={handleBulkDelete}
           restoring={bulkRestoring} deleting={bulkDeleting}
         />
       )}
       <Table
-        className="trash-table" columns={columns} dataSource={data} rowKey="id"
+        className="trash-table" columns={columns} dataSource={filteredData} rowKey="id"
         loading={loading} size="small" scroll={{ x: 3900 }}
         rowSelection={canEdit ? {
           type: 'checkbox', selectedRowKeys,
           onChange: keys => setSelectedRowKeys(keys), columnWidth: 40,
         } : undefined}
-        locale={{ emptyText: <Empty description="Thùng rác trống" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
+        locale={{ emptyText: <Empty description={search ? 'Không tìm thấy bản ghi phù hợp' : 'Thùng rác trống'} image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
         pagination={{ defaultPageSize: 50, showSizeChanger: true, showTotal: t => `${t} bản ghi` }} />
     </div>
   )
@@ -531,9 +559,12 @@ function SanLuongTrashTab({ canEdit }) {
 function LichLamViecTrashTab({ canEdit }) {
   const [data, setData]                     = useState([])
   const [loading, setLoading]               = useState(false)
+  const [search, setSearch]                 = useState('')
   const [selectedRowKeys, setSelectedRowKeys] = useState([])
   const [bulkRestoring, setBulkRestoring]   = useState(false)
   const [bulkDeleting, setBulkDeleting]     = useState(false)
+
+  const filteredData = data.filter(r => matchSearch(r, ['maBravo', 'maSp', 'tenTrinh', 'soLo', 'maDonHang'], search))
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -669,23 +700,30 @@ function LichLamViecTrashTab({ canEdit }) {
 
   return (
     <div style={{ padding: '8px 0' }}>
+      <Input.Search
+        allowClear
+        placeholder="Tìm theo Mã Bravo, Mã SP, Tiến trình, Số Lô, Mã ĐH..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        style={{ maxWidth: 380, marginBottom: 8 }}
+      />
       {canEdit && (
         <BulkToolbar
-          selected={selectedRowKeys} total={data.length}
-          onSelectAll={() => setSelectedRowKeys(data.map(r => r.id))}
+          selected={selectedRowKeys} total={filteredData.length}
+          onSelectAll={() => setSelectedRowKeys(filteredData.map(r => r.id))}
           onDeselectAll={() => setSelectedRowKeys([])}
           onBulkRestore={handleBulkRestore} onBulkDelete={handleBulkDelete}
           restoring={bulkRestoring} deleting={bulkDeleting}
         />
       )}
       <Table
-        className="trash-table" columns={columns} dataSource={data} rowKey="id"
+        className="trash-table" columns={columns} dataSource={filteredData} rowKey="id"
         loading={loading} size="small" scroll={{ x: 2350 }}
         rowSelection={canEdit ? {
           type: 'checkbox', selectedRowKeys,
           onChange: keys => setSelectedRowKeys(keys), columnWidth: 40,
         } : undefined}
-        locale={{ emptyText: <Empty description="Thùng rác trống" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
+        locale={{ emptyText: <Empty description={search ? 'Không tìm thấy bản ghi phù hợp' : 'Thùng rác trống'} image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
         pagination={{ defaultPageSize: 50, showSizeChanger: true, showTotal: t => `${t} bản ghi` }} />
     </div>
   )
