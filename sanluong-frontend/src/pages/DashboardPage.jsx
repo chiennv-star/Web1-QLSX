@@ -1296,10 +1296,13 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho, header
   )
 
   // ── Chi tiết sản phẩm khi bấm vào 1 ô trong bảng "Báo cáo tổng hợp theo công đoạn" ──
-  const openCellDetail = (title, rows, valueFn, valueLabel) => {
+  // metrics: mảng { label, valueFn, color } — mỗi phần tử render thành 1 cột số liệu trong modal,
+  // sắp xếp theo cột đầu tiên giảm dần
+  const openCellDetail = (title, rows, metrics) => {
     if (!rows?.length) return
-    const sorted = [...rows].sort((a, b) => (valueFn(b) || 0) - (valueFn(a) || 0))
-    setCellDetail({ title, rows: sorted, valueFn, valueLabel })
+    const primary = metrics[0].valueFn
+    const sorted = [...rows].sort((a, b) => (primary(b) || 0) - (primary(a) || 0))
+    setCellDetail({ title, rows: sorted, metrics })
   }
 
   // Danh sách cấu hình từng hàng công đoạn — gộp field SL, dữ liệu WIP (dở dang) và cờ trạng thái
@@ -1365,17 +1368,20 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho, header
                   </td>
                   <td
                     style={clickableTdStyle({ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: row.accent }, row.sl > 0)}
-                    onClick={() => openCellDetail(`${row.label} — SL thực tế theo sản phẩm`, data.filter(r => (parseInt(r[row.field]) || 0) > 0), r => parseInt(r[row.field]) || 0, 'SL thực tế')}
+                    onClick={() => openCellDetail(`${row.label} — SL thực tế theo sản phẩm`, data.filter(r => (parseInt(r[row.field]) || 0) > 0), [{ label: 'SL thực tế', valueFn: r => parseInt(r[row.field]) || 0, color: row.accent }])}
                   >{fmtN(row.sl)}</td>
                   <td
                     style={clickableTdStyle({ padding: '7px 10px', textAlign: 'right' }, row.dd > 0)}
-                    onClick={() => openCellDetail(`${row.label} — Tồn dở dang theo sản phẩm`, row.wipRows.filter(r => row.cfg.doDang(r) > 0), r => row.cfg.doDang(r), 'Dở dang')}
+                    onClick={() => openCellDetail(`${row.label} — Tồn dở dang theo sản phẩm`, row.wipRows.filter(r => row.cfg.doDang(r) > 0), [
+                      { label: 'Sản lượng', valueFn: r => parseInt(r[row.field]) || 0, color: row.accent },
+                      { label: 'Dở dang', valueFn: r => row.cfg.doDang(r), color: '#d48806' },
+                    ])}
                   >
                     <span style={{ fontWeight: 700, color: row.dd > 0 ? '#d48806' : '#94a3b8' }}>{fmtN(row.dd)}</span>
                   </td>
                   <td
                     style={clickableTdStyle({ padding: '7px 10px', textAlign: 'right' }, row.sl > 0)}
-                    onClick={() => openCellDetail(`${row.label} — SL thực tế theo sản phẩm`, data.filter(r => (parseInt(r[row.field]) || 0) > 0), r => parseInt(r[row.field]) || 0, 'SL thực tế')}
+                    onClick={() => openCellDetail(`${row.label} — SL thực tế theo sản phẩm`, data.filter(r => (parseInt(r[row.field]) || 0) > 0), [{ label: 'SL thực tế', valueFn: r => parseInt(r[row.field]) || 0, color: row.accent }])}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
                       <div style={{ width: 60, height: 6, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
@@ -1386,25 +1392,25 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho, header
                   </td>
                   <td
                     style={clickableTdStyle({ padding: '7px 10px', textAlign: 'right' }, row.tang > 0)}
-                    onClick={() => openCellDetail(`${row.label} — Lô tăng SL`, data.filter(r => deltaMap[r.id]?.[row.field] === 'up'), r => parseInt(r[row.field]) || 0, 'SL hiện tại')}
+                    onClick={() => openCellDetail(`${row.label} — Lô tăng SL`, data.filter(r => deltaMap[r.id]?.[row.field] === 'up'), [{ label: 'SL hiện tại', valueFn: r => parseInt(r[row.field]) || 0, color: '#16a34a' }])}
                   >
                     {row.tang > 0 ? <span style={{ color: '#16a34a', fontWeight: 700 }}>▲ {row.tang}</span> : <span style={{ color: '#d9d9d9' }}>—</span>}
                   </td>
                   <td
                     style={clickableTdStyle({ padding: '7px 10px', textAlign: 'right' }, row.giam > 0)}
-                    onClick={() => openCellDetail(`${row.label} — Lô giảm SL`, data.filter(r => deltaMap[r.id]?.[row.field] === 'down'), r => parseInt(r[row.field]) || 0, 'SL hiện tại')}
+                    onClick={() => openCellDetail(`${row.label} — Lô giảm SL`, data.filter(r => deltaMap[r.id]?.[row.field] === 'down'), [{ label: 'SL hiện tại', valueFn: r => parseInt(r[row.field]) || 0, color: '#dc2626' }])}
                   >
                     {row.giam > 0 ? <span style={{ color: '#dc2626', fontWeight: 700 }}>▼ {row.giam}</span> : <span style={{ color: '#d9d9d9' }}>—</span>}
                   </td>
                   <td
                     style={clickableTdStyle({ padding: '7px 10px', textAlign: 'right' }, row.doing > 0)}
-                    onClick={() => openCellDetail(`${row.label} — Lô đang làm`, data.filter(r => row.trangThaiKeys.some(k => r[k] === 'doing')), r => parseInt(r[row.field]) || 0, 'SL thực tế')}
+                    onClick={() => openCellDetail(`${row.label} — Lô đang làm`, data.filter(r => row.trangThaiKeys.some(k => r[k] === 'doing')), [{ label: 'SL thực tế', valueFn: r => parseInt(r[row.field]) || 0, color: row.accent }])}
                   >
                     {row.doing > 0 ? <span style={{ fontWeight: 600, color: '#1d4ed8', background: '#eff6ff', borderRadius: 4, padding: '1px 6px', fontSize: 11 }}>⚙ {row.doing}</span> : <span style={{ color: '#d9d9d9' }}>—</span>}
                   </td>
                   <td
                     style={clickableTdStyle({ padding: '7px 10px', textAlign: 'right' }, row.done > 0)}
-                    onClick={() => openCellDetail(`${row.label} — Lô đã xong`, data.filter(r => row.trangThaiKeys.some(k => r[k] === 'done')), r => parseInt(r[row.field]) || 0, 'SL thực tế')}
+                    onClick={() => openCellDetail(`${row.label} — Lô đã xong`, data.filter(r => row.trangThaiKeys.some(k => r[k] === 'done')), [{ label: 'SL thực tế', valueFn: r => parseInt(r[row.field]) || 0, color: row.accent }])}
                   >
                     {row.done > 0 ? <span style={{ fontWeight: 600, color: '#16a34a', background: '#f0fdf4', borderRadius: 4, padding: '1px 6px', fontSize: 11 }}>✓ {row.done}</span> : <span style={{ color: '#d9d9d9' }}>—</span>}
                   </td>
@@ -1461,7 +1467,7 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho, header
         open={!!cellDetail}
         onCancel={() => setCellDetail(null)}
         footer={null}
-        width={760}
+        width={860}
         destroyOnHidden
       >
         <Table
@@ -1471,17 +1477,18 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho, header
           pagination={(cellDetail?.rows?.length || 0) > 20 ? { pageSize: 20, size: 'small' } : false}
           scroll={{ y: 480 }}
           columns={[
-            { title: 'STT', width: 46, align: 'center', render: (_, __, idx) => <span style={{ color: '#94a3b8' }}>{idx + 1}</span> },
+            { title: 'STT', width: 44, align: 'center', render: (_, __, idx) => <span style={{ color: '#94a3b8' }}>{idx + 1}</span> },
             { title: 'Mã Bravo', dataIndex: 'maBravo', width: 100,
               render: v => v ? <Tag color="blue" style={{ fontFamily: 'monospace', marginRight: 0 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span> },
             { title: 'Mã SP', dataIndex: 'maTp', width: 90 },
-            { title: 'Tiến trình', dataIndex: 'tienTrinh', ellipsis: true },
+            { title: 'Tiến trình', dataIndex: 'tienTrinh',
+              render: v => <span style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.4, display: 'inline-block' }}>{v || '—'}</span> },
             { title: 'Số Lô', dataIndex: 'lsx', width: 90, render: v => <span style={{ fontFamily: 'monospace', color: '#595959' }}>{v || '—'}</span> },
             { title: 'Cỡ Lô', dataIndex: 'soLuong', width: 80, align: 'right', render: v => fmtN(v) },
-            {
-              title: cellDetail?.valueLabel || 'Giá trị', width: 100, align: 'right',
-              render: (_, r) => <span style={{ fontWeight: 700, color: '#1d4ed8' }}>{fmtN(cellDetail?.valueFn ? cellDetail.valueFn(r) : 0)}</span>,
-            },
+            ...(cellDetail?.metrics || []).map(m => ({
+              title: m.label, width: 100, align: 'right',
+              render: (_, r) => <span style={{ fontWeight: 700, color: m.color || '#1d4ed8' }}>{fmtN(m.valueFn(r))}</span>,
+            })),
           ]}
         />
       </Modal>
