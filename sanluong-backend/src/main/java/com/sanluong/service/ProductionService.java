@@ -833,7 +833,21 @@ public class ProductionService {
     }
 
     public List<NhapKhoTongHopNgay> getNhapKhoTongHopNgay(java.time.LocalDate fromDate, java.time.LocalDate toDate) {
-        return nhapKhoTongHopNgayRepository.search(fromDate, toDate);
+        List<NhapKhoTongHopNgay> list = nhapKhoTongHopNgayRepository.search(fromDate, toDate);
+        List<String> maTps = list.stream()
+                .map(NhapKhoTongHopNgay::getMaTp)
+                .filter(s -> s != null && !s.isBlank())
+                .map(String::toUpperCase)
+                .distinct().collect(Collectors.toList());
+        if (!maTps.isEmpty()) {
+            Map<String, String> loaiMap = new HashMap<>();
+            productMasterRepository.findByMaTpIn(maTps).forEach(pm ->
+                    loaiMap.put(pm.getMaTp().toUpperCase(), pm.getLoaiSanPham()));
+            list.forEach(r -> {
+                if (r.getMaTp() != null) r.setLoaiSanPham(loaiMap.get(r.getMaTp().toUpperCase()));
+            });
+        }
+        return list;
     }
 
     public void deleteNhapKhoTongHopNgay(Long id) {
