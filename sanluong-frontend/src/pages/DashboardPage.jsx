@@ -2134,6 +2134,11 @@ export default function DashboardPage() {
       state: { jumpTo: { stage, tienTrinh: record.tienTrinh, soLo: record.lsx, maTp: record.maTp } }
     })
 
+  // Trải phẳng cột lồng nhau (nhóm TRẠNG THÁI CÔNG ĐOẠN, SẢN LƯỢNG...) thành danh sách cột lá
+  // theo đúng thứ tự hiển thị — dùng để dựng hàng "TỔNG" khớp số cột với bảng, kể cả khi
+  // danh sách cột thay đổi sau này (không phải liệt kê tay từng cột).
+  const flattenLeafColumns = (cols) => cols.flatMap(c => c.children ? flattenLeafColumns(c.children) : [c])
+
   const columns = [
     {
       title: '#', key: 'stt', width: 46, fixed: 'left', align: 'center',
@@ -2874,6 +2879,35 @@ export default function DashboardPage() {
                     setCtxMenu({ visible: true, x: e.clientX, y: e.clientY, record })
                   },
                 })}
+                summary={(pageData) => {
+                  const sum = (field) => pageData.reduce((s, r) => s + (parseInt(r[field]) || 0), 0)
+                  const totals = { soLuong: sum('soLuong'), slPc: sum('slPc'), pcPl: sum('pcPl'), dg2: sum('dg2'), bbc1_2: sum('bbc1_2') }
+                  const SL_COLORS = { slPc: '#1d4ed8', pcPl: '#389e0d', dg2: '#d48806', bbc1_2: '#722ed1' }
+                  let labelPlaced = false
+                  return (
+                    <Table.Summary>
+                      <Table.Summary.Row>
+                        {flattenLeafColumns(columns).map((col, idx) => {
+                          const key = col.key || col.dataIndex
+                          let content = null
+                          if (!labelPlaced) {
+                            content = <strong style={{ color: '#000011' }}>TỔNG</strong>
+                            labelPlaced = true
+                          } else if (key === 'soLuong') {
+                            content = <strong style={{ color: '#000011' }}>{totals.soLuong.toLocaleString('vi-VN')}</strong>
+                          } else if (SL_COLORS[key]) {
+                            content = <strong style={{ color: SL_COLORS[key] }}>{totals[key].toLocaleString('vi-VN')}</strong>
+                          }
+                          return (
+                            <Table.Summary.Cell key={key || idx} index={idx} align={col.align} fixed={col.fixed}>
+                              {content}
+                            </Table.Summary.Cell>
+                          )
+                        })}
+                      </Table.Summary.Row>
+                    </Table.Summary>
+                  )
+                }}
               />
                 </div>
               </>
