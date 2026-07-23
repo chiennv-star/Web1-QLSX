@@ -8104,7 +8104,7 @@ function DashboardGDTab() {
           <div style={{ color: '#7dd3fc', fontSize: 10, fontWeight: 700, letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 4 }}>
             QTSX SONG AN · PRODUCTION INTELLIGENCE
           </div>
-          <div style={{ color: '#fff', fontSize: 22, fontWeight: 800 }}>Dashboard Giám Đốc Sản Xuất</div>
+          <div style={{ color: '#fff', fontSize: 22, fontWeight: 800 }}>QUẢN TRỊ SẢN XUẤT</div>
           <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>
             {dateRange[0]?.format('DD/MM/YYYY')} – {dateRange[1]?.format('DD/MM/YYYY')}
             {' · '}{raw.length.toLocaleString('vi-VN')} ca · {kpi.soNgay} ngày sản xuất
@@ -8792,7 +8792,7 @@ export default function DailySanLuongPage() {
       label: (
         <span>
           <RiseOutlined style={{ marginRight: 5 }} />
-          Dashboard GĐ
+          Quản Trị SX
         </span>
       ),
       children: <DashboardGDTab />,
