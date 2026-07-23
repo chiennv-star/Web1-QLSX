@@ -56,7 +56,7 @@ const KHO_STYLE = `
 .kho-step{flex:1;padding:7px 4px 6px;background:var(--concrete-2);border-radius:4px;text-align:center;
   font-family:var(--cond);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-top:3px solid var(--line)}
 .kho-step.is-done{color:var(--steel);border-top-color:var(--ok)}
-.kho-step.is-now{background:var(--steel);color:var(--hazard);border-top-color:var(--hazard)}
+.kho-step.is-now{background:var(--deep);color:#fff;border-top-color:var(--deep)}
 .kho-row{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:11px 12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .12s ease}
 .kho-row:hover{border-color:var(--deep)}
 .kho-row.is-sel{border-color:var(--deep);background:#EAF3F5}
