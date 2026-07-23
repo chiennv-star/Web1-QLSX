@@ -5182,7 +5182,7 @@ function CellPopoverContent({ records, day, month, year, onSave, onClose }) {
   )
 }
 
-function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang = {}, onMucTieuThangChange, loading, onSaveField, canEdit = false, onDeleteRow }) {
+function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang = {}, onMucTieuThangChange, loading, onSaveField, canEdit = false, onDeleteRow, matNaData = null }) {
   const [editMT, setEditMT] = useState(false)
   const [editMTMonth, setEditMTMonth] = useState(null)
   const [selectedDay, setSelectedDay] = useState(null)
@@ -5223,6 +5223,22 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
   }, [pivot])
 
   const grandTotal = Object.values(monthTotals).reduce((s, v) => s + v, 0)
+
+  // Mặt nạ / trừ mặt nạ — chỉ tính khi component nhận matNaData (view "Tổng hợp theo ngày" gốc)
+  const matNaMonthTotals = useMemo(() => {
+    if (!matNaData) return null
+    const t = {}
+    for (let m = 1; m <= 12; m++) t[m] = 0
+    matNaData.forEach(r => {
+      if (!r.ngayXuatKho) return
+      const dt = dayjs(r.ngayXuatKho)
+      if (dt.year() !== year) return
+      const m = dt.month() + 1
+      t[m] += (r.tpNhapKho || 0)
+    })
+    return t
+  }, [matNaData, year])
+  const matNaGrandTotal = matNaMonthTotals ? Object.values(matNaMonthTotals).reduce((s, v) => s + v, 0) : 0
   const conThieu   = mucTieu > 0 ? mucTieu - grandTotal : null
   const surplus    = conThieu != null && conThieu < 0
   const hasMucTieuThang = Object.values(mucTieuThang).some(v => v > 0)
@@ -5593,6 +5609,42 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
                   ) : null}
                 </td>
               </tr>
+            )}
+
+            {matNaMonthTotals && (
+              <>
+                {/* Tổng sản lượng mặt nạ */}
+                <tr style={{ background: '#faf5ff' }}>
+                  <td style={{ ..._tfS, color: '#7e22ce', fontWeight: 700, textAlign: 'left', fontSize: 11 }}>Tổng sản lượng mặt nạ</td>
+                  {MONTHS.map(m => (
+                    <td key={m} style={{ ..._tfS, textAlign: 'right', color: isFuture(m) ? '#cbd5e1' : matNaMonthTotals[m] > 0 ? '#7e22ce' : '#d1d5db', fontWeight: matNaMonthTotals[m] > 0 ? 600 : 400, fontSize: isFuture(m) ? 10 : undefined }}>
+                      {isFuture(m) ? '#N/A' : matNaMonthTotals[m] > 0 ? fmt(matNaMonthTotals[m]) : '0'}
+                    </td>
+                  ))}
+                  <td style={{ ..._tfS, textAlign: 'right', background: '#f3e8ff', color: '#7e22ce', fontWeight: 700 }}>
+                    {fmt(matNaGrandTotal) || '0'}
+                  </td>
+                </tr>
+
+                {/* Tổng sản lượng trừ mặt nạ */}
+                <tr style={{ background: '#eff6ff' }}>
+                  <td style={{ ..._tfS, color: '#1d4ed8', fontWeight: 700, textAlign: 'left', fontSize: 11 }}>Tổng sản lượng trừ mặt nạ</td>
+                  {MONTHS.map(m => {
+                    if (isFuture(m)) return (
+                      <td key={m} style={{ ..._tfS, textAlign: 'right', color: '#cbd5e1', fontSize: 10 }}>#N/A</td>
+                    )
+                    const v = (monthTotals[m] || 0) - (matNaMonthTotals[m] || 0)
+                    return (
+                      <td key={m} style={{ ..._tfS, textAlign: 'right', color: v > 0 ? '#1d4ed8' : '#d1d5db', fontWeight: v > 0 ? 600 : 400 }}>
+                        {v > 0 ? fmt(v) : '0'}
+                      </td>
+                    )
+                  })}
+                  <td style={{ ..._tfS, textAlign: 'right', background: '#dbeafe', color: '#1d4ed8', fontWeight: 700 }}>
+                    {fmt(grandTotal - matNaGrandTotal) || '0'}
+                  </td>
+                </tr>
+              </>
             )}
           </tfoot>
         </table>
@@ -7071,6 +7123,7 @@ function NhapKhoTab() {
           onSaveField={canEdit ? saveSummaryField : undefined}
           canEdit={canEditNhapKhoTarget()}
           onDeleteRow={canDelete ? deleteSummaryRow : undefined}
+          matNaData={matNaSummaryData}
         />
       ) : viewMode === 'summary-matna' ? (
         <NhapKhoSummaryView
