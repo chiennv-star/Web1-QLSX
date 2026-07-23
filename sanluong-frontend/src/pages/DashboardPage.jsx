@@ -1490,6 +1490,27 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho, header
               render: (_, r) => <span style={{ fontWeight: 700, color: m.color || '#1d4ed8' }}>{fmtN(m.valueFn(r))}</span>,
             })),
           ]}
+          summary={() => {
+            const rows = cellDetail?.rows || []
+            const totalSoLuong = rows.reduce((s, r) => s + (parseInt(r.soLuong) || 0), 0)
+            return (
+              <Table.Summary fixed="bottom">
+                <Table.Summary.Row>
+                  <Table.Summary.Cell index={0} colSpan={5}>
+                    <strong style={{ color: '#000011' }}>TỔNG ({rows.length} sản phẩm)</strong>
+                  </Table.Summary.Cell>
+                  <Table.Summary.Cell index={5} align="right">
+                    <strong style={{ color: '#000011' }}>{fmtN(totalSoLuong)}</strong>
+                  </Table.Summary.Cell>
+                  {(cellDetail?.metrics || []).map((m, i) => (
+                    <Table.Summary.Cell key={m.label} index={6 + i} align="right">
+                      <strong style={{ color: m.color || '#1d4ed8' }}>{fmtN(rows.reduce((s, r) => s + (m.valueFn(r) || 0), 0))}</strong>
+                    </Table.Summary.Cell>
+                  ))}
+                </Table.Summary.Row>
+              </Table.Summary>
+            )
+          }}
         />
       </Modal>
 
