@@ -5182,7 +5182,7 @@ function CellPopoverContent({ records, day, month, year, onSave, onClose }) {
   )
 }
 
-function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang = {}, onMucTieuThangChange, loading, onSaveField, canEdit = false, onDeleteRow, matNaData = null }) {
+function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang = {}, onMucTieuThangChange, loading, onSaveField, canEdit = false, onDeleteRow, matNaData = null, filterH = 0 }) {
   const [editMT, setEditMT] = useState(false)
   const [editMTMonth, setEditMTMonth] = useState(null)
   const [selectedDay, setSelectedDay] = useState(null)
@@ -5257,10 +5257,16 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
 
   const MONTHS = [1,2,3,4,5,6,7,8,9,10,11,12]
 
+  const stickyTop = TAB_BAR_H + filterH
+
   return (
     <Spin spinning={loading}>
-      <div style={{ overflowX: 'auto', borderRadius: 6, border: '1px solid #e5e7eb' }}>
-        <table style={{ borderCollapse: 'collapse', minWidth: 900 }}>
+      <style>{`
+        .nk-summary-wrap thead th { position: sticky; top: ${stickyTop}px; z-index: 5; }
+        .nk-summary-wrap tfoot td { text-align: center !important; font-size: 12px !important; }
+      `}</style>
+      <div className="nk-summary-wrap" style={{ overflowX: 'auto', borderRadius: 6, border: '1px solid #e5e7eb' }}>
+        <table style={{ borderCollapse: 'collapse', minWidth: 900, width: '100%' }}>
           <thead>
             <tr style={{ background: '#006666', color: '#fff' }}>
               <th style={{ ..._thS, width: 44, background: '#004d4d' }}>Ngày</th>
@@ -7126,6 +7132,7 @@ function NhapKhoTab() {
           canEdit={canEditNhapKhoTarget()}
           onDeleteRow={canDelete ? deleteSummaryRow : undefined}
           matNaData={matNaSummaryData}
+          filterH={filterH}
         />
       ) : viewMode === 'summary-matna' ? (
         <NhapKhoSummaryView
@@ -7135,6 +7142,7 @@ function NhapKhoTab() {
           mucTieuThang={{}}
           loading={summaryLoading}
           canEdit={false}
+          filterH={filterH}
         />
       ) : viewMode === 'tong-hop' ? (
         <NhapKhoTongHopTable data={filteredTongHopActive} loading={tongHopLoading} onRowClick={setTongHopDrawer} filterH={filterH} />
