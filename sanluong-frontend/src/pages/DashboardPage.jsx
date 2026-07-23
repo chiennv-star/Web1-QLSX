@@ -11,7 +11,7 @@ import {
   WarningOutlined, BarChartOutlined, DownOutlined, CalendarOutlined,
   EyeInvisibleOutlined, EyeOutlined, BellOutlined, ExclamationCircleOutlined,
   AccountBookOutlined, UploadOutlined, DownloadOutlined, AppstoreOutlined,
-  LeftOutlined, RightOutlined,
+  LeftOutlined, RightOutlined, FullscreenOutlined, FullscreenExitOutlined,
 } from '@ant-design/icons'
 import { Upload } from 'antd'
 import InboxPanel from '../components/InboxPanel'
@@ -1034,6 +1034,7 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho, header
   const pct  = (a, b) => b > 0 ? Math.min(100, Math.round(a / b * 100)) : 0
   const [warnDetail, setWarnDetail] = useState(null) // mục "Tình trạng dở dang" đang xem chi tiết
   const [cellDetail, setCellDetail] = useState(null) // ô đang xem chi tiết trong bảng "Báo cáo tổng hợp theo công đoạn"
+  const [cellDetailMaximized, setCellDetailMaximized] = useState(false) // modal chi tiết đang mở rộng toàn màn hình
 
   // ── Sản phẩm mới nhập kho — lọc theo ngày xuất kho thực tế ────────────────
   // Mặc định hiển thị ngày hôm qua (dữ liệu nhập kho hôm nay thường chưa đầy đủ)
@@ -1463,19 +1464,31 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho, header
 
       {/* ── Modal chi tiết sản phẩm khi bấm vào 1 ô trong bảng tổng hợp công đoạn ── */}
       <Modal
-        title={cellDetail?.title}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 24 }}>
+            <span>{cellDetail?.title}</span>
+            <Tooltip title={cellDetailMaximized ? 'Thu nhỏ' : 'Mở rộng bảng'}>
+              <Button
+                type="text" size="small"
+                icon={cellDetailMaximized ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+                onClick={() => setCellDetailMaximized(v => !v)}
+              />
+            </Tooltip>
+          </div>
+        }
         open={!!cellDetail}
         onCancel={() => setCellDetail(null)}
         footer={null}
-        width={860}
+        width={cellDetailMaximized ? '96vw' : 860}
+        style={cellDetailMaximized ? { top: 16, maxWidth: '96vw' } : undefined}
         destroyOnHidden
       >
         <Table
           size="small"
           rowKey={(r, idx) => r.id ?? idx}
           dataSource={cellDetail?.rows || []}
-          pagination={(cellDetail?.rows?.length || 0) > 20 ? { pageSize: 20, size: 'small' } : false}
-          scroll={{ y: 480 }}
+          pagination={(cellDetail?.rows?.length || 0) > 20 ? { pageSize: cellDetailMaximized ? 50 : 20, size: 'small' } : false}
+          scroll={{ y: cellDetailMaximized ? 'calc(100vh - 260px)' : 480 }}
           columns={[
             { title: 'STT', width: 44, align: 'center', render: (_, __, idx) => <span style={{ color: '#94a3b8' }}>{idx + 1}</span> },
             { title: 'Mã Bravo', dataIndex: 'maBravo', width: 100,
