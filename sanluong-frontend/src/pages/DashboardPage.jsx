@@ -2610,7 +2610,9 @@ export default function DashboardPage() {
         .prod-table .row-selected > td { background: #dbeafe !important; outline: 2px solid #3b82f6; outline-offset: -1px; }
         .prod-table .row-chua-phat-lenh > td { background: #FFCC33 !important; }
         .prod-table .row-chua-phat-lenh:hover > td { background: #f5bc00 !important; }
-        .prod-table .ant-table-summary > tr > td { background: linear-gradient(90deg, #1f6fa3 0%, #2980b3 100%) !important; color: #ffffff; font-weight: 700; font-size: 12px; padding: 5px 6px !important; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+        .prod-table .ant-table-summary > tr > td { background: #3399CC !important; font-size: 12px; padding: 5px 6px !important; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+        .prod-table .ant-table-summary > tr > td,
+        .prod-table .ant-table-summary > tr > td * { color: #ffffff !important; font-weight: 700 !important; }
         .prod-table .ant-table-footer { padding: 0; }
         /* ── Stats table ── */
         .stats-tbl th { background: #DBEAFE; font-size: 12px; font-weight: 700; padding: 5px 16px; border: 1px solid #BFDBFE; text-align: center; color: #1D4ED8; }
