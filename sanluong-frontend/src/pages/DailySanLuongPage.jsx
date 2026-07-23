@@ -6970,6 +6970,8 @@ function NhapKhoTab() {
   ]
 
   const totalSl    = data.reduce((s, r) => s + (r.tpNhapKho || 0), 0)
+  const totalSlMatNa = data.filter(isMatNaNK).reduce((s, r) => s + (r.tpNhapKho || 0), 0)
+  const totalSlKhongMatNa = totalSl - totalSlMatNa
   const doneCount  = data.filter(r => r.tinhTrangNhapKho === 'Done').length
   const chotCount  = data.filter(r => r.tinhTrangNhapKho === 'Chốt').length
 
@@ -7163,11 +7165,29 @@ function NhapKhoTab() {
         summary={() => (
           <Table.Summary fixed="bottom">
             <Table.Summary.Row style={{ background: '#f0fdf4' }}>
-              <Table.Summary.Cell colSpan={5} align="right">
+              <Table.Summary.Cell colSpan={6} align="right">
                 <strong style={{ color: '#374151' }}>Tổng ({data.length} lô)</strong>
               </Table.Summary.Cell>
               <Table.Summary.Cell align="right">
                 <strong style={{ color: '#15803d' }}>{fmtN(totalSl)}</strong>
+              </Table.Summary.Cell>
+              <Table.Summary.Cell colSpan={3} />
+            </Table.Summary.Row>
+            <Table.Summary.Row style={{ background: '#eff6ff' }}>
+              <Table.Summary.Cell colSpan={6} align="right">
+                <strong style={{ color: '#0369a1' }}>Tổng NK Mặt Nạ</strong>
+              </Table.Summary.Cell>
+              <Table.Summary.Cell align="right">
+                <strong style={{ color: '#0369a1' }}>{fmtN(totalSlMatNa)}</strong>
+              </Table.Summary.Cell>
+              <Table.Summary.Cell colSpan={3} />
+            </Table.Summary.Row>
+            <Table.Summary.Row style={{ background: '#fff7ed' }}>
+              <Table.Summary.Cell colSpan={6} align="right">
+                <strong style={{ color: '#c2410c' }}>Tổng NK không Mặt Nạ</strong>
+              </Table.Summary.Cell>
+              <Table.Summary.Cell align="right">
+                <strong style={{ color: '#c2410c' }}>{fmtN(totalSlKhongMatNa)}</strong>
               </Table.Summary.Cell>
               <Table.Summary.Cell colSpan={3} />
             </Table.Summary.Row>
