@@ -12,10 +12,10 @@ Hệ thống quản lý sản xuất nội bộ cho nhà máy mỹ phẩm Song A
 | Thành phần | Công nghệ |
 |---|---|
 | Frontend | React 18 + Vite + Ant Design 5 |
-| Backend | Spring Boot 3.4.5 + Spring Security + JPA |
-| Database | MySQL |
-| Deploy | GitHub Actions → Docker → SSH (push master → auto-deploy) |
-| Auth | JWT |
+| Backend | Spring Boot 3.4.5 + Spring Security + JPA (Java 25) |
+| Database | MySQL 8 (utf8mb4) |
+| Deploy | GitHub Actions → Docker (ghcr.io) → SSH (push `master` → auto-deploy) |
+| Auth | JWT (stateless) |
 
 ---
 
@@ -25,23 +25,58 @@ Hệ thống quản lý sản xuất nội bộ cho nhà máy mỹ phẩm Song A
 WEB -1/
 ├── sanluong-frontend/   # React app
 │   └── src/
-│       ├── pages/       # Các trang chính
+│       ├── pages/       # Các trang chính (routes trong App.jsx)
 │       ├── components/  # Component dùng chung
 │       ├── context/     # AuthContext (roles, permissions)
-│       └── api/         # axios instance
+│       ├── hooks/
+│       └── api/         # axios instance (baseURL '/api')
 ├── sanluong-backend/    # Spring Boot
 │   └── src/main/java/com/sanluong/
 │       ├── controller/
 │       ├── service/
 │       ├── repository/
 │       ├── entity/
+│       ├── config/      # SecurityConfig (JWT, CORS, RBAC theo endpoint)
+│       ├── security/    # JwtFilter
 │       └── dto/
+├── docker-compose.yml   # mysql + backend + frontend (dùng khi deploy, không dùng khi dev local)
 └── CLAUDE.md
 ```
 
 ---
 
-## 3. Mapping quan trọng — congDoan / toNhom
+## 3. Lệnh chạy dự án
+
+**Không có test suite** (không có `sanluong-backend/src/test`, không có script `test`/`lint` trong `package.json`) — đừng cố tìm hoặc chạy lệnh test/lint, chúng không tồn tại.
+
+### Backend (chạy trước, cổng 8080)
+```bash
+cd sanluong-backend
+cp src/main/resources/application.properties.example src/main/resources/application.properties  # lần đầu, rồi sửa DB creds nếu cần
+mvn spring-boot:run          # chạy dev
+mvn clean package            # build jar
+```
+- Cần MySQL chạy sẵn tại `localhost:3306`, db `sanluong` (user/pass mặc định `root`/`root`, xem `application.properties`).
+- `spring.jpa.hibernate.ddl-auto=update` — schema tự đồng bộ từ entity, không có migration file (Flyway/Liquibase).
+- Yêu cầu JDK 25 (`java.version` trong `pom.xml`).
+
+### Frontend (chạy sau, cổng 5173)
+```bash
+cd sanluong-frontend
+npm install
+npm run dev       # vite --host, có proxy /api, /uploads, /ws → http://localhost:8080 (xem vite.config.js)
+npm run build
+npm run preview
+```
+
+### Docker (mô phỏng production, không cần cho dev thường ngày)
+```bash
+docker-compose up -d   # mysql (port 3307), backend (8080), frontend (80) — pull image từ ghcr.io/chiennv-star
+```
+
+---
+
+## 4. Mapping quan trọng — congDoan / toNhom
 
 Đây là điểm dễ gây bug nhất trong hệ thống. Dữ liệu lưu trong DB với `congDoan='PC'` cho tất cả pha chế, `toNhom` phân biệt nhóm con.
 
@@ -75,10 +110,13 @@ if ("PC".equalsIgnoreCase(effectiveCd) && w.getToNhom() != null) {
     else if ("PCPL3".equals(tn) || "PL".equals(tn)) effectiveCd = "PL";
 }
 ```
+Mọi nơi aggregate theo tổ (Tổng hợp sản lượng, Dashboard Giám Đốc, Phân tích...) đều phải áp dụng lại quy tắc resolve này — copy/paste giữa các trang, không có hàm dùng chung, nên khi sửa 1 chỗ phải rà lại các chỗ khác (`DailySanLuongPage.jsx`, `DirectorDashboardPage.jsx`, `WorkScheduleSessionService.java`).
+
+`work_schedule_session.cong_thuc_hien` = số công (thường ≤ 1.0/người/ca) của **từng người** trong 1 buổi; `getDailyReport` group theo `(workScheduleId, ngay)` rồi **SUM** toàn bộ `cong_thuc_hien` của nhóm. Một dòng nhập sai (VD số bị gõ nhầm gấp hàng nghìn lần) sẽ kéo lệch `%CÔNG` của cả tổ trong mọi báo cáo tổng hợp — khi thấy `%CÔNG` một tổ bất thường so với `%SL`, nghi ngờ đầu tiên là 1 session có `cong_thuc_hien` outlier, không phải lỗi công thức.
 
 ---
 
-## 4. Nhóm nhân sự (toNhom)
+## 5. Nhóm nhân sự (toNhom)
 
 ```javascript
 const GROUPS = ['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG', 'KT']
@@ -91,7 +129,24 @@ const GROUPS = ['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG', 'KT']
 
 ---
 
-## 5. Các trang chính
+## 6. Phân quyền theo Role (RBAC)
+
+Danh sách role đầy đủ nằm ở `SecurityConfig.java` (`ALL_ROLES`): `ADMIN, TKSX, TPSX, ADMIN_KH, QUAN_DOC, GD, MAN_HINH, HCNS, KE_TOAN, NHAN_VIEN` (+ biến thể `NHAN_VIEN_PCPL1/2/3/BBC1/DG`), và stage-admin `ADMIN_PC/PCPL1/PCPL2/PCPL3/PL/BBC1/DG`.
+
+Phân quyền được enforce ở **3 lớp độc lập, phải sửa đồng bộ cả 3** khi thêm role/route mới:
+1. **Backend** `SecurityConfig.java` — `authorizeHttpRequests` + `hasAnyRole(...)` theo từng endpoint (chặn thật, nguồn sự thật).
+2. **Frontend routing** `App.jsx` — `<PrivateRoute allowedRoles={[...]}>` quanh từng `<Route>` (chặn điều hướng).
+3. **Frontend logic** `context/AuthContext.jsx` — tập hợp hàm helper (`isAdmin`, `canEditXxx`, `getAllowedStages`, `getAllowedEmployeeGroups`, `getLockedCongDoan`, `allowedEfficiencyTabs`...) quyết định ẩn/hiện nút, tab, cột, và lọc dữ liệu theo `toNhom`/`congDoan` được phép xem.
+
+Vài quy tắc hay bị quên:
+- `QUAN_DOC` = chỉ đọc **toàn hệ thống** (backend chỉ cho GET, không có quyền write) — role xem tổng hợp cho quản lý cấp cao, gần như thấy hết tab nhưng không sửa được gì.
+- Stage-admin (`ADMIN_PCPL1`, `ADMIN_DG`, `ADMIN_BBC1`...) chỉ thấy/sửa được đúng tổ của mình — dùng `getAllowedStages()` / `getLockedCongDoan()` để lọc, không hardcode role check rải rác trong page.
+- `TKSX` gần như tương đương `ADMIN` trừ quyền ghi ở Lệnh Sản Xuất.
+- Khi thêm 1 trang/route mới cần hạn chế quyền: thêm `allowedRoles` ở `App.jsx`, thêm `hasAnyRole` tương ứng ở `SecurityConfig.java`, và nếu cần lọc dữ liệu con thì thêm helper trong `AuthContext.jsx`.
+
+---
+
+## 7. Các trang chính
 
 | Trang | File | Mô tả |
 |---|---|---|
@@ -100,20 +155,24 @@ const GROUPS = ['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG', 'KT']
 | Lệnh sản xuất | `LenhSanXuatPage.jsx` | Danh mục sản phẩm + stats năm |
 | Quản lý danh mục | `DanhMucPage.jsx` | Nhân sự, mã TP, phòng thực hiện |
 | Kế hoạch | `KhoachPage.jsx` | Kế hoạch sản xuất theo đơn hàng |
+| Dashboard Giám Đốc | `DirectorDashboardPage.jsx` | Tổng quan/Phòng đang dùng/Phòng Kế Hoạch — aggregate lại theo `resolveGdCd` riêng, xem mục 4 |
+| Kho | `KhoPage.jsx`, `NhapKhoQuickEntryMobile.jsx` | Nhập kho, có luồng nhập nhanh tối ưu mobile |
+| Chấm công | `ChamCongPage.jsx` | Công ra vào giờ, tách riêng bảng tăng ca |
+| Kỹ thuật – Công nghệ | `KyThuatCongNghePage.jsx` + các `KyThuat*Tab.jsx` | Bảo trì, cơ điện, kaizen, thợ việc |
 
 ---
 
-## 6. API endpoints đáng chú ý
+## 8. API endpoints đáng chú ý
 
 | Endpoint | Mô tả |
 |---|---|
 | `GET /api/lenh-san-xuat/stats-by-product?year=` | Thống kê lô/SL/ngày gần nhất/đang SX theo mã bravo |
-| `GET /api/work-schedule-session/daily-report` | Dữ liệu sản lượng theo ngày (dùng cho Tổng hợp) |
+| `GET /api/work-schedule-session/daily-report` | Dữ liệu sản lượng theo ngày (dùng cho hầu hết các trang tổng hợp/dashboard, xem mục 4) |
 | `GET /api/employees?toNhom=&excludeTinhTrang=` | Danh sách nhân sự, hỗ trợ filter tình trạng |
 
 ---
 
-## 7. Tính năng đã triển khai
+## 9. Tính năng đã triển khai
 
 - [x] Tổng hợp sản lượng pivot table theo ngày × công đoạn
 - [x] Stats columns trên trang Lệnh sản xuất (SỐ LÔ NĂM, SL NĂM, LÔ GẦN NHẤT, ĐANG SX)
@@ -121,10 +180,14 @@ const GROUPS = ['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG', 'KT']
 - [x] Tính năng Tạm Nghỉ cho nhân sự
 - [x] Tổ Kỹ Thuật (KT) trong danh sách nhân sự
 - [x] Tách bảng tăng ca
+- [x] Dashboard Giám Đốc (tổng quan sản xuất, phòng đang dùng, phòng kế hoạch)
+- [x] Luồng Nhập Kho nhanh tối ưu di động
+- [x] Đồng bộ 1 chiều Nhập Kho → Sản lượng tổ/Sản lượng (khóa sửa tay SL Nhập Kho)
+- [x] Role `QUAN_DOC`: cấp quyền xem toàn bộ tab (chỉ đọc)
 
 ---
 
-## 8. Bug đã fix — ghi nhớ để không lặp lại
+## 10. Bug đã fix — ghi nhớ để không lặp lại
 
 ### PCPL3/PL bị đếm nhầm vào PCPL1
 - **Triệu chứng:** Tổng hợp sản lượng PL=0, PCPL1 cao bất thường
@@ -145,15 +208,15 @@ const GROUPS = ['PCPL1', 'PCPL2', 'PCPL3', 'BBC1', 'ĐG', 'KT']
 
 ---
 
-## 9. TODO / Tác vụ theo dõi
+## 11. TODO / Tác vụ theo dõi
 
 > Cập nhật phần này khi có yêu cầu mới hoặc hoàn thành
 
-- [ ] _(để trống — bổ sung khi có)_
+- [ ] **Chưa xong:** Dashboard Giám Đốc hiển thị `%CÔNG` của ĐG bất thường cao (~76% trong khi `%SL` chỉ ~27%) do 1 session `work_schedule_session` (id=7798, NV HD008, lô TP463/080726.M2) có `cong_thuc_hien=2552.1250` — sai gấp hàng nghìn lần so với các session khác (~0.01–0.99). Đã xác nhận là lỗi nhập liệu, chưa xác nhận đã sửa trên đúng môi trường (user báo "đã sửa" nhưng DB local kiểm tra lại vẫn thấy giá trị cũ) — cần verify lại trước khi đóng.
 
 ---
 
-## 10. Quy tắc làm việc
+## 12. Quy tắc làm việc
 
 - **Commit:** Chỉ commit local, **chờ user xác nhận** mới push (trừ khi user nói "tự động push")
 - **CI/CD:** Kiểm tra Dockerfile/CI config trước khi push nếu có thay đổi infrastructure

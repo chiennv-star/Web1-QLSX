@@ -1102,6 +1102,16 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho, header
   const ddDg   = sumDoDang(wipData.dg, STAGE_CFG.dg)
   const ddBbc1 = sumDoDang(wipData.bbc1, STAGE_CFG.bbc1)
 
+  // ── Chi tiết tồn Đóng gói theo Cỡ lô: Tồn = Cỡ lô (soLuong) − SL ĐG (dg2) ──
+  // Khác với "Tồn (dở dang)" ở StageCard/bảng tổng hợp phía trên (pc_pl - dg_2, dở dang so với
+  // lượng đã pha chế xong); bảng này so với TOÀN BỘ cỡ lô, chỉ tính lô đang làm ĐG (dgTrangThai='doing')
+  const dgWipByCoLo = wipData.dg
+    .filter(r => r.dgTrangThai === 'doing')
+    .map(r => ({ ...r, _tonCoLo: (r.soLuong || 0) - (parseInt(r.dg2) || 0) }))
+    .filter(r => r._tonCoLo > 0)
+    .sort((a, b) => b._tonCoLo - a._tonCoLo)
+  const tongTonCoLo = dgWipByCoLo.reduce((s, r) => s + r._tonCoLo, 0)
+
   // ── Nhập kho ─────────────────────────────────────────────────────────────
   const nhapKhoRows = getNhapKho
     ? data.map(r => ({ ...r, _nk: getNhapKho(r) })).filter(r => r._nk > 0)
@@ -1412,6 +1422,37 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho, header
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* ── Row 3b: Chi tiết Tồn Đóng gói theo Cỡ lô (Cỡ lô − SL ĐG) ── */}
+      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: '10px 14px', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
+          <SectionLabel accent="#d48806">
+            Chi tiết Tồn Đóng gói theo Cỡ lô (Cỡ lô − SL ĐG)
+            <span style={{ marginLeft: 6, background: '#fffbeb', color: '#d48806', borderRadius: 999, padding: '0 6px', fontSize: 10, fontWeight: 700 }}>
+              {dgWipByCoLo.length} lô · {fmtN(tongTonCoLo)} SP
+            </span>
+          </SectionLabel>
+        </div>
+        <Table
+          size="small"
+          rowKey={(r, idx) => r.id ?? idx}
+          dataSource={dgWipByCoLo}
+          pagination={dgWipByCoLo.length > 20 ? { pageSize: 20, size: 'small' } : false}
+          scroll={{ y: 420 }}
+          columns={[
+            { title: 'STT', width: 46, align: 'center', render: (_, __, idx) => <span style={{ color: '#94a3b8' }}>{idx + 1}</span> },
+            { title: 'Mã Bravo', dataIndex: 'maBravo', width: 100,
+              render: v => v ? <Tag color="blue" style={{ fontFamily: 'monospace', marginRight: 0 }}>{v}</Tag> : <span style={{ color: '#d9d9d9' }}>—</span> },
+            { title: 'Mã SP', dataIndex: 'maTp', width: 90 },
+            { title: 'Tiến trình', dataIndex: 'tienTrinh', ellipsis: true },
+            { title: 'Số Lô', dataIndex: 'lsx', width: 90, render: v => <span style={{ fontFamily: 'monospace', color: '#595959' }}>{v || '—'}</span> },
+            { title: 'Cỡ Lô', dataIndex: 'soLuong', width: 90, align: 'right', render: v => fmtN(v) },
+            { title: 'SL ĐG', dataIndex: 'dg2', width: 90, align: 'right', render: v => fmtN(parseInt(v) || 0) },
+            { title: 'Tồn (Cỡ lô − SL ĐG)', key: '_tonCoLo', width: 150, align: 'right',
+              render: (_, r) => <span style={{ fontWeight: 700, color: '#d48806' }}>{fmtN(r._tonCoLo)}</span> },
+          ]}
+        />
       </div>
 
       {/* ── Modal chi tiết sản phẩm khi bấm vào 1 ô trong bảng tổng hợp công đoạn ── */}
