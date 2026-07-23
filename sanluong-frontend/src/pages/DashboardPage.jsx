@@ -1557,7 +1557,7 @@ function ProductionOverview({ data, doneTotal, deltaMap = {}, getNhapKho, header
 }
 
 export default function DashboardPage() {
-  const { isAdmin, isAdminKH, canEditProduction, isStageAdmin, getAllowedNhom, getAllowedStages } = useAuth()
+  const { isAdmin, isAdminKH, isQuanDoc, canEditProduction, isStageAdmin, getAllowedNhom, getAllowedStages } = useAuth()
   const getRowJumpStage = () => {
     const nhom = getAllowedNhom()
     if (nhom) return nhom
