@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
-  Tabs, Card, Row, Col, Statistic, List, Tag, Input, Select, InputNumber,
+  Tabs, Card, Row, Col, List, Tag, Input, Select, InputNumber,
   DatePicker, Button, Form, Table, Empty, Space, Typography, message, Popconfirm, Spin,
 } from 'antd'
 import {
@@ -11,6 +11,106 @@ import dayjs from 'dayjs'
 import api from '../api/axios'
 
 const { Text } = Typography
+
+const FONT_LINK_ID = 'kho-industrial-fonts'
+function useIndustrialFonts() {
+  useEffect(() => {
+    if (document.getElementById(FONT_LINK_ID)) return
+    const link = document.createElement('link')
+    link.id = FONT_LINK_ID
+    link.rel = 'stylesheet'
+    link.href = 'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap'
+    document.head.appendChild(link)
+  }, [])
+}
+
+// ── Design tokens dùng chung cho toàn trang, đồng bộ với bản thiết kế "Định vị kho" ──
+const KHO_STYLE = `
+.kho-root{
+  --concrete:#E3E4DF; --concrete-2:#D3D5CE; --steel:#171C1F; --steel-2:#2A3237; --steel-3:#3D474D;
+  --paper:#FFFFFF; --hazard:#F5C21B; --deep:#0E4C5C; --alert:#C8341F; --ok:#2F7D53; --muted:#6B7378; --line:#C3C6BE;
+  --sans:'Barlow',system-ui,-apple-system,sans-serif;
+  --cond:'Barlow Condensed','Barlow',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'Roboto Mono',monospace;
+  font-family:var(--sans); color:var(--steel);
+}
+.kho-eyebrow{font-family:var(--cond);font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px;margin:0 0 10px}
+.kho-eyebrow::after{content:"";flex:1;height:1px;background:var(--line)}
+.kho-h{font-family:var(--cond);font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin:0}
+.kho-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
+.kho-kpi{background:var(--paper);border:1px solid var(--line);border-left:4px solid var(--deep);border-radius:4px;padding:12px 14px}
+.kho-kpi--warn{border-left-color:var(--hazard)}
+.kho-kpi--bad{border-left-color:var(--alert)}
+.kho-kpi__n{font-family:var(--mono);font-weight:700;font-size:26px;line-height:1.05}
+.kho-kpi__l{font-family:var(--cond);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.kho-card{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:14px;margin-bottom:12px}
+.kho-plate{background:var(--steel);color:#fff;overflow:hidden;border-radius:4px}
+.kho-plate__hz{height:7px;background:repeating-linear-gradient(-45deg,var(--hazard) 0 7px,var(--steel-2) 7px 14px)}
+.kho-plate__body{padding:10px 12px}
+.kho-plate__code{font-family:var(--mono);font-weight:700;font-size:22px;letter-spacing:.02em;color:var(--hazard);line-height:1}
+.kho-plate__meta{margin-top:5px;font-family:var(--cond);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#98A2A8}
+.kho-plate--sm .kho-plate__code{font-size:16px}
+.kho-plate--sm .kho-plate__body{padding:7px 10px}
+.kho-plate--sm .kho-plate__hz{height:5px;background:repeating-linear-gradient(-45deg,var(--hazard) 0 5px,var(--steel-2) 5px 10px)}
+.kho-steps{display:flex;gap:6px;margin-bottom:16px}
+.kho-step{flex:1;padding:7px 4px 6px;background:var(--concrete-2);border-radius:4px;text-align:center;
+  font-family:var(--cond);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-top:3px solid var(--line)}
+.kho-step.is-done{color:var(--steel);border-top-color:var(--ok)}
+.kho-step.is-now{background:var(--steel);color:var(--hazard);border-top-color:var(--hazard)}
+.kho-row{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:11px 12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .12s ease}
+.kho-row:hover{border-color:var(--deep)}
+.kho-row.is-sel{border-color:var(--deep);background:#EAF3F5}
+.kho-row__t{font-weight:600;font-size:14px;line-height:1.25}
+.kho-row__s{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:2px}
+.kho-row__n{font-family:var(--mono);font-weight:700;font-size:17px;text-align:right}
+.kho-row__u{font-family:var(--cond);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:right}
+.kho-tag{display:inline-block;font-family:var(--cond);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:2px;background:var(--concrete-2);color:var(--steel-3)}
+.kho-tag--fifo{background:var(--ok);color:#fff}
+.kho-tag--exp{background:var(--alert);color:#fff}
+.kho-btn{font-family:var(--cond) !important;font-weight:600 !important;letter-spacing:.08em;text-transform:uppercase;border-radius:4px !important;border:none !important;height:42px !important}
+.kho-btn--hazard{background:var(--hazard) !important;color:var(--steel) !important;box-shadow:0 3px 0 #C79C0D}
+.kho-btn--hazard:hover,.kho-btn--hazard:focus{background:#f0b90a !important;color:var(--steel) !important}
+.kho-btn--dark{background:var(--steel) !important;color:#fff !important}
+.kho-btn--dark:hover,.kho-btn--dark:focus{background:var(--steel-2) !important;color:#fff !important}
+`
+
+function locMeta(ma) {
+  if (!ma) return ''
+  const parts = ma.split('-')
+  if (parts.length < 4) return ma
+  const [k, d, t, o] = parts
+  return `Khu ${k} · Dãy ${d} · Tầng ${t} · Ô ${o}`
+}
+
+function Plate({ code, small }) {
+  if (!code) return null
+  return (
+    <div className={`kho-plate ${small ? 'kho-plate--sm' : ''}`}>
+      <div className="kho-plate__hz" />
+      <div className="kho-plate__body">
+        <div className="kho-plate__code">{code}</div>
+        <div className="kho-plate__meta">{locMeta(code)}</div>
+      </div>
+      <div className="kho-plate__hz" />
+    </div>
+  )
+}
+
+function Eyebrow({ children }) {
+  return <p className="kho-eyebrow">{children}</p>
+}
+
+function StepBar({ labels, current }) {
+  return (
+    <div className="kho-steps">
+      {labels.map((l, i) => {
+        const n = i + 1
+        const cls = n < current ? 'is-done' : n === current ? 'is-now' : ''
+        return <div key={l} className={`kho-step ${cls}`}>{n} · {l}</div>
+      })}
+    </div>
+  )
+}
 
 function daysLeft(dateStr) {
   if (!dateStr) return null
@@ -43,27 +143,26 @@ function TongQuanTab() {
 
   return (
     <Spin spinning={loading}>
-      <Row gutter={12} style={{ marginBottom: 16 }}>
-        <Col xs={12} md={6}><Card size="small"><Statistic title="Mã hàng" value={dash?.skuCount ?? 0} /></Card></Col>
-        <Col xs={12} md={6}><Card size="small"><Statistic title="Lấp đầy" value={dash?.fillPercent ?? 0} suffix="%" /></Card></Col>
-        <Col xs={12} md={6}><Card size="small"><Statistic title="Ô còn trống" value={dash?.freeCount ?? 0} /></Card></Col>
-        <Col xs={12} md={6}><Card size="small"><Statistic title="Lô sắp hết hạn" value={dash?.expCount ?? 0} valueStyle={{ color: (dash?.expCount ?? 0) > 0 ? '#c8341f' : undefined }} /></Card></Col>
-      </Row>
-      <Card size="small" title="Nhật ký gần đây">
-        <List
-          size="small"
-          dataSource={log}
-          locale={{ emptyText: 'Chưa có hoạt động nào' }}
-          renderItem={item => (
-            <List.Item>
-              <List.Item.Meta
-                title={item.noiDung}
-                description={`${dayjs(item.thoiGian).format('HH:mm DD/MM/YYYY')} · ${item.nguoiThucHien || ''}`}
-              />
-            </List.Item>
-          )}
-        />
-      </Card>
+      <div className="kho-kpi-grid">
+        <div className="kho-kpi"><div className="kho-kpi__n">{dash?.skuCount ?? 0}</div><div className="kho-kpi__l">Mã hàng</div></div>
+        <div className="kho-kpi kho-kpi--warn"><div className="kho-kpi__n">{dash?.fillPercent ?? 0}%</div><div className="kho-kpi__l">Lấp đầy</div></div>
+        <div className="kho-kpi"><div className="kho-kpi__n">{dash?.freeCount ?? 0}</div><div className="kho-kpi__l">Ô còn trống</div></div>
+        <div className="kho-kpi kho-kpi--bad"><div className="kho-kpi__n">{dash?.expCount ?? 0}</div><div className="kho-kpi__l">Lô sắp hết hạn</div></div>
+      </div>
+      <Eyebrow>Nhật ký gần đây</Eyebrow>
+      <List
+        size="small"
+        dataSource={log}
+        locale={{ emptyText: 'Chưa có hoạt động nào' }}
+        renderItem={item => (
+          <List.Item style={{ borderBottom: '1px solid var(--line)' }}>
+            <List.Item.Meta
+              title={<span style={{ fontSize: 14 }}>{item.noiDung}</span>}
+              description={<span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>{dayjs(item.thoiGian).format('HH:mm DD/MM/YYYY')} · {item.nguoiThucHien || ''}</span>}
+            />
+          </List.Item>
+        )}
+      />
     </Spin>
   )
 }
@@ -72,9 +171,14 @@ function TongQuanTab() {
 function NhapKhoTab({ viTriList, onChanged }) {
   const [form] = Form.useForm()
   const [saving, setSaving] = useState(false)
+  const [viTriChon, setViTriChon] = useState(null)
   const [dangChua, setDangChua] = useState(null)
+  const [maHang, setMaHang] = useState('')
+
+  const step = viTriChon ? 3 : maHang ? 2 : 1
 
   const handleViTriChange = async (ma) => {
+    setViTriChon(ma)
     if (!ma) { setDangChua(null); return }
     try {
       const { data } = await api.get(`/kho/vi-tri/${ma}/items`)
@@ -97,7 +201,9 @@ function NhapKhoTab({ viTriList, onChanged }) {
       })
       message.success(`Đã nhập ${values.soLuong} ${values.dvt || 'thùng'} vào ${values.viTri}`)
       form.resetFields()
+      setViTriChon(null)
       setDangChua(null)
+      setMaHang('')
       onChanged()
     } catch (err) {
       message.error(err?.response?.data?.message || 'Nhập kho thất bại')
@@ -107,56 +213,67 @@ function NhapKhoTab({ viTriList, onChanged }) {
   }
 
   return (
-    <Card size="small" style={{ maxWidth: 480 }}>
-      <Form form={form} layout="vertical" onFinish={onFinish} initialValues={{ dvt: 'Thùng', soLuong: 10 }}>
-        <Form.Item label="Mã hàng" name="maHang" rules={[{ required: true, message: 'Nhập mã hàng' }]}>
-          <Input placeholder="Vd: SP-1001" />
-        </Form.Item>
-        <Form.Item label="Tên hàng" name="tenHang">
-          <Input placeholder="Tên sản phẩm" />
-        </Form.Item>
-        <Form.Item label="Vị trí cất" name="viTri" rules={[{ required: true, message: 'Chọn vị trí' }]}>
-          <Select
-            showSearch
-            placeholder="Chọn ô vị trí"
-            options={viTriList.map(v => ({ value: v.ma, label: v.ma }))}
-            onChange={handleViTriChange}
-          />
-        </Form.Item>
-        {dangChua !== null && (
-          <Text type="secondary" style={{ display: 'block', marginTop: -12, marginBottom: 12 }}>
-            Đang chứa: {dangChua > 0 ? `${dangChua} đơn vị` : 'trống'}
-          </Text>
-        )}
-        <Row gutter={12}>
-          <Col span={12}>
-            <Form.Item label="Số lượng" name="soLuong" rules={[{ required: true, message: 'Nhập số lượng' }]}>
-              <InputNumber min={1} style={{ width: '100%' }} />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item label="Đơn vị tính" name="dvt">
-              <Input />
-            </Form.Item>
-          </Col>
-        </Row>
-        <Row gutter={12}>
-          <Col span={12}>
-            <Form.Item label="Số lô" name="soLo">
-              <Input />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item label="Hạn dùng" name="hanDung">
-              <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
-            </Form.Item>
-          </Col>
-        </Row>
-        <Button type="primary" htmlType="submit" loading={saving} block icon={<InboxOutlined />}>
-          Lưu phiếu nhập
-        </Button>
-      </Form>
-    </Card>
+    <div style={{ maxWidth: 480 }}>
+      <StepBar labels={['Mã hàng', 'Vị trí', 'Số lượng']} current={step} />
+      <div className="kho-card">
+        <Form form={form} layout="vertical" onFinish={onFinish} initialValues={{ dvt: 'Thùng', soLuong: 10 }}>
+          <Eyebrow>Mã hàng</Eyebrow>
+          <Form.Item label="Mã hàng" name="maHang" rules={[{ required: true, message: 'Nhập mã hàng' }]}>
+            <Input placeholder="Vd: SP-1001" onChange={e => setMaHang(e.target.value)} />
+          </Form.Item>
+          <Form.Item label="Tên hàng" name="tenHang">
+            <Input placeholder="Tên sản phẩm" />
+          </Form.Item>
+
+          <Eyebrow>Vị trí cất</Eyebrow>
+          <Form.Item label="Vị trí" name="viTri" rules={[{ required: true, message: 'Chọn vị trí' }]}>
+            <Select
+              showSearch
+              placeholder="Chọn ô vị trí"
+              options={viTriList.map(v => ({ value: v.ma, label: v.ma }))}
+              onChange={handleViTriChange}
+            />
+          </Form.Item>
+          {viTriChon && (
+            <div style={{ marginBottom: 14 }}>
+              <Plate code={viTriChon} small />
+              <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+                Đang chứa: {dangChua > 0 ? `${dangChua} đơn vị` : 'trống'}
+              </Text>
+            </div>
+          )}
+
+          <Eyebrow>Số lượng</Eyebrow>
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item label="Số lượng" name="soLuong" rules={[{ required: true, message: 'Nhập số lượng' }]}>
+                <InputNumber min={1} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Đơn vị tính" name="dvt">
+                <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item label="Số lô" name="soLo">
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Hạn dùng" name="hanDung">
+                <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Button className="kho-btn kho-btn--hazard" htmlType="submit" loading={saving} block icon={<InboxOutlined />}>
+            Lưu phiếu nhập
+          </Button>
+        </Form>
+      </div>
+    </div>
   )
 }
 
@@ -233,37 +350,40 @@ function TimHangTab({ onChanged }) {
           enterButton={<SearchOutlined />}
           style={{ marginBottom: 12 }}
         />
-        <List
-          loading={loading}
-          bordered
-          dataSource={list}
-          locale={{ emptyText: 'Không có kết quả' }}
-          renderItem={item => (
-            <List.Item
-              onClick={() => openDetail(item.maHang)}
-              style={{ cursor: 'pointer', background: selected === item.maHang ? '#e6f4ff' : undefined, padding: '10px 12px' }}
-            >
-              <List.Item.Meta title={item.tenHang || item.maHang} description={`${item.maHang} · ${item.soViTri} vị trí`} />
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontWeight: 700 }}>{item.tong}</div>
-                <div style={{ fontSize: 11, color: '#888' }}>{item.dvt}</div>
+        {loading ? <Spin /> : list.length === 0 ? <Empty description="Không có kết quả" /> : (
+          <div>
+            {list.map(item => (
+              <div
+                key={item.maHang}
+                className={`kho-row ${selected === item.maHang ? 'is-sel' : ''}`}
+                onClick={() => openDetail(item.maHang)}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="kho-row__t">{item.tenHang || item.maHang}</div>
+                  <div className="kho-row__s">{item.maHang} · {item.soViTri} vị trí</div>
+                </div>
+                <div>
+                  <div className="kho-row__n">{item.tong}</div>
+                  <div className="kho-row__u">{item.dvt}</div>
+                </div>
               </div>
-            </List.Item>
-          )}
-        />
+            ))}
+          </div>
+        )}
       </Col>
       <Col xs={24} md={14}>
         {!selected ? (
           <Empty description="Chọn một mã hàng để xem chi tiết" style={{ marginTop: 40 }} />
         ) : (
-          <Card size="small" title={`Chi tiết ${selected}`}>
+          <div className="kho-card">
+            <Eyebrow>Chi tiết {selected}</Eyebrow>
             <Table
               size="small"
               rowKey="id"
               pagination={false}
               dataSource={detailRows}
               columns={[
-                { title: 'Vị trí', dataIndex: 'viTri' },
+                { title: 'Vị trí', dataIndex: 'viTri', render: v => <span style={{ fontFamily: 'var(--mono)' }}>{v}</span> },
                 { title: 'Lô', dataIndex: 'soLo' },
                 {
                   title: 'Hạn dùng', dataIndex: 'hanDung',
@@ -272,8 +392,8 @@ function TimHangTab({ onChanged }) {
                     return (
                       <Space size={4}>
                         {v ? dayjs(v).format('DD/MM/YYYY') : '—'}
-                        {i === 0 && <Tag color="green">Lấy trước</Tag>}
-                        {d !== null && d <= 45 && <Tag color="red">Còn {d} ngày</Tag>}
+                        {i === 0 && <span className="kho-tag kho-tag--fifo">Lấy trước</span>}
+                        {d !== null && d <= 45 && <span className="kho-tag kho-tag--exp">Còn {d} ngày</span>}
                       </Space>
                     )
                   },
@@ -282,37 +402,36 @@ function TimHangTab({ onChanged }) {
               ]}
               style={{ marginBottom: 16 }}
             />
-            <Card size="small" type="inner" title="Xuất kho (FEFO)">
-              <Space style={{ marginBottom: 12 }}>
-                <Text>Số lượng cần xuất</Text>
-                <InputNumber min={1} value={xuatQty} onChange={setXuatQty} />
-                <Button onClick={drawPlan}>Lập lộ trình</Button>
-              </Space>
-              {plan && (
-                <>
-                  <Table
-                    size="small"
-                    rowKey="stockId"
-                    pagination={false}
-                    dataSource={plan.plan}
-                    columns={[
-                      { title: 'Vị trí', dataIndex: 'viTri' },
-                      { title: 'Lô', dataIndex: 'soLo' },
-                      { title: 'Hạn dùng', dataIndex: 'hanDung', render: v => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
-                      { title: 'Lấy', dataIndex: 'lay', align: 'right' },
-                    ]}
-                    style={{ marginBottom: 12 }}
-                  />
-                  {plan.thieu > 0 && <Text type="danger">Thiếu {plan.thieu} đơn vị so với tồn kho</Text>}
-                  <Popconfirm title="Xác nhận đã lấy đủ hàng theo lộ trình?" onConfirm={confirmXuat}>
-                    <Button type="primary" danger icon={<ExportOutlined />} loading={xuatLoading} block style={{ marginTop: 12 }}>
-                      Xác nhận đã lấy đủ
-                    </Button>
-                  </Popconfirm>
-                </>
-              )}
-            </Card>
-          </Card>
+            <Eyebrow>Xuất kho (FEFO)</Eyebrow>
+            <Space style={{ marginBottom: 12 }}>
+              <Text>Số lượng cần xuất</Text>
+              <InputNumber min={1} value={xuatQty} onChange={setXuatQty} />
+              <Button onClick={drawPlan}>Lập lộ trình</Button>
+            </Space>
+            {plan && (
+              <>
+                {plan.plan.map((p, i) => (
+                  <div key={p.stockId} className="kho-row" style={{ cursor: 'default', alignItems: 'stretch', gap: 12 }}>
+                    <Plate code={p.viTri} small />
+                    <div style={{ flex: 1 }}>
+                      <div className="kho-row__t">Điểm dừng {i + 1}</div>
+                      <div className="kho-row__s">Lô {p.soLo || '—'} · HD {p.hanDung ? dayjs(p.hanDung).format('DD/MM/YYYY') : '—'} · còn {p.conLai}</div>
+                    </div>
+                    <div>
+                      <div className="kho-row__n">{p.lay}</div>
+                      <div className="kho-row__u">Lấy</div>
+                    </div>
+                  </div>
+                ))}
+                {plan.thieu > 0 && <Text type="danger">Thiếu {plan.thieu} đơn vị so với tồn kho</Text>}
+                <Popconfirm title="Xác nhận đã lấy đủ hàng theo lộ trình?" onConfirm={confirmXuat}>
+                  <Button className="kho-btn kho-btn--dark" icon={<ExportOutlined />} loading={xuatLoading} block style={{ marginTop: 12 }}>
+                    Xác nhận đã lấy đủ
+                  </Button>
+                </Popconfirm>
+              </>
+            )}
+          </div>
         )}
       </Col>
     </Row>
@@ -326,6 +445,8 @@ function ChuyenOTab({ viTriList, onChanged }) {
   const [selItem, setSelItem] = useState(null)
   const [to, setTo] = useState(null)
   const [saving, setSaving] = useState(false)
+
+  const step = to ? 3 : selItem ? 2 : 1
 
   const loadFrom = async (ma) => {
     setFrom(ma)
@@ -354,53 +475,52 @@ function ChuyenOTab({ viTriList, onChanged }) {
   }
 
   return (
-    <Row gutter={16}>
-      <Col xs={24} md={12}>
-        <Form layout="vertical">
-          <Form.Item label="Lấy hàng từ ô">
-            <Select
-              showSearch allowClear placeholder="Chọn ô nguồn"
-              value={from}
-              options={viTriList.map(v => ({ value: v.ma, label: v.ma }))}
-              onChange={loadFrom}
-            />
-          </Form.Item>
-        </Form>
-        {from && (
-          <List
-            bordered
-            dataSource={items}
-            locale={{ emptyText: 'Ô đang trống' }}
-            renderItem={it => (
-              <List.Item
+    <div style={{ maxWidth: 640 }}>
+      <StepBar labels={['Ô nguồn', 'Ô đích', 'Xác nhận']} current={step} />
+      <Eyebrow>Lấy hàng từ ô</Eyebrow>
+      <Select
+        showSearch allowClear placeholder="Chọn ô nguồn"
+        style={{ width: '100%', marginBottom: 14 }}
+        value={from}
+        options={viTriList.map(v => ({ value: v.ma, label: v.ma }))}
+        onChange={loadFrom}
+      />
+      {from && (
+        items.length === 0 ? <Empty description="Ô đang trống" /> : (
+          <div style={{ marginBottom: 16 }}>
+            {items.map(it => (
+              <div
+                key={it.id}
+                className={`kho-row ${selItem?.id === it.id ? 'is-sel' : ''}`}
                 onClick={() => setSelItem(it)}
-                style={{ cursor: 'pointer', background: selItem?.id === it.id ? '#e6f4ff' : undefined }}
               >
-                <List.Item.Meta title={it.tenHang || it.maHang} description={`${it.maHang} · Lô ${it.soLo || '—'}`} />
-                <div style={{ fontWeight: 700 }}>{it.soLuong}</div>
-              </List.Item>
-            )}
+                <div style={{ flex: 1 }}>
+                  <div className="kho-row__t">{it.tenHang || it.maHang}</div>
+                  <div className="kho-row__s">{it.maHang} · Lô {it.soLo || '—'}</div>
+                </div>
+                <div className="kho-row__n">{it.soLuong}</div>
+              </div>
+            ))}
+          </div>
+        )
+      )}
+      {selItem && (
+        <>
+          <Eyebrow>Chuyển tới ô</Eyebrow>
+          <Select
+            showSearch placeholder="Chọn ô đích"
+            style={{ width: '100%', marginBottom: 14 }}
+            value={to}
+            options={viTriList.filter(v => v.ma !== from).map(v => ({ value: v.ma, label: v.ma }))}
+            onChange={setTo}
           />
-        )}
-      </Col>
-      <Col xs={24} md={12}>
-        {selItem && (
-          <Form layout="vertical">
-            <Form.Item label="Chuyển tới ô">
-              <Select
-                showSearch placeholder="Chọn ô đích"
-                value={to}
-                options={viTriList.filter(v => v.ma !== from).map(v => ({ value: v.ma, label: v.ma }))}
-                onChange={setTo}
-              />
-            </Form.Item>
-            <Button type="primary" icon={<SwapOutlined />} disabled={!to} loading={saving} onClick={confirm} block>
-              Xác nhận chuyển
-            </Button>
-          </Form>
-        )}
-      </Col>
-    </Row>
+          {to && <div style={{ marginBottom: 14 }}><Plate code={to} small /></div>}
+          <Button className="kho-btn kho-btn--hazard" icon={<SwapOutlined />} disabled={!to} loading={saving} onClick={confirm} block>
+            Xác nhận chuyển
+          </Button>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -443,39 +563,38 @@ function KiemKeTab({ viTriList, onChanged }) {
 
   return (
     <div style={{ maxWidth: 560 }}>
-      <Form layout="vertical">
-        <Form.Item label="Quét / chọn ô cần kiểm">
-          <Select
-            showSearch allowClear placeholder="Chọn ô vị trí"
-            value={ma}
-            options={viTriList.map(v => ({ value: v.ma, label: v.ma }))}
-            onChange={loadItems}
-          />
-        </Form.Item>
-      </Form>
+      <Eyebrow>Quét / chọn ô cần kiểm</Eyebrow>
+      <Select
+        showSearch allowClear placeholder="Chọn ô vị trí"
+        style={{ width: '100%', marginBottom: 14 }}
+        value={ma}
+        options={viTriList.map(v => ({ value: v.ma, label: v.ma }))}
+        onChange={loadItems}
+      />
+      {ma && <div style={{ marginBottom: 14 }}><Plate code={ma} small /></div>}
       {ma && items.length === 0 && <Empty description="Ô trống" />}
       {items.map(it => {
         const actual = actuals[it.id] ?? it.soLuong
         const diff = actual - it.soLuong
         return (
-          <Card key={it.id} size="small" style={{ marginBottom: 10 }}>
-            <div style={{ fontWeight: 600 }}>{it.tenHang || it.maHang}</div>
-            <Text type="secondary">{it.maHang} · Lô {it.soLo || '—'} · Sổ sách: {it.soLuong}</Text>
-            <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div key={it.id} className="kho-card">
+            <div style={{ fontWeight: 600, fontSize: 15 }}>{it.tenHang || it.maHang}</div>
+            <Text type="secondary" style={{ fontSize: 12 }}>{it.maHang} · Lô {it.soLo || '—'} · Sổ sách: <strong>{it.soLuong}</strong></Text>
+            <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
               <InputNumber
                 value={actual}
                 onChange={v => setActuals(prev => ({ ...prev, [it.id]: v }))}
                 style={{ width: 120 }}
               />
               {diff === 0
-                ? <Tag color="green">Khớp sổ sách</Tag>
-                : <Tag color="red">Lệch {diff > 0 ? '+' : ''}{diff}</Tag>}
+                ? <span className="kho-tag kho-tag--fifo">Khớp sổ sách</span>
+                : <span className="kho-tag kho-tag--exp">Lệch {diff > 0 ? '+' : ''}{diff}</span>}
             </div>
-          </Card>
+          </div>
         )
       })}
       {items.length > 0 && (
-        <Button type="primary" block loading={saving} onClick={chot} icon={<FileSearchOutlined />}>
+        <Button className="kho-btn kho-btn--hazard" block loading={saving} onClick={chot} icon={<FileSearchOutlined />}>
           Chốt kết quả kiểm kê
         </Button>
       )}
@@ -485,6 +604,7 @@ function KiemKeTab({ viTriList, onChanged }) {
 
 // ───────────────────────── Trang chính ─────────────────────────
 export default function KhoPage() {
+  useIndustrialFonts()
   const [viTriList, setViTriList] = useState([])
   const [refreshKey, setRefreshKey] = useState(0)
 
@@ -495,7 +615,8 @@ export default function KhoPage() {
   const bump = () => setRefreshKey(k => k + 1)
 
   return (
-    <div>
+    <div className="kho-root">
+      <style>{KHO_STYLE}</style>
       <Tabs
         defaultActiveKey="tong-quan"
         items={[
