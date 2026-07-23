@@ -6665,7 +6665,7 @@ function NhapKhoTab() {
   )
 
   // Điều hướng ô bằng phím mũi tên — cột theo đúng thứ tự khai báo trong `columns` bên dưới
-  const NK_COL_FIELDS = ['stt', 'maBravo', 'maTp', 'tienTrinh', 'lsx', 'tpNhapKho', 'ngayXuatKho', 'tinhTrangNhapKho', 'tenNthNhapKho', 'ghiChuNhapKho']
+  const NK_COL_FIELDS = ['stt', 'maBravo', 'maTp', 'tienTrinh', 'loaiSanPham', 'lsx', 'tpNhapKho', 'ngayXuatKho', 'tinhTrangNhapKho', 'tenNthNhapKho', 'ghiChuNhapKho']
   const NK_EDITABLE_FIELDS = ['tpNhapKho', 'ngayXuatKho', 'tinhTrangNhapKho', 'tenNthNhapKho', 'ghiChuNhapKho']
   const handleCellEdit = useCallback((row, col) => {
     if (!canEdit) return
@@ -6750,13 +6750,18 @@ function NhapKhoTab() {
       render: v => <span style={{ whiteSpace: 'normal', wordBreak: 'break-word', fontSize: 12 }}>{v || '—'}</span>,
     },
     {
-      title: 'Số lô', dataIndex: 'lsx', key: 'lsx', width: 90, align: 'center',
+      title: 'Loại SP', dataIndex: 'loaiSanPham', key: 'loaiSanPham', width: 110, align: 'center',
       onCell: (_, i) => cellNav.cellProps(i, 4),
+      render: v => v ? <Tag color="blue" style={{ marginRight: 0 }}>{v}</Tag> : <span style={{ color: '#d1d5db' }}>—</span>,
+    },
+    {
+      title: 'Số lô', dataIndex: 'lsx', key: 'lsx', width: 90, align: 'center',
+      onCell: (_, i) => cellNav.cellProps(i, 5),
       render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v || '—'}</span>,
     },
     {
       title: 'SL Nhập Kho', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 120, align: 'right',
-      onCell: (_, i) => cellNav.cellProps(i, 5),
+      onCell: (_, i) => cellNav.cellProps(i, 6),
       render: (v, r) => {
         const isEditing = canEdit && editCell?.id === r.id && editCell?.field === 'tpNhapKho'
         if (isEditing) {
@@ -6791,7 +6796,7 @@ function NhapKhoTab() {
     },
     {
       title: 'Ngày xuất', dataIndex: 'ngayXuatKho', key: 'ngayXuatKho', width: 120, align: 'center',
-      onCell: (_, i) => cellNav.cellProps(i, 6),
+      onCell: (_, i) => cellNav.cellProps(i, 7),
       render: (v, r) => {
         const isEditing = canEdit && editCell?.id === r.id && editCell?.field === 'ngayXuatKho'
         const isSaving  = saving[`${r.id}_ngayXuatKho`]
@@ -6816,7 +6821,7 @@ function NhapKhoTab() {
     },
     {
       title: 'Tình trạng', dataIndex: 'tinhTrangNhapKho', key: 'tinhTrangNhapKho', width: 110, align: 'center',
-      onCell: (_, i) => cellNav.cellProps(i, 7),
+      onCell: (_, i) => cellNav.cellProps(i, 8),
       render: (v, r) => {
         const isEditing = canEdit && editCell?.id === r.id && editCell?.field === 'tinhTrangNhapKho'
         if (isEditing) {
@@ -6846,7 +6851,7 @@ function NhapKhoTab() {
     },
     {
       title: 'Tên NTH', dataIndex: 'tenNthNhapKho', key: 'tenNthNhapKho', width: 160, align: 'center',
-      onCell: (_, i) => cellNav.cellProps(i, 8),
+      onCell: (_, i) => cellNav.cellProps(i, 9),
       render: (v, r) => {
         const isEditing = canEdit && editCell?.id === r.id && editCell?.field === 'tenNthNhapKho'
         if (isEditing) {
@@ -6871,7 +6876,7 @@ function NhapKhoTab() {
     },
     {
       title: 'Ghi chú', dataIndex: 'ghiChuNhapKho', key: 'ghiChuNhapKho', width: 200,
-      onCell: (_, i) => cellNav.cellProps(i, 9),
+      onCell: (_, i) => cellNav.cellProps(i, 10),
       render: (v, r) => {
         const isEditing = canEdit && editCell?.id === r.id && editCell?.field === 'ghiChuNhapKho'
         if (isEditing) {

@@ -506,7 +506,30 @@ public class ProductionService {
     }
 
     public List<ProductionRecord> getNhapKho(java.time.LocalDate fromDate, java.time.LocalDate toDate) {
-        return repository.findNhapKho(fromDate, toDate);
+        List<ProductionRecord> list = repository.findNhapKho(fromDate, toDate);
+        enrichLoaiSanPham(list);
+        return list;
+    }
+
+    private void enrichLoaiSanPham(List<ProductionRecord> list) {
+        List<String> maTps = list.stream()
+                .map(ProductionRecord::getMaTp)
+                .filter(s -> s != null && !s.isBlank())
+                .map(String::toUpperCase)
+                .distinct().collect(Collectors.toList());
+        if (maTps.isEmpty()) return;
+        Map<String, String> loaiMap = new HashMap<>();
+        productMasterRepository.findByMaTpIn(maTps).forEach(pm ->
+                loaiMap.put(pm.getMaTp().toUpperCase(), pm.getLoaiSanPham()));
+        list.forEach(r -> {
+            if (r.getMaTp() != null) r.setLoaiSanPham(loaiMap.get(r.getMaTp().toUpperCase()));
+        });
+    }
+
+    private void enrichLoaiSanPham(ProductionRecord r) {
+        if (r.getMaTp() == null) return;
+        productMasterRepository.findByMaTpIgnoreCase(r.getMaTp())
+                .ifPresent(pm -> r.setLoaiSanPham(pm.getLoaiSanPham()));
     }
 
     public List<java.util.Map<String, Object>> getNhapKhoTongHop() {
@@ -585,6 +608,7 @@ public class ProductionService {
         notificationService.createNhapKhoNewNotification(
                 saved.getId(), saved.getTienTrinh(), saved.getMaBravo(),
                 saved.getLsx(), saved.getTpNhapKho(), username);
+        enrichLoaiSanPham(saved);
         return saved;
     }
 
@@ -727,6 +751,7 @@ public class ProductionService {
             syncNhapKhoTongHopNgay(saved);
             logNhapKhoAudit(saved, "THEM_MOI", null, username);
             syncTpNhapKhoToSource(saved.getMaBravo(), saved.getLsx(), saved.getMaDonHang(), username);
+            enrichLoaiSanPham(saved);
             return saved;
         }
 
@@ -753,6 +778,7 @@ public class ProductionService {
             syncTpNhapKhoToSource(oldMaBravo, oldLsx, oldMaDonHang, username);
         }
         syncTpNhapKhoToSource(saved.getMaBravo(), saved.getLsx(), saved.getMaDonHang(), username);
+        enrichLoaiSanPham(saved);
         return saved;
     }
 
