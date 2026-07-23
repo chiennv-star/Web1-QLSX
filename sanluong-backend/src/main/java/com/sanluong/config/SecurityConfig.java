@@ -149,6 +149,10 @@ public class SecurityConfig {
                     "ADMIN_PCPL1", "ADMIN_PCPL2", "ADMIN_PCPL3"
                 )
 
+                // ── Định vị kho: tất cả xem, tất cả ADMIN_* + TKSX + NHAN_VIEN thao tác ──
+                .requestMatchers(HttpMethod.GET, "/api/kho/**").hasAnyRole(ALL_ROLES)
+                .requestMatchers("/api/kho/**").hasAnyRole(ALL_WRITE_ROLES)
+
                 // ── Nhân sự: tất cả xem, nhân viên tự cập nhật hồ sơ cá nhân ──
                 .requestMatchers(HttpMethod.GET, "/api/employees/**").hasAnyRole(ALL_ROLES)
                 .requestMatchers(HttpMethod.PUT, "/api/employees/me").hasAnyRole(ALL_ROLES)

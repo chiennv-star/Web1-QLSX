@@ -25,6 +25,7 @@ import PhanTichKeHoachPage from './pages/PhanTichKeHoachPage'
 import ForceChangePasswordPage from './pages/ForceChangePasswordPage'
 import DirectorDashboardPage from './pages/DirectorDashboardPage'
 import KyThuatCongNghePage from './pages/KyThuatCongNghePage'
+import KhoPage from './pages/KhoPage'
 import MainLayout from './components/MainLayout'
 
 function PrivateRoute({ children, adminOnly = false, allowedRoles = null }) {
@@ -105,6 +106,7 @@ export default function App() {
             <KyThuatCongNghePage />
           </PrivateRoute>
         } />
+        <Route path="kho" element={<KhoPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

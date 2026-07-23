@@ -21,6 +21,7 @@ import {
   EyeTwoTone,
   TeamOutlined,
   ToolOutlined,
+  InboxOutlined,
 } from '@ant-design/icons'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -279,6 +280,7 @@ export default function MainLayout() {
           { key: '/cham-cong', icon: <FileDoneOutlined />, label: 'Chấm công' },
         ] : []),
         { key: '/danh-muc',        icon: <AppstoreOutlined />, label: 'Quản Lý Danh Mục' },
+        { key: '/kho',             icon: <InboxOutlined />,    label: 'Quản Lý Kho' },
         ...(isAdmin() || isTPSX() || isQuanDoc() ? [{
           key: '/notifications',
           icon: (
