@@ -6374,6 +6374,16 @@ function NhapKhoAuditLogView({ data, loading, onReload, filterH = 0 }) {
 
 // ─── NhapKhoTab ───────────────────────────────────────────────────────────────
 
+// Bỏ dấu + lowercase để so khớp "Loại sản phẩm" bất kể cách nhập (Mặt Nạ / mặt nạ / MAT NA...)
+const stripDiacriticsNK = (s) => (s || '')
+  .normalize('NFD')
+  .split('')
+  .filter(ch => { const code = ch.codePointAt(0); return code < 0x0300 || code > 0x036f })
+  .join('')
+  .replace(/đ/gi, 'd')
+  .toLowerCase().trim()
+const isMatNaNK = (r) => stripDiacriticsNK(r.loaiSanPham) === 'mat na'
+
 function NhapKhoTab() {
   const { canEditNhapKhoTarget, isAdmin, isQuanDoc, user } = useAuth()
   // Chỉ ADMIN được sửa/xóa dữ liệu đã có; ADMIN_DG được thêm sản phẩm mới;
@@ -6482,7 +6492,11 @@ function NhapKhoTab() {
     } catch { message.error('Xóa thất bại') }
   }, [])
 
-  useEffect(() => { if (viewMode === 'summary') fetchSummary() }, [viewMode, fetchSummary])
+  useEffect(() => {
+    if (viewMode === 'summary' || viewMode === 'summary-matna') fetchSummary()
+  }, [viewMode, fetchSummary])
+
+  const matNaSummaryData = useMemo(() => summaryData.filter(isMatNaNK), [summaryData])
 
   const fetchAuditLog = useCallback(async () => {
     setAuditLoading(true)
@@ -6928,6 +6942,7 @@ function NhapKhoTab() {
             { label: 'Nhập Kho', value: 'tong-hop' },
             { label: '✅ Sản phẩm đã hoàn thành', value: 'hoan-thanh' },
             { label: 'Tổng hợp theo ngày', value: 'summary' },
+            { label: 'Tổng Hợp Theo Ngày Mặt Nạ', value: 'summary-matna' },
             ...((isAdmin() || isQuanDoc()) ? [{ label: '📜 Lịch sử NK', value: 'audit' }] : []),
           ]}
         />
@@ -7007,6 +7022,23 @@ function NhapKhoTab() {
               <span>Chưa NK: <strong style={{ color: '#d97706' }}>{filteredTongHopDone.filter(r => (r.totalNhapKho || 0) === 0).length}</strong></span>
             </div>
           </>
+        ) : viewMode === 'summary-matna' ? (
+          <>
+            <DatePicker
+              picker="year"
+              size="small"
+              value={dayjs().year(summaryYear)}
+              onChange={d => d && setSummaryYear(d.year())}
+              allowClear={false}
+              style={{ width: 100 }}
+            />
+            <Button size="small" icon={<ReloadOutlined />} onClick={fetchSummary} loading={summaryLoading}>Tải lại</Button>
+            <span style={{ marginLeft: 'auto', color: '#6b7280', fontSize: 12 }}>
+              Tổng năm {summaryYear} (Mặt Nạ): <strong style={{ color: '#15803d' }}>
+                {matNaSummaryData.reduce((s, r) => s + (r.tpNhapKho || 0), 0).toLocaleString('vi-VN')}
+              </strong>
+            </span>
+          </>
         ) : (
           <>
             <DatePicker
@@ -7039,6 +7071,15 @@ function NhapKhoTab() {
           onSaveField={canEdit ? saveSummaryField : undefined}
           canEdit={canEditNhapKhoTarget()}
           onDeleteRow={canDelete ? deleteSummaryRow : undefined}
+        />
+      ) : viewMode === 'summary-matna' ? (
+        <NhapKhoSummaryView
+          data={matNaSummaryData}
+          year={summaryYear}
+          mucTieu={0}
+          mucTieuThang={{}}
+          loading={summaryLoading}
+          canEdit={false}
         />
       ) : viewMode === 'tong-hop' ? (
         <NhapKhoTongHopTable data={filteredTongHopActive} loading={tongHopLoading} onRowClick={setTongHopDrawer} filterH={filterH} />

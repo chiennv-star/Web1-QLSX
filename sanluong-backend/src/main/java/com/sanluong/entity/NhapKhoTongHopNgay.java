@@ -45,6 +45,9 @@ public class NhapKhoTongHopNgay {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Transient
+    private String loaiSanPham;
+
     public NhapKhoTongHopNgay() {}
 
     @PrePersist
@@ -71,4 +74,6 @@ public class NhapKhoTongHopNgay {
     public void setNgayXuatKho(LocalDate v) { this.ngayXuatKho = v; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public String getLoaiSanPham() { return loaiSanPham; }
+    public void setLoaiSanPham(String v) { this.loaiSanPham = v; }
 }
