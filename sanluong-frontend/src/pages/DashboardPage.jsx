@@ -2995,7 +2995,7 @@ export default function DashboardPage() {
               headerOffset={headerOffset}
             />,
           },
-          ...(isAdmin() ? [{
+          ...((isAdmin() || isQuanDoc()) ? [{
             key: 'tong_hop',
             label: <Space size={4}><FileExcelOutlined style={{ color: '#7c3aed' }} /><span style={{ color: '#7c3aed', fontWeight: 600 }}>Tổng hợp SL</span></Space>,
             children: <TongHopSanLuongTab
@@ -3013,12 +3013,12 @@ export default function DashboardPage() {
               onDeleteSuccess={() => fetchThData(0, thPaginationRef.current.pageSize, thFilters)}
             />,
           }] : []),
-          ...(isAdmin() ? [{
+          ...((isAdmin() || isQuanDoc()) ? [{
             key: 'phan_tich',
             label: <Space size={4}><BarChartOutlined style={{ color: '#b45309' }} /><span style={{ color: '#b45309', fontWeight: 600 }}>Phân Tích SL</span></Space>,
             children: <PhanTichSanLuongTab pmMap={pmMap} />,
           }] : []),
-          ...((isAdmin() || isAdminKH()) ? [{
+          ...((isAdmin() || isAdminKH() || isQuanDoc()) ? [{
             key: 'hidden',
             label: (
               <span>
@@ -3095,7 +3095,7 @@ export default function DashboardPage() {
                       { title: 'BBC1', dataIndex: 'bbc1_2', key: 'bbc1_2', width: 88, align: 'center', render: v => <span style={{ color: '#000011', fontWeight: 500 }}>{v || '—'}</span> },
                     ],
                   },
-                  {
+                  ...(isQuanDoc() ? [] : [{
                     title: '', key: 'action', width: 100, fixed: 'right', align: 'center',
                     render: (_, record) => (
                       <Popconfirm
@@ -3106,7 +3106,7 @@ export default function DashboardPage() {
                         <Button size="small" icon={<EyeOutlined />}>Bỏ ẩn</Button>
                       </Popconfirm>
                     ),
-                  },
+                  }]),
                 ]}
               />
             ),
@@ -3138,6 +3138,8 @@ export default function DashboardPage() {
 
 // ── Tổng hợp Sản lượng Tab ────────────────────────────────────────────────────
 function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, onFilterChange, onSearch, onPaginationChange, onDeleteSuccess }) {
+  const { isQuanDoc } = useAuth()
+  const readOnly = isQuanDoc() // QUAN_DOC: chỉ xem, không sửa/xóa
   const [delLoading, setDelLoading] = useState(false)
   const [selectedRowKeys, setSelectedRowKeys] = useState([])
   const [bulkDelLoading, setBulkDelLoading] = useState(false)
@@ -3475,7 +3477,7 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
         { title: 'ĐG',   key: 'mm_dg',   width: 160, ellipsis: true, onHeaderCell: hc({ textAlign: 'left' }), render: (_, r) => pmMap[r.maBravo]?.mayMocDg   || <span style={{ color: '#d9d9d9' }}>—</span> },
       ],
     },
-    {
+    ...(readOnly ? [] : [{
       title: '',
       key: 'actions',
       width: 56,
@@ -3486,7 +3488,7 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
           <Button size="small" danger icon={<DeleteOutlined />} loading={delLoading} />
         </Popconfirm>
       )
-    },
+    }]),
   ]
 
   return (
@@ -3562,7 +3564,7 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
         >
           Xuất Excel
         </Button>
-        {selectedRowKeys.length > 0 && (
+        {!readOnly && selectedRowKeys.length > 0 && (
           <Popconfirm
             title={`Xóa ${selectedRowKeys.length} bản ghi đã chọn?`}
             onConfirm={handleBulkDelete}
@@ -3624,7 +3626,7 @@ function TongHopSanLuongTab({ data, loading, pagination, filters, pmMap = {}, on
                 <Button key="save" type="primary" loading={saving} onClick={handleSave}>Lưu</Button>,
               ]
             : [
-                <Button key="edit" type="primary" onClick={startEdit}>Chỉnh sửa</Button>,
+                ...(readOnly ? [] : [<Button key="edit" type="primary" onClick={startEdit}>Chỉnh sửa</Button>]),
                 <Button key="close" onClick={closeDetail}>Đóng</Button>,
               ]
         }

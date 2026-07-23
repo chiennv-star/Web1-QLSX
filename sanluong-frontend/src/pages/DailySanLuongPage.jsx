@@ -6375,7 +6375,7 @@ function NhapKhoAuditLogView({ data, loading, onReload, filterH = 0 }) {
 // ─── NhapKhoTab ───────────────────────────────────────────────────────────────
 
 function NhapKhoTab() {
-  const { canEditNhapKhoTarget, isAdmin, user } = useAuth()
+  const { canEditNhapKhoTarget, isAdmin, isQuanDoc, user } = useAuth()
   // Chỉ ADMIN được sửa/xóa dữ liệu đã có; ADMIN_DG được thêm sản phẩm mới;
   // TKSX/ADMIN_KH/NHAN_VIEN/Quản đốc chỉ xem
   const canEdit = isAdmin()
@@ -6923,7 +6923,7 @@ function NhapKhoTab() {
             { label: 'Nhập Kho', value: 'tong-hop' },
             { label: '✅ Sản phẩm đã hoàn thành', value: 'hoan-thanh' },
             { label: 'Tổng hợp theo ngày', value: 'summary' },
-            ...(isAdmin() ? [{ label: '📜 Lịch sử NK', value: 'audit' }] : []),
+            ...((isAdmin() || isQuanDoc()) ? [{ label: '📜 Lịch sử NK', value: 'audit' }] : []),
           ]}
         />
         {viewMode === 'list' ? (

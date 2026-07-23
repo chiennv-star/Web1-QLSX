@@ -4550,7 +4550,7 @@ function StageSummaryBar({ congDoan, liveData }) {
 // ── StageTab ──────────────────────────────────────────────────────────────────
 export function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentOnSaved, jumpTarget, restrictToMachineTabs = false }) {
   const navigate = useNavigate()
-  const { canEditStage, getAllowedNhom, isNhanVien, canDeleteSchedule, user, isAdmin, isAdminKH, isStageAdmin } = useAuth()
+  const { canEditStage, getAllowedNhom, isNhanVien, canDeleteSchedule, user, isAdmin, isAdminKH, isStageAdmin, isQuanDoc } = useAuth()
   const isAnyAdmin = () => isAdmin() || isAdminKH() || isStageAdmin()
   const allowedNhom = forcedNhom || (congDoan === 'PC' ? getAllowedNhom() : null)
   const AUTO_DEFAULT_NHOM = { DG: 'ĐG', BBC1: 'BBC1' }
@@ -5717,7 +5717,7 @@ export function StageTab({ congDoan, config, forcedNhom = null, onSaved: parentO
                 </span>
               )
             },
-            ...(isAnyAdmin() ? [{
+            ...((isAnyAdmin() || isQuanDoc()) ? [{
               key: 'nonprod',
               color: '#d97706',
               label: (
