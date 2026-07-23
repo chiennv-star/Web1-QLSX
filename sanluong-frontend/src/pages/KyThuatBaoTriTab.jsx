@@ -4,8 +4,11 @@ import {
 } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons'
 import api from '../api/axios'
+import { useAuth } from '../context/AuthContext'
 
 export default function KyThuatBaoTriTab() {
+  const { isQuanDoc } = useAuth()
+  const readOnly = isQuanDoc()
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
   const [keyword, setKeyword] = useState('')
@@ -66,7 +69,7 @@ export default function KyThuatBaoTriTab() {
     { title: 'Lịch 6 tháng đầu', dataIndex: 'lich6tDau', width: 180, render: v => v || <span style={{ color: '#bbb' }}>—</span> },
     { title: 'Lịch 6 tháng cuối', dataIndex: 'lich6tCuoi', width: 180, render: v => v || <span style={{ color: '#bbb' }}>—</span> },
     { title: 'Ghi chú', dataIndex: 'ghiChu', width: 200 },
-    {
+    ...(readOnly ? [] : [{
       title: '', key: 'actions', width: 90, fixed: 'right',
       render: (_, record) => (
         <Space size={4} onClick={e => e.stopPropagation()}>
@@ -76,7 +79,7 @@ export default function KyThuatBaoTriTab() {
           </Popconfirm>
         </Space>
       ),
-    },
+    }]),
   ]
 
   return (
@@ -90,7 +93,7 @@ export default function KyThuatBaoTriTab() {
           style={{ width: 300 }}
           allowClear
         />
-        <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>Thêm thiết bị</Button>
+        {!readOnly && <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>Thêm thiết bị</Button>}
       </Space>
       <Spin spinning={loading}>
         <Table
@@ -101,7 +104,7 @@ export default function KyThuatBaoTriTab() {
           sticky
           scroll={{ x: 800, y: 520 }}
           pagination={{ pageSize: 30, showTotal: t => `${t} thiết bị` }}
-          onRow={record => ({ onClick: () => openEdit(record), style: { cursor: 'pointer' } })}
+          onRow={readOnly ? undefined : record => ({ onClick: () => openEdit(record), style: { cursor: 'pointer' } })}
         />
       </Spin>
 

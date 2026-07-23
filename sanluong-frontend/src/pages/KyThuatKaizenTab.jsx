@@ -6,10 +6,13 @@ import {
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import api from '../api/axios'
+import { useAuth } from '../context/AuthContext'
 
 const numFmt = { formatter: v => v ? Number(v).toLocaleString('vi-VN') : '', parser: v => v ? v.replace(/[^\d]/g, '') : '' }
 
 export default function KyThuatKaizenTab() {
+  const { isQuanDoc } = useAuth()
+  const readOnly = isQuanDoc()
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
   const [keyword, setKeyword] = useState('')
@@ -79,7 +82,7 @@ export default function KyThuatKaizenTab() {
       render: v => v != null ? Number(v).toLocaleString('vi-VN') : '—' },
     { title: 'Mô tả cải tiến', dataIndex: 'moTa', minWidth: 200 },
     { title: 'Người thực hiện', dataIndex: 'nguoiThucHien', width: 140 },
-    {
+    ...(readOnly ? [] : [{
       title: '', key: 'actions', width: 90, fixed: 'right',
       render: (_, record) => (
         <Space size={4} onClick={e => e.stopPropagation()}>
@@ -89,7 +92,7 @@ export default function KyThuatKaizenTab() {
           </Popconfirm>
         </Space>
       ),
-    },
+    }]),
   ]
 
   return (
@@ -103,7 +106,7 @@ export default function KyThuatKaizenTab() {
           style={{ width: 320 }}
           allowClear
         />
-        <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>Thêm cải tiến</Button>
+        {!readOnly && <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>Thêm cải tiến</Button>}
       </Space>
       <Spin spinning={loading}>
         <Table
@@ -114,7 +117,7 @@ export default function KyThuatKaizenTab() {
           sticky
           scroll={{ x: 1050, y: 520 }}
           pagination={{ pageSize: 20, showTotal: t => `${t} bản ghi` }}
-          onRow={record => ({ onClick: () => openEdit(record), style: { cursor: 'pointer' } })}
+          onRow={readOnly ? undefined : record => ({ onClick: () => openEdit(record), style: { cursor: 'pointer' } })}
         />
       </Spin>
 

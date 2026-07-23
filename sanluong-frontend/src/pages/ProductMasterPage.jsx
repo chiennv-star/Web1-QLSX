@@ -8,6 +8,7 @@ import {
   ReloadOutlined, AppstoreOutlined, SaveOutlined, CloseOutlined
 } from '@ant-design/icons'
 import api from '../api/axios'
+import { useAuth } from '../context/AuthContext'
 
 const viFormatter = v => {
   if (v == null || v === '') return ''
@@ -67,6 +68,8 @@ function EditableCell({ editing, dataIndex, inputType, inputProps = {}, children
 
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function ProductMasterPage() {
+  const { isQuanDoc } = useAuth()
+  const readOnly = isQuanDoc()
   const [data, setData]           = useState([])
   const [loading, setLoading]     = useState(false)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 })
@@ -279,7 +282,7 @@ export default function ProductMasterPage() {
       render: v => v || <span style={{ color: '#d9d9d9' }}>—</span>,
       ...editCol('mayMocDg', 'text', { placeholder: 'Tên máy ĐG' }),
     },
-    {
+    ...(readOnly ? [] : [{
       title: 'Thao Tác', key: 'action', width: 100, fixed: 'right', align: 'center',
       render: (_, record) => {
         const editing = isEditing(record)
@@ -311,7 +314,7 @@ export default function ProductMasterPage() {
           </Space>
         )
       }
-    }
+    }])
   ]
 
   const mergedColumns = columns.map(col => {
@@ -348,7 +351,7 @@ export default function ProductMasterPage() {
             Danh mục Mã TP
           </span>
           <span style={{ fontSize: 12, color: '#888' }}>
-            Click nút ✏️ trên hàng để sửa trực tiếp tất cả các ô.
+            {readOnly ? 'Chế độ chỉ xem.' : 'Click nút ✏️ trên hàng để sửa trực tiếp tất cả các ô.'}
           </span>
         </div>
         <Row gutter={12} align="middle">
@@ -370,10 +373,12 @@ export default function ProductMasterPage() {
                 onClick={() => fetchData(0, pagination.pageSize, keyword)}>Tìm</Button>
               <Button size="small" icon={<ReloadOutlined />}
                 onClick={() => { setKeyword(''); fetchData(0) }} />
-              <Button size="small" type="primary" icon={<PlusOutlined />} onClick={openAdd}
-                style={{ background: '#1D4ED8', borderColor: '#1D4ED8' }}>
-                Thêm mã TP
-              </Button>
+              {!readOnly && (
+                <Button size="small" type="primary" icon={<PlusOutlined />} onClick={openAdd}
+                  style={{ background: '#1D4ED8', borderColor: '#1D4ED8' }}>
+                  Thêm mã TP
+                </Button>
+              )}
             </Space>
           </Col>
         </Row>

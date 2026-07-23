@@ -254,7 +254,7 @@ export default function MainLayout() {
             label: t.label,
           })),
         }] : []),
-        ...(isAdmin() ? [{
+        ...(isAdmin() || isQuanDoc() ? [{
           key: 'phan-tich-kh-group',
           icon: <BarChartOutlined />,
           label: 'Phân Tích Kế Hoạch',
@@ -267,7 +267,7 @@ export default function MainLayout() {
         ...(isQuanDoc() ? [
           { key: '/don-hang', icon: <AppstoreOutlined />, label: 'Đơn hàng' },
         ] : []),
-        ...(canEditHangLoi() ? [{
+        ...(canEditHangLoi() || isQuanDoc() ? [{
           key: '/hang-loi',
           icon: <WarningOutlined />,
           label: 'Hàng Xử Lý',
@@ -279,7 +279,7 @@ export default function MainLayout() {
           { key: '/cham-cong', icon: <FileDoneOutlined />, label: 'Chấm công' },
         ] : []),
         { key: '/danh-muc',        icon: <AppstoreOutlined />, label: 'Quản Lý Danh Mục' },
-        ...(isAdmin() || isTPSX() ? [{
+        ...(isAdmin() || isTPSX() || isQuanDoc() ? [{
           key: '/notifications',
           icon: (
             <Badge count={unreadCount} size="small" style={{ background: '#008080' }} offset={[6, -2]}>
@@ -295,8 +295,8 @@ export default function MainLayout() {
             </span>
           ),
         }] : []),
-        ...(isAdmin() ? [{ key: '/trash', icon: <DeleteOutlined style={{ color: '#f87171' }} />, label: <span style={{ color: '#f87171' }}>Thùng Rác</span> }] : []),
-        ...(isAdmin() ? [{ key: '/ky-thuat-cong-nghe', icon: <ToolOutlined />, label: 'Tổ Kỹ thuật - Công nghệ' }] : []),
+        ...(isAdmin() || isQuanDoc() ? [{ key: '/trash', icon: <DeleteOutlined style={{ color: '#f87171' }} />, label: <span style={{ color: '#f87171' }}>Thùng Rác</span> }] : []),
+        ...(isAdmin() || isQuanDoc() ? [{ key: '/ky-thuat-cong-nghe', icon: <ToolOutlined />, label: 'Tổ Kỹ thuật - Công nghệ' }] : []),
       ]
 
   const userMenu = {

@@ -6,6 +6,7 @@ import {
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import api from '../api/axios'
+import { useAuth } from '../context/AuthContext'
 import {
   PHAN_LOAI_OPTIONS, MUC_DO_OPTIONS, TRANG_THAI_OPTIONS,
   phanLoaiColor, mucDoColor, trangThaiColor,
@@ -14,6 +15,8 @@ import {
 const { TextArea } = Input
 
 export default function KyThuatKyThuatTab() {
+  const { isQuanDoc } = useAuth()
+  const readOnly = isQuanDoc()
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
   const [keyword, setKeyword] = useState('')
@@ -86,7 +89,7 @@ export default function KyThuatKyThuatTab() {
     { title: 'Mức độ', dataIndex: 'mucDo', width: 100, render: v => v ? <Tag color={mucDoColor(v)}>{v}</Tag> : '—' },
     { title: 'Trạng thái', dataIndex: 'trangThai', width: 130, render: v => <Tag color={trangThaiColor(v)}>{v || 'Chưa cập nhật'}</Tag> },
     { title: 'Phụ trách', dataIndex: 'nguoiPhuTrach', width: 130 },
-    {
+    ...(readOnly ? [] : [{
       title: '', key: 'actions', width: 90, fixed: 'right',
       render: (_, record) => (
         <Space size={4} onClick={e => e.stopPropagation()}>
@@ -96,7 +99,7 @@ export default function KyThuatKyThuatTab() {
           </Popconfirm>
         </Space>
       ),
-    },
+    }]),
   ]
 
   return (
@@ -110,7 +113,7 @@ export default function KyThuatKyThuatTab() {
           style={{ width: 340 }}
           allowClear
         />
-        <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>Thêm nhật ký</Button>
+        {!readOnly && <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>Thêm nhật ký</Button>}
       </Space>
       <Spin spinning={loading}>
         <Table
@@ -121,7 +124,7 @@ export default function KyThuatKyThuatTab() {
           sticky
           scroll={{ x: 1100, y: 520 }}
           pagination={{ pageSize: 20, showTotal: t => `${t} bản ghi` }}
-          onRow={record => ({ onClick: () => openEdit(record), style: { cursor: 'pointer' } })}
+          onRow={readOnly ? undefined : record => ({ onClick: () => openEdit(record), style: { cursor: 'pointer' } })}
         />
       </Spin>
 

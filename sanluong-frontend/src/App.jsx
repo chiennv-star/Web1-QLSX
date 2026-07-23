@@ -66,7 +66,7 @@ export default function App() {
         <Route path="hang-loi" element={<HangLoiPage />} />
         <Route path="khoach" element={<KhoachPage />} />
         <Route path="product-master" element={
-          <PrivateRoute allowedRoles={['ADMIN', 'ADMIN_KH']}>
+          <PrivateRoute allowedRoles={['ADMIN', 'ADMIN_KH', 'QUAN_DOC']}>
             <ProductMasterPage />
           </PrivateRoute>
         } />
@@ -83,7 +83,7 @@ export default function App() {
           </PrivateRoute>
         } />
         <Route path="trash" element={
-          <PrivateRoute adminOnly>
+          <PrivateRoute allowedRoles={['ADMIN', 'QUAN_DOC']}>
             <TrashPage />
           </PrivateRoute>
         } />
@@ -101,7 +101,7 @@ export default function App() {
           </PrivateRoute>
         } />
         <Route path="ky-thuat-cong-nghe" element={
-          <PrivateRoute adminOnly>
+          <PrivateRoute allowedRoles={['ADMIN', 'QUAN_DOC']}>
             <KyThuatCongNghePage />
           </PrivateRoute>
         } />
