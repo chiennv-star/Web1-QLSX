@@ -321,6 +321,20 @@ public class WorkScheduleController {
         return ResponseEntity.ok(service.patchTinhTrang(id, tinhTrang, auth.getName()));
     }
 
+    // Ghi đè thủ công cờ "đã sản xuất xong" ở Kế hoạch — dùng khi đối chiếu tự động theo soLo
+    // không tìm được bản ghi SCHEDULE tương ứng. value=null để quay lại theo tự động.
+    @PatchMapping("/{id}/da-hoan-thanh-sx-manual")
+    public ResponseEntity<WorkSchedule> setDaHoanThanhSxManual(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body,
+            Authentication auth) {
+        WorkSchedule w = service.getById(id);
+        checkStagePermission(auth, w.getCongDoan(), w.getSource());
+        Object raw = body.get("value");
+        Boolean value = raw == null ? null : Boolean.valueOf(raw.toString());
+        return ResponseEntity.ok(service.setDaHoanThanhSxManual(id, value));
+    }
+
     @PatchMapping("/{id}/hidden")
     public ResponseEntity<WorkSchedule> setHidden(
             @PathVariable Long id,

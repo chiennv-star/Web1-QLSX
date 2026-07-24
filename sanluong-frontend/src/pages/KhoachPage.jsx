@@ -1068,7 +1068,21 @@ function TaskItem({ record, onEdit, onDelete, bodyBg, canEdit, onDragStart, onCo
   const isGap     = record.tinhTrang === 'gap'
   const isDone    = record.tinhTrang === 'done'
   // Đã sản xuất xong ở Sản lượng tổ (bản ghi SCHEDULE tương ứng đã done) — ưu tiên hiển thị cao nhất
-  const isSxDone  = !!record.daHoanThanhSx
+  const isSxDone     = !!record.daHoanThanhSx
+  const sxManualFlag = record.daHoanThanhSxManual // null = theo tự động, true/false = đã ghi đè thủ công
+
+  // ── Ghi đè thủ công "Đã SX xong" — dùng khi đối chiếu tự động theo soLo không tìm ra sản phẩm ──
+  const setSxManual = async (value, e) => {
+    e?.stopPropagation?.()
+    try {
+      await api.patch(`/work-schedule/${record.id}/da-hoan-thanh-sx-manual`, { value })
+      onSaveCoLo?.()
+      message.success(
+        value == null ? 'Đã bỏ đánh dấu thủ công — quay lại theo tự động'
+          : value ? 'Đã đánh dấu Đã SX xong (thủ công)' : 'Đã đánh dấu Chưa SX xong (thủ công)'
+      )
+    } catch { message.error('Cập nhật thất bại') }
+  }
 
   const textColor   = isSxDone ? '#ffffff' : isRatGap ? '#cf1322' : isGap ? '#531dab' : isDone ? '#15803d' : noDonHang ? '#6d28d9' : '#262626'
   const prefixColor = isSxDone ? '#e6fffa' : isRatGap ? '#cf1322' : isGap ? '#531dab' : isDone ? '#15803d' : noDonHang ? '#7c3aed' : '#389e0d'
@@ -1084,6 +1098,22 @@ function TaskItem({ record, onEdit, onDelete, bodyBg, canEdit, onDragStart, onCo
       onClick: () => onCopy(record),
     },
     { type: 'divider' },
+    sxManualFlag !== true && {
+      key: 'sx-done-manual', icon: <CheckSquareOutlined style={{ color: '#267373' }} />,
+      label: 'Đánh dấu Đã SX xong (thủ công)',
+      onClick: () => setSxManual(true),
+    },
+    sxManualFlag !== false && {
+      key: 'sx-not-done-manual', icon: <CloseCircleOutlined style={{ color: '#8c8c8c' }} />,
+      label: 'Đánh dấu Chưa SX xong (thủ công)',
+      onClick: () => setSxManual(false),
+    },
+    sxManualFlag != null && {
+      key: 'sx-manual-clear', icon: <SyncOutlined style={{ color: '#1677ff' }} />,
+      label: 'Bỏ đánh dấu thủ công (theo tự động)',
+      onClick: () => setSxManual(null),
+    },
+    { type: 'divider' },
     {
       key: 'delete', icon: <DeleteOutlined />,
       label: <span style={{ color: '#ef4444' }}>Xóa bản ghi</span>,
@@ -1094,7 +1124,7 @@ function TaskItem({ record, onEdit, onDelete, bodyBg, canEdit, onDragStart, onCo
       }),
       danger: true,
     },
-  ] : []
+  ].filter(Boolean) : []
 
   const card = (
     <div
@@ -1200,7 +1230,12 @@ function TaskItem({ record, onEdit, onDelete, bodyBg, canEdit, onDragStart, onCo
       {congStr && <span style={{ color: mutedColor, fontSize: 11 }}> {congStr}</span>}
       {isSxDone && (
         <Tag style={{ marginLeft: 4, fontSize: 10, padding: '0 4px', lineHeight: '16px', height: 16, verticalAlign: 'middle', background: '#fff', color: '#267373', border: '1px solid #267373', fontWeight: 700 }}>
-          ✓ Đã SX xong
+          ✓ Đã SX xong{sxManualFlag === true ? ' (thủ công)' : ''}
+        </Tag>
+      )}
+      {sxManualFlag === false && !isSxDone && (
+        <Tag style={{ marginLeft: 4, fontSize: 10, padding: '0 4px', lineHeight: '16px', height: 16, verticalAlign: 'middle', color: '#8c8c8c', border: '1px solid #d9d9d9' }}>
+          Chưa SX xong (thủ công)
         </Tag>
       )}
       {isDone && (
