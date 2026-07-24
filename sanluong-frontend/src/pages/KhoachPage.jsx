@@ -1084,12 +1084,12 @@ function TaskItem({ record, onEdit, onDelete, bodyBg, canEdit, onDragStart, onCo
     } catch { message.error('Cập nhật thất bại') }
   }
 
-  const textColor   = isSxDone ? '#ffffff' : isRatGap ? '#cf1322' : isGap ? '#531dab' : isDone ? '#15803d' : noDonHang ? '#6d28d9' : '#262626'
-  const prefixColor = isSxDone ? '#e6fffa' : isRatGap ? '#cf1322' : isGap ? '#531dab' : isDone ? '#15803d' : noDonHang ? '#7c3aed' : '#389e0d'
-  const cardBg      = isSxDone ? '#339999' : isRatGap ? '#fff1f0' : isGap ? '#f5f0ff' : isDone ? '#f0fdf4' : noDonHang ? '#f5f3ff' : '#fff'
-  const cardBorder  = isSxDone ? '#267373' : isRatGap ? '#ffa39e' : isGap ? '#c4b5fd' : isDone ? '#86efac' : noDonHang ? '#c4b5fd' : '#d9d9d9'
-  const cardAccent  = isSxDone ? '#1a4d4d' : isRatGap ? '#ff4d4f' : isGap ? '#7c3aed' : isDone ? '#22c55e' : noDonHang ? '#7c3aed' : '#52c41a'
-  const mutedColor  = isSxDone ? '#d1f5f5' : '#8c8c8c'
+  const textColor   = isSxDone ? '#0f5c5c' : isRatGap ? '#cf1322' : isGap ? '#531dab' : isDone ? '#15803d' : noDonHang ? '#6d28d9' : '#262626'
+  const prefixColor = isSxDone ? '#0f7a7a' : isRatGap ? '#cf1322' : isGap ? '#531dab' : isDone ? '#15803d' : noDonHang ? '#7c3aed' : '#389e0d'
+  const cardBg      = isSxDone ? '#99FFFF' : isRatGap ? '#fff1f0' : isGap ? '#f5f0ff' : isDone ? '#f0fdf4' : noDonHang ? '#f5f3ff' : '#fff'
+  const cardBorder  = isSxDone ? '#33cccc' : isRatGap ? '#ffa39e' : isGap ? '#c4b5fd' : isDone ? '#86efac' : noDonHang ? '#c4b5fd' : '#d9d9d9'
+  const cardAccent  = isSxDone ? '#00b8b8' : isRatGap ? '#ff4d4f' : isGap ? '#7c3aed' : isDone ? '#22c55e' : noDonHang ? '#7c3aed' : '#52c41a'
+  const mutedColor  = isSxDone ? '#3d8c8c' : '#8c8c8c'
 
   const contextMenuItems = canEdit ? [
     {
@@ -1256,11 +1256,11 @@ function TaskItem({ record, onEdit, onDelete, bodyBg, canEdit, onDragStart, onCo
       {record.maDonHang && (
         <div style={{ color: mutedColor, fontSize: 10, marginTop: 1 }}>
           <span style={{ color: isSxDone ? mutedColor : '#bfbfbf' }}>ĐH: </span>
-          <span style={{ fontFamily: 'monospace', fontWeight: 600, color: isSxDone ? '#ffffff' : '#1677ff' }}>{record.maDonHang}</span>
+          <span style={{ fontFamily: 'monospace', fontWeight: 600, color: isSxDone ? '#0f5c5c' : '#1677ff' }}>{record.maDonHang}</span>
         </div>
       )}
       {noDonHang && (
-        <div style={{ color: isSxDone ? '#ffe4ff' : '#7c3aed', fontSize: 10, fontWeight: 700, marginTop: 2 }}>
+        <div style={{ color: '#7c3aed', fontSize: 10, fontWeight: 700, marginTop: 2 }}>
           ⚠ Không tìm thấy ĐH
         </div>
       )}
@@ -1268,7 +1268,7 @@ function TaskItem({ record, onEdit, onDelete, bodyBg, canEdit, onDragStart, onCo
         <div style={{ color: isSxDone ? mutedColor : '#607080', fontSize: 10, marginTop: 1 }}>🏢 {record.phongThucHien}</div>
       )}
       {record.chuY && (
-        <div style={{ color: isSxDone ? '#ffe8c2' : '#d46b08', fontSize: 11, marginTop: 1 }}>⚠ {record.chuY}</div>
+        <div style={{ color: isSxDone ? '#a15c00' : '#d46b08', fontSize: 11, marginTop: 1 }}>⚠ {record.chuY}</div>
       )}
     </div>
   )
@@ -1288,14 +1288,13 @@ function PlanSummaryRow({ record }) {
   const isGap    = record.tinhTrang === 'gap'
   const isDone   = record.tinhTrang === 'done'
   const isSxDone = !!record.daHoanThanhSx
-  const muted    = isSxDone ? '#d1f5f5' : '#8c8c8c'
+  const muted    = isSxDone ? '#3d8c8c' : '#8c8c8c'
   return (
     <div style={{
       padding: '7px 14px',
       borderBottom: '1px solid #f0f2f5',
-      borderLeft: `3px solid ${isSxDone ? '#1a4d4d' : isRatGap ? '#ef4444' : isGap ? '#7c3aed' : isDone ? '#22c55e' : '#d9d9d9'}`,
-      background: isSxDone ? '#339999' : isRatGap ? '#fff5f5' : isGap ? '#f9f5ff' : isDone ? '#f0fdf4' : '#fff',
-      color: isSxDone ? '#ffffff' : undefined,
+      borderLeft: `3px solid ${isSxDone ? '#00b8b8' : isRatGap ? '#ef4444' : isGap ? '#7c3aed' : isDone ? '#22c55e' : '#d9d9d9'}`,
+      background: isSxDone ? '#99FFFF' : isRatGap ? '#fff5f5' : isGap ? '#f9f5ff' : isDone ? '#f0fdf4' : '#fff',
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
         <Space size={4}>
@@ -1304,7 +1303,7 @@ function PlanSummaryRow({ record }) {
             background: grp?.headerBg || '#8c8c8c', color: '#fff',
           }}>{record.toNhom}</span>
           {record.coLo && (
-            <span style={{ fontWeight: 700, fontSize: 13, color: isSxDone ? '#ffffff' : '#1e293b' }}>
+            <span style={{ fontWeight: 700, fontSize: 13, color: '#1e293b' }}>
               {Number(record.coLo).toLocaleString('vi-VN')}
             </span>
           )}
@@ -1314,14 +1313,14 @@ function PlanSummaryRow({ record }) {
           {isDone   && <Tag color="success" style={{ margin: 0, fontSize: 10 }}>✓ Xếp lịch</Tag>}
         </Space>
         {record.maDonHang && (
-          <span style={{ fontSize: 10, color: isSxDone ? '#e6fffa' : '#1677ff', fontFamily: 'monospace' }}>{record.maDonHang}</span>
+          <span style={{ fontSize: 10, color: '#1677ff', fontFamily: 'monospace' }}>{record.maDonHang}</span>
         )}
       </div>
-      <div style={{ fontSize: 12, color: isSxDone ? '#ffffff' : '#374151', lineHeight: 1.4 }}>
+      <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.4 }}>
         {record.tenTrinh || record.maSp || '—'}
         {record.soLo && <span style={{ color: muted, fontSize: 11, marginLeft: 6 }}>· Lô: {record.soLo}</span>}
       </div>
-      {record.chuY && <div style={{ fontSize: 11, color: isSxDone ? '#ffe8c2' : '#d97706', marginTop: 2 }}>⚠ {record.chuY}</div>}
+      {record.chuY && <div style={{ fontSize: 11, color: '#d97706', marginTop: 2 }}>⚠ {record.chuY}</div>}
     </div>
   )
 }
