@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { DatePicker, Button, Spin, message, Tabs, Table, Tag, Tooltip, Modal, Switch } from 'antd'
+import { DatePicker, Button, Spin, message, Tabs, Table, Tag, Tooltip, Modal, Switch, Input, Select } from 'antd'
 import { SearchOutlined, ReloadOutlined, BarChartOutlined, SettingOutlined, PlusOutlined, DeleteOutlined, EyeInvisibleOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import {
@@ -165,6 +165,26 @@ export default function PhanTichKeHoachPage() {
     const fn = TO_FILTER_FN[selectedTo]
     return fn ? raw.filter(fn) : raw
   }, [raw, selectedTo])
+
+  // ── Bộ lọc trên thanh tiêu đề bảng "Chi Tiết" ──────────────────────────────
+  const [ctSearch, setCtSearch]         = useState('')   // mã bravo / tên SP / số lô
+  const [ctStage, setCtStage]           = useState(null) // công đoạn (PCPL1/PCPL2/PL/BBC1/DG/CC)
+  const [ctTinhTrang, setCtTinhTrang]   = useState(null) // done/doing/gap/rat_gap
+
+  const chiTietRows = useMemo(() => {
+    let list = filteredRaw
+    if (ctStage)     list = list.filter(r => resolveStage(r) === ctStage)
+    if (ctTinhTrang) list = list.filter(r => r.tinhTrang === ctTinhTrang)
+    if (ctSearch.trim()) {
+      const q = ctSearch.trim().toLowerCase()
+      list = list.filter(r =>
+        (r.maBravo  || '').toLowerCase().includes(q) ||
+        (r.tenTrinh || '').toLowerCase().includes(q) ||
+        (r.soLo     || '').toLowerCase().includes(q)
+      )
+    }
+    return list
+  }, [filteredRaw, ctSearch, ctStage, ctTinhTrang])
 
   // Dedup theo soLo+congDoan+toNhom: 1 lô xếp nhiều ngày chỉ tính 1 lần
   const dedupedByLo = useMemo(() => {
@@ -972,7 +992,37 @@ export default function PhanTichKeHoachPage() {
       label: 'Chi Tiết',
       children: (
         <div style={{ padding: '12px 0' }}>
-          <Table size="small" dataSource={filteredRaw} rowKey="id"
+          {/* ── Thanh lọc ── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+            <Input
+              size="small" allowClear placeholder="Tìm mã Bravo / tên SP / số lô..."
+              prefix={<SearchOutlined style={{ color: '#bbb' }} />}
+              value={ctSearch} onChange={e => setCtSearch(e.target.value)}
+              style={{ width: 240 }}
+            />
+            <Select
+              size="small" allowClear placeholder="Công đoạn" value={ctStage}
+              onChange={setCtStage} style={{ width: 120 }}
+              options={STAGES.map(s => ({ value: s.key, label: s.label }))}
+            />
+            <Select
+              size="small" allowClear placeholder="Tình trạng" value={ctTinhTrang}
+              onChange={setCtTinhTrang} style={{ width: 120 }}
+              options={[
+                { value: 'done',    label: 'Xong' },
+                { value: 'doing',   label: 'Đang' },
+                { value: 'gap',     label: 'Gấp' },
+                { value: 'rat_gap', label: 'Rất gấp' },
+              ]}
+            />
+            {(ctSearch || ctStage || ctTinhTrang) && (
+              <Button size="small" onClick={() => { setCtSearch(''); setCtStage(null); setCtTinhTrang(null) }}>
+                Xóa lọc
+              </Button>
+            )}
+            <span style={{ fontSize: 12, color: '#888' }}>{chiTietRows.length} / {filteredRaw.length} kế hoạch</span>
+          </div>
+          <Table size="small" dataSource={chiTietRows} rowKey="id"
             scroll={{ x: 'max-content', y: 'calc(100vh - 340px)' }}
             pagination={{ pageSize: 20, showSizeChanger: true, showTotal: t => `${t} kế hoạch` }}
             columns={[
@@ -1320,7 +1370,13 @@ export default function PhanTichKeHoachPage() {
         <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
         {[{ key: 'month', label: 'Tháng' }, { key: 'range', label: 'Khoảng' }].map(m => (
           <Button key={m.key} size="small"
-            onClick={() => { setPickerMode(m.key); setActivePreset(null) }}
+            onClick={() => {
+              setPickerMode(m.key)
+              // Chuyển sang "Tháng": phải tự set lại khoảng ngày = cả tháng hiện đang chọn rồi fetch ngay,
+              // nếu không DatePicker chỉ hiển thị đúng tháng nhưng dữ liệu vẫn theo range cũ (VD tuần này)
+              if (m.key === 'month') handleMonthChange(dateRange?.[0] || dayjs())
+              else setActivePreset(null)
+            }}
             style={{
               fontWeight: 600, fontSize: 12,
               background: pickerMode === m.key && !activePreset ? '#fff' : 'rgba(255,255,255,0.12)',
