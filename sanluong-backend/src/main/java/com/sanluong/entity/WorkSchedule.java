@@ -154,6 +154,11 @@ public class WorkSchedule {
     @Transient
     private Integer tpNhapKho;
 
+    /** Transient — true nếu bản ghi PLAN có bản ghi SCHEDULE tương ứng (cùng soLo + công đoạn hiệu lực)
+     *  đã tinhTrang='done' ở Sản lượng tổ — dùng để tô màu card Kế hoạch báo đã sản xuất xong */
+    @Transient
+    private boolean daHoanThanhSx = false;
+
     public WorkSchedule() {}
 
     @PrePersist
@@ -248,6 +253,8 @@ public class WorkSchedule {
     public void setPlanned(boolean isPlanned) { this.isPlanned = isPlanned; }
     public boolean isHasLsx() { return hasLsx; }
     public void setHasLsx(boolean hasLsx) { this.hasLsx = hasLsx; }
+    public boolean isDaHoanThanhSx() { return daHoanThanhSx; }
+    public void setDaHoanThanhSx(boolean daHoanThanhSx) { this.daHoanThanhSx = daHoanThanhSx; }
     public Integer getTpNhapKho() { return tpNhapKho; }
     public void setTpNhapKho(Integer tpNhapKho) { this.tpNhapKho = tpNhapKho; }
     public boolean isHidden() { return hidden; }

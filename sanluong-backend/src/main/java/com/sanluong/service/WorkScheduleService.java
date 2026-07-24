@@ -97,6 +97,30 @@ public class WorkScheduleService {
         });
     }
 
+    /** Enrich daHoanThanhSx: đánh dấu các bản ghi PLAN có bản ghi SCHEDULE tương ứng
+     *  (cùng soLo + công đoạn hiệu lực: toNhom nếu là PCPL1/PCPL2, ngược lại dùng congDoan) đã done. */
+    private void enrichDaHoanThanhSx(List<WorkSchedule> list) {
+        List<String> soLos = list.stream()
+                .filter(w -> "PLAN".equals(w.getSource()))
+                .map(WorkSchedule::getSoLo)
+                .filter(s -> s != null && !s.isBlank())
+                .distinct()
+                .collect(Collectors.toList());
+        if (soLos.isEmpty()) return;
+        Set<String> doneKeys = new HashSet<>();
+        for (Object[] row : repository.findDoneScheduleCongDoanSoLo(soLos)) {
+            String cd = (String) row[0];
+            String soLo = (String) row[1];
+            doneKeys.add(cd + "|" + soLo);
+        }
+        list.forEach(w -> {
+            if (!"PLAN".equals(w.getSource()) || w.getSoLo() == null) return;
+            String effectiveCd = ("PCPL1".equals(w.getToNhom()) || "PCPL2".equals(w.getToNhom()))
+                    ? w.getToNhom() : w.getCongDoan();
+            w.setDaHoanThanhSx(doneKeys.contains(effectiveCd + "|" + w.getSoLo()));
+        });
+    }
+
     /** Enrich maBravo từ ProductMaster cho các bản ghi chưa có (backward compat) */
     private void enrichMaBravo(List<WorkSchedule> list) {
         Set<String> maSps = list.stream()
@@ -155,6 +179,7 @@ public class WorkScheduleService {
         enrichMaBravo(content);
         enrichHasLsx(content);
         enrichTpNhapKho(content);
+        enrichDaHoanThanhSx(content);
         return new PageImpl<>(content, PageRequest.of(page, size), all.size());
     }
 
