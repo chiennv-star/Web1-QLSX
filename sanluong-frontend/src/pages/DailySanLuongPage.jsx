@@ -3680,43 +3680,68 @@ function DatKhongDatDetailModal({ open, initialKey, rowsDetail, kyText, onClose 
         </span>
       ),
       children: (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16 }}>
+        <div className="dkd-grid">
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 13, color: '#047857', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
               ✓ Đạt <span style={{ background: '#d1fae5', color: '#065f46', padding: '1px 8px', borderRadius: 20, fontSize: 11 }}>{datRows.length} lô</span>
             </div>
             <Table size="small" columns={cols} dataSource={datRows} rowKey={r => r.requestId || r.sessionId || `${r.soLo}-${r.ngay}-${r.maSp}`}
-              pagination={datRows.length > 8 ? { pageSize: 8, size: 'small' } : false} scroll={{ x: 910, y: 460 }} />
+              pagination={datRows.length > 8 ? { pageSize: 8, size: 'small' } : false} scroll={{ x: 910 }} />
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 13, color: '#b91c1c', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
               ✗ Không đạt <span style={{ background: '#fee2e2', color: '#991b1b', padding: '1px 8px', borderRadius: 20, fontSize: 11 }}>{khongDatRows.length} lô</span>
             </div>
             <Table size="small" columns={cols} dataSource={khongDatRows} rowKey={r => r.requestId || r.sessionId || `${r.soLo}-${r.ngay}-${r.maSp}`}
-              pagination={khongDatRows.length > 8 ? { pageSize: 8, size: 'small' } : false} scroll={{ x: 910, y: 460 }} />
+              pagination={khongDatRows.length > 8 ? { pageSize: 8, size: 'small' } : false} scroll={{ x: 910 }} />
           </div>
         </div>
       ),
     }
   })
 
+  if (!open) return null
+
   return (
-    <Modal
-      open={open}
-      onCancel={onClose}
-      footer={null}
-      width="98vw"
-      style={{ top: 8, maxWidth: 1960 }}
-      destroyOnHidden
-      title={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontWeight: 800, fontSize: 15, color: '#0f766e' }}>Chi tiết lô Đạt / Không đạt theo tổ</span>
-          <span style={{ fontSize: 12, color: '#64748b', fontWeight: 400 }}>Kỳ {kyText}</span>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1050, pointerEvents: 'none' }}>
+      <style>{`
+        .dkd-drag { cursor: move; user-select: none; }
+        .dkd-container { container-type: inline-size; }
+        .dkd-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+        @container (max-width: 860px) {
+          .dkd-grid { grid-template-columns: 1fr; }
+        }
+      `}</style>
+      <Rnd
+        default={{
+          x: Math.max(20, (window.innerWidth - 1600) / 2),
+          y: Math.max(16, (window.innerHeight - 760) / 2),
+          width: Math.min(1600, window.innerWidth - 40),
+          height: Math.min(760, window.innerHeight - 32),
+        }}
+        minWidth={520}
+        minHeight={380}
+        bounds="window"
+        dragHandleClassName="dkd-drag"
+        style={{ pointerEvents: 'all', zIndex: 1050 }}
+        enableResizing={{ bottom: true, right: true, bottomRight: true, left: true, bottomLeft: true, top: false, topLeft: false, topRight: false }}
+      >
+        <div style={{ borderRadius: 10, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.24)', background: '#fff', display: 'flex', flexDirection: 'column', height: '100%' }}>
+          {/* Header */}
+          <div className="dkd-drag" style={{ background: 'linear-gradient(135deg, #0f766e 0%, #0d9488 100%)', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            <span style={{ fontWeight: 800, fontSize: 15, color: '#fff' }}>Chi tiết lô Đạt / Không đạt theo tổ</span>
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>Kỳ {kyText}</span>
+            <span style={{ marginLeft: 'auto', fontSize: 10, color: 'rgba(255,255,255,0.65)' }}>⤡ Kéo góc/cạnh để phóng to · thu nhỏ</span>
+            <button onClick={onClose}
+              style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 18, padding: 0, lineHeight: 1, flexShrink: 0 }}>✕</button>
+          </div>
+          {/* Body */}
+          <div className="dkd-container" style={{ flex: 1, overflow: 'auto', padding: '10px 16px' }}>
+            <Tabs activeKey={activeKey} onChange={setActiveKey} items={items} />
+          </div>
         </div>
-      }
-    >
-      <Tabs activeKey={activeKey} onChange={setActiveKey} items={items} />
-    </Modal>
+      </Rnd>
+    </div>
   )
 }
 
