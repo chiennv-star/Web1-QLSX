@@ -401,13 +401,16 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
             @Param("soLo")       String soLo
     );
 
-    /** Danh sách (congDoan, soLo) của các bản ghi SCHEDULE đã tinhTrang='done', giới hạn theo tập soLo —
-     *  dùng để enrich cờ "đã sản xuất xong" cho các bản ghi PLAN tương ứng ở Kế hoạch. */
+    /** Danh sách (congDoan, soLo, maBravo) của các bản ghi SCHEDULE đã tinhTrang='done', giới hạn theo tập soLo —
+     *  dùng để enrich cờ "đã sản xuất xong" cho các bản ghi PLAN tương ứng ở Kế hoạch.
+     *  Bắt buộc kèm maBravo vì soLo thường là ngày (VD "230726") nên rất dễ trùng giữa nhiều sản phẩm
+     *  khác nhau cùng tổ trong cùng ngày — chỉ khớp theo (congDoan, soLo) sẽ đánh dấu nhầm sản phẩm khác. */
     @Query("""
-        SELECT DISTINCT w.congDoan, w.soLo FROM WorkSchedule w
+        SELECT DISTINCT w.congDoan, w.soLo, w.maBravo FROM WorkSchedule w
         WHERE (w.source = 'SCHEDULE' OR w.source IS NULL)
           AND w.tinhTrang = 'done'
           AND w.soLo IN :soLos
+          AND w.maBravo IS NOT NULL
           AND w.deletedAt IS NULL
         """)
     List<Object[]> findDoneScheduleCongDoanSoLo(@Param("soLos") List<String> soLos);

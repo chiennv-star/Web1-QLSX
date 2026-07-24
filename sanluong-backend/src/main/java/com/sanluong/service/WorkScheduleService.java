@@ -98,7 +98,9 @@ public class WorkScheduleService {
     }
 
     /** Enrich daHoanThanhSx: đánh dấu các bản ghi PLAN có bản ghi SCHEDULE tương ứng
-     *  (cùng soLo + công đoạn hiệu lực: toNhom nếu là PCPL1/PCPL2, ngược lại dùng congDoan) đã done.
+     *  (cùng soLo + maBravo + công đoạn hiệu lực: toNhom nếu là PCPL1/PCPL2, ngược lại dùng congDoan) đã done.
+     *  Bắt buộc khớp cả maBravo — soLo thường chỉ là ngày (VD "230726") nên rất dễ trùng giữa nhiều sản phẩm
+     *  khác nhau cùng tổ trong cùng ngày, nếu chỉ khớp soLo sẽ đánh dấu nhầm sản phẩm khác đã xong.
      *  Nếu người dùng đã ghi đè thủ công (daHoanThanhSxManual != null) thì ưu tiên giá trị thủ công —
      *  dùng khi không tìm được bản ghi SCHEDULE tương ứng (VD: chưa nhập soLo, sai lệch mã SP...). */
     private void enrichDaHoanThanhSx(List<WorkSchedule> list) {
@@ -113,7 +115,8 @@ public class WorkScheduleService {
             for (Object[] row : repository.findDoneScheduleCongDoanSoLo(soLos)) {
                 String cd = (String) row[0];
                 String soLo = (String) row[1];
-                doneKeys.add(cd + "|" + soLo);
+                String maBravo = (String) row[2];
+                doneKeys.add(cd + "|" + soLo + "|" + maBravo);
             }
         }
         list.forEach(w -> {
@@ -122,10 +125,10 @@ public class WorkScheduleService {
                 w.setDaHoanThanhSx(w.getDaHoanThanhSxManual());
                 return;
             }
-            if (w.getSoLo() == null) return;
+            if (w.getSoLo() == null || w.getMaBravo() == null) return;
             String effectiveCd = ("PCPL1".equals(w.getToNhom()) || "PCPL2".equals(w.getToNhom()))
                     ? w.getToNhom() : w.getCongDoan();
-            w.setDaHoanThanhSx(doneKeys.contains(effectiveCd + "|" + w.getSoLo()));
+            w.setDaHoanThanhSx(doneKeys.contains(effectiveCd + "|" + w.getSoLo() + "|" + w.getMaBravo()));
         });
     }
 
