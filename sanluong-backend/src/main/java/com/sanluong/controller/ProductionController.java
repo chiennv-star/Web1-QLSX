@@ -290,6 +290,21 @@ public class ProductionController {
         return ResponseEntity.ok(productionService.updateNhapKho(id, body, auth.getName()));
     }
 
+    /**
+     * Sửa trực tiếp TP Nhập Kho ngay tại bảng Sản Lượng (Lệnh Sản Xuất) — chỉ ADMIN/ADMIN_KH.
+     * Ghi đè thẳng lên field của bản ghi này, KHÔNG tạo/đổi bất kỳ dòng nào bên tab Nhập Kho,
+     * tách biệt hoàn toàn khỏi PATCH /{id}/nhap-kho ở trên (endpoint đó tạo clone nếu gọi trên bản gốc).
+     */
+    @PatchMapping("/{id}/tp-nhap-kho")
+    public ResponseEntity<ProductionRecord> updateTpNhapKhoDirect(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body,
+            Authentication auth) {
+        Object v = body.get("tpNhapKho");
+        Integer value = v == null ? null : Integer.valueOf(v.toString());
+        return ResponseEntity.ok(productionService.setTpNhapKhoManual(id, value, auth.getName()));
+    }
+
     @GetMapping("/export")
     public ResponseEntity<byte[]> exportExcel(
             @RequestParam(required = false) String maTp,

@@ -273,7 +273,9 @@ public class ProductionService {
         saveFieldHistory(changes, id, "dgChiPhi",      str(old.getDgChiPhi()),      str(dto.getDgChiPhi()),      username, now);
         saveFieldHistory(changes, id, "bbc1_3",        str(old.getBbc1_3()),        str(dto.getBbc1_3()),        username, now);
         saveFieldHistory(changes, id, "spTrungGian",   str(old.getSpTrungGian()),   str(dto.getSpTrungGian()),   username, now);
-        saveFieldHistory(changes, id, "tpNhapKho",     str(old.getTpNhapKho()),     str(dto.getTpNhapKho()),     username, now);
+        // tpNhapKho KHÔNG được cập nhật/ghi lịch sử ở đây — field này chỉ do đồng bộ 1 chiều
+        // từ Nhập Kho (syncTpNhapKhoToSource) ghi, tránh form Sản Lượng gửi lại giá trị cũ
+        // (đã tải trước đó) đè mất số liệu Nhập Kho mới hơn.
         saveFieldHistory(changes, id, "temDb",         str(old.getTemDb()),         str(dto.getTemDb()),         username, now);
         saveFieldHistory(changes, id, "slTrungBinh",   str(old.getSlTrungBinh()),   str(dto.getSlTrungBinh()),   username, now);
         saveFieldHistory(changes, id, "moTa",          str(old.getMoTa()),          str(dto.getMoTa()),          username, now);
@@ -638,12 +640,30 @@ public class ProductionService {
      * Sau mỗi lần thêm/sửa/xóa 1 lần nhập kho, tính lại tổng đúng theo Mã Bravo + Số Lô + Mã ĐH
      * (không gộp nhầm giữa các lệnh dùng chung số lô) rồi ghi vào bản ghi gốc (phatLenh=true)
      * tương ứng, đồng thời ghi lịch sử (ai, lúc nào, giá trị cũ → mới) vào Lịch sử NK.
+     *
+     * Khi bản ghi gốc đã "Hoàn thiện hồ sơ" (hoSoHoanThien=true) → NGƯNG đồng bộ, giữ nguyên
+     * SL Nhập Kho đã chốt trên Sản lượng, tránh sửa nhầm ở Nhập Kho làm lệch số liệu đã tổng kết.
      */
     private void syncTpNhapKhoToSource(String maBravo, String lsx, String maDonHang, String username) {
         if (maBravo == null || lsx == null) return;
         List<ProductionRecord> masters = repository.findMasterByKey3(maBravo, lsx, maDonHang);
         if (masters.isEmpty()) return;
         ProductionRecord master = masters.get(0);
+        if (Boolean.TRUE.equals(master.getHoSoHoanThien())) {
+            NhapKhoAuditLog skipLog = new NhapKhoAuditLog();
+            skipLog.setProductionRecordId(master.getId());
+            skipLog.setMaBravo(master.getMaBravo());
+            skipLog.setMaTp(master.getMaTp());
+            skipLog.setTienTrinh(master.getTienTrinh());
+            skipLog.setLsx(master.getLsx());
+            skipLog.setHanhDong("DONG_BO_SLT_BO_QUA");
+            skipLog.setTpNhapKho(master.getTpNhapKho());
+            skipLog.setThayDoi("Bỏ qua đồng bộ SL Nhập Kho — hồ sơ đã hoàn thiện, giữ nguyên " + fmtOrDash(master.getTpNhapKho()));
+            skipLog.setChangedBy(username);
+            skipLog.setChangedAt(LocalDateTime.now());
+            nhapKhoAuditLogRepository.save(skipLog);
+            return;
+        }
         List<ProductionRecord> clones = repository.findNhapKhoClonesByKey3(maBravo, lsx, maDonHang);
         int total = clones.stream().mapToInt(c -> c.getTpNhapKho() != null ? c.getTpNhapKho() : 0).sum();
         Integer oldVal = master.getTpNhapKho();
@@ -685,6 +705,38 @@ public class ProductionService {
         log.setChangedBy(username);
         log.setChangedAt(LocalDateTime.now());
         nhapKhoAuditLogRepository.save(log);
+    }
+
+    /**
+     * Sửa trực tiếp TP Nhập Kho ngay tại bảng Sản Lượng (Lệnh Sản Xuất) — chỉ ADMIN/ADMIN_KH.
+     * Ghi thẳng lên field của CHÍNH bản ghi này, không đụng tới clone/dòng nào bên tab Nhập Kho,
+     * không tính lại tổng theo Mã Bravo+Số Lô+Mã ĐH — tách biệt hoàn toàn khỏi syncTpNhapKhoToSource.
+     * Lưu ý: nếu sau đó Nhập Kho có thay đổi (thêm/sửa/xóa 1 lần nhập kho) và hồ sơ CHƯA hoàn thiện,
+     * syncTpNhapKhoToSource vẫn sẽ tính lại và có thể ghi đè giá trị sửa tay này — đúng theo cơ chế
+     * đồng bộ 1 chiều Nhập Kho → Sản lượng đã có; muốn giữ cố định thì cần đánh dấu Hoàn thiện hồ sơ.
+     */
+    public ProductionRecord setTpNhapKhoManual(Long id, Integer value, String username) {
+        ProductionRecord r = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));
+        Integer oldVal = r.getTpNhapKho();
+        r.setTpNhapKho(value);
+        r.setUpdatedBy(username);
+        ProductionRecord saved = repository.save(r);
+
+        NhapKhoAuditLog log = new NhapKhoAuditLog();
+        log.setProductionRecordId(saved.getId());
+        log.setMaBravo(saved.getMaBravo());
+        log.setMaTp(saved.getMaTp());
+        log.setTienTrinh(saved.getTienTrinh());
+        log.setLsx(saved.getLsx());
+        log.setHanhDong("SUA_TRUC_TIEP_SLT");
+        log.setTpNhapKho(value);
+        log.setThayDoi("SL Nhập Kho (sửa trực tiếp tại Sản Lượng): " + fmtOrDash(oldVal) + " → " + fmtOrDash(value));
+        log.setChangedBy(username);
+        log.setChangedAt(LocalDateTime.now());
+        nhapKhoAuditLogRepository.save(log);
+
+        return saved;
     }
 
     private void applyNhapKhoFields(ProductionRecord r, java.util.Map<String, String> body) {
@@ -1314,7 +1366,7 @@ public class ProductionService {
         r.setPlChiPhi(dto.getPlChiPhi());
         r.setDgChiPhi(dto.getDgChiPhi());
         r.setTemDb(dto.getTemDb());
-        r.setTpNhapKho(dto.getTpNhapKho());
+        // tpNhapKho: không set ở đây — chỉ syncTpNhapKhoToSource (đồng bộ từ Nhập Kho) được ghi field này
         r.setSoSpCong(dto.getSoSpCong());
         r.setSlTrungBinh(dto.getSlTrungBinh());
         r.setMoTa(dto.getMoTa());
@@ -1428,10 +1480,17 @@ public class ProductionService {
                 .distinct().collect(Collectors.toList());
         if (maBravos.isEmpty()) return;
         // key = maBravo|soLo|congDoan -> tinhTrang
+        // OR logic: nhiều WorkSchedule có thể chia sẻ cùng (maBravo, soLo, congDoan) — vd lô
+        // được xếp làm nhiều buổi/ngày khác nhau cho cùng PCPL1/PCPL2. Nếu ghi đè vô điều kiện
+        // theo thứ tự trả về của query (không ORDER BY, không đảm bảo), 1 buổi "doing" đến sau
+        // có thể đè mất trạng thái "done" đã đạt ở buổi khác cùng congDoan → hiện sai "Doing".
+        // Áp OR logic giống pcTrangThai: đã "done" thì giữ nguyên, không bị hạ cấp.
         Map<String, String> statusMap = new HashMap<>();
         workScheduleRepository.findPcplStatusBatch(maBravos).forEach(row -> {
             String key = s(row[0]) + "|" + s(row[1]) + "|" + s(row[2]);
-            if (row[3] != null) statusMap.put(key, row[3].toString());
+            String tt = row[3] != null ? row[3].toString() : null;
+            if (tt == null) return;
+            if (!"done".equals(statusMap.get(key))) statusMap.put(key, tt);
         });
         content.forEach(r -> {
             String bravo = s(r.getMaBravo());

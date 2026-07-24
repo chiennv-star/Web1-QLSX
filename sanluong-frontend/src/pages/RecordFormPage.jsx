@@ -41,6 +41,7 @@ export default function RecordFormPage() {
   const { isAdmin, isAdminKH, canEditHangLoi, canEditProduction } = useAuth()
   const canEditHL    = canEditHangLoi()
   const canEditProd  = canEditProduction()
+  const canEditTpNhapKhoDirect = isAdmin() || isAdminKH()
   const [isEditing, setIsEditing] = useState(!isEdit) // true khi tạo mới, false khi xem/chỉnh sửa
   const [saving, setSaving] = useState(false)
   const [phatLenh, setPhatLenh] = useState(false)
@@ -69,6 +70,24 @@ export default function RecordFormPage() {
   const [ngayNew, setNgayNew] = useState({})         // hangLoiId → {ngay,slTraVe,slDatSauXuLy,slHuy,ghiChu}
   const [qaData, setQaData] = useState(null)         // live QA từ WorkSchedule { pl: {...}, dg: {...} }
   const [ngaySaving, setNgaySaving] = useState({})   // hangLoiId+ngayId → bool
+  const [savingTpNhapKho, setSavingTpNhapKho] = useState(false)
+
+  // Sửa trực tiếp TP Nhập Kho tại bảng Sản Lượng — riêng biệt khỏi nút "Lưu" chung của form,
+  // không đi qua PUT /production/{id} (field này bị loại khỏi update chung để tránh ghi đè
+  // nhầm bằng giá trị cũ đã tải trước đó). Chỉ ADMIN/ADMIN_KH được gọi (xem SecurityConfig).
+  const saveTpNhapKhoDirect = async (val) => {
+    if (!isEdit) return
+    setSavingTpNhapKho(true)
+    try {
+      const { data } = await api.patch(`/production/${id}/tp-nhap-kho`, { tpNhapKho: val })
+      form.setFieldValue('tpNhapKho', data.tpNhapKho ?? 0)
+      message.success('Đã cập nhật TP Nhập Kho')
+    } catch {
+      message.error('Cập nhật TP Nhập Kho thất bại')
+    } finally {
+      setSavingTpNhapKho(false)
+    }
+  }
 
   // Watched values for live calculation
   const watchBbc1    = Form.useWatch('bbc1_3',        form) || 0
@@ -908,11 +927,25 @@ export default function RecordFormPage() {
                               <td style={{ padding: '7px 14px', background: '#f8fafc', color: '#64748b', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap', width: '22%' }}>TP Nhập kho</td>
                               <td style={{ padding: '4px 10px', width: '28%' }}>
                                 <Form.Item name="tpNhapKho" style={{ marginBottom: 0 }}>
-                                  <InputNumber size="small" style={{ width: '100%', fontWeight: 600 }} min={0} disabled
+                                  <InputNumber size="small" style={{ width: '100%', fontWeight: 600 }} min={0}
+                                    disabled={ro || !canEditTpNhapKhoDirect}
                                     formatter={v => v ? Number(v).toLocaleString('vi-VN') : '0'}
-                                    parser={v => v ? v.replace(/[^\d]/g, '') : 0} />
+                                    parser={v => v ? v.replace(/[^\d]/g, '') : 0}
+                                    onBlur={e => {
+                                      if (ro || !canEditTpNhapKhoDirect || savingTpNhapKho) return
+                                      const num = parseInt(e.target.value.replace(/[^\d]/g, ''), 10) || 0
+                                      if (num !== (watchTpNhapKho || 0)) saveTpNhapKhoDirect(num)
+                                    }}
+                                    onPressEnter={e => {
+                                      const num = parseInt(e.target.value.replace(/[^\d]/g, ''), 10) || 0
+                                      saveTpNhapKhoDirect(num)
+                                    }} />
                                 </Form.Item>
-                                <span style={{ fontSize: 10, color: '#9ca3af' }}>Tự động đồng bộ từ Nhập Kho</span>
+                                <span style={{ fontSize: 10, color: '#9ca3af' }}>
+                                  {canEditTpNhapKhoDirect
+                                    ? (savingTpNhapKho ? 'Đang lưu...' : 'Sửa trực tiếp — không ảnh hưởng tab Nhập Kho')
+                                    : 'Tự động đồng bộ từ Nhập Kho'}
+                                </span>
                               </td>
                             </tr>
                             <tr>
