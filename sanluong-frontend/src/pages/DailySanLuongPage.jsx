@@ -3680,20 +3680,20 @@ function DatKhongDatDetailModal({ open, initialKey, rowsDetail, kyText, onClose 
         </span>
       ),
       children: (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16 }}>
+          <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 13, color: '#047857', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
               ✓ Đạt <span style={{ background: '#d1fae5', color: '#065f46', padding: '1px 8px', borderRadius: 20, fontSize: 11 }}>{datRows.length} lô</span>
             </div>
             <Table size="small" columns={cols} dataSource={datRows} rowKey={r => r.requestId || r.sessionId || `${r.soLo}-${r.ngay}-${r.maSp}`}
-              pagination={datRows.length > 8 ? { pageSize: 8, size: 'small' } : false} scroll={{ x: 820, y: 340 }} />
+              pagination={datRows.length > 8 ? { pageSize: 8, size: 'small' } : false} scroll={{ x: 910, y: 460 }} />
           </div>
-          <div>
+          <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 13, color: '#b91c1c', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
               ✗ Không đạt <span style={{ background: '#fee2e2', color: '#991b1b', padding: '1px 8px', borderRadius: 20, fontSize: 11 }}>{khongDatRows.length} lô</span>
             </div>
             <Table size="small" columns={cols} dataSource={khongDatRows} rowKey={r => r.requestId || r.sessionId || `${r.soLo}-${r.ngay}-${r.maSp}`}
-              pagination={khongDatRows.length > 8 ? { pageSize: 8, size: 'small' } : false} scroll={{ x: 820, y: 340 }} />
+              pagination={khongDatRows.length > 8 ? { pageSize: 8, size: 'small' } : false} scroll={{ x: 910, y: 460 }} />
           </div>
         </div>
       ),
@@ -3705,8 +3705,8 @@ function DatKhongDatDetailModal({ open, initialKey, rowsDetail, kyText, onClose 
       open={open}
       onCancel={onClose}
       footer={null}
-      width="92vw"
-      style={{ top: 16, maxWidth: 1500 }}
+      width="98vw"
+      style={{ top: 8, maxWidth: 1960 }}
       destroyOnHidden
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
