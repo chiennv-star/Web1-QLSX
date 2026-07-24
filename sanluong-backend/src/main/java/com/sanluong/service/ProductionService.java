@@ -574,9 +574,58 @@ public class ProductionService {
             row.put("soLanNhapKho",        firstAssign ? cntMap.getOrDefault(key, 0) : 0);
             row.put("ngayNhapKhoMoiNhat",  firstAssign ? maxDateMap.get(key) : null);
             row.put("hoSoHoanThien",       Boolean.TRUE.equals(r.getHoSoHoanThien()));
+            row.put("tpNhapKho",           r.getTpNhapKho());
             result.add(row);
         }
         return result;
+    }
+
+    /**
+     * Cập nhật thủ công (thao tác "Cập nhật" trong tab Nhập Kho): kiểm tra bản ghi gốc
+     * (Sản lượng tổ) đã có SL Nhập Kho (TP NKHO) chưa. Chỉ ghi khi CHƯA có — không bao giờ
+     * ghi đè giá trị đã tồn tại (khác với đồng bộ tự động {@link #syncTpNhapKhoToSource}
+     * vốn luôn ghi đè theo tổng mới nhất). Dùng để vá các trường hợp đồng bộ tự động
+     * chưa chạy tới (import cũ, dữ liệu lịch sử...).
+     */
+    public java.util.Map<String, Object> syncTpNhapKhoManual(Long id, String username) {
+        ProductionRecord master = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi ID: " + id));
+        if (Boolean.TRUE.equals(master.getHoSoHoanThien())) {
+            return java.util.Map.of("updated", false,
+                    "message", "Hồ sơ đã hoàn thiện — không thể cập nhật Sản lượng");
+        }
+        if (master.getTpNhapKho() != null && master.getTpNhapKho() > 0) {
+            return java.util.Map.of("updated", false,
+                    "message", "Sản lượng (TP NKHO) đã có dữ liệu (" + master.getTpNhapKho() + "), không ghi đè",
+                    "value", master.getTpNhapKho());
+        }
+        List<ProductionRecord> clones = repository.findNhapKhoClonesByKey3(
+                master.getMaBravo(), master.getLsx(), master.getMaDonHang());
+        int total = clones.stream().mapToInt(c -> c.getTpNhapKho() != null ? c.getTpNhapKho() : 0).sum();
+        if (total <= 0) {
+            return java.util.Map.of("updated", false,
+                    "message", "Chưa có dữ liệu Nhập Kho nào để đồng bộ");
+        }
+        master.setTpNhapKho(total);
+        master.setUpdatedBy(username);
+        repository.save(master);
+
+        NhapKhoAuditLog log = new NhapKhoAuditLog();
+        log.setProductionRecordId(master.getId());
+        log.setMaBravo(master.getMaBravo());
+        log.setMaTp(master.getMaTp());
+        log.setTienTrinh(master.getTienTrinh());
+        log.setLsx(master.getLsx());
+        log.setHanhDong("DONG_BO_SLT_THU_CONG");
+        log.setTpNhapKho(total);
+        log.setThayDoi("SL Nhập Kho (Sản lượng tổ) — cập nhật thủ công: — → " + total);
+        log.setChangedBy(username);
+        log.setChangedAt(LocalDateTime.now());
+        nhapKhoAuditLogRepository.save(log);
+
+        return java.util.Map.of("updated", true,
+                "message", "Đã cập nhật Sản lượng (TP NKHO) = " + total,
+                "value", total);
     }
 
     private static String mkKey(String maBravo, String lsx) {

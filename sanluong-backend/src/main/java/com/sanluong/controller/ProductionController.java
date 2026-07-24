@@ -232,6 +232,15 @@ public class ProductionController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Thao tác "Cập nhật" thủ công trong tab Nhập Kho: kiểm tra Sản lượng tổ (TP NKHO)
+     * đã có dữ liệu chưa, nếu chưa thì ghi tổng SL Nhập Kho vào đó. Không ghi đè nếu đã có.
+     */
+    @PostMapping("/{id}/sync-tp-nhap-kho")
+    public ResponseEntity<Map<String, Object>> syncTpNhapKhoManual(@PathVariable Long id, Authentication auth) {
+        return ResponseEntity.ok(productionService.syncTpNhapKhoManual(id, auth.getName()));
+    }
+
     @GetMapping("/nhap-kho-tong-hop")
     public ResponseEntity<List<java.util.Map<String, Object>>> getNhapKhoTongHop() {
         return ResponseEntity.ok(productionService.getNhapKhoTongHop());

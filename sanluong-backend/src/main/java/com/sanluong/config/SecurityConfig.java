@@ -73,6 +73,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PATCH, "/api/production/*/nhap-kho").hasAnyRole("ADMIN", "ADMIN_DG", "ADMIN_KH")
                 // Sửa trực tiếp TP Nhập Kho tại bảng Sản Lượng — chỉ ADMIN, ADMIN_KH; không đụng tab Nhập Kho
                 .requestMatchers(HttpMethod.PATCH, "/api/production/*/tp-nhap-kho").hasAnyRole("ADMIN", "ADMIN_KH")
+                // Nút "Cập nhật" ở tab Nhập Kho: tự điền TP Nhập Kho nếu Sản Lượng chưa có — cùng quyền như sửa trực tiếp
+                .requestMatchers(HttpMethod.POST, "/api/production/*/sync-tp-nhap-kho").hasAnyRole("ADMIN", "ADMIN_KH")
                 .requestMatchers(HttpMethod.DELETE, "/api/production/*/nhap-kho").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/production/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH")
                 .requestMatchers(HttpMethod.PUT, "/api/production/**").hasAnyRole("ADMIN", "TKSX", "ADMIN_KH")

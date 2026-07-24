@@ -6036,6 +6036,7 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved, canEdit =
   const [editingField, setEditingField] = useState(null) // 'lsx' | 'maDonHang' | null
   const [fieldVal, setFieldVal] = useState('')
   const [fieldSaving, setFieldSaving] = useState(false)
+  const [tpSyncLoading, setTpSyncLoading] = useState(false)
 
   const startEditField = (field) => {
     setEditingField(field)
@@ -6133,6 +6134,25 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved, canEdit =
       onSaved()
     } catch { message.error('Xóa thất bại') }
     finally { setDeletingId(null) }
+  }
+
+  // "Cập nhật" — check Sản lượng tổ (TP NKHO) đã có dữ liệu chưa, nếu chưa thì post tổng NK vào đó.
+  // Không bao giờ ghi đè nếu TP NKHO đã có sẵn giá trị (backend tự kiểm tra).
+  const handleSyncTpNhapKho = async () => {
+    setTpSyncLoading(true)
+    try {
+      const { data } = await api.post(`/production/${r.id}/sync-tp-nhap-kho`)
+      if (data.updated) {
+        message.success(data.message)
+        setLocalRecord(prev => ({ ...prev, tpNhapKho: data.value }))
+      } else {
+        message.warning(data.message)
+      }
+    } catch (err) {
+      message.error(err?.response?.data?.message || 'Cập nhật thất bại')
+    } finally {
+      setTpSyncLoading(false)
+    }
   }
 
   const hasUnsavedNhapKho = () => slNK != null || !!tinhTrang || tenNth.trim() !== '' || ghiChu.trim() !== ''
@@ -6337,6 +6357,21 @@ function NhapKhoDetailPanel({ record: initialRecord, onClose, onSaved, canEdit =
                       ? <span style={{ color: '#374151', fontWeight: 600 }}>{dgSl.toLocaleString('vi-VN')}</span>
                       : <span style={{ color: '#374151', fontWeight: 600 }}>{fmtN(r.dg2)}</span>
                     }
+                  </VCell>
+                  <LCell>TP NKHO</LCell>
+                  <VCell last>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+                      <span style={{ fontWeight: 600, color: r.tpNhapKho > 0 ? '#15803d' : '#d97706' }}>
+                        {r.tpNhapKho > 0 ? Number(r.tpNhapKho).toLocaleString('vi-VN') : 'Chưa có'}
+                      </span>
+                      {canEdit && (
+                        <Tooltip title="Kiểm tra Sản lượng tổ (TP NKHO) đã có dữ liệu chưa — nếu chưa, ghi tổng SL Nhập Kho vào đó. Không ghi đè nếu đã có sẵn.">
+                          <Button size="small" loading={tpSyncLoading} onClick={handleSyncTpNhapKho} style={{ marginLeft: 'auto', fontSize: 11 }}>
+                            Cập nhật
+                          </Button>
+                        </Tooltip>
+                      )}
+                    </div>
                   </VCell>
                 </div>
               </div>
