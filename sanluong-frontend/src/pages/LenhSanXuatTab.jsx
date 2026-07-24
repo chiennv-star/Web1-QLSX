@@ -1235,11 +1235,10 @@ export default function LenhSanXuatTab() {
 
   // ── Tab counts ─────────────────────────────────────────────────────────────
   const tabCounts = useMemo(() => {
-    const c = { chua_xep: pendingData.length, hoan_thien: 0 }
-    TO_LIST.forEach(t => { c[t] = 0 })
+    const c = { chua_xep: pendingData.length, hoan_thien: 0, cho_ban_hanh: 0 }
     lenhData.forEach(r => {
       if (r.daBanHanh) c.hoan_thien++
-      else if (r.soLo && r.toThucHien && c[r.toThucHien] !== undefined) c[r.toThucHien]++
+      else if (r.soLo && TO_LIST.includes(r.toThucHien)) c.cho_ban_hanh++
     })
     return c
   }, [lenhData, pendingData])
@@ -1279,7 +1278,7 @@ export default function LenhSanXuatTab() {
     let list = lenhData.filter(r =>
       activeTab === 'hoan_thien'
         ? r.daBanHanh === true
-        : r.daBanHanh !== true && r.soLo && r.toThucHien === activeTab
+        : r.daBanHanh !== true && r.soLo && TO_LIST.includes(r.toThucHien)
     )
     if (filterFromPL) list = list.filter(r => r.ngayPhatLenh && r.ngayPhatLenh >= filterFromPL.format('YYYY-MM-DD'))
     if (filterToPL)   list = list.filter(r => r.ngayPhatLenh && r.ngayPhatLenh <= filterToPL.format('YYYY-MM-DD'))
@@ -1338,7 +1337,7 @@ export default function LenhSanXuatTab() {
     let list = lenhData.filter(r =>
       activeTab === 'hoan_thien'
         ? r.daBanHanh === true
-        : r.daBanHanh !== true && r.soLo && r.toThucHien === activeTab
+        : r.daBanHanh !== true && r.soLo && TO_LIST.includes(r.toThucHien)
     )
     if (filterFromPL) list = list.filter(r => r.ngayPhatLenh && r.ngayPhatLenh >= filterFromPL.format('YYYY-MM-DD'))
     if (filterToPL)   list = list.filter(r => r.ngayPhatLenh && r.ngayPhatLenh <= filterToPL.format('YYYY-MM-DD'))
@@ -1856,7 +1855,7 @@ export default function LenhSanXuatTab() {
   const subTabs = [
     { key: 'tat_ca',     label: `Lệnh sản xuất (${tatCaTotal})`,                      warn: false },
     { key: 'chua_xep',   label: `Chưa xếp (${tabCounts.chua_xep})`,                  warn: false },
-    ...TO_LIST.map(t => ({ key: t, label: `${t} (${tabCounts[t]})`,                   warn: tabCounts[t] > 0 })),
+    { key: 'cho_ban_hanh', label: `Chờ ban hành (${tabCounts.cho_ban_hanh})`,        warn: tabCounts.cho_ban_hanh > 0 },
     { key: 'hoan_thien', label: `Lệnh đã hoàn thiện (${tabCounts.hoan_thien})`,       warn: false },
     ...(user?.role === 'ADMIN' ? [{ key: 'phan_tich', label: `🔬 Phân tích`, warn: false }] : []),
   ]
