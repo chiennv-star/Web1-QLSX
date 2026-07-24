@@ -3125,6 +3125,28 @@ function ThongKeSanXuatTab() {
     }
   }, [toStats])
 
+  // ── Danh sách lô chi tiết (đạt/không đạt) theo tổ — dùng cho modal chi tiết ──
+  const rowsDetail = useMemo(() => {
+    const out = []
+    raw.forEach(r => {
+      let key = r.congDoan?.toUpperCase()
+      if (key === 'PCPL3' || key === 'CC') key = 'PL'
+      if (!TO_CONFIG_TK.some(t => t.key === key)) return
+      const isDone  = r.status === 'SAVED' || r.status === 'PENDING'
+      const hasSoLo = !!(r.soLo || '').trim()
+      if (!isDone || !hasSoLo) return
+      const sl   = Number(r.sanLuong   || 0)
+      const cong = Number(r.congThucHien || 0)
+      const ns   = r.nangSuat != null ? Number(r.nangSuat) : (cong > 0 && sl > 0 ? sl / cong : null)
+      const nsTb = r.nangSuatTrungBinh != null ? Number(r.nangSuatTrungBinh) : null
+      if (ns == null || nsTb == null) return // chưa có NS trung bình để so sánh
+      out.push({ ...r, toKey: key, ns, nsTb, ket: ns >= nsTb ? 'dat' : 'khongDat' })
+    })
+    return out
+  }, [raw])
+
+  const [detailModal, setDetailModal] = useState(null) // { key: string | null } khi mở, null khi đóng
+
   const maxNs     = Math.max(...toStats.map(t => t.nangSuat ?? 0), 0.001)
   const maxTongSl = Math.max(...toStats.map(t => t.tongSl ?? 0), 1)
   const toWithChq = useMemo(() => toStats.map(t => {
@@ -3210,14 +3232,21 @@ function ThongKeSanXuatTab() {
     <th style={{ padding: '8px 12px', fontWeight: 700, fontSize: 11, color: '#64748b', textAlign: align, borderBottom: '2px solid #e2e8f0', background: '#f8fafc', whiteSpace: 'nowrap' }}>{children}</th>
   )
 
-  const KpiCard = ({ label, value, unit, meta, accent, featured }) => (
-    <div style={{ background: featured ? accent : '#fff', border: `1.5px solid ${accent}${featured ? 'ff' : '30'}`, borderLeft: featured ? 'none' : `4px solid ${accent}`, borderRadius: 12, padding: '14px 16px', boxShadow: featured ? `0 4px 14px ${accent}44` : 'none' }}>
+  const KpiCard = ({ label, value, unit, meta, accent, featured, onClick }) => (
+    <div
+      onClick={onClick}
+      title={onClick ? 'Bấm để xem chi tiết' : undefined}
+      style={{ background: featured ? accent : '#fff', border: `1.5px solid ${accent}${featured ? 'ff' : '30'}`, borderLeft: featured ? 'none' : `4px solid ${accent}`, borderRadius: 12, padding: '14px 16px', boxShadow: featured ? `0 4px 14px ${accent}44` : 'none', cursor: onClick ? 'pointer' : 'default', transition: 'transform .12s, box-shadow .12s' }}
+      onMouseEnter={e => { if (onClick) e.currentTarget.style.transform = 'translateY(-2px)' }}
+      onMouseLeave={e => { if (onClick) e.currentTarget.style.transform = 'translateY(0)' }}
+    >
       <div style={{ fontSize: 10, fontWeight: 600, color: featured ? '#fff' : '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: 24, fontWeight: 900, color: featured ? '#fff' : '#0f172a', lineHeight: 1 }}>
         {value}
         {unit && <span style={{ fontSize: 13, fontWeight: 400, color: featured ? '#ffffffaa' : '#94a3b8', marginLeft: 4 }}>{unit}</span>}
       </div>
       {meta && <div style={{ fontSize: 11, color: featured ? '#ffffffcc' : '#94a3b8', marginTop: 4 }}>{meta}</div>}
+      {onClick && <div style={{ fontSize: 10, color: featured ? '#ffffffaa' : '#94a3b8', marginTop: 6, fontStyle: 'italic' }}>Bấm xem chi tiết →</div>}
     </div>
   )
 
@@ -3312,11 +3341,15 @@ function ThongKeSanXuatTab() {
           {/* KPI row FPY */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }}>
             <KpiCard label="Lô đã đánh giá"    value={kpi.tongLo}  meta={`Tổng phát sinh ${kpi.tongLo} lô`} accent="#4f46e5" />
-            <KpiCard label="Tỷ lệ đạt chung"   value={kpi.tyLeDat != null ? kpi.tyLeDat + '%' : '—'} meta={`${kpi.dat} lô đạt · Mục tiêu ${MT_DAT_TK}%`} accent="#10b981" featured={kpi.tyLeDat != null && kpi.tyLeDat >= MT_DAT_TK} />
-            <KpiCard label="Tỷ lệ không đạt"   value={kpi.tyLeDat != null ? (100 - kpi.tyLeDat).toFixed(1) + '%' : '—'} meta={`${kpi.khongDat} lô không đạt`} accent="#ef4444" />
+            <KpiCard label="Tỷ lệ đạt chung"   value={kpi.tyLeDat != null ? kpi.tyLeDat + '%' : '—'} meta={`${kpi.dat} lô đạt · Mục tiêu ${MT_DAT_TK}%`} accent="#10b981" featured={kpi.tyLeDat != null && kpi.tyLeDat >= MT_DAT_TK}
+              onClick={() => setDetailModal({ key: best?.key ?? TO_CONFIG_TK[0].key })} />
+            <KpiCard label="Tỷ lệ không đạt"   value={kpi.tyLeDat != null ? (100 - kpi.tyLeDat).toFixed(1) + '%' : '—'} meta={`${kpi.khongDat} lô không đạt`} accent="#ef4444"
+              onClick={() => setDetailModal({ key: worst?.key ?? TO_CONFIG_TK[0].key })} />
             <KpiCard label="Chưa nhập kết quả" value={kpi.chuaNhap} unit="lô" meta="Cần đôn đốc nhập liệu" accent="#f59e0b" />
-            <KpiCard label="Tổ dẫn đầu"        value={best?.label ?? '—'} meta={best ? `${best.tyLeDat}% · Kiểm nghiệm` : ''} accent="#10b981" />
-            <KpiCard label="Tổ cần cải thiện"  value={worst?.label ?? '—'} meta={worst ? `${worst.tyLeDat}% · Dán nhãn` : ''} accent="#ef4444" />
+            <KpiCard label="Tổ dẫn đầu"        value={best?.label ?? '—'} meta={best ? `${best.tyLeDat}% · Kiểm nghiệm` : ''} accent="#10b981"
+              onClick={best ? () => setDetailModal({ key: best.key }) : undefined} />
+            <KpiCard label="Tổ cần cải thiện"  value={worst?.label ?? '—'} meta={worst ? `${worst.tyLeDat}% · Dán nhãn` : ''} accent="#ef4444"
+              onClick={worst ? () => setDetailModal({ key: worst.key }) : undefined} />
           </div>
 
           {/* Chart row 1: Stacked + Horizontal FPY */}
@@ -3332,8 +3365,10 @@ function ThongKeSanXuatTab() {
                     contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }}
                   />
                   <Legend formatter={n => n === 'khongDat' ? 'Không đạt' : n === 'dat' ? 'Đạt' : 'Chưa nhập'} iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="khongDat" stackId="a" fill="#ef4444" name="khongDat" />
-                  <Bar dataKey="dat"      stackId="a" fill="#10b981" name="dat" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="khongDat" stackId="a" fill="#ef4444" name="khongDat" cursor="pointer"
+                    onClick={d => d?.key && setDetailModal({ key: d.key })} />
+                  <Bar dataKey="dat"      stackId="a" fill="#10b981" name="dat" radius={[4, 4, 0, 0]} cursor="pointer"
+                    onClick={d => d?.key && setDetailModal({ key: d.key })} />
                 </BarChart>
               </ResponsiveContainer>
             </Panel>
@@ -3347,7 +3382,8 @@ function ThongKeSanXuatTab() {
                   <YAxis type="category" dataKey="label" tick={{ fontSize: 11 }} width={42} axisLine={false} tickLine={false} />
                   <RcTooltip formatter={v => [v + '%', 'FPY']} contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }} />
                   <ReferenceLine x={MT_DAT_TK} stroke="#0f766e" strokeDasharray="5 4" label={{ value: `${MT_DAT_TK}%`, fill: '#0f766e', fontSize: 10, position: 'top' }} />
-                  <Bar dataKey="tyLeDat" name="FPY" radius={[0, 6, 6, 0]}>
+                  <Bar dataKey="tyLeDat" name="FPY" radius={[0, 6, 6, 0]} cursor="pointer"
+                    onClick={d => d?.key && setDetailModal({ key: d.key })}>
                     {[...toStats].filter(t => t.tyLeDat != null).sort((a, b) => (b.tyLeDat ?? 0) - (a.tyLeDat ?? 0)).map(t => (
                       <Cell key={t.key} fill={fpyBarColor(t.tyLeDat)} />
                     ))}
@@ -3416,7 +3452,7 @@ function ThongKeSanXuatTab() {
                 {toStats.map((t, i) => {
                   const delta = t.tyLeDat != null ? +(t.tyLeDat - MT_DAT_TK).toFixed(1) : null
                   return (
-                    <tr key={t.key} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
+                    <tr key={t.key} onClick={() => setDetailModal({ key: t.key })} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa', cursor: 'pointer' }}>
                       <TD align="left">
                         <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', fontSize: 11, fontWeight: 800, background: i === 0 ? '#f59e0b' : '#f1f5f9', color: i === 0 ? '#fff' : '#64748b' }}>{i + 1}</span>
                       </TD>
@@ -3595,7 +3631,96 @@ function ThongKeSanXuatTab() {
 
         </div>
       )}
+
+      <DatKhongDatDetailModal
+        open={!!detailModal}
+        initialKey={detailModal?.key}
+        rowsDetail={rowsDetail}
+        kyText={kyText}
+        onClose={() => setDetailModal(null)}
+      />
     </div>
+  )
+}
+
+// ─── Modal chi tiết lô Đạt / Không đạt theo tổ (Tab Thống kê sản xuất) ──────
+
+function DatKhongDatDetailModal({ open, initialKey, rowsDetail, kyText, onClose }) {
+  const [activeKey, setActiveKey] = useState(initialKey || TO_CONFIG_TK[0].key)
+  useEffect(() => { if (open && initialKey) setActiveKey(initialKey) }, [open, initialKey])
+
+  const cols = [
+    { title: 'Ngày', dataIndex: 'ngay', key: 'ngay', width: 96, align: 'center',
+      render: v => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
+    { title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 84, align: 'center',
+      render: v => v ? <Tag color="blue" style={{ marginRight: 0, fontSize: 11 }}>{v}</Tag> : '—' },
+    { title: 'Tiến trình / Tên SP', dataIndex: 'tenTrinh', key: 'tenTrinh',
+      render: v => <span style={{ fontSize: 12 }}>{v || '—'}</span> },
+    { title: 'Số lô', dataIndex: 'soLo', key: 'soLo', width: 84, align: 'center',
+      render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v || '—'}</span> },
+    { title: 'Ca', dataIndex: 'caSanXuat', key: 'ca', width: 60, align: 'center',
+      render: v => v ? <Tag color="orange" style={{ marginRight: 0, fontSize: 10 }}>{v}</Tag> : '—' },
+    { title: 'Sản lượng', dataIndex: 'sanLuong', key: 'sanLuong', width: 96, align: 'right',
+      render: v => v != null ? Number(v).toLocaleString('vi-VN') : '—' },
+    { title: 'Công TH', dataIndex: 'congThucHien', key: 'congThucHien', width: 90, align: 'right',
+      render: v => v != null ? Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 4 }) : '—' },
+    { title: 'Năng suất', dataIndex: 'ns', key: 'ns', width: 90, align: 'right',
+      render: v => v != null ? <b style={{ fontFamily: 'monospace' }}>{v.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</b> : '—' },
+    { title: 'NS TB', dataIndex: 'nsTb', key: 'nsTb', width: 90, align: 'right',
+      render: v => v != null ? <span style={{ fontFamily: 'monospace', color: '#94a3b8' }}>{v.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</span> : '—' },
+  ]
+
+  const items = TO_CONFIG_TK.map(t => {
+    const rowsT      = rowsDetail.filter(r => r.toKey === t.key)
+    const datRows    = rowsT.filter(r => r.ket === 'dat')
+    const khongDatRows = rowsT.filter(r => r.ket === 'khongDat')
+    return {
+      key: t.key,
+      label: (
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 9, height: 9, borderRadius: '50%', background: t.mau, display: 'inline-block' }} />
+          <b>{t.label}</b>
+          <span style={{ fontSize: 11, color: '#94a3b8' }}>({rowsT.length})</span>
+        </span>
+      ),
+      children: (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: '#047857', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              ✓ Đạt <span style={{ background: '#d1fae5', color: '#065f46', padding: '1px 8px', borderRadius: 20, fontSize: 11 }}>{datRows.length} lô</span>
+            </div>
+            <Table size="small" columns={cols} dataSource={datRows} rowKey={r => r.requestId || r.sessionId || `${r.soLo}-${r.ngay}-${r.maSp}`}
+              pagination={datRows.length > 8 ? { pageSize: 8, size: 'small' } : false} scroll={{ y: 340 }} />
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: '#b91c1c', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              ✗ Không đạt <span style={{ background: '#fee2e2', color: '#991b1b', padding: '1px 8px', borderRadius: 20, fontSize: 11 }}>{khongDatRows.length} lô</span>
+            </div>
+            <Table size="small" columns={cols} dataSource={khongDatRows} rowKey={r => r.requestId || r.sessionId || `${r.soLo}-${r.ngay}-${r.maSp}`}
+              pagination={khongDatRows.length > 8 ? { pageSize: 8, size: 'small' } : false} scroll={{ y: 340 }} />
+          </div>
+        </div>
+      ),
+    }
+  })
+
+  return (
+    <Modal
+      open={open}
+      onCancel={onClose}
+      footer={null}
+      width="92vw"
+      style={{ top: 16, maxWidth: 1500 }}
+      destroyOnHidden
+      title={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontWeight: 800, fontSize: 15, color: '#0f766e' }}>Chi tiết lô Đạt / Không đạt theo tổ</span>
+          <span style={{ fontSize: 12, color: '#64748b', fontWeight: 400 }}>Kỳ {kyText}</span>
+        </div>
+      }
+    >
+      <Tabs activeKey={activeKey} onChange={setActiveKey} items={items} />
+    </Modal>
   )
 }
 
@@ -6377,6 +6502,8 @@ function NhapKhoAuditLogView({ data, loading, onReload, filterH = 0 }) {
     SUA:         <Tag color="blue">Sửa</Tag>,
     XOA:         <Tag color="red">Xóa</Tag>,
     DONG_BO_SLT: <Tag color="purple">Đồng bộ SLT</Tag>,
+    DONG_BO_SLT_BO_QUA: <Tag color="orange">Bỏ qua (đã hoàn thiện HS)</Tag>,
+    SUA_TRUC_TIEP_SLT: <Tag color="magenta">Sửa tại Sản Lượng</Tag>,
   }
   const cellNav = useCellNav({ rowCount: data.length, colCount: 14 })
   const columns = [
@@ -6446,10 +6573,12 @@ const stripDiacriticsNK = (s) => (s || '')
 const isMatNaNK = (r) => stripDiacriticsNK(r.loaiSanPham) === 'mat na'
 
 function NhapKhoTab() {
-  const { canEditNhapKhoTarget, isAdmin, isQuanDoc, user } = useAuth()
+  const { canEditNhapKhoTarget, isAdmin, isAdminKH, isQuanDoc, user } = useAuth()
   // Chỉ ADMIN được sửa/xóa dữ liệu đã có; ADMIN_DG được thêm sản phẩm mới;
-  // TKSX/ADMIN_KH/NHAN_VIEN/Quản đốc chỉ xem
+  // TKSX/NHAN_VIEN/Quản đốc chỉ xem
   const canEdit = isAdmin()
+  // ADMIN_KH được sửa riêng số lượng nhập kho (SL Nhập Kho), không có quyền sửa/xóa các trường khác
+  const canEditQty = isAdmin() || isAdminKH()
   const canAdd = isAdmin() || user?.role === 'ADMIN_DG'
   const canDelete = isAdmin()
   const [auditData, setAuditData] = useState([])
@@ -6743,13 +6872,15 @@ function NhapKhoTab() {
   const NK_COL_FIELDS = ['stt', 'maBravo', 'maTp', 'tienTrinh', 'loaiSanPham', 'lsx', 'tpNhapKho', 'ngayXuatKho', 'tinhTrangNhapKho', 'tenNthNhapKho', 'ghiChuNhapKho']
   const NK_EDITABLE_FIELDS = ['tpNhapKho', 'ngayXuatKho', 'tinhTrangNhapKho', 'tenNthNhapKho', 'ghiChuNhapKho']
   const handleCellEdit = useCallback((row, col) => {
-    if (!canEdit) return
     const record = filteredListData[row]
     if (!record) return
     const field = NK_COL_FIELDS[col]
+    // SL Nhập Kho: ADMIN và ADMIN_KH đều sửa được; các trường khác chỉ ADMIN
+    if (field === 'tpNhapKho') { if (canEditQty) setEditCell({ id: record.id, field }); return }
+    if (!canEdit) return
     if (field === 'maBravo') { handleBravoEditStart(record); return }
     if (NK_EDITABLE_FIELDS.includes(field)) setEditCell({ id: record.id, field })
-  }, [canEdit, filteredListData, handleBravoEditStart])
+  }, [canEdit, canEditQty, filteredListData, handleBravoEditStart])
   const cellNav = useCellNav({ rowCount: filteredListData.length, colCount: NK_COL_FIELDS.length, onEdit: handleCellEdit })
 
   const columns = [
@@ -6838,7 +6969,7 @@ function NhapKhoTab() {
       title: 'SL Nhập Kho', dataIndex: 'tpNhapKho', key: 'tpNhapKho', width: 120, align: 'right',
       onCell: (_, i) => cellNav.cellProps(i, 6),
       render: (v, r) => {
-        const isEditing = canEdit && editCell?.id === r.id && editCell?.field === 'tpNhapKho'
+        const isEditing = canEditQty && editCell?.id === r.id && editCell?.field === 'tpNhapKho'
         if (isEditing) {
           return (
             <InputNumber
@@ -6864,7 +6995,7 @@ function NhapKhoTab() {
           <div style={{ textAlign: 'right' }}>
             {v != null
               ? <span style={{ fontWeight: 700, color: '#15803d' }}>{Number(v).toLocaleString('vi-VN')}</span>
-              : canEdit ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0 }}>Nhập</Tag> : <span style={{ color: '#d1d5db' }}>—</span>}
+              : canEditQty ? <Tag style={{ borderStyle: 'dashed', color: '#aaa', marginRight: 0 }}>Nhập</Tag> : <span style={{ color: '#d1d5db' }}>—</span>}
           </div>
         )
       },
@@ -7416,7 +7547,7 @@ function NhapKhoTab() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div>
                     <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 12, color: '#374151' }}>SL Nhập Kho</div>
-                    {canEdit && editCell?.id === r.id && editCell?.field === 'tpNhapKho_drawer' ? (
+                    {canEditQty && editCell?.id === r.id && editCell?.field === 'tpNhapKho_drawer' ? (
                       <InputNumber autoFocus min={0} step={1} style={{ width: '100%' }}
                         defaultValue={r.tpNhapKho ?? undefined}
                         formatter={val => val != null && val !== '' ? Number(val).toLocaleString('vi-VN') : ''}
@@ -7425,11 +7556,11 @@ function NhapKhoTab() {
                         onBlur={e => { if (!saving[`${r.id}_tpNhapKho`]) { const n = parseInt(e.target.value.replace(/[^\d]/g, ''), 10); saveField(r.id, 'tpNhapKho', isNaN(n) ? null : n) } }}
                       />
                     ) : (
-                      <div onClick={canEdit ? () => setEditCell({ id: r.id, field: 'tpNhapKho_drawer' }) : undefined}
-                        style={{ cursor: canEdit ? 'pointer' : 'default', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 32, display: 'flex', alignItems: 'center' }}>
+                      <div onClick={canEditQty ? () => setEditCell({ id: r.id, field: 'tpNhapKho_drawer' }) : undefined}
+                        style={{ cursor: canEditQty ? 'pointer' : 'default', padding: '4px 8px', border: '1px dashed #d9d9d9', borderRadius: 4, minHeight: 32, display: 'flex', alignItems: 'center' }}>
                         {r.tpNhapKho != null
                           ? <span style={{ fontWeight: 700, color: '#15803d', fontSize: 15 }}>{r.tpNhapKho.toLocaleString('vi-VN')}</span>
-                          : <span style={{ color: '#bbb' }}>{canEdit ? 'Nhấn để nhập...' : '—'}</span>}
+                          : <span style={{ color: '#bbb' }}>{canEditQty ? 'Nhấn để nhập...' : '—'}</span>}
                       </div>
                     )}
                   </div>
