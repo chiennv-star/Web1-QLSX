@@ -1067,12 +1067,15 @@ function TaskItem({ record, onEdit, onDelete, bodyBg, canEdit, onDragStart, onCo
   const isRatGap  = record.tinhTrang === 'rat_gap'
   const isGap     = record.tinhTrang === 'gap'
   const isDone    = record.tinhTrang === 'done'
+  // Đã sản xuất xong ở Sản lượng tổ (bản ghi SCHEDULE tương ứng đã done) — ưu tiên hiển thị cao nhất
+  const isSxDone  = !!record.daHoanThanhSx
 
-  const textColor   = isRatGap ? '#cf1322' : isGap ? '#531dab' : isDone ? '#15803d' : noDonHang ? '#6d28d9' : '#262626'
-  const prefixColor = isRatGap ? '#cf1322' : isGap ? '#531dab' : isDone ? '#15803d' : noDonHang ? '#7c3aed' : '#389e0d'
-  const cardBg      = isRatGap ? '#fff1f0' : isGap ? '#f5f0ff' : isDone ? '#f0fdf4' : noDonHang ? '#f5f3ff' : '#fff'
-  const cardBorder  = isRatGap ? '#ffa39e' : isGap ? '#c4b5fd' : isDone ? '#86efac' : noDonHang ? '#c4b5fd' : '#d9d9d9'
-  const cardAccent  = isRatGap ? '#ff4d4f' : isGap ? '#7c3aed' : isDone ? '#22c55e' : noDonHang ? '#7c3aed' : '#52c41a'
+  const textColor   = isSxDone ? '#ffffff' : isRatGap ? '#cf1322' : isGap ? '#531dab' : isDone ? '#15803d' : noDonHang ? '#6d28d9' : '#262626'
+  const prefixColor = isSxDone ? '#e6fffa' : isRatGap ? '#cf1322' : isGap ? '#531dab' : isDone ? '#15803d' : noDonHang ? '#7c3aed' : '#389e0d'
+  const cardBg      = isSxDone ? '#339999' : isRatGap ? '#fff1f0' : isGap ? '#f5f0ff' : isDone ? '#f0fdf4' : noDonHang ? '#f5f3ff' : '#fff'
+  const cardBorder  = isSxDone ? '#267373' : isRatGap ? '#ffa39e' : isGap ? '#c4b5fd' : isDone ? '#86efac' : noDonHang ? '#c4b5fd' : '#d9d9d9'
+  const cardAccent  = isSxDone ? '#1a4d4d' : isRatGap ? '#ff4d4f' : isGap ? '#7c3aed' : isDone ? '#22c55e' : noDonHang ? '#7c3aed' : '#52c41a'
+  const mutedColor  = isSxDone ? '#d1f5f5' : '#8c8c8c'
 
   const contextMenuItems = canEdit ? [
     {
@@ -1102,9 +1105,9 @@ function TaskItem({ record, onEdit, onDelete, bodyBg, canEdit, onDragStart, onCo
         padding: '3px 7px',
         marginBottom: 2,
         borderRadius: 4,
-        background: coLoEdit ? '#66FF99' : isSelected ? '#fff7e6' : isCopied ? '#fffbe6' : record.hasLsx ? '#66FF99' : cardBg,
-        border: coLoEdit ? '1.5px solid #22c55e' : isSelected ? '1.5px solid #fa8c16' : isCopied ? '1.5px dashed #faad14' : record.hasLsx ? '1px solid #22c55e' : `1px solid ${cardBorder}`,
-        borderLeft: `3px solid ${coLoEdit ? '#16a34a' : isSelected ? '#fa8c16' : isCopied ? '#faad14' : record.hasLsx ? '#16a34a' : cardAccent}`,
+        background: coLoEdit ? '#66FF99' : isSelected ? '#fff7e6' : isCopied ? '#fffbe6' : isSxDone ? cardBg : record.hasLsx ? '#66FF99' : cardBg,
+        border: coLoEdit ? '1.5px solid #22c55e' : isSelected ? '1.5px solid #fa8c16' : isCopied ? '1.5px dashed #faad14' : isSxDone ? `1px solid ${cardBorder}` : record.hasLsx ? '1px solid #22c55e' : `1px solid ${cardBorder}`,
+        borderLeft: `3px solid ${coLoEdit ? '#16a34a' : isSelected ? '#fa8c16' : isCopied ? '#faad14' : isSxDone ? cardAccent : record.hasLsx ? '#16a34a' : cardAccent}`,
         lineHeight: 1.45,
         color: textColor,
         cursor: isMultiSelectMode ? 'pointer' : canEdit ? 'pointer' : 'default',
@@ -1193,8 +1196,13 @@ function TaskItem({ record, onEdit, onDelete, bodyBg, canEdit, onDragStart, onCo
       <span style={{ textDecoration: isDone ? 'line-through' : 'none', opacity: isDone ? 0.8 : 1 }}>
         {record.tenTrinh || ''}
       </span>
-      {record.soLo && <span style={{ color: '#8c8c8c', fontSize: 11 }}> – {record.soLo}</span>}
-      {congStr && <span style={{ color: '#8c8c8c', fontSize: 11 }}> {congStr}</span>}
+      {record.soLo && <span style={{ color: mutedColor, fontSize: 11 }}> – {record.soLo}</span>}
+      {congStr && <span style={{ color: mutedColor, fontSize: 11 }}> {congStr}</span>}
+      {isSxDone && (
+        <Tag style={{ marginLeft: 4, fontSize: 10, padding: '0 4px', lineHeight: '16px', height: 16, verticalAlign: 'middle', background: '#fff', color: '#267373', border: '1px solid #267373', fontWeight: 700 }}>
+          ✓ Đã SX xong
+        </Tag>
+      )}
       {isDone && (
         <Tag color="success" style={{ marginLeft: 4, fontSize: 10, padding: '0 4px', lineHeight: '16px', height: 16, verticalAlign: 'middle' }}>
           ✓ Đã xếp lịch
@@ -1211,21 +1219,21 @@ function TaskItem({ record, onEdit, onDelete, bodyBg, canEdit, onDragStart, onCo
         </Tag>
       )}
       {record.maDonHang && (
-        <div style={{ color: '#8c8c8c', fontSize: 10, marginTop: 1 }}>
-          <span style={{ color: '#bfbfbf' }}>ĐH: </span>
-          <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#1677ff' }}>{record.maDonHang}</span>
+        <div style={{ color: mutedColor, fontSize: 10, marginTop: 1 }}>
+          <span style={{ color: isSxDone ? mutedColor : '#bfbfbf' }}>ĐH: </span>
+          <span style={{ fontFamily: 'monospace', fontWeight: 600, color: isSxDone ? '#ffffff' : '#1677ff' }}>{record.maDonHang}</span>
         </div>
       )}
       {noDonHang && (
-        <div style={{ color: '#7c3aed', fontSize: 10, fontWeight: 700, marginTop: 2 }}>
+        <div style={{ color: isSxDone ? '#ffe4ff' : '#7c3aed', fontSize: 10, fontWeight: 700, marginTop: 2 }}>
           ⚠ Không tìm thấy ĐH
         </div>
       )}
       {record.phongThucHien && (
-        <div style={{ color: '#607080', fontSize: 10, marginTop: 1 }}>🏢 {record.phongThucHien}</div>
+        <div style={{ color: isSxDone ? mutedColor : '#607080', fontSize: 10, marginTop: 1 }}>🏢 {record.phongThucHien}</div>
       )}
       {record.chuY && (
-        <div style={{ color: '#d46b08', fontSize: 11, marginTop: 1 }}>⚠ {record.chuY}</div>
+        <div style={{ color: isSxDone ? '#ffe8c2' : '#d46b08', fontSize: 11, marginTop: 1 }}>⚠ {record.chuY}</div>
       )}
     </div>
   )
@@ -1244,12 +1252,15 @@ function PlanSummaryRow({ record }) {
   const isRatGap = record.tinhTrang === 'rat_gap'
   const isGap    = record.tinhTrang === 'gap'
   const isDone   = record.tinhTrang === 'done'
+  const isSxDone = !!record.daHoanThanhSx
+  const muted    = isSxDone ? '#d1f5f5' : '#8c8c8c'
   return (
     <div style={{
       padding: '7px 14px',
       borderBottom: '1px solid #f0f2f5',
-      borderLeft: `3px solid ${isRatGap ? '#ef4444' : isGap ? '#7c3aed' : isDone ? '#22c55e' : '#d9d9d9'}`,
-      background: isRatGap ? '#fff5f5' : isGap ? '#f9f5ff' : isDone ? '#f0fdf4' : '#fff',
+      borderLeft: `3px solid ${isSxDone ? '#1a4d4d' : isRatGap ? '#ef4444' : isGap ? '#7c3aed' : isDone ? '#22c55e' : '#d9d9d9'}`,
+      background: isSxDone ? '#339999' : isRatGap ? '#fff5f5' : isGap ? '#f9f5ff' : isDone ? '#f0fdf4' : '#fff',
+      color: isSxDone ? '#ffffff' : undefined,
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
         <Space size={4}>
@@ -1258,23 +1269,24 @@ function PlanSummaryRow({ record }) {
             background: grp?.headerBg || '#8c8c8c', color: '#fff',
           }}>{record.toNhom}</span>
           {record.coLo && (
-            <span style={{ fontWeight: 700, fontSize: 13, color: '#1e293b' }}>
+            <span style={{ fontWeight: 700, fontSize: 13, color: isSxDone ? '#ffffff' : '#1e293b' }}>
               {Number(record.coLo).toLocaleString('vi-VN')}
             </span>
           )}
+          {isSxDone && <Tag style={{ margin: 0, fontSize: 10, background: '#fff', color: '#267373', border: '1px solid #267373', fontWeight: 700 }}>✓ Đã SX xong</Tag>}
           {isRatGap && <Tag color="red"    style={{ margin: 0, fontSize: 10 }}>Rất gấp</Tag>}
           {isGap    && <Tag color="purple" style={{ margin: 0, fontSize: 10 }}>Gấp</Tag>}
           {isDone   && <Tag color="success" style={{ margin: 0, fontSize: 10 }}>✓ Xếp lịch</Tag>}
         </Space>
         {record.maDonHang && (
-          <span style={{ fontSize: 10, color: '#1677ff', fontFamily: 'monospace' }}>{record.maDonHang}</span>
+          <span style={{ fontSize: 10, color: isSxDone ? '#e6fffa' : '#1677ff', fontFamily: 'monospace' }}>{record.maDonHang}</span>
         )}
       </div>
-      <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.4 }}>
+      <div style={{ fontSize: 12, color: isSxDone ? '#ffffff' : '#374151', lineHeight: 1.4 }}>
         {record.tenTrinh || record.maSp || '—'}
-        {record.soLo && <span style={{ color: '#8c8c8c', fontSize: 11, marginLeft: 6 }}>· Lô: {record.soLo}</span>}
+        {record.soLo && <span style={{ color: muted, fontSize: 11, marginLeft: 6 }}>· Lô: {record.soLo}</span>}
       </div>
-      {record.chuY && <div style={{ fontSize: 11, color: '#d97706', marginTop: 2 }}>⚠ {record.chuY}</div>}
+      {record.chuY && <div style={{ fontSize: 11, color: isSxDone ? '#ffe8c2' : '#d97706', marginTop: 2 }}>⚠ {record.chuY}</div>}
     </div>
   )
 }

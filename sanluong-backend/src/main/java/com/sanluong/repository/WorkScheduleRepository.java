@@ -401,6 +401,17 @@ public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long
             @Param("soLo")       String soLo
     );
 
+    /** Danh sách (congDoan, soLo) của các bản ghi SCHEDULE đã tinhTrang='done', giới hạn theo tập soLo —
+     *  dùng để enrich cờ "đã sản xuất xong" cho các bản ghi PLAN tương ứng ở Kế hoạch. */
+    @Query("""
+        SELECT DISTINCT w.congDoan, w.soLo FROM WorkSchedule w
+        WHERE (w.source = 'SCHEDULE' OR w.source IS NULL)
+          AND w.tinhTrang = 'done'
+          AND w.soLo IN :soLos
+          AND w.deletedAt IS NULL
+        """)
+    List<Object[]> findDoneScheduleCongDoanSoLo(@Param("soLos") List<String> soLos);
+
     /** Tổng coLo PLAN theo PCPL1+PCPL2 (tổ pha chế chính), group theo maBravo+maDonHang —
      *  không giới hạn theo ngày, dùng cho cột "SL Đã Xếp KH" ở bảng đơn hàng (Kế hoạch) */
     @Query("""
