@@ -3650,8 +3650,8 @@ function DatKhongDatDetailModal({ open, initialKey, rowsDetail, kyText, onClose 
       render: v => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
     { title: 'Mã SP', dataIndex: 'maSp', key: 'maSp', width: 84, align: 'center',
       render: v => v ? <Tag color="blue" style={{ marginRight: 0, fontSize: 11 }}>{v}</Tag> : '—' },
-    { title: 'Tiến trình / Tên SP', dataIndex: 'tenTrinh', key: 'tenTrinh',
-      render: v => <span style={{ fontSize: 12 }}>{v || '—'}</span> },
+    { title: 'Tiến trình / Tên SP', dataIndex: 'tenTrinh', key: 'tenTrinh', width: 220, ellipsis: true,
+      render: v => <span style={{ fontSize: 12 }} title={v || ''}>{v || '—'}</span> },
     { title: 'Số lô', dataIndex: 'soLo', key: 'soLo', width: 84, align: 'center',
       render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v || '—'}</span> },
     { title: 'Ca', dataIndex: 'caSanXuat', key: 'ca', width: 60, align: 'center',
@@ -3686,14 +3686,14 @@ function DatKhongDatDetailModal({ open, initialKey, rowsDetail, kyText, onClose 
               ✓ Đạt <span style={{ background: '#d1fae5', color: '#065f46', padding: '1px 8px', borderRadius: 20, fontSize: 11 }}>{datRows.length} lô</span>
             </div>
             <Table size="small" columns={cols} dataSource={datRows} rowKey={r => r.requestId || r.sessionId || `${r.soLo}-${r.ngay}-${r.maSp}`}
-              pagination={datRows.length > 8 ? { pageSize: 8, size: 'small' } : false} scroll={{ y: 340 }} />
+              pagination={datRows.length > 8 ? { pageSize: 8, size: 'small' } : false} scroll={{ x: 820, y: 340 }} />
           </div>
           <div>
             <div style={{ fontWeight: 700, fontSize: 13, color: '#b91c1c', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
               ✗ Không đạt <span style={{ background: '#fee2e2', color: '#991b1b', padding: '1px 8px', borderRadius: 20, fontSize: 11 }}>{khongDatRows.length} lô</span>
             </div>
             <Table size="small" columns={cols} dataSource={khongDatRows} rowKey={r => r.requestId || r.sessionId || `${r.soLo}-${r.ngay}-${r.maSp}`}
-              pagination={khongDatRows.length > 8 ? { pageSize: 8, size: 'small' } : false} scroll={{ y: 340 }} />
+              pagination={khongDatRows.length > 8 ? { pageSize: 8, size: 'small' } : false} scroll={{ x: 820, y: 340 }} />
           </div>
         </div>
       ),
