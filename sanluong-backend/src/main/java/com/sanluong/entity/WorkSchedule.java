@@ -72,6 +72,11 @@ public class WorkSchedule {
     @Column(name = "tinh_trang", length = 50)
     private String tinhTrang;
 
+    /** Ghi đè thủ công cờ "đã sản xuất xong" (Kế hoạch) khi đối chiếu tự động theo soLo không tìm ra
+     *  bản ghi SCHEDULE tương ứng. null = theo tự động, true/false = ép buộc theo lựa chọn thủ công. */
+    @Column(name = "da_hoan_thanh_sx_manual")
+    private Boolean daHoanThanhSxManual;
+
     // PC
     @Column(name = "sl_pc", precision = 12, scale = 4)
     private BigDecimal slPc;
@@ -255,6 +260,8 @@ public class WorkSchedule {
     public void setHasLsx(boolean hasLsx) { this.hasLsx = hasLsx; }
     public boolean isDaHoanThanhSx() { return daHoanThanhSx; }
     public void setDaHoanThanhSx(boolean daHoanThanhSx) { this.daHoanThanhSx = daHoanThanhSx; }
+    public Boolean getDaHoanThanhSxManual() { return daHoanThanhSxManual; }
+    public void setDaHoanThanhSxManual(Boolean daHoanThanhSxManual) { this.daHoanThanhSxManual = daHoanThanhSxManual; }
     public Integer getTpNhapKho() { return tpNhapKho; }
     public void setTpNhapKho(Integer tpNhapKho) { this.tpNhapKho = tpNhapKho; }
     public boolean isHidden() { return hidden; }

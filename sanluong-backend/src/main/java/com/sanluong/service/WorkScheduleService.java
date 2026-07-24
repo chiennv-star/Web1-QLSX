@@ -98,7 +98,9 @@ public class WorkScheduleService {
     }
 
     /** Enrich daHoanThanhSx: đánh dấu các bản ghi PLAN có bản ghi SCHEDULE tương ứng
-     *  (cùng soLo + công đoạn hiệu lực: toNhom nếu là PCPL1/PCPL2, ngược lại dùng congDoan) đã done. */
+     *  (cùng soLo + công đoạn hiệu lực: toNhom nếu là PCPL1/PCPL2, ngược lại dùng congDoan) đã done.
+     *  Nếu người dùng đã ghi đè thủ công (daHoanThanhSxManual != null) thì ưu tiên giá trị thủ công —
+     *  dùng khi không tìm được bản ghi SCHEDULE tương ứng (VD: chưa nhập soLo, sai lệch mã SP...). */
     private void enrichDaHoanThanhSx(List<WorkSchedule> list) {
         List<String> soLos = list.stream()
                 .filter(w -> "PLAN".equals(w.getSource()))
@@ -106,19 +108,34 @@ public class WorkScheduleService {
                 .filter(s -> s != null && !s.isBlank())
                 .distinct()
                 .collect(Collectors.toList());
-        if (soLos.isEmpty()) return;
         Set<String> doneKeys = new HashSet<>();
-        for (Object[] row : repository.findDoneScheduleCongDoanSoLo(soLos)) {
-            String cd = (String) row[0];
-            String soLo = (String) row[1];
-            doneKeys.add(cd + "|" + soLo);
+        if (!soLos.isEmpty()) {
+            for (Object[] row : repository.findDoneScheduleCongDoanSoLo(soLos)) {
+                String cd = (String) row[0];
+                String soLo = (String) row[1];
+                doneKeys.add(cd + "|" + soLo);
+            }
         }
         list.forEach(w -> {
-            if (!"PLAN".equals(w.getSource()) || w.getSoLo() == null) return;
+            if (!"PLAN".equals(w.getSource())) return;
+            if (w.getDaHoanThanhSxManual() != null) {
+                w.setDaHoanThanhSx(w.getDaHoanThanhSxManual());
+                return;
+            }
+            if (w.getSoLo() == null) return;
             String effectiveCd = ("PCPL1".equals(w.getToNhom()) || "PCPL2".equals(w.getToNhom()))
                     ? w.getToNhom() : w.getCongDoan();
             w.setDaHoanThanhSx(doneKeys.contains(effectiveCd + "|" + w.getSoLo()));
         });
+    }
+
+    /** Ghi đè thủ công cờ đã sản xuất xong cho 1 bản ghi PLAN — value = null để quay lại theo tự động. */
+    public WorkSchedule setDaHoanThanhSxManual(Long id, Boolean value) {
+        WorkSchedule w = getById(id);
+        w.setDaHoanThanhSxManual(value);
+        WorkSchedule saved = repository.save(w);
+        eventPublisher.publishKhoachUpdated();
+        return saved;
     }
 
     /** Enrich maBravo từ ProductMaster cho các bản ghi chưa có (backward compat) */
