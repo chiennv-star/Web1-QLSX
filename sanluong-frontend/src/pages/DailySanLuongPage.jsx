@@ -656,6 +656,10 @@ function RecordDetailModal({ open, record, onClose }) {
       render: (_, __, i) => <span style={{ color: '#aaa', fontSize: 11 }}>{i + 1}</span> },
     { title: 'Người thực hiện', dataIndex: 'nguoiThucHien', key: 'nguoi', width: 170,
       render: v => v || <span style={{ color: '#ccc' }}>—</span> },
+    { title: 'Mã NV', dataIndex: 'maNhanVien', key: 'maNv', width: 90, align: 'center',
+      render: v => v ? <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{v}</span> : <span style={{ color: '#ccc' }}>—</span> },
+    { title: 'Tổ TH', dataIndex: 'nhomThucHien', key: 'toTh', width: 90, align: 'center',
+      render: v => v ? <Tag color="cyan" style={{ marginRight: 0 }}>{v}</Tag> : <span style={{ color: '#ccc' }}>—</span> },
     { title: 'Vai trò', dataIndex: 'vaiTro', key: 'vaiTro', width: 110, align: 'center',
       render: v => !v ? <span style={{ color: '#ccc' }}>—</span>
         : <Tag color={v.toLowerCase().includes('trưởng') ? 'gold' : 'geekblue'} style={{ marginRight: 0 }}>{v}</Tag> },
@@ -694,7 +698,7 @@ function RecordDetailModal({ open, record, onClose }) {
   return (
     <Modal open={open} onCancel={onClose}
       footer={<Button onClick={onClose}>Đóng</Button>}
-      width={900}
+      width={1060}
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Tag color={CONG_DOAN_COLOR[record.congDoan] || 'default'} style={{ fontWeight: 700, fontSize: 13, marginRight: 0 }}>
@@ -727,16 +731,16 @@ function RecordDetailModal({ open, record, onClose }) {
         <span style={{ fontWeight: 400, color: '#6b7280', marginLeft: 8 }}>({sessions.length} phiên)</span>
       </div>
       <Table size="small" dataSource={sessions} columns={sessCols} rowKey="id"
-        loading={sessLoading} pagination={false} scroll={{ x: 800 }}
+        loading={sessLoading} pagination={false} scroll={{ x: 980 }}
         summary={() => sessions.length > 0 && (
           <Table.Summary.Row style={{ background: '#eff6ff', fontWeight: 700 }}>
-            <Table.Summary.Cell index={0} colSpan={5} align="right">
+            <Table.Summary.Cell index={0} colSpan={7} align="right">
               <span style={{ color: '#374151', fontSize: 11 }}>Tổng cộng</span>
             </Table.Summary.Cell>
-            <Table.Summary.Cell index={5} align="center">
+            <Table.Summary.Cell index={7} align="center">
               <span style={{ color: '#1d4ed8', fontFamily: 'monospace' }}>{totalCong.toFixed(4)}</span>
             </Table.Summary.Cell>
-            <Table.Summary.Cell index={6} colSpan={2} align="center">
+            <Table.Summary.Cell index={8} colSpan={2} align="center">
               {ns != null && (
                 <span style={{ color: '#059669', fontSize: 11 }}>
                   NS: {ns.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} SP/công
