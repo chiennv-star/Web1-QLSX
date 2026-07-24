@@ -661,15 +661,13 @@ function RecordDetailModal({ open, record, onClose }) {
         : <Tag color={v.toLowerCase().includes('trưởng') ? 'gold' : 'geekblue'} style={{ marginRight: 0 }}>{v}</Tag> },
     { title: 'Ca', dataIndex: 'caSanXuat', key: 'ca', width: 66, align: 'center',
       render: v => v ? <Tag color="orange" style={{ marginRight: 0, fontSize: 11 }}>{v}</Tag> : <span style={{ color: '#ccc' }}>—</span> },
-    { title: 'Giờ', key: 'gio', width: 96, align: 'center',
+    { title: 'Giờ TH', key: 'gio', width: 96, align: 'center',
       render: (_, r) => {
-        const bd = r.thoiGianBatDau, kt = r.thoiGianKetThuc
-        return (!bd && !kt)
+        const gio = r.thoiGianBatDau
+        return (gio == null || gio === '')
           ? <span style={{ color: '#ccc' }}>—</span>
-          : <span style={{ fontSize: 11, fontFamily: 'monospace' }}>{bd || '?'}–{kt || '?'}</span>
+          : <span style={{ fontSize: 11, fontFamily: 'monospace' }}>{gio}</span>
       }},
-    { title: 'Giờ TH', dataIndex: 'soGioThucHien', key: 'soGio', width: 70, align: 'center',
-      render: v => v != null ? <span style={{ fontFamily: 'monospace' }}>{Number(v).toFixed(2)}</span> : <span style={{ color: '#ccc' }}>—</span> },
     { title: 'Công TH', dataIndex: 'congThucHien', key: 'cong', width: 88, align: 'center',
       render: v => v != null
         ? <span style={{ color: '#1d4ed8', fontWeight: 700, fontFamily: 'monospace' }}>{Number(v).toFixed(4)}</span>
@@ -732,13 +730,13 @@ function RecordDetailModal({ open, record, onClose }) {
         loading={sessLoading} pagination={false} scroll={{ x: 800 }}
         summary={() => sessions.length > 0 && (
           <Table.Summary.Row style={{ background: '#eff6ff', fontWeight: 700 }}>
-            <Table.Summary.Cell index={0} colSpan={6} align="right">
+            <Table.Summary.Cell index={0} colSpan={5} align="right">
               <span style={{ color: '#374151', fontSize: 11 }}>Tổng cộng</span>
             </Table.Summary.Cell>
-            <Table.Summary.Cell index={6} align="center">
+            <Table.Summary.Cell index={5} align="center">
               <span style={{ color: '#1d4ed8', fontFamily: 'monospace' }}>{totalCong.toFixed(4)}</span>
             </Table.Summary.Cell>
-            <Table.Summary.Cell index={7} colSpan={2} align="center">
+            <Table.Summary.Cell index={6} colSpan={2} align="center">
               {ns != null && (
                 <span style={{ color: '#059669', fontSize: 11 }}>
                   NS: {ns.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} SP/công
