@@ -5264,6 +5264,7 @@ function NhapKhoSummaryView({ data, year, mucTieu, onMucTieuChange, mucTieuThang
       <style>{`
         .nk-summary-wrap thead th { position: sticky; top: ${stickyTop}px; z-index: 5; }
         .nk-summary-wrap tfoot td { text-align: center !important; font-size: 12px !important; }
+        .nk-summary-wrap tfoot td > div { text-align: center !important; }
       `}</style>
       <div className="nk-summary-wrap" style={{ overflowX: 'auto', borderRadius: 6, border: '1px solid #e5e7eb' }}>
         <table style={{ borderCollapse: 'collapse', minWidth: 900, width: '100%' }}>
